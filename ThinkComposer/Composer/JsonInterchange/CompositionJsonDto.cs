@@ -41,6 +41,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
     public class CompositionJsonImportOptions
     {
         public bool? AutoPlaceNewItems { get; set; }
+        public string LayoutMode { get; set; }
+        public bool? PreventSelfRecursiveCompositeViews { get; set; }
+        public bool? RepairRecursiveVisuals { get; set; }
     }
 
     public class CompositionJsonComposition

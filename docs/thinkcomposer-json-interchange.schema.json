@@ -136,6 +136,24 @@
         "autoPlaceNewItems": {
           "type": "boolean",
           "description": "When true or omitted by the importer, created concepts and relationships are placed in a suitable view when no explicit placement is supplied."
+        },
+        "layoutMode": {
+          "type": "string",
+          "enum": [
+            "gridNearViewport",
+            "gridNearContainer",
+            "gridAfterExistingContent",
+            "none"
+          ],
+          "description": "Controls automatic placement for created items without explicit coordinates. Default is gridNearViewport, which keeps imported batches near the visible/normal content cluster and ignores extreme outliers."
+        },
+        "preventSelfRecursiveCompositeViews": {
+          "type": "boolean",
+          "description": "When true or omitted, the importer will not place a concept inside its own composite view or place a relationship visual in a composite view when an endpoint is that view's owner."
+        },
+        "repairRecursiveVisuals": {
+          "type": "boolean",
+          "description": "When true or omitted, import scans for previously imported self-recursive visual representations and removes only the invalid visuals, preserving concepts and relationships."
         }
       }
     },
@@ -1131,7 +1149,10 @@
       "format": "ThinkComposer.JsonInterchange",
       "formatVersion": 1,
       "importOptions": {
-        "autoPlaceNewItems": true
+        "autoPlaceNewItems": true,
+        "layoutMode": "gridNearViewport",
+        "preventSelfRecursiveCompositeViews": true,
+        "repairRecursiveVisuals": true
       },
       "operations": [
         {

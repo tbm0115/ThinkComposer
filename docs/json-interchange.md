@@ -89,7 +89,10 @@ Full-state import updates matching objects by `id` first. If `id` is absent, it 
   "format": "ThinkComposer.JsonInterchange",
   "formatVersion": 1,
   "importOptions": {
-    "autoPlaceNewItems": true
+    "autoPlaceNewItems": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
   },
   "operations": [
     {
@@ -194,13 +197,24 @@ Relationship placement can omit coordinates. When endpoints are visible in the t
 }
 ```
 
-Create operations can include the same `viewId`, `viewTechName`, `x`, `y`, `width`, and `height` fields. If no coordinates are supplied and `importOptions.autoPlaceNewItems` is omitted or true, the importer chooses the created item's container view, then the active view, and places new concepts in a deterministic grid to the right of existing content. Relationships are connected when their linked endpoint concepts are visible in the chosen view.
+Create operations can include the same `viewId`, `viewTechName`, `x`, `y`, `width`, and `height` fields. If no coordinates are supplied and `importOptions.autoPlaceNewItems` is omitted or true, the importer chooses the created item's container view, then the active view, and places new concepts in a deterministic grid near the current viewport or main content cluster. Extreme outlier symbols are ignored when choosing the default layout origin, so imported items should not be pushed to coordinates such as `x=9000, y=5000` unless the patch explicitly requests those coordinates. Relationships are connected when their linked endpoint concepts are visible in the chosen view.
 
 If a relationship target view is missing one or both endpoint concept symbols and auto-placement is enabled, the importer attempts to place those endpoint concepts in that view before placing the relationship. If endpoints still cannot be resolved or placed, the relationship connector is skipped with a warning listing the missing endpoints.
 
 Imported visuals may be placed in nested or composite views such as a concept's own view, not necessarily the root view currently visible in the workspace. After import, the completion dialog and application log list affected views, and the importer attempts to open, fit, and select imported visuals in the first affected view when safe.
 
+The importer will not place a concept inside its own composite view. It also will not place a relationship visual in a composite view when one endpoint is the owner of that same composite view, because showing the owner's nested content as details would recursively render the view inside itself. In that case the relationship model links are still created or repaired, but the unsafe connector visual is skipped with a warning. Re-import can repair older bad imports by removing only self-recursive visual representations while preserving the underlying concepts and relationships.
+
 Set `"autoPlace": false` on a single create operation, or `"importOptions": { "autoPlaceNewItems": false }` at the top level, to create model objects without automatic visual placement.
+
+Layout options:
+
+- `gridNearViewport` is the default. It places the batch near the visible center when the view is open, otherwise near the normal content cluster or `100,100` for an empty/outlier-only view.
+- `gridNearContainer` keeps the batch near the existing cluster for the target composite/container view.
+- `gridAfterExistingContent` uses the older behavior of placing the batch after existing non-outlier content.
+- `none` disables automatic placement unless an operation supplies explicit placement fields.
+- `preventSelfRecursiveCompositeViews` defaults to true and blocks self-recursive owner-in-own-view placements.
+- `repairRecursiveVisuals` defaults to true and removes previously imported self-recursive visuals during JSON import/re-import.
 
 GPT prompt example:
 
@@ -221,12 +235,15 @@ Additional sample files are available at `samples/json-interchange-patch.sample.
 7. Verify new concepts appear in the requested view or in the auto-placement area without toggling Show/Hide Details.
 8. Verify imported concepts may appear in nested composite views, not only the root view.
 9. Verify relationships have origin/target links and are visible when both endpoints are visible in the same view.
-10. Re-import the same patch and verify it does not duplicate concepts, relationships, links, visual representations, or connectors.
-11. Right-click imported concepts and relationships/links and verify no runtime exception appears.
-12. Save, close, reopen, and verify imported visuals and relationship links persist.
-13. Verify warnings are readable, including object-valued warnings.
-14. Verify no `Put-visual must be applied within a Command` error appears.
-15. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
+10. Find `Deployment Manager Web App`, then right-click and toggle Display/Hide Composite-Content as Detail.
+11. Verify no `StackOverflowException` occurs; nested content either appears safely or a warning explains why it cannot be shown.
+12. Re-import the same patch and verify it does not duplicate concepts, relationships, links, visual representations, connectors, or recursive self-visuals.
+13. Right-click imported concepts and relationships/links and verify no runtime exception appears.
+14. Save, close, reopen, and verify imported visuals and relationship links persist.
+15. Repeat the nested-content toggle after reopen.
+16. Verify warnings are readable, including object-valued warnings.
+17. Verify no `Put-visual must be applied within a Command` error appears.
+18. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
 
 ## Troubleshooting
 
@@ -236,9 +253,17 @@ Detailed import diagnostics are in the lower-left application log window. The mo
 
 If imported concepts appear in the tree but not on the canvas, check the log for affected-view and visual-placement lines. They may have been placed in a nested/composite view rather than the active root view. The importer materializes view children for placed visuals and attempts to open and fit the first affected view, but unopened views still render only when the workspace opens them.
 
+If imported content appears far away, check the `JSON import layout` log lines. The default `gridNearViewport` mode ignores extreme outlier visuals and starts empty/outlier-only views near `100,100`. Explicit `x`/`y` values in the patch are still honored.
+
 If relationships import but connectors are missing, check whether the relationship has resolved origin/target links and whether both endpoint symbols are visible in the same target view. The importer logs the relationship link source (`top-level`, `set`, or `none`), resolved endpoints, missing endpoint symbols, and whether endpoint concepts were auto-placed before connector creation. Re-importing the same patch can repair relationships that were previously created without links.
 
 `Sequence contains no matching element` was caused by UI code assuming invalid relationships always had origin/target connectors. The importer now skips linkless relationship creation and repairs existing JSON-created linkless relationships when a matching create operation supplies links. The UI also avoids crashing on missing relationship roles and logs a warning instead.
+
+If the nested-content toggle does nothing, the action may be disabled because the composite view is unsafe to render as details. The lower-left log includes a composite toggle diagnostic with the source concept, source view, nested view, whether the nested view contains a visual of the same concept, whether it has same-view complements, and the current nested render stack.
+
+`Nested content view would recursively render itself` means a concept's composite view contains a visual representation of that same concept, or the renderer has already entered that view higher in the nested render stack. JSON import prevents this shape by default and can repair older bad imports by removing the unsafe visual only.
+
+`StackOverflowException in PresentationCore.dll` can happen when WPF recursively renders a composite view into a symbol inside the same composite view. The draw path now refuses to enter that recursive render and logs a warning before WPF rendering begins.
 
 On import failure, ThinkComposer logs the exception message, full exception details, current operation index and summary, and the rollback path. The importer attempts to complete and undo the open command variation; if that fails and a variation remains open, it attempts to discard it.
 

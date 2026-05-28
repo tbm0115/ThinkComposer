@@ -98,6 +98,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Obj = NewObject();
             AddIf(Obj, "autoPlaceNewItems", ImportOptions.AutoPlaceNewItems);
+            AddIf(Obj, "layoutMode", ImportOptions.LayoutMode);
+            AddIf(Obj, "preventSelfRecursiveCompositeViews", ImportOptions.PreventSelfRecursiveCompositeViews);
+            AddIf(Obj, "repairRecursiveVisuals", ImportOptions.RepairRecursiveVisuals);
             return Obj;
         }
 
@@ -325,6 +328,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Result = new CompositionJsonImportOptions();
             Result.AutoPlaceNewItems = GetNullableBool(Source, "autoPlaceNewItems");
+            Result.LayoutMode = GetString(Source, "layoutMode");
+            Result.PreventSelfRecursiveCompositeViews = GetNullableBool(Source, "preventSelfRecursiveCompositeViews");
+            Result.RepairRecursiveVisuals = GetNullableBool(Source, "repairRecursiveVisuals");
             return Result;
         }
 

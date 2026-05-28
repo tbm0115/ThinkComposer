@@ -37,6 +37,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly Dictionary<View, List<VisualObject>> ImportedVisualObjects = new Dictionary<View, List<VisualObject>>();
         private string LastOperationOutcome = null;
         private bool AutoPlaceNewItems = true;
+        private bool PreventSelfRecursiveCompositeViews = true;
+        private bool RepairRecursiveVisuals = true;
+        private string LayoutMode = "gridNearViewport";
+        private readonly Dictionary<View, Point> AutoPlacementOrigins = new Dictionary<View, Point>();
+        private readonly Dictionary<View, int> AutoPlacementIgnoredOutliers = new Dictionary<View, int>();
 
         private class RelationshipLinkImportSpec
         {
@@ -174,7 +179,20 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.AutoPlaceNewItems = Document.ImportOptions == null ||
                                      Document.ImportOptions.AutoPlaceNewItems == null ||
                                      Document.ImportOptions.AutoPlaceNewItems.Value;
-            this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") + ".");
+            this.PreventSelfRecursiveCompositeViews = Document.ImportOptions == null ||
+                                                      Document.ImportOptions.PreventSelfRecursiveCompositeViews == null ||
+                                                      Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value;
+            this.RepairRecursiveVisuals = Document.ImportOptions == null ||
+                                          Document.ImportOptions.RepairRecursiveVisuals == null ||
+                                          Document.ImportOptions.RepairRecursiveVisuals.Value;
+            this.LayoutMode = NormalizeLayoutMode(Document.ImportOptions == null ? null : Document.ImportOptions.LayoutMode);
+            this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
+                            ", layoutMode=" + this.LayoutMode +
+                            ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
+                            ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
+
+            if (this.RepairRecursiveVisuals)
+                RepairRecursiveVisualsBeforeImport();
 
             if (Document.Warnings != null)
                 foreach (var Warning in Document.Warnings)
@@ -208,6 +226,60 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     ApplyOperation(Operation);
                 }
             }
+
+            if (this.RepairRecursiveVisuals && !this.IsPreview)
+                RepairRecursiveVisualsAfterImport();
+        }
+
+        private string NormalizeLayoutMode(string Mode)
+        {
+            if (String.IsNullOrWhiteSpace(Mode))
+                return "gridNearViewport";
+
+            if (StringEquals(Mode, "gridNearViewport"))
+                return "gridNearViewport";
+
+            if (StringEquals(Mode, "gridNearContainer"))
+                return "gridNearContainer";
+
+            if (StringEquals(Mode, "gridAfterExistingContent"))
+                return "gridAfterExistingContent";
+
+            if (StringEquals(Mode, "none"))
+                return "none";
+
+            this.Report.Warn("Unknown importOptions.layoutMode '" + Mode + "'; using gridNearViewport.");
+            return "gridNearViewport";
+        }
+
+        private void RepairRecursiveVisualsBeforeImport()
+        {
+            this.Report.Log("JSON import recursive visual repair scan started.");
+            var Repairs = CompositeViewIntegrity.RepairRecursiveVisuals(this.Composition,
+                Message =>
+                {
+                    this.Report.Log("JSON import repair: " + Message);
+                    this.Report.CountRepairedRecursiveVisual();
+                },
+                this.IsPreview);
+
+            if (Repairs < 1)
+                this.Report.Log("JSON import recursive visual repair scan found no repairs.");
+        }
+
+        private void RepairRecursiveVisualsAfterImport()
+        {
+            this.Report.Log("JSON import post-apply recursive visual repair scan started.");
+            var Repairs = CompositeViewIntegrity.RepairRecursiveVisuals(this.Composition,
+                Message =>
+                {
+                    this.Report.Log("JSON import post-apply repair: " + Message);
+                    this.Report.CountRepairedRecursiveVisual();
+                },
+                false);
+
+            if (Repairs < 1)
+                this.Report.Log("JSON import post-apply recursive visual repair scan found no repairs.");
         }
 
         private void ApplyComposition(CompositionJsonComposition Source)
@@ -1157,6 +1229,25 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    GetSetRelationshipLinks(Set, "links").Count > 0;
         }
 
+        private bool RelationshipSourceReferencesIdea(CompositionJsonRelationship Source, Idea Idea)
+        {
+            if (Source == null || Idea == null)
+                return false;
+
+            var IdeaId = Idea.GlobalId.ToString("D");
+            var IdeaTechName = Idea.TechName;
+
+            if ((Source.OriginIdeaIds != null && Source.OriginIdeaIds.Any(Id => StringEquals(Id, IdeaId))) ||
+                (Source.TargetIdeaIds != null && Source.TargetIdeaIds.Any(Id => StringEquals(Id, IdeaId))) ||
+                (Source.OriginIdeaTechNames != null && Source.OriginIdeaTechNames.Any(TechName => StringEquals(TechName, IdeaTechName))) ||
+                (Source.TargetIdeaTechNames != null && Source.TargetIdeaTechNames.Any(TechName => StringEquals(TechName, IdeaTechName))))
+                return true;
+
+            return Source.Links != null &&
+                   Source.Links.Any(Link => StringEquals(Link.IdeaId, IdeaId) ||
+                                            StringEquals(Link.IdeaTechName, IdeaTechName));
+        }
+
         private void PlanCreatedConceptVisual(CompositionJsonIdea Source, CompositionJsonOperation Operation)
         {
             if (!ShouldPlaceCreatedItem(Operation))
@@ -1205,6 +1296,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
+            if (this.PreventSelfRecursiveCompositeViews && RelationshipSourceReferencesIdea(Source, View.OwnerCompositeContainer))
+            {
+                SkipVisualPlacement("Cannot plan visual placement for relationship '" + Source.TechName.ToStringAlways() +
+                                    "' in " + DescribeView(View) +
+                                    " because an endpoint is the owner of that composite view.");
+                return;
+            }
+
             var Width = GetOperationDouble(Operation, "width") ?? GetRelationshipDefaultWidth(Definition);
             var Height = GetOperationDouble(Operation, "height") ?? GetRelationshipDefaultHeight(Definition);
             var Center = ResolveRelationshipPlacementCenter(null, View, Operation, Width, Height, null);
@@ -1249,6 +1348,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void PlaceConceptVisual(Concept Concept, View View, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
         {
+            string RecursiveWarning;
+            if (this.PreventSelfRecursiveCompositeViews &&
+                CompositeViewIntegrity.IsSelfRecursiveConceptPlacement(Concept, View, out RecursiveWarning))
+            {
+                if (IsExplicitPlaceOperation)
+                    SkipPlaceOperation(RecursiveWarning);
+                else
+                    SkipVisualPlacement(RecursiveWarning);
+                return;
+            }
+
             var Existing = Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
                                   .FirstOrDefault(Representation => Representation.DisplayingView == View);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
@@ -1304,6 +1414,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void PlaceRelationshipVisual(Relationship Relationship, View View, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
         {
+            string RecursiveWarning;
+            if (this.PreventSelfRecursiveCompositeViews &&
+                CompositeViewIntegrity.IsSelfRecursiveRelationshipPlacement(Relationship, View, out RecursiveWarning))
+            {
+                if (IsExplicitPlaceOperation)
+                    SkipPlaceOperation(RecursiveWarning);
+                else
+                    SkipVisualPlacement(RecursiveWarning);
+                return;
+            }
+
             var Existing = Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
                                       .FirstOrDefault(Representation => Representation.DisplayingView == View);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
@@ -1436,6 +1557,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 if (this.AutoPlaceNewItems && Endpoint is Concept)
                 {
+                    string RecursiveWarning;
+                    if (this.PreventSelfRecursiveCompositeViews &&
+                        CompositeViewIntegrity.IsSelfRecursiveConceptPlacement((Concept)Endpoint, View, out RecursiveWarning))
+                    {
+                        this.Report.Warn(RecursiveWarning);
+                        Missing.Add(Endpoint.TechName.ToStringAlways() + " (self-recursive endpoint)");
+                        continue;
+                    }
+
                     this.Report.Log(FormatOperationPrefix() + "auto-placing relationship endpoint '" + Endpoint.TechName +
                                     "' into " + DescribeView(View) + ".");
                     var EndpointOperation = new CompositionJsonOperation();
@@ -1501,6 +1631,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (HasExplicitPlacement(Operation))
                 return true;
+
+            if (StringEquals(this.LayoutMode, "none"))
+                return false;
 
             var AutoPlace = Operation.AutoPlace ?? GetSetBool(Operation.Set, "autoPlace");
             return AutoPlace == null ? this.AutoPlaceNewItems : AutoPlace.Value;
@@ -1612,33 +1745,125 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Index = 0;
             this.AutoPlacementIndexes[View] = Index + 1;
 
-            var Bounds = GetExistingVisualBounds(View);
             var SpacingX = Math.Max(Width, 180.0) + 60.0;
             var SpacingY = Math.Max(Height, 80.0) + 50.0;
-            var BaseLeft = Bounds.IsEmpty ? 100.0 : Bounds.Right + 80.0;
-            var BaseTop = Bounds.IsEmpty ? 100.0 : Bounds.Top;
+            Point Origin;
+            if (!this.AutoPlacementOrigins.TryGetValue(View, out Origin))
+            {
+                int IgnoredOutliers;
+                Origin = CalculateAutoPlacementOrigin(View, Width, Height, SpacingX, SpacingY, out IgnoredOutliers);
+                this.AutoPlacementOrigins[View] = Origin;
+                this.AutoPlacementIgnoredOutliers[View] = IgnoredOutliers;
+            }
+
             var Column = Index % 4;
             var Row = Index / 4;
 
-            return new Rect(BaseLeft + Column * SpacingX, BaseTop + Row * SpacingY, Width, Height);
+            this.Report.Log("JSON import layout: target view='" + View.TechName.ToStringAlways() +
+                            "', mode='" + this.LayoutMode +
+                            "', origin=(" + Origin.X.ToString("0.###", CultureInfo.InvariantCulture) +
+                            "," + Origin.Y.ToString("0.###", CultureInfo.InvariantCulture) +
+                            "), ignoredOutliers=" + this.AutoPlacementIgnoredOutliers[View] +
+                            ", placed=" + (Index + 1).ToString(CultureInfo.InvariantCulture) + ".");
+
+            return new Rect(Origin.X + Column * SpacingX, Origin.Y + Row * SpacingY, Width, Height);
         }
 
-        private Rect GetExistingVisualBounds(View View)
+        private Point CalculateAutoPlacementOrigin(View View, double Width, double Height, double SpacingX, double SpacingY, out int IgnoredOutliers)
         {
+            IgnoredOutliers = 0;
+
+            Rect Bounds;
+            if (StringEquals(this.LayoutMode, "gridAfterExistingContent"))
+            {
+                Bounds = GetExistingVisualBounds(View, out IgnoredOutliers);
+                return Bounds.IsEmpty ? new Point(100.0, 100.0) : new Point(Bounds.Right + 80.0, Bounds.Top);
+            }
+
+            if (StringEquals(this.LayoutMode, "gridNearViewport") &&
+                View != null && View.HostingScrollViewer != null &&
+                View.HostingScrollViewer.IsLoaded &&
+                !View.HostingScrollViewer.ViewportWidth.IsNan() &&
+                !View.HostingScrollViewer.ViewportHeight.IsNan() &&
+                View.HostingScrollViewer.ViewportWidth > 0 &&
+                View.HostingScrollViewer.ViewportHeight > 0)
+            {
+                var Center = View.CurrentPresentationCenter;
+                return new Point(Center.X - (SpacingX * 1.5), Center.Y - SpacingY);
+            }
+
+            Bounds = GetExistingVisualBounds(View, out IgnoredOutliers);
+            if (Bounds.IsEmpty)
+                return new Point(100.0, 100.0);
+
+            if (StringEquals(this.LayoutMode, "gridNearContainer"))
+                return new Point(Bounds.Left + 80.0, Bounds.Top + 80.0);
+
+            return new Point(Bounds.Left, Bounds.Bottom + 80.0);
+        }
+
+        private Rect GetExistingVisualBounds(View View, out int IgnoredOutliers)
+        {
+            IgnoredOutliers = 0;
             var Symbols = this.Composition.DeclaredIdeas
                               .SelectMany(Idea => Idea.VisualRepresentators)
                               .Where(Representation => Representation.DisplayingView == View && Representation.MainSymbol != null)
                               .Select(Representation => Representation.MainSymbol.BaseArea)
+                              .Where(Area => IsUsableLayoutArea(Area))
                               .ToList();
 
             if (Symbols.Count < 1)
                 return Rect.Empty;
 
-            var Bounds = Symbols[0];
-            foreach (var Symbol in Symbols.Skip(1))
+            var MedianX = Median(Symbols.Select(Area => Area.Left + Area.Width / 2.0).ToList());
+            var MedianY = Median(Symbols.Select(Area => Area.Top + Area.Height / 2.0).ToList());
+            var Cluster = Symbols.Where(Area =>
+            {
+                var CenterX = Area.Left + Area.Width / 2.0;
+                var CenterY = Area.Top + Area.Height / 2.0;
+                return Math.Abs(CenterX - MedianX) <= 2500.0 &&
+                       Math.Abs(CenterY - MedianY) <= 1800.0 &&
+                       Math.Abs(CenterX) <= 5000.0 &&
+                       Math.Abs(CenterY) <= 4000.0;
+            }).ToList();
+
+            IgnoredOutliers = Symbols.Count - Cluster.Count;
+
+            if (Cluster.Count < 1)
+            {
+                IgnoredOutliers = Symbols.Count;
+                return Rect.Empty;
+            }
+
+            var Bounds = Cluster[0];
+            foreach (var Symbol in Cluster.Skip(1))
                 Bounds.Union(Symbol);
 
             return Bounds;
+        }
+
+        private bool IsUsableLayoutArea(Rect Area)
+        {
+            return !Area.IsEmpty &&
+                   !Area.Left.IsNan() &&
+                   !Area.Top.IsNan() &&
+                   !Area.Width.IsNan() &&
+                   !Area.Height.IsNan() &&
+                   Area.Width > 0 &&
+                   Area.Height > 0;
+        }
+
+        private double Median(List<double> Values)
+        {
+            if (Values == null || Values.Count < 1)
+                return 0.0;
+
+            Values.Sort();
+            var Middle = Values.Count / 2;
+            if (Values.Count % 2 == 1)
+                return Values[Middle];
+
+            return (Values[Middle - 1] + Values[Middle]) / 2.0;
         }
 
         private double GetConceptDefaultWidth(ConceptDefinition Definition)

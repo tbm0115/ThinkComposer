@@ -3,7 +3,10 @@
   "formatVersion": 1,
   "application": "ThinkComposer",
   "importOptions": {
-    "autoPlaceNewItems": true
+    "autoPlaceNewItems": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
   },
   "warnings": [
     {
@@ -90,6 +93,28 @@
         "name": "Skipped Linkless Relationship",
         "techName": "Skipped_Linkless_Relationship",
         "summary": "Importer should skip this operation because it has no origin or target links."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "55555555-5555-4555-8555-555555555555",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "set": {
+        "name": "Owner To Package Import Pipeline",
+        "techName": "Owner_To_Package_Import_Pipeline",
+        "summary": "The relationship model link should be created or repaired, but the visual should be skipped in the owner's own composite view because it would require placing Deployment_Manager_Web_App inside itself.",
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaTechName": "Deployment_Manager_Web_App"
+          },
+          {
+            "roleType": "target",
+            "ideaTechName": "Package_Import_Pipeline"
+          }
+        ]
       }
     },
     {

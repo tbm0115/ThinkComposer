@@ -437,6 +437,7 @@
     <Compile Include="MetaModel\VisualMetaModel\ETableLayoutStyle.cs" />
     <Compile Include="Model\InformationModel\Link.cs" />
     <Compile Include="Model\VisualModel\ConceptVisualRepresentation.cs" />
+    <Compile Include="Model\VisualModel\CompositeViewIntegrity.cs" />
     <Compile Include="Model\VisualModel\VisualComplement.GenerateLegend.cs" />
     <Compile Include="Model\VisualModel\VisualComplement.GenerateInfoCard.cs" />
     <Compile Include="Model\VisualModel\VisualComplement.cs" />

@@ -567,10 +567,19 @@ namespace Instrumind.ThinkComposer.Composer
                               Document.Views == null ? 0 : Document.Views.Count,
                               Document.Operations == null ? 0 : Document.Operations.Count,
                               Document.Warnings == null ? 0 : Document.Warnings.Count);
-            Console.WriteLine("JSON import options: autoPlaceNewItems={0}",
+            Console.WriteLine("JSON import options: autoPlaceNewItems={0}, layoutMode={1}, preventSelfRecursiveCompositeViews={2}, repairRecursiveVisuals={3}",
                               Document.ImportOptions == null || Document.ImportOptions.AutoPlaceNewItems == null
                               ? "default"
-                              : (Document.ImportOptions.AutoPlaceNewItems.Value ? "true" : "false"));
+                              : (Document.ImportOptions.AutoPlaceNewItems.Value ? "true" : "false"),
+                              Document.ImportOptions == null || String.IsNullOrEmpty(Document.ImportOptions.LayoutMode)
+                              ? "default"
+                              : Document.ImportOptions.LayoutMode,
+                              Document.ImportOptions == null || Document.ImportOptions.PreventSelfRecursiveCompositeViews == null
+                              ? "default"
+                              : (Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value ? "true" : "false"),
+                              Document.ImportOptions == null || Document.ImportOptions.RepairRecursiveVisuals == null
+                              ? "default"
+                              : (Document.ImportOptions.RepairRecursiveVisuals.Value ? "true" : "false"));
 
             if (Document.Operations != null && Document.Operations.Count > 0)
                 foreach (var Group in Document.Operations.GroupBy(Operation => Operation.Op.ToStringAlways() + "/" + Operation.Entity.ToStringAlways())

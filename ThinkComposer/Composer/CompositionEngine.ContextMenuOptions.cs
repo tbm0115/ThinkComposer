@@ -144,7 +144,17 @@ namespace Instrumind.ThinkComposer.Composer
 
             ContextMenuOptionsForVisualSymbols.Add(new Tuple<SimplePresentationElement, Func<VisualSymbol, FrameworkElement, bool?>, Action<VisualSymbol>>
                             (new SimplePresentationElement("Display/Hide Composite-Content as Detail", "ShowCompositeContentAsDetail", "Display/Hide the Composite-Content View instead of Details.", Display.GetAppImage("composite_view.png")),
-                             (target, vexpo) => ((vexpo != target.GetDisplayingView().Presenter) ? (bool?)null : target.OwnerRepresentation.RepresentedIdea.CompositeViews.Count > 0),
+                             (target, vexpo) =>
+                             {
+                                 if (vexpo != target.GetDisplayingView().Presenter)
+                                     return null;
+
+                                 if (target.OwnerRepresentation.RepresentedIdea.CompositeViews.Count < 1)
+                                     return false;
+
+                                 string Warning;
+                                 return CompositeViewIntegrity.CanShowCompositeContentAsDetail(target, out Warning);
+                             },
                              (target) => target.GetDisplayingView().Manipulator.ShowCompositeAsDetail(target)));
 
             ContextMenuOptionsForVisualSymbols.Add(null);   // Separator

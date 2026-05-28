@@ -1029,6 +1029,16 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
         // -----------------------------------------------------------------------------------------------------------------------
         public void ShowCompositeAsDetail(VisualSymbol TargetSymbol)
         {
+            Console.WriteLine(CompositeViewIntegrity.GetToggleDiagnostic(TargetSymbol));
+
+            string Warning;
+            if (!CompositeViewIntegrity.CanShowCompositeContentAsDetail(TargetSymbol, out Warning))
+            {
+                Console.WriteLine(Warning);
+                Display.DialogMessage("Nested Content", Warning, EMessageType.Warning);
+                return;
+            }
+
             TargetSymbol.OwnerRepresentation.RepresentedIdea.OwnerComposition.Engine.StartCommandVariation("Show Composite-Content as Detail");
             var PrevHeight = TargetSymbol.TotalHeight;
 

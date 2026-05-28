@@ -42,6 +42,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int PlannedRepairedRelationships { get; set; }
         public int AppliedRepairedRelationships { get; set; }
 
+        public int PlannedRepairedRecursiveVisuals { get; set; }
+        public int AppliedRepairedRecursiveVisuals { get; set; }
+
         public int CurrentOperationIndex { get; set; }
         public int CurrentOperationTotal { get; set; }
         public string CurrentOperationSummary { get; set; }
@@ -102,7 +105,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool HasWarnings { get { return this.Warnings.Count > 0; } }
         public bool HasErrors { get { return this.Errors.Count > 0; } }
         public bool HasRiskyChanges { get { return this.Created > 0 || this.Deleted > 0 || this.Updated > 25; } }
-        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0; } }
+        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0; } }
 
         public void Log(string message)
         {
@@ -175,6 +178,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.AppliedRepairedRelationships++;
         }
 
+        public void CountRepairedRecursiveVisual()
+        {
+            if (this.IsPreview)
+                this.PlannedRepairedRecursiveVisuals++;
+            else
+                this.AppliedRepairedRecursiveVisuals++;
+        }
+
         public void AddAffectedView(string viewName)
         {
             if (String.IsNullOrEmpty(viewName) || this.AffectedViewNames.Contains(viewName))
@@ -195,6 +206,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.PlannedVisualsPlaced = preview.PlannedVisualsPlaced;
             this.PlannedVisualsSkipped = preview.PlannedVisualsSkipped;
             this.PlannedRepairedRelationships = preview.PlannedRepairedRelationships;
+            this.PlannedRepairedRecursiveVisuals = preview.PlannedRepairedRecursiveVisuals;
         }
 
         public string ToSummaryString(bool IncludeWarnings)
@@ -205,6 +217,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Text.AppendLine("Deleted: " + this.Deleted);
             Text.AppendLine("Skipped: " + this.Skipped);
             Text.AppendLine("Relationships repaired: " + (this.IsPreview ? this.PlannedRepairedRelationships : this.AppliedRepairedRelationships));
+            Text.AppendLine("Recursive visuals repaired: " + (this.IsPreview ? this.PlannedRepairedRecursiveVisuals : this.AppliedRepairedRecursiveVisuals));
             Text.AppendLine("Visuals placed: " + (this.IsPreview ? this.PlannedVisualsPlaced : this.AppliedVisualsPlaced));
             Text.AppendLine("Visuals not placed: " + (this.IsPreview ? this.PlannedVisualsSkipped : this.AppliedVisualsSkipped));
             Text.AppendLine("Warnings: " + this.Warnings.Count);
@@ -242,6 +255,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", deleted=" + this.PlannedDeleted +
                    ", skipped=" + this.PlannedSkipped +
                    ", repaired relationships=" + this.PlannedRepairedRelationships +
+                   ", repaired recursive visuals=" + this.PlannedRepairedRecursiveVisuals +
                    ", visuals placed=" + this.PlannedVisualsPlaced +
                    ", visuals skipped=" + this.PlannedVisualsSkipped +
                    "; applied updated=" + this.AppliedUpdated +
@@ -249,6 +263,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", deleted=" + this.AppliedDeleted +
                    ", skipped=" + this.AppliedSkipped +
                    ", repaired relationships=" + this.AppliedRepairedRelationships +
+                   ", repaired recursive visuals=" + this.AppliedRepairedRecursiveVisuals +
                    ", visuals placed=" + this.AppliedVisualsPlaced +
                    ", visuals skipped=" + this.AppliedVisualsSkipped +
                    "; warnings=" + this.Warnings.Count +

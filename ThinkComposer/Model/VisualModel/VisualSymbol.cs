@@ -961,7 +961,22 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             if (this.OwnerRepresentation.RepresentedIdea.CompositeActiveView == null)
                 return;
 
-            this.OwnerRepresentation.RepresentedIdea.CompositeActiveView.DrawContent(Context, AvailableArea, !PutBackgroundBrush);
+            string Warning;
+            if (!CompositeViewIntegrity.TryEnterCompositeContentRender(this, out Warning))
+            {
+                Console.WriteLine("Cannot show nested content for concept '{0}'. {1}",
+                                  this.OwnerRepresentation.RepresentedIdea.TechName.ToStringAlways(), Warning);
+                return;
+            }
+
+            try
+            {
+                this.OwnerRepresentation.RepresentedIdea.CompositeActiveView.DrawContent(Context, AvailableArea, !PutBackgroundBrush);
+            }
+            finally
+            {
+                CompositeViewIntegrity.ExitCompositeContentRender(this);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------

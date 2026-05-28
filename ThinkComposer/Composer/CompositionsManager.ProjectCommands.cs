@@ -485,7 +485,7 @@ namespace Instrumind.ThinkComposer.Composer
 
             try
             {
-                var Report = CompositionJsonImporter.Import(Engine, Document);
+                var Report = CompositionJsonImporter.Import(Engine, Document, Preview);
                 this.WorkspaceDirector.ShellProvider.RefreshSelection();
                 Console.WriteLine("JSON import planned summary: {0}", Preview.ToDetailedCountsString());
                 Console.WriteLine("JSON import applied summary: {0}", Report.ToDetailedCountsString());

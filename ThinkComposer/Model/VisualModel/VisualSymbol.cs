@@ -1370,8 +1370,15 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
 
             if (DoAutomaticReposition)
             {
-                var TargetingConnector = IntermediateSymbol.TargetConnections.First();
-                var OriginatingConnector = IntermediateSymbol.OriginConnections.First();
+                var TargetingConnector = IntermediateSymbol.TargetConnections.FirstOrDefault();
+                var OriginatingConnector = IntermediateSymbol.OriginConnections.FirstOrDefault();
+                if (TargetingConnector == null || OriginatingConnector == null)
+                {
+                    Console.WriteLine("Cannot auto-reposition relationship symbol for '{0}' because it is missing an origin or target connector.",
+                                      IntermediateSymbol.OwnerRepresentation.RepresentedIdea.ToStringAlways());
+                    return false;
+                }
+
                 var LocalPosition = (IsOriginated ? Connector.OriginPosition : Connector.TargetPosition);
                 Point OppositePosition;
                 VisualSymbol OppositeSymbol = null;

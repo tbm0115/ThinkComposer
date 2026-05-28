@@ -312,10 +312,26 @@
               },
               "default": []
             },
+            "originIdeaTechNames": {
+              "type": "array",
+              "description": "Origin endpoints by techName. Prefer ids when available.",
+              "items": {
+                "$ref": "#/$defs/techName"
+              },
+              "default": []
+            },
             "targetIdeaIds": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/guid"
+              },
+              "default": []
+            },
+            "targetIdeaTechNames": {
+              "type": "array",
+              "description": "Target endpoints by techName. Prefer ids when available.",
+              "items": {
+                "$ref": "#/$defs/techName"
               },
               "default": []
             },
@@ -411,10 +427,26 @@
           },
           "default": []
         },
+        "originIdeaTechNames": {
+          "type": "array",
+          "description": "Origin endpoints by techName. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
         "targetIdeaIds": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/guid"
+          },
+          "default": []
+        },
+        "targetIdeaTechNames": {
+          "type": "array",
+          "description": "Target endpoints by techName. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
           },
           "default": []
         },
@@ -434,8 +466,7 @@
     "relationshipLink": {
       "type": "object",
       "required": [
-        "roleType",
-        "ideaId"
+        "roleType"
       ],
       "additionalProperties": false,
       "properties": {
@@ -446,7 +477,9 @@
           "type": "string",
           "enum": [
             "Origin",
-            "Target"
+            "Target",
+            "origin",
+            "target"
           ],
           "description": "Relationship role side. Current exporter emits Origin and Target."
         },
@@ -471,7 +504,19 @@
         "ideaTechName": {
           "$ref": "#/$defs/techName"
         }
-      }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "ideaId"
+          ]
+        },
+        {
+          "required": [
+            "ideaTechName"
+          ]
+        }
+      ]
     },
     "marker": {
       "type": "object",
@@ -734,7 +779,9 @@
           "type": "string",
           "enum": [
             "Origin",
-            "Target"
+            "Target",
+            "origin",
+            "target"
           ]
         },
         "reason": {
@@ -762,6 +809,41 @@
         "autoPlace": {
           "type": "boolean",
           "description": "For create operations, overrides importOptions.autoPlaceNewItems for this item."
+        },
+        "originIdeaIds": {
+          "type": "array",
+          "description": "Relationship origin endpoints at operation top level. Top-level fields are preferred over set.* fields.",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "originIdeaTechNames": {
+          "type": "array",
+          "description": "Relationship origin endpoints by techName at operation top level. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          }
+        },
+        "targetIdeaIds": {
+          "type": "array",
+          "description": "Relationship target endpoints at operation top level. Top-level fields are preferred over set.* fields.",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "targetIdeaTechNames": {
+          "type": "array",
+          "description": "Relationship target endpoints by techName at operation top level. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          }
+        },
+        "links": {
+          "type": "array",
+          "description": "Relationship role links at operation top level. Top-level links are preferred over set.links.",
+          "items": {
+            "$ref": "#/$defs/relationshipLink"
+          }
         },
         "set": {
           "$ref": "#/$defs/operationSet",
@@ -806,6 +888,11 @@
           },
           "then": {
             "anyOf": [
+              {
+                "required": [
+                  "id"
+                ]
+              },
               {
                 "required": [
                   "set"
@@ -910,18 +997,35 @@
         },
         "originIdeaIds": {
           "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level originIdeaIds is preferred.",
           "items": {
             "$ref": "#/$defs/guid"
+          }
+        },
+        "originIdeaTechNames": {
+          "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level originIdeaTechNames is preferred.",
+          "items": {
+            "$ref": "#/$defs/techName"
           }
         },
         "targetIdeaIds": {
           "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level targetIdeaIds is preferred.",
           "items": {
             "$ref": "#/$defs/guid"
           }
         },
+        "targetIdeaTechNames": {
+          "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level targetIdeaTechNames is preferred.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          }
+        },
         "links": {
           "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level links is preferred.",
           "items": {
             "$ref": "#/$defs/relationshipLink"
           }

@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Instrumind.ThinkComposer.Composer.JsonInterchange
@@ -17,6 +18,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Warnings = new List<string>();
             this.Errors = new List<string>();
             this.InfoLogLines = new List<string>();
+            this.AffectedViewNames = new List<string>();
         }
 
         public bool IsPreview { get; set; }
@@ -37,6 +39,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int AppliedVisualsPlaced { get; set; }
         public int AppliedVisualsSkipped { get; set; }
 
+        public int PlannedRepairedRelationships { get; set; }
+        public int AppliedRepairedRelationships { get; set; }
+
         public int CurrentOperationIndex { get; set; }
         public int CurrentOperationTotal { get; set; }
         public string CurrentOperationSummary { get; set; }
@@ -44,6 +49,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public List<string> Warnings { get; private set; }
         public List<string> Errors { get; private set; }
         public List<string> InfoLogLines { get; private set; }
+        public List<string> AffectedViewNames { get; private set; }
 
         public int Updated
         {
@@ -96,7 +102,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool HasWarnings { get { return this.Warnings.Count > 0; } }
         public bool HasErrors { get { return this.Errors.Count > 0; } }
         public bool HasRiskyChanges { get { return this.Created > 0 || this.Deleted > 0 || this.Updated > 25; } }
-        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0; } }
+        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0; } }
 
         public void Log(string message)
         {
@@ -161,6 +167,36 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.AppliedVisualsSkipped++;
         }
 
+        public void CountRepairedRelationship()
+        {
+            if (this.IsPreview)
+                this.PlannedRepairedRelationships++;
+            else
+                this.AppliedRepairedRelationships++;
+        }
+
+        public void AddAffectedView(string viewName)
+        {
+            if (String.IsNullOrEmpty(viewName) || this.AffectedViewNames.Contains(viewName))
+                return;
+
+            this.AffectedViewNames.Add(viewName);
+        }
+
+        public void CopyPlanFrom(CompositionJsonImportReport preview)
+        {
+            if (preview == null)
+                return;
+
+            this.PlannedUpdated = preview.PlannedUpdated;
+            this.PlannedCreated = preview.PlannedCreated;
+            this.PlannedDeleted = preview.PlannedDeleted;
+            this.PlannedSkipped = preview.PlannedSkipped;
+            this.PlannedVisualsPlaced = preview.PlannedVisualsPlaced;
+            this.PlannedVisualsSkipped = preview.PlannedVisualsSkipped;
+            this.PlannedRepairedRelationships = preview.PlannedRepairedRelationships;
+        }
+
         public string ToSummaryString(bool IncludeWarnings)
         {
             var Text = new StringBuilder();
@@ -168,9 +204,21 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Text.AppendLine("Created: " + this.Created);
             Text.AppendLine("Deleted: " + this.Deleted);
             Text.AppendLine("Skipped: " + this.Skipped);
+            Text.AppendLine("Relationships repaired: " + (this.IsPreview ? this.PlannedRepairedRelationships : this.AppliedRepairedRelationships));
             Text.AppendLine("Visuals placed: " + (this.IsPreview ? this.PlannedVisualsPlaced : this.AppliedVisualsPlaced));
             Text.AppendLine("Visuals not placed: " + (this.IsPreview ? this.PlannedVisualsSkipped : this.AppliedVisualsSkipped));
             Text.AppendLine("Warnings: " + this.Warnings.Count);
+
+            if (!this.IsPreview && this.AffectedViewNames.Count > 0)
+            {
+                Text.AppendLine();
+                Text.AppendLine("Visuals placed in:");
+                foreach (var ViewName in this.AffectedViewNames.Take(8))
+                    Text.AppendLine("- " + ViewName);
+
+                if (this.AffectedViewNames.Count > 8)
+                    Text.AppendLine("- ... " + (this.AffectedViewNames.Count - 8) + " more");
+            }
 
             if (IncludeWarnings && this.Warnings.Count > 0)
             {
@@ -193,12 +241,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", created=" + this.PlannedCreated +
                    ", deleted=" + this.PlannedDeleted +
                    ", skipped=" + this.PlannedSkipped +
+                   ", repaired relationships=" + this.PlannedRepairedRelationships +
                    ", visuals placed=" + this.PlannedVisualsPlaced +
                    ", visuals skipped=" + this.PlannedVisualsSkipped +
                    "; applied updated=" + this.AppliedUpdated +
                    ", created=" + this.AppliedCreated +
                    ", deleted=" + this.AppliedDeleted +
                    ", skipped=" + this.AppliedSkipped +
+                   ", repaired relationships=" + this.AppliedRepairedRelationships +
                    ", visuals placed=" + this.AppliedVisualsPlaced +
                    ", visuals skipped=" + this.AppliedVisualsSkipped +
                    "; warnings=" + this.Warnings.Count +

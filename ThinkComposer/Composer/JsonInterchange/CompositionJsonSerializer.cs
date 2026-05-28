@@ -198,7 +198,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "containerId", Relationship.ContainerId);
             AddIf(Obj, "containerTechName", Relationship.ContainerTechName);
             Add(Obj, "originIdeaIds", Relationship.OriginIdeaIds ?? new List<string>());
+            Add(Obj, "originIdeaTechNames", Relationship.OriginIdeaTechNames ?? new List<string>());
             Add(Obj, "targetIdeaIds", Relationship.TargetIdeaIds ?? new List<string>());
+            Add(Obj, "targetIdeaTechNames", Relationship.TargetIdeaTechNames ?? new List<string>());
             Add(Obj, "links", ToList(Relationship.Links, ToGraph));
             Add(Obj, "childIdeaIds", Relationship.ChildIdeaIds ?? new List<string>());
             Add(Obj, "compositeViewIds", Relationship.CompositeViewIds ?? new List<string>());
@@ -308,7 +310,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "height", Operation.Height);
             AddIf(Obj, "autoPlace", Operation.AutoPlace);
             Add(Obj, "originIdeaIds", Operation.OriginIdeaIds ?? new List<string>());
+            Add(Obj, "originIdeaTechNames", Operation.OriginIdeaTechNames ?? new List<string>());
             Add(Obj, "targetIdeaIds", Operation.TargetIdeaIds ?? new List<string>());
+            Add(Obj, "targetIdeaTechNames", Operation.TargetIdeaTechNames ?? new List<string>());
             Add(Obj, "links", ToList(Operation.Links, ToGraph));
             Add(Obj, "set", ToOrderedDictionary(Operation.Set));
             return Obj;
@@ -424,7 +428,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
+            Result.OriginIdeaTechNames = ReadStringList(Source, "originIdeaTechNames");
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");
+            Result.TargetIdeaTechNames = ReadStringList(Source, "targetIdeaTechNames");
             Result.Links = ReadList(Source, "links", ReadRelationshipLink);
             Result.ChildIdeaIds = ReadStringList(Source, "childIdeaIds");
             Result.CompositeViewIds = ReadStringList(Source, "compositeViewIds");
@@ -534,7 +540,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Height = GetNullableDouble(Source, "height");
             Result.AutoPlace = GetNullableBool(Source, "autoPlace");
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
+            Result.OriginIdeaTechNames = ReadStringList(Source, "originIdeaTechNames");
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");
+            Result.TargetIdeaTechNames = ReadStringList(Source, "targetIdeaTechNames");
             Result.Links = ReadList(Source, "links", ReadRelationshipLink);
             Result.Set = GetObjectDictionary(Source, "set");
             return Result;

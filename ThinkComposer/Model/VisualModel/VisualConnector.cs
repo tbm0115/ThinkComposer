@@ -509,13 +509,16 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                         else
                             if (this.OwnerRelationshipRepresentation.VisualConnectorsCount > 1)
                             {
-                                var OppositeConnector = (this.OwnerRelationshipRepresentation.VisualConnectors.First() == this
-                                                         ? this.OwnerRelationshipRepresentation.VisualConnectors.Skip(1).First()
-                                                         : this.OwnerRelationshipRepresentation.VisualConnectors.First());
-                                if (OppositeConnector.IntermediatePosition != Display.NULL_POINT)
-                                    return OppositeConnector.IntermediatePosition;
-                                else
-                                    return OppositeConnector.OriginPosition;
+                                var OppositeConnector = this.OwnerRelationshipRepresentation.VisualConnectors.FirstOrDefault(connector => connector != this);
+                                if (OppositeConnector != null)
+                                {
+                                    if (OppositeConnector.IntermediatePosition != Display.NULL_POINT)
+                                        return OppositeConnector.IntermediatePosition;
+                                    else
+                                        return OppositeConnector.OriginPosition;
+                                }
+
+                                Console.WriteLine("JSON import warning: relationship connector '{0}' expected an opposite connector but none was available.", this.RepresentedLink);
                             }
 
                 return this.OriginIntermediateOrFinalPosition;
@@ -540,13 +543,16 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                         else
                             if (this.OwnerRelationshipRepresentation.VisualConnectorsCount > 1)
                             {
-                                var OppositeConnector = (this.OwnerRelationshipRepresentation.VisualConnectors.First() == this
-                                                         ? this.OwnerRelationshipRepresentation.VisualConnectors.Skip(1).First()
-                                                         : this.OwnerRelationshipRepresentation.VisualConnectors.First());
-                                if (OppositeConnector.IntermediatePosition != Display.NULL_POINT)
-                                    return OppositeConnector.IntermediatePosition;
-                                else
-                                    return OppositeConnector.TargetPosition;
+                                var OppositeConnector = this.OwnerRelationshipRepresentation.VisualConnectors.FirstOrDefault(connector => connector != this);
+                                if (OppositeConnector != null)
+                                {
+                                    if (OppositeConnector.IntermediatePosition != Display.NULL_POINT)
+                                        return OppositeConnector.IntermediatePosition;
+                                    else
+                                        return OppositeConnector.TargetPosition;
+                                }
+
+                                Console.WriteLine("JSON import warning: relationship connector '{0}' expected an opposite connector but none was available.", this.RepresentedLink);
                             }
 
                 return this.TargetIntermediateOrFinalPosition;

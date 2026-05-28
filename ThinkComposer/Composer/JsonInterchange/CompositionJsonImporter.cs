@@ -33,8 +33,43 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly bool IsPreview;
         private readonly CompositionJsonImportReport Report;
         private readonly Dictionary<View, int> AutoPlacementIndexes = new Dictionary<View, int>();
+        private readonly List<View> AffectedViews = new List<View>();
+        private readonly Dictionary<View, List<VisualObject>> ImportedVisualObjects = new Dictionary<View, List<VisualObject>>();
         private string LastOperationOutcome = null;
         private bool AutoPlaceNewItems = true;
+
+        private class RelationshipLinkImportSpec
+        {
+            public string RoleTypeName;
+            public string RoleDefinitionTechName;
+            public string IdeaId;
+            public string IdeaTechName;
+            public Idea ResolvedIdea;
+            public LinkRoleDefinition ResolvedRole;
+        }
+
+        private class RelationshipLinkImportPlan
+        {
+            public RelationshipLinkImportPlan()
+            {
+                this.Specs = new List<RelationshipLinkImportSpec>();
+                this.Warnings = new List<string>();
+            }
+
+            public string SourceName;
+            public List<RelationshipLinkImportSpec> Specs;
+            public List<string> Warnings;
+            public int ResolvedOriginCount;
+            public int ResolvedTargetCount;
+            public bool HasConnectivityInput;
+        }
+
+        private class RelationshipLinkApplyResult
+        {
+            public int Added;
+            public int Duplicate;
+            public int Unresolved;
+        }
 
         private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview)
         {
@@ -57,12 +92,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Importer.Report;
         }
 
-        public static CompositionJsonImportReport Import(CompositionEngine Engine, CompositionJsonDocument Document)
+        public static CompositionJsonImportReport Import(CompositionEngine Engine, CompositionJsonDocument Document, CompositionJsonImportReport PlannedReport = null)
         {
             General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
             CompositionJsonSerializer.Validate(Document);
 
             var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false);
+            Importer.Report.CopyPlanFrom(PlannedReport);
 
             Importer.Report.Log("JSON import apply opening command variation for composition " + Importer.DescribeTarget(Engine.TargetComposition) + ".");
             Engine.StartCommandVariation("Import JSON");
@@ -82,6 +118,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     Importer.Report.Log("JSON import document marked modified.");
                 }
 
+                Importer.ExposeAffectedViewsAfterImport();
                 Importer.Report.Log("JSON import apply completed: " + Importer.Report.ToDetailedCountsString() + ".");
             }
             catch (Exception Problem)
@@ -226,7 +263,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null);
                 CountUpdated(Changed);
-                ApplyRelationshipLinks(Existing, Source);
+                RepairRelationshipLinks(Existing, BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, "top-level"));
                 ApplyMarkers(Existing, Source.Markers);
                 ApplyDetails(Existing, Source.Details);
                 return;
@@ -309,6 +346,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return null;
             }
 
+            var LinkPlan = BuildRelationshipLinkPlan(Definition, Source, "top-level");
+            if (!ValidateRelationshipLinkPlan(Definition, Source.TechName.NullDefault(Name), LinkPlan))
+                return null;
+
             if (this.IsPreview)
             {
                 this.Report.CountCreated();
@@ -324,67 +365,226 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Relationship.AddToComposite(Container);
             this.Report.CountCreated();
 
-            ApplyRelationshipLinks(Relationship, Source);
+            ApplyRelationshipLinks(Relationship, LinkPlan);
             ApplyMarkers(Relationship, Source.Markers);
             ApplyDetails(Relationship, Source.Details);
 
             return Relationship;
         }
 
-        private void ApplyRelationshipLinks(Relationship Relationship, CompositionJsonRelationship Source)
+        private RelationshipLinkApplyResult RepairRelationshipLinks(Relationship Relationship, RelationshipLinkImportPlan LinkPlan)
         {
-            if (Source.Links != null && Source.Links.Count > 0)
+            this.Report.Log(FormatOperationPrefix() + "existing relationship matched for repair " + DescribeTarget(Relationship) + ".");
+            this.Report.Log(FormatOperationPrefix() + "relationship links source=" +
+                            (LinkPlan == null ? "none" : LinkPlan.SourceName.NullDefault("none")) +
+                            " for relationship techName=" + Relationship.TechName.ToStringAlways() + ".");
+            this.Report.Log(FormatOperationPrefix() + "relationship links before repair: " + DescribeRelationshipLinks(Relationship) + ".");
+
+            var Result = ApplyRelationshipLinks(Relationship, LinkPlan);
+
+            this.Report.Log(FormatOperationPrefix() + "relationship links added=" + Result.Added.ToString(CultureInfo.InvariantCulture) +
+                            ", duplicates=" + Result.Duplicate.ToString(CultureInfo.InvariantCulture) +
+                            ", unresolved=" + Result.Unresolved.ToString(CultureInfo.InvariantCulture) + ".");
+            this.Report.Log(FormatOperationPrefix() + "relationship links after repair: " + DescribeRelationshipLinks(Relationship) + ".");
+
+            if (Result.Added > 0)
             {
-                foreach (var Link in Source.Links)
-                    AddRelationshipLink(Relationship, Link.RoleType, Link.IdeaId, Link.IdeaTechName);
-                return;
+                this.Report.CountRepairedRelationship();
+                this.Report.CountUpdated();
             }
 
-            if (Source.OriginIdeaIds != null)
-                foreach (var IdeaId in Source.OriginIdeaIds)
-                    AddRelationshipLink(Relationship, "Origin", IdeaId, null);
-
-            if (Source.TargetIdeaIds != null)
-                foreach (var IdeaId in Source.TargetIdeaIds)
-                    AddRelationshipLink(Relationship, "Target", IdeaId, null);
+            return Result;
         }
 
-        private void AddRelationshipLink(Relationship Relationship, string RoleTypeName, string IdeaId, string IdeaTechName)
+        private RelationshipLinkApplyResult ApplyRelationshipLinks(Relationship Relationship, RelationshipLinkImportPlan LinkPlan)
         {
-            var Idea = FindIdea(IdeaId, IdeaTechName);
-            if (Idea == null)
+            var Result = new RelationshipLinkApplyResult();
+
+            if (LinkPlan == null)
+                return Result;
+
+            foreach (var Warning in LinkPlan.Warnings)
+                this.Report.Warn(Warning);
+
+            foreach (var Spec in LinkPlan.Specs)
             {
-                Skip("Cannot create relationship link for '" + Relationship.TechName + "' because idea '" + Describe(IdeaId, IdeaTechName) + "' was not found.");
-                return;
+                if (Spec.ResolvedIdea == null || Spec.ResolvedRole == null)
+                {
+                    Result.Unresolved++;
+                    continue;
+                }
+
+                if (Relationship.Links.Any(Link => Link.RoleDefinitor == Spec.ResolvedRole && Link.AssociatedIdea == Spec.ResolvedIdea))
+                {
+                    Result.Duplicate++;
+                    continue;
+                }
+
+                if (this.IsPreview)
+                {
+                    Result.Added++;
+                    continue;
+                }
+
+                var Variant = Spec.ResolvedRole.AllowedVariants.FirstOrDefault();
+                if (Variant == null && this.Composition.CompositeContentDomain != null)
+                    Variant = this.Composition.CompositeContentDomain.LinkRoleVariants.FirstOrDefault();
+
+                var NewLink = new RoleBasedLink(Relationship, Spec.ResolvedIdea, Spec.ResolvedRole, Variant);
+                Relationship.AddLink(NewLink);
+                Result.Added++;
             }
 
-            ERoleType RoleType = ERoleType.Origin;
+            return Result;
+        }
+
+        private RelationshipLinkImportPlan BuildRelationshipLinkPlan(RelationshipDefinition Definition, CompositionJsonRelationship Source, string SourceName)
+        {
+            var Plan = new RelationshipLinkImportPlan();
+            Plan.SourceName = SourceName.NullDefault("none");
+
+            if (Source == null)
+                return Plan;
+
+            if (Source.Links != null && Source.Links.Count > 0)
+                foreach (var Link in Source.Links)
+                    AddRelationshipLinkSpec(Plan, Link.RoleType, Link.RoleDefinitionTechName, Link.IdeaId, Link.IdeaTechName);
+
+            AddRelationshipEndpointSpecs(Plan, "Origin", Source.OriginIdeaIds, Source.OriginIdeaTechNames);
+            AddRelationshipEndpointSpecs(Plan, "Target", Source.TargetIdeaIds, Source.TargetIdeaTechNames);
+
+            Plan.HasConnectivityInput = Plan.Specs.Count > 0;
+            ResolveRelationshipLinkPlan(Definition, Plan);
+            return Plan;
+        }
+
+        private void AddRelationshipEndpointSpecs(RelationshipLinkImportPlan Plan, string RoleTypeName, IList<string> IdeaIds, IList<string> IdeaTechNames)
+        {
+            var Count = Math.Max(IdeaIds == null ? 0 : IdeaIds.Count, IdeaTechNames == null ? 0 : IdeaTechNames.Count);
+            for (int Index = 0; Index < Count; Index++)
+            {
+                var IdeaId = IdeaIds != null && Index < IdeaIds.Count ? IdeaIds[Index] : null;
+                var IdeaTechName = IdeaTechNames != null && Index < IdeaTechNames.Count ? IdeaTechNames[Index] : null;
+                AddRelationshipLinkSpec(Plan, RoleTypeName, null, IdeaId, IdeaTechName);
+            }
+        }
+
+        private void AddRelationshipLinkSpec(RelationshipLinkImportPlan Plan, string RoleTypeName, string RoleDefinitionTechName, string IdeaId, string IdeaTechName)
+        {
+            if (String.IsNullOrEmpty(IdeaId) && String.IsNullOrEmpty(IdeaTechName))
+                return;
+
+            Plan.Specs.Add(new RelationshipLinkImportSpec
+            {
+                RoleTypeName = RoleTypeName,
+                RoleDefinitionTechName = RoleDefinitionTechName,
+                IdeaId = IdeaId,
+                IdeaTechName = IdeaTechName
+            });
+        }
+
+        private void ResolveRelationshipLinkPlan(RelationshipDefinition Definition, RelationshipLinkImportPlan Plan)
+        {
+            if (Definition == null || Plan == null)
+                return;
+
+            foreach (var Spec in Plan.Specs)
+            {
+                var RequestedRole = ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition);
+                var Role = Definition.GetLinkForRole(RequestedRole);
+                if (Role == null)
+                {
+                    Plan.Warnings.Add("Cannot resolve relationship role '" + Spec.RoleTypeName.ToStringAlways() +
+                                      "' for relationship definition '" + Definition.TechName + "'.");
+                    continue;
+                }
+
+                var Idea = FindIdea(Spec.IdeaId, Spec.IdeaTechName);
+                if (Idea == null)
+                {
+                    Plan.Warnings.Add("Cannot resolve relationship endpoint '" + Describe(Spec.IdeaId, Spec.IdeaTechName) + "'.");
+                    continue;
+                }
+
+                Spec.ResolvedRole = Role;
+                Spec.ResolvedIdea = Idea;
+
+                if (RequestedRole == ERoleType.Target)
+                    Plan.ResolvedTargetCount++;
+                else
+                    Plan.ResolvedOriginCount++;
+            }
+        }
+
+        private ERoleType ResolveRoleType(string RoleTypeName, string RoleDefinitionTechName, RelationshipDefinition Definition)
+        {
             if (StringEquals(RoleTypeName, "Target"))
-                RoleType = ERoleType.Target;
+                return ERoleType.Target;
 
-            var Role = Relationship.RelationshipDefinitor.Value.GetLinkForRole(RoleType);
-            if (Role == null)
+            if (StringEquals(RoleTypeName, "Origin"))
+                return ERoleType.Origin;
+
+            if (!String.IsNullOrEmpty(RoleDefinitionTechName) && Definition != null)
             {
-                Skip("Cannot create relationship link for '" + Relationship.TechName + "' because role '" + RoleTypeName.ToStringAlways() + "' was not found.");
-                return;
+                if (Definition.TargetLinkRoleDef != null &&
+                    (StringEquals(Definition.TargetLinkRoleDef.TechName, RoleDefinitionTechName) ||
+                     StringEquals(Definition.TargetLinkRoleDef.Name, RoleDefinitionTechName)))
+                    return ERoleType.Target;
+
+                if (Definition.OriginOrParticipantLinkRoleDef != null &&
+                    (StringEquals(Definition.OriginOrParticipantLinkRoleDef.TechName, RoleDefinitionTechName) ||
+                     StringEquals(Definition.OriginOrParticipantLinkRoleDef.Name, RoleDefinitionTechName)))
+                    return ERoleType.Origin;
             }
 
-            if (Relationship.Links.Any(Link => Link.RoleDefinitor == Role && Link.AssociatedIdea == Idea))
-                return;
+            return ERoleType.Origin;
+        }
 
-            if (this.IsPreview)
+        private bool ValidateRelationshipLinkPlan(RelationshipDefinition Definition, string RelationshipTechName, RelationshipLinkImportPlan LinkPlan)
+        {
+            this.Report.Log(FormatOperationPrefix() + "relationship links source=" +
+                            (LinkPlan == null ? "none" : LinkPlan.SourceName.NullDefault("none")) +
+                            " for relationship techName=" + RelationshipTechName.ToStringAlways() + ".");
+
+            if (LinkPlan == null || !LinkPlan.HasConnectivityInput)
             {
-                this.Report.CountUpdated();
-                return;
+                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': no valid origin/target links were provided.");
+                return false;
             }
 
-            var Variant = Role.AllowedVariants.FirstOrDefault();
-            if (Variant == null && this.Composition.CompositeContentDomain != null)
-                Variant = this.Composition.CompositeContentDomain.LinkRoleVariants.FirstOrDefault();
+            if (LinkPlan.ResolvedOriginCount < 1 || LinkPlan.ResolvedTargetCount < 1)
+            {
+                foreach (var Warning in LinkPlan.Warnings)
+                    this.Report.Warn(Warning);
 
-            var NewLink = new RoleBasedLink(Relationship, Idea, Role, Variant);
-            Relationship.AddLink(NewLink);
-            this.Report.CountUpdated();
+                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': no valid origin/target links were provided.");
+                return false;
+            }
+
+            var Origins = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdea != null && ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition) == ERoleType.Origin)
+                                        .Select(Spec => Spec.ResolvedIdea)
+                                        .ToList();
+            var Targets = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdea != null && ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition) == ERoleType.Target)
+                                        .Select(Spec => Spec.ResolvedIdea)
+                                        .ToList();
+
+            if (!Origins.SelectMany(Origin => Targets.Select(Target => Definition.CanLink(Origin.IdeaDefinitor, Target.IdeaDefinitor))).Any(Result => Result.Result))
+            {
+                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': resolved endpoints are not valid for definition '" + Definition.TechName + "'.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private string DescribeRelationshipLinks(Relationship Relationship)
+        {
+            if (Relationship == null || Relationship.Links == null)
+                return "total=0, origins=0, targets=0";
+
+            return "total=" + Relationship.Links.Count.ToString(CultureInfo.InvariantCulture) +
+                   ", origins=" + Relationship.Links.Count(Link => Link.RoleDefinitor != null && Link.RoleDefinitor.RoleType == ERoleType.Origin).ToString(CultureInfo.InvariantCulture) +
+                   ", targets=" + Relationship.Links.Count(Link => Link.RoleDefinitor != null && Link.RoleDefinitor.RoleType == ERoleType.Target).ToString(CultureInfo.InvariantCulture);
         }
 
         private void DeleteIdea(Idea Target, string Entity, string Id, string TechName)
@@ -808,16 +1008,6 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Entity == "relationship")
             {
                 var SourceTechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
-                var Existing = FindRelationship(Operation.Id, SourceTechName);
-                if (Existing != null)
-                {
-                    SetOperationOutcome("skipped: matching relationship already exists " + DescribeTarget(Existing));
-                    Skip("Cannot create relationship '" + Describe(Operation.Id, SourceTechName) + "' because a matching relationship already exists. Use op:update to edit it.");
-                    if (ShouldPlaceCreatedItem(Operation))
-                        PlaceIdeaVisual(Existing, Operation, false);
-                    return;
-                }
-
                 var Source = new CompositionJsonRelationship();
                 Source.IsNew = true;
                 Source.Id = Operation.Id;
@@ -827,9 +1017,22 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
                 Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
                 Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
-                Source.OriginIdeaIds = Operation.OriginIdeaIds;
-                Source.TargetIdeaIds = Operation.TargetIdeaIds;
-                Source.Links = Operation.Links;
+                var LinkSourceName = PopulateRelationshipConnectivityFromOperation(Source, Operation);
+
+                var Existing = FindRelationship(Operation.Id, SourceTechName);
+                if (Existing != null)
+                {
+                    this.Report.Log(FormatOperationPrefix() + "create relationship matched existing target; applying as repair/upsert.");
+                    var Changed = ApplySetToFormal(Existing, Operation.Set);
+                    CountUpdated(Changed);
+                    var LinkPlan = BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, LinkSourceName);
+                    RepairRelationshipLinks(Existing, LinkPlan);
+                    if (ShouldPlaceCreatedItem(Operation))
+                        PlaceIdeaVisual(Existing, Operation, false);
+                    SetOperationOutcome(Verb("repair") + " matched " + DescribeTarget(Existing));
+                    return;
+                }
+
                 var BeforeCreated = this.Report.Created;
                 var Created = CreateRelationship(Source);
                 if (this.IsPreview && this.Report.Created > BeforeCreated)
@@ -899,6 +1102,59 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             Skip("Place operation for entity '" + Entity + "' is not supported.");
+        }
+
+        private string PopulateRelationshipConnectivityFromOperation(CompositionJsonRelationship Source, CompositionJsonOperation Operation)
+        {
+            var HasTopLevel = HasRelationshipConnectivity(Operation.OriginIdeaIds, Operation.OriginIdeaTechNames,
+                                                          Operation.TargetIdeaIds, Operation.TargetIdeaTechNames,
+                                                          Operation.Links);
+            if (HasTopLevel)
+            {
+                Source.OriginIdeaIds = Operation.OriginIdeaIds ?? new List<string>();
+                Source.OriginIdeaTechNames = Operation.OriginIdeaTechNames ?? new List<string>();
+                Source.TargetIdeaIds = Operation.TargetIdeaIds ?? new List<string>();
+                Source.TargetIdeaTechNames = Operation.TargetIdeaTechNames ?? new List<string>();
+                Source.Links = Operation.Links ?? new List<CompositionJsonRelationshipLink>();
+                return "top-level";
+            }
+
+            if (HasSetRelationshipConnectivity(Operation.Set))
+            {
+                Source.OriginIdeaIds = GetSetStringList(Operation.Set, "originIdeaIds");
+                Source.OriginIdeaTechNames = GetSetStringList(Operation.Set, "originIdeaTechNames");
+                Source.TargetIdeaIds = GetSetStringList(Operation.Set, "targetIdeaIds");
+                Source.TargetIdeaTechNames = GetSetStringList(Operation.Set, "targetIdeaTechNames");
+                Source.Links = GetSetRelationshipLinks(Operation.Set, "links");
+                return "set";
+            }
+
+            Source.OriginIdeaIds = new List<string>();
+            Source.OriginIdeaTechNames = new List<string>();
+            Source.TargetIdeaIds = new List<string>();
+            Source.TargetIdeaTechNames = new List<string>();
+            Source.Links = new List<CompositionJsonRelationshipLink>();
+            return "none";
+        }
+
+        private bool HasRelationshipConnectivity(IList<string> OriginIds, IList<string> OriginTechNames,
+                                                 IList<string> TargetIds, IList<string> TargetTechNames,
+                                                 IList<CompositionJsonRelationshipLink> Links)
+        {
+            return (OriginIds != null && OriginIds.Count > 0) ||
+                   (OriginTechNames != null && OriginTechNames.Count > 0) ||
+                   (TargetIds != null && TargetIds.Count > 0) ||
+                   (TargetTechNames != null && TargetTechNames.Count > 0) ||
+                   (Links != null && Links.Count > 0);
+        }
+
+        private bool HasSetRelationshipConnectivity(IDictionary<string, object> Set)
+        {
+            return GetSetStringList(Set, "originIdeaIds").Count > 0 ||
+                   GetSetStringList(Set, "originIdeaTechNames").Count > 0 ||
+                   GetSetStringList(Set, "targetIdeaIds").Count > 0 ||
+                   GetSetStringList(Set, "targetIdeaTechNames").Count > 0 ||
+                   GetSetRelationshipLinks(Set, "links").Count > 0;
         }
 
         private void PlanCreatedConceptVisual(CompositionJsonIdea Source, CompositionJsonOperation Operation)
@@ -1030,10 +1286,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Changed)
             {
+                EnsureRepresentationViewChildren(TargetRepresentation);
                 var Symbol = TargetRepresentation.MainSymbol;
                 CountAndLogVisualPlaced("applied", "concept", Concept.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
                 View.UpdateVersion();
             }
+            else
+                if (EnsureRepresentationViewChildren(TargetRepresentation))
+                {
+                    var Symbol = TargetRepresentation.MainSymbol;
+                    CountAndLogVisualPlaced("applied", "concept", Concept.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                    View.UpdateVersion();
+                }
             else
                 this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
         }
@@ -1043,14 +1307,26 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Existing = Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
                                       .FirstOrDefault(Representation => Representation.DisplayingView == View);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
-            var VisibleEndpointSymbols = GetVisibleRelationshipEndpointSymbols(Relationship, View).ToList();
 
-            if (Existing == null && VisibleEndpointSymbols.Count < 1 &&
-                Relationship.RelationshipDefinitor.Value.IsSimple &&
-                Relationship.RelationshipDefinitor.Value.HideCentralSymbolWhenSimple)
+            this.Report.Log(FormatOperationPrefix() + "relationship endpoints for '" + Relationship.TechName +
+                            "' target view=" + DescribeView(View) + ": " + DescribeRelationshipEndpointStatus(Relationship, View) + ".");
+
+            if (Relationship.Links == null || Relationship.Links.Count < 1)
             {
                 var Reason = "Cannot place relationship '" + Relationship.TechName + "' in " + DescribeView(View) +
-                             " because it hides its central symbol and none of its endpoints are visible in that view.";
+                             " because the relationship has no resolved links.";
+                if (IsExplicitPlaceOperation)
+                    SkipPlaceOperation(Reason);
+                else
+                    SkipVisualPlacement(Reason);
+                return;
+            }
+
+            var MissingEndpoints = EnsureRelationshipEndpointSymbols(Relationship, View, Operation);
+            if (MissingEndpoints.Count > 0)
+            {
+                var Reason = "Cannot place relationship '" + Relationship.TechName + "' in " + DescribeView(View) +
+                             " because linked endpoints are not visible in that view: " + String.Join(", ", MissingEndpoints.ToArray()) + ".";
                 if (IsExplicitPlaceOperation)
                     SkipPlaceOperation(Reason);
                 else
@@ -1094,10 +1370,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Changed)
             {
                 TargetRepresentation.Render();
+                EnsureRepresentationViewChildren(TargetRepresentation);
                 var Symbol = TargetRepresentation.MainSymbol;
                 CountAndLogVisualPlaced("applied", "relationship", Relationship.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
                 View.UpdateVersion();
             }
+            else
+                if (EnsureRepresentationViewChildren(TargetRepresentation))
+                {
+                    TargetRepresentation.Render();
+                    var Symbol = TargetRepresentation.MainSymbol;
+                    CountAndLogVisualPlaced("applied", "relationship", Relationship.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                    View.UpdateVersion();
+                }
             else
                 this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
         }
@@ -1132,6 +1417,81 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             return Added;
+        }
+
+        private List<string> EnsureRelationshipEndpointSymbols(Relationship Relationship, View View, CompositionJsonOperation Operation)
+        {
+            var Missing = new List<string>();
+
+            foreach (var Link in Relationship.Links)
+            {
+                var Endpoint = Link.AssociatedIdea;
+                if (Endpoint == null)
+                    continue;
+
+                var EndpointRepresentation = Endpoint.VisualRepresentators
+                                                    .FirstOrDefault(Visual => Visual.DisplayingView == View && Visual.MainSymbol != null);
+                if (EndpointRepresentation != null)
+                    continue;
+
+                if (this.AutoPlaceNewItems && Endpoint is Concept)
+                {
+                    this.Report.Log(FormatOperationPrefix() + "auto-placing relationship endpoint '" + Endpoint.TechName +
+                                    "' into " + DescribeView(View) + ".");
+                    var EndpointOperation = new CompositionJsonOperation();
+                    EndpointOperation.ViewId = View.GlobalId.ToString("D");
+                    EndpointOperation.AutoPlace = true;
+                    PlaceConceptVisual((Concept)Endpoint, View, EndpointOperation, false);
+
+                    if (this.IsPreview)
+                        continue;
+
+                    EndpointRepresentation = Endpoint.VisualRepresentators
+                                                    .FirstOrDefault(Visual => Visual.DisplayingView == View && Visual.MainSymbol != null);
+                    if (EndpointRepresentation != null)
+                        continue;
+                }
+
+                Missing.Add(Endpoint.TechName.ToStringAlways());
+            }
+
+            return Missing;
+        }
+
+        private string DescribeRelationshipEndpointStatus(Relationship Relationship, View View)
+        {
+            if (Relationship.Links == null || Relationship.Links.Count < 1)
+                return "no resolved links";
+
+            var Parts = new List<string>();
+            foreach (var Link in Relationship.Links)
+            {
+                var Role = Link.RoleDefinitor == null ? "?" : Link.RoleDefinitor.RoleType.GetFieldName();
+                var Idea = Link.AssociatedIdea;
+                var Visible = Idea != null && Idea.VisualRepresentators.Any(Visual => Visual.DisplayingView == View && Visual.MainSymbol != null);
+                Parts.Add(Role + ":" + (Idea == null ? "<none>" : Idea.TechName) + "=" + (Visible ? "visible" : "missing"));
+            }
+
+            return String.Join("; ", Parts.ToArray());
+        }
+
+        private bool EnsureRepresentationViewChildren(VisualRepresentation Representation)
+        {
+            if (Representation == null || Representation.DisplayingView == null)
+                return false;
+
+            var Changed = false;
+            foreach (var Part in Representation.VisualParts.OrderBy(Part => !(Part is VisualSymbol)))
+                if (!Representation.DisplayingView.ViewChildren.Any(Child => Child != null && Child.Key == Part))
+                {
+                    Representation.DisplayingView.ViewChildren.Add(ViewChild.Create(Part, Part.Graphic));
+                    Changed = true;
+                }
+
+            if (Changed)
+                MarkAffectedView(Representation.DisplayingView, Representation.MainSymbol);
+
+            return Changed;
         }
 
         private bool ShouldPlaceCreatedItem(CompositionJsonOperation Operation)
@@ -1304,6 +1664,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void CountAndLogVisualPlaced(string Phase, string Entity, string TechName, View View, Point Center, double Width, double Height)
         {
             this.Report.CountVisualPlaced();
+            if (!this.IsPreview && StringEquals(Phase, "applied"))
+                MarkAffectedView(View, null);
             this.Report.Log(FormatOperationPrefix() + Phase + " visual placement " + Entity +
                             " techName=" + TechName.ToStringAlways() +
                             " view=" + DescribeView(View) +
@@ -1311,6 +1673,30 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             " y=" + (Center.Y - Height / 2.0).ToString("0.###", CultureInfo.InvariantCulture) +
                             " width=" + Width.ToString("0.###", CultureInfo.InvariantCulture) +
                             " height=" + Height.ToString("0.###", CultureInfo.InvariantCulture) + ".");
+        }
+
+        private void MarkAffectedView(View View, VisualObject ImportedObject)
+        {
+            if (View == null)
+                return;
+
+            if (!this.AffectedViews.Contains(View))
+                this.AffectedViews.Add(View);
+
+            this.Report.AddAffectedView(View.Name.ToStringAlways() + " (" + View.TechName.ToStringAlways() + ")");
+
+            if (ImportedObject == null)
+                return;
+
+            List<VisualObject> Objects;
+            if (!this.ImportedVisualObjects.TryGetValue(View, out Objects))
+            {
+                Objects = new List<VisualObject>();
+                this.ImportedVisualObjects[View] = Objects;
+            }
+
+            if (!Objects.Contains(ImportedObject))
+                Objects.Add(ImportedObject);
         }
 
         private void SkipVisualPlacement(string Warning)
@@ -1692,6 +2078,73 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return CompositionJsonSerializer.GetNullableBool(Set, Key);
         }
 
+        private List<string> GetSetStringList(IDictionary<string, object> Set, string Key)
+        {
+            var Result = new List<string>();
+            if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
+                return Result;
+
+            var Text = Set[Key] as string;
+            if (Text != null)
+            {
+                if (!String.IsNullOrEmpty(Text))
+                    Result.Add(Text);
+                return Result;
+            }
+
+            var Items = Set[Key] as System.Collections.IEnumerable;
+            if (Items == null)
+                return Result;
+
+            foreach (var Item in Items)
+                if (Item != null)
+                    Result.Add(Convert.ToString(Item, CultureInfo.InvariantCulture));
+
+            return Result;
+        }
+
+        private List<CompositionJsonRelationshipLink> GetSetRelationshipLinks(IDictionary<string, object> Set, string Key)
+        {
+            var Result = new List<CompositionJsonRelationshipLink>();
+            if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
+                return Result;
+
+            var Single = Set[Key] as IDictionary<string, object>;
+            if (Single != null)
+            {
+                Result.Add(ReadRelationshipLinkFromDictionary(Single));
+                return Result;
+            }
+
+            var Items = Set[Key] as System.Collections.IEnumerable;
+            if (Items == null || Set[Key] is string)
+                return Result;
+
+            foreach (var Item in Items)
+            {
+                var Dictionary = Item as IDictionary<string, object>;
+                if (Dictionary != null)
+                    Result.Add(ReadRelationshipLinkFromDictionary(Dictionary));
+            }
+
+            return Result;
+        }
+
+        private CompositionJsonRelationshipLink ReadRelationshipLinkFromDictionary(IDictionary<string, object> Source)
+        {
+            var Link = new CompositionJsonRelationshipLink();
+            Link.Id = CompositionJsonSerializer.GetString(Source, "id");
+            Link.RoleType = CompositionJsonSerializer.GetString(Source, "roleType");
+            Link.RoleDefinitionId = CompositionJsonSerializer.GetString(Source, "roleDefinitionId");
+            Link.RoleDefinitionTechName = CompositionJsonSerializer.GetString(Source, "roleDefinitionTechName");
+            Link.RoleDefinitionName = CompositionJsonSerializer.GetString(Source, "roleDefinitionName");
+            Link.RoleVariantTechName = CompositionJsonSerializer.GetString(Source, "roleVariantTechName");
+            Link.RoleVariantName = CompositionJsonSerializer.GetString(Source, "roleVariantName");
+            Link.IdeaId = CompositionJsonSerializer.GetString(Source, "ideaId");
+            Link.IdeaTechName = CompositionJsonSerializer.GetString(Source, "ideaTechName");
+            return Link;
+        }
+
         private string GetSetString(IDictionary<string, object> Set, string Key)
         {
             if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
@@ -1843,6 +2296,75 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return String.Equals(One, Two, StringComparison.OrdinalIgnoreCase);
         }
 
+        private void ExposeAffectedViewsAfterImport()
+        {
+            if (this.AffectedViews.Count < 1)
+            {
+                this.Report.Log("JSON import affected views: none.");
+                return;
+            }
+
+            this.Report.Log("JSON import affected views: " +
+                            String.Join(", ", this.AffectedViews.Select(View => View.Name + " (" + View.TechName + ")").ToArray()) + ".");
+
+            var TargetView = this.AffectedViews.Contains(this.Engine.CurrentView)
+                             ? this.Engine.CurrentView
+                             : this.AffectedViews.FirstOrDefault();
+            if (TargetView == null)
+                return;
+
+            var WasOpen = TargetView.Presenter != null && TargetView.HostingScrollViewer != null && TargetView.PresenterHostingGrid != null;
+            var WasActive = this.Engine.CurrentView == TargetView;
+            this.Report.Log("JSON import exposing first affected view: " + DescribeView(TargetView) +
+                            ", wasOpen=" + (WasOpen ? "true" : "false") +
+                            ", wasActive=" + (WasActive ? "true" : "false") + ".");
+
+            try
+            {
+                if (!WasActive)
+                {
+                    this.Engine.ShowView(TargetView);
+                    this.Report.Log("JSON import activated affected view: " + DescribeView(TargetView) + ".");
+                }
+                else
+                    if (WasOpen)
+                    {
+                        this.Engine.StartCommandVariation("Refresh JSON import view");
+                        TargetView.ShowAll();
+                        this.Engine.CompleteCommandVariation();
+                        this.Report.Log("JSON import refreshed active affected view via ShowAll: " + DescribeView(TargetView) + ".");
+                    }
+
+                if (TargetView.HostingScrollViewer != null)
+                {
+                    TargetView.FitContentIntoView();
+                    this.Report.Log("JSON import fit affected view to content: " + DescribeView(TargetView) + ".");
+                }
+
+                SelectImportedVisuals(TargetView);
+            }
+            catch (Exception Problem)
+            {
+                this.Report.Warn("Affected view '" + TargetView.TechName + "' could not be activated/refreshed after import: " + Problem.Message);
+            }
+        }
+
+        private void SelectImportedVisuals(View TargetView)
+        {
+            List<VisualObject> Objects;
+            if (!this.ImportedVisualObjects.TryGetValue(TargetView, out Objects) || Objects.Count < 1)
+                return;
+
+            var First = Objects.FirstOrDefault(Object => Object != null && TargetView.ViewChildren.Any(Child => Child != null && Child.Key == Object));
+            if (First == null)
+                return;
+
+            TargetView.UnselectAllObjects();
+            TargetView.SelectObject(First, false);
+            TargetView.Presenter.BringIntoView(First.BaseArea);
+            this.Report.Log("JSON import selected imported visual in affected view: " + First.ToStringAlways() + ".");
+        }
+
         private void RefreshAffectedViews()
         {
             foreach (var Idea in this.Composition.DeclaredIdeas)
@@ -1858,8 +2380,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             foreach (var View in this.Composition.GetSubgraphChildren().SelectMany(Idea => Idea.CompositeViews).Distinct())
                 try
                 {
+                    var IsOpen = View.Presenter != null && View.HostingScrollViewer != null && View.PresenterHostingGrid != null;
+                    var IsAffected = this.AffectedViews.Contains(View);
+                    this.Report.Log("JSON import view refresh: " + DescribeView(View) +
+                                    ", affected=" + (IsAffected ? "true" : "false") +
+                                    ", open=" + (IsOpen ? "true" : "false") + ".");
                     if (View.Presenter != null && View.HostingScrollViewer != null && View.PresenterHostingGrid != null)
+                    {
                         View.ShowAll();
+                        this.Report.Log("JSON import view refresh called ShowAll: " + DescribeView(View) + ".");
+                    }
                 }
                 catch (Exception Problem)
                 {

@@ -131,7 +131,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             this.Kind = "Relationship";
             this.OriginIdeaIds = new List<string>();
+            this.OriginIdeaTechNames = new List<string>();
             this.TargetIdeaIds = new List<string>();
+            this.TargetIdeaTechNames = new List<string>();
             this.Links = new List<CompositionJsonRelationshipLink>();
             this.ChildIdeaIds = new List<string>();
             this.CompositeViewIds = new List<string>();
@@ -152,7 +154,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string ContainerId { get; set; }
         public string ContainerTechName { get; set; }
         public List<string> OriginIdeaIds { get; set; }
+        public List<string> OriginIdeaTechNames { get; set; }
         public List<string> TargetIdeaIds { get; set; }
+        public List<string> TargetIdeaTechNames { get; set; }
         public List<CompositionJsonRelationshipLink> Links { get; set; }
         public List<string> ChildIdeaIds { get; set; }
         public List<string> CompositeViewIds { get; set; }
@@ -248,7 +252,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             this.Set = new Dictionary<string, object>();
             this.OriginIdeaIds = new List<string>();
+            this.OriginIdeaTechNames = new List<string>();
             this.TargetIdeaIds = new List<string>();
+            this.TargetIdeaTechNames = new List<string>();
             this.Links = new List<CompositionJsonRelationshipLink>();
         }
 
@@ -267,7 +273,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public double? Height { get; set; }
         public bool? AutoPlace { get; set; }
         public List<string> OriginIdeaIds { get; set; }
+        public List<string> OriginIdeaTechNames { get; set; }
         public List<string> TargetIdeaIds { get; set; }
+        public List<string> TargetIdeaTechNames { get; set; }
         public List<CompositionJsonRelationshipLink> Links { get; set; }
         public Dictionary<string, object> Set { get; set; }
     }

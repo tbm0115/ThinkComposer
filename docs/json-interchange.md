@@ -118,6 +118,27 @@ Full-state import updates matching objects by `id` first. If `id` is absent, it 
       }
     },
     {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "root-composition-tech-name",
+      "set": {
+        "name": "New relationship from GPT",
+        "techName": "NewRelationshipFromGpt",
+        "summary": "Created via JSON import",
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaTechName": "ExistingSourceConcept"
+          },
+          {
+            "roleType": "target",
+            "ideaTechName": "NewConceptFromGpt"
+          }
+        ]
+      }
+    },
+    {
       "op": "place",
       "entity": "relationship",
       "techName": "NewRelationshipFromGpt",
@@ -132,10 +153,16 @@ Supported operations are `update`, `create`, `delete`, and `place` for the entit
 Patch semantics:
 
 - `update` operations must match an existing object by `id` or top-level `techName`; unmatched updates are skipped with warnings.
-- `create` operations require enough safe native information. Concepts require `definitionTechName` plus `containerId` or `containerTechName`. Relationships require a relationship definition, container, and links through `originIdeaIds`/`targetIdeaIds` or `links`.
+- `create` operations require enough safe native information. Concepts require `definitionTechName` plus `containerId` or `containerTechName`. Relationships require a relationship definition, container, and valid origin/target links.
 - `place` operations create or update a visual representation for an existing concept or relationship in a target view.
 - `delete` only runs for explicit delete operations or `delete: true`; omission never deletes native objects.
 - Existing native data that is not represented in JSON is preserved.
+
+Relationship connectivity can be supplied at the operation top level or inside `set`. Top-level values are preferred when both are present, but `set.originIdeaIds`, `set.originIdeaTechNames`, `set.targetIdeaIds`, `set.targetIdeaTechNames`, and `set.links` are accepted for GPT-authored patches. Link `roleType` values are normalized case-insensitively, so `Origin`, `Target`, `origin`, and `target` are accepted.
+
+Relationship create operations are upserts. If a `create relationship` operation matches an existing relationship by `id` or `techName`, the importer updates editable fields and repairs missing role links instead of creating a duplicate. Re-importing the same patch should not duplicate relationships, links, visuals, or connectors.
+
+Linkless relationships are skipped by default. This prevents invalid native relationship objects that can later break view or context-menu code expecting origin/target roles.
 
 ## Visual Placement
 
@@ -169,12 +196,16 @@ Relationship placement can omit coordinates. When endpoints are visible in the t
 
 Create operations can include the same `viewId`, `viewTechName`, `x`, `y`, `width`, and `height` fields. If no coordinates are supplied and `importOptions.autoPlaceNewItems` is omitted or true, the importer chooses the created item's container view, then the active view, and places new concepts in a deterministic grid to the right of existing content. Relationships are connected when their linked endpoint concepts are visible in the chosen view.
 
+If a relationship target view is missing one or both endpoint concept symbols and auto-placement is enabled, the importer attempts to place those endpoint concepts in that view before placing the relationship. If endpoints still cannot be resolved or placed, the relationship connector is skipped with a warning listing the missing endpoints.
+
+Imported visuals may be placed in nested or composite views such as a concept's own view, not necessarily the root view currently visible in the workspace. After import, the completion dialog and application log list affected views, and the importer attempts to open, fit, and select imported visuals in the first affected view when safe.
+
 Set `"autoPlace": false` on a single create operation, or `"importOptions": { "autoPlaceNewItems": false }` at the top level, to create model objects without automatic visual placement.
 
 GPT prompt example:
 
 ```text
-Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For each new concept or relationship, include definitionTechName and containerTechName. Also include viewTechName plus x/y/width/height for important new concepts, and add place operations for relationships so the new model items are visible in the Main view. Do not delete anything unless I explicitly request it.
+Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Also include viewTechName plus x/y/width/height for important new concepts, and add place operations for relationships so the new model items are visible in the intended view. Do not delete anything unless I explicitly request it.
 ```
 
 Additional sample files are available at `samples/json-interchange-patch.sample.json` and `samples/json-interchange-regression.sample.json`.
@@ -186,12 +217,16 @@ Additional sample files are available at `samples/json-interchange-patch.sample.
 3. Select `deployment_manager_thinkcomposer_patch.json`, or use `samples/json-interchange-regression.sample.json` after replacing placeholder ids/tech names with values from your composition.
 4. Confirm the import.
 5. Verify the lower-left log contains parse, planning, per-operation, and final summary lines.
-6. Verify new concepts appear in the requested view or in the auto-placement area.
-7. Verify relationships are visible when both endpoints are visible in the same view.
-8. Re-import the same patch and verify it does not duplicate entities or visual representations.
-9. Verify warnings are readable, including object-valued warnings.
-10. Verify no `Put-visual must be applied within a Command` error appears.
-11. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
+6. Confirm the final dialog lists affected views when visuals were placed.
+7. Verify new concepts appear in the requested view or in the auto-placement area without toggling Show/Hide Details.
+8. Verify imported concepts may appear in nested composite views, not only the root view.
+9. Verify relationships have origin/target links and are visible when both endpoints are visible in the same view.
+10. Re-import the same patch and verify it does not duplicate concepts, relationships, links, visual representations, or connectors.
+11. Right-click imported concepts and relationships/links and verify no runtime exception appears.
+12. Save, close, reopen, and verify imported visuals and relationship links persist.
+13. Verify warnings are readable, including object-valued warnings.
+14. Verify no `Put-visual must be applied within a Command` error appears.
+15. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
 
 ## Troubleshooting
 
@@ -199,7 +234,11 @@ Detailed import diagnostics are in the lower-left application log window. The mo
 
 `Put-visual must be applied within a Command` means WPF visual refresh or placement was attempted while no ThinkComposer edit command variation was active. JSON import refreshes affected views inside the single `Import JSON` command variation so view updates remain undoable and command-safe. If this error appears again, the log should show the operation being applied and whether rollback completed.
 
-If imported concepts exist in the project but are not visible, check the log for `visual placement` lines. Common causes are an unknown `viewId`/`viewTechName`, an item whose container has no composite view and no active view is available, or a relationship whose linked endpoints are not visible in the target view.
+If imported concepts appear in the tree but not on the canvas, check the log for affected-view and visual-placement lines. They may have been placed in a nested/composite view rather than the active root view. The importer materializes view children for placed visuals and attempts to open and fit the first affected view, but unopened views still render only when the workspace opens them.
+
+If relationships import but connectors are missing, check whether the relationship has resolved origin/target links and whether both endpoint symbols are visible in the same target view. The importer logs the relationship link source (`top-level`, `set`, or `none`), resolved endpoints, missing endpoint symbols, and whether endpoint concepts were auto-placed before connector creation. Re-importing the same patch can repair relationships that were previously created without links.
+
+`Sequence contains no matching element` was caused by UI code assuming invalid relationships always had origin/target connectors. The importer now skips linkless relationship creation and repairs existing JSON-created linkless relationships when a matching create operation supplies links. The UI also avoids crashing on missing relationship roles and logs a warning instead.
 
 On import failure, ThinkComposer logs the exception message, full exception details, current operation index and summary, and the rollback path. The importer attempts to complete and undo the open command variation; if that fails and a variation remains open, it attempts to discard it.
 

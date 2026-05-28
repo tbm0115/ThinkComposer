@@ -33,6 +33,7 @@ using Instrumind.Common.Visualization;
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.ApplicationProduct.Widgets;
 using Instrumind.ThinkComposer.Composer.JsonInterchange;
+using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
 using Instrumind.ThinkComposer.Composer.Reporting;
@@ -516,6 +517,23 @@ namespace Instrumind.ThinkComposer.Composer
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Switch Details", ExposedWorkCommand.Name, "Shows/Hides the Details poster of the selected Ideas.", "detail_poster.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
+            ExposedWorkCommand = new GenericCommand("FitConceptWidthToText");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.FitConceptWidthToText(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanFitConceptWidthToText(Engine);
+                });
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Fit Concept Width to Text", "FitConceptWidthToText",
+                                                                                          "Fits selected Concept symbols to their visible title text.", "shape_same_width.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
             ExposedWorkCommand = new GenericCommand("FillBrush");
             ExposedWorkCommand.Apply = CommandSelectFillBrush_Execution;
             ExposedWorkCommand.CanApply = CommandSelectFillBrush_IsEnabled;
@@ -574,6 +592,41 @@ namespace Instrumind.ThinkComposer.Composer
             ExposedWorkCommand.Apply = CommandApplyFormat_Execution;
             ExposedWorkCommand.CanApply = CommandApplyFormat_IsEnabled;
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Apply format", "ApplyFormat", "Applies the last getted format to the selected Ideas.", "style_setter.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("RouteLinksWithObstacleAvoidance");
+            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Route Links with Obstacle Avoidance"));
+            ExposedWorkCommand.CanApply = (par => false);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Route Links with Obstacle Avoidance...", "RouteLinksWithObstacleAvoidance",
+                                                                                          "Routes links while avoiding visible Concept symbols. Planned for a later layout pass.", "shape_move_forwards.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsSpiderMap");
+            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as Spider Map"));
+            ExposedWorkCommand.CanApply = (par => false);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Spider Map...", "ArrangeAsSpiderMap",
+                                                                                          "Arranges the active view as a spider map. Planned for a later layout pass.", "shape_align_center.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsFlowchart");
+            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as Flowchart"));
+            ExposedWorkCommand.CanApply = (par => false);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Flowchart...", "ArrangeAsFlowchart",
+                                                                                          "Arranges the active view as a flowchart. Planned for a later layout pass.", "shape_spacing_both.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsHierarchyMap");
+            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as Hierarchy Map"));
+            ExposedWorkCommand.CanApply = (par => false);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Hierarchy Map...", "ArrangeAsHierarchyMap",
+                                                                                          "Arranges the active view as a hierarchy map. Planned for a later layout pass.", "shape_move_backwards.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsSystemMap");
+            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as System Map"));
+            ExposedWorkCommand.CanApply = (par => false);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as System Map...", "ArrangeAsSystemMap",
+                                                                                          "Arranges the active view as a system map. Planned for a later layout pass.", "diagram_export.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             // ............................................................................................................

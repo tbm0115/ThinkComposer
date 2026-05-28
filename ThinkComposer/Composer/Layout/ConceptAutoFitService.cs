@@ -83,7 +83,10 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                     FitConceptSymbol(Symbol, Result, ref Changed);
 
                 if (Changed)
-                    View.UpdateVersion();
+                    foreach (var AffectedView in SymbolList.Select(Symbol => Symbol.GetDisplayingView())
+                                                           .Where(AffectedView => AffectedView != null)
+                                                           .Distinct())
+                        AffectedView.UpdateVersion();
 
                 if (LocalCommand)
                     View.EditEngine.CompleteCommandVariation();

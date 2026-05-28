@@ -45,6 +45,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int PlannedRepairedRecursiveVisuals { get; set; }
         public int AppliedRepairedRecursiveVisuals { get; set; }
 
+        public int PlannedAutoFitConcepts { get; set; }
+        public int AppliedAutoFitConcepts { get; set; }
+        public int SkippedAutoFitConcepts { get; set; }
+
         public int CurrentOperationIndex { get; set; }
         public int CurrentOperationTotal { get; set; }
         public string CurrentOperationSummary { get; set; }
@@ -105,7 +109,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool HasWarnings { get { return this.Warnings.Count > 0; } }
         public bool HasErrors { get { return this.Errors.Count > 0; } }
         public bool HasRiskyChanges { get { return this.Created > 0 || this.Deleted > 0 || this.Updated > 25; } }
-        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0; } }
+        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0 || this.AppliedAutoFitConcepts > 0; } }
 
         public void Log(string message)
         {
@@ -186,6 +190,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.AppliedRepairedRecursiveVisuals++;
         }
 
+        public void CountAutoFitConcept()
+        {
+            if (this.IsPreview)
+                this.PlannedAutoFitConcepts++;
+            else
+                this.AppliedAutoFitConcepts++;
+        }
+
+        public void CountAutoFitConceptSkipped()
+        {
+            this.SkippedAutoFitConcepts++;
+        }
+
         public void AddAffectedView(string viewName)
         {
             if (String.IsNullOrEmpty(viewName) || this.AffectedViewNames.Contains(viewName))
@@ -207,6 +224,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.PlannedVisualsSkipped = preview.PlannedVisualsSkipped;
             this.PlannedRepairedRelationships = preview.PlannedRepairedRelationships;
             this.PlannedRepairedRecursiveVisuals = preview.PlannedRepairedRecursiveVisuals;
+            this.PlannedAutoFitConcepts = preview.PlannedAutoFitConcepts;
         }
 
         public string ToSummaryString(bool IncludeWarnings)
@@ -220,6 +238,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Text.AppendLine("Recursive visuals repaired: " + (this.IsPreview ? this.PlannedRepairedRecursiveVisuals : this.AppliedRepairedRecursiveVisuals));
             Text.AppendLine("Visuals placed: " + (this.IsPreview ? this.PlannedVisualsPlaced : this.AppliedVisualsPlaced));
             Text.AppendLine("Visuals not placed: " + (this.IsPreview ? this.PlannedVisualsSkipped : this.AppliedVisualsSkipped));
+            Text.AppendLine("Concepts auto-fit: " + (this.IsPreview ? this.PlannedAutoFitConcepts : this.AppliedAutoFitConcepts));
+            Text.AppendLine("Concepts not auto-fit: " + this.SkippedAutoFitConcepts);
             Text.AppendLine("Warnings: " + this.Warnings.Count);
 
             if (!this.IsPreview && this.AffectedViewNames.Count > 0)
@@ -258,6 +278,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", repaired recursive visuals=" + this.PlannedRepairedRecursiveVisuals +
                    ", visuals placed=" + this.PlannedVisualsPlaced +
                    ", visuals skipped=" + this.PlannedVisualsSkipped +
+                   ", auto-fit concepts=" + this.PlannedAutoFitConcepts +
                    "; applied updated=" + this.AppliedUpdated +
                    ", created=" + this.AppliedCreated +
                    ", deleted=" + this.AppliedDeleted +
@@ -266,6 +287,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", repaired recursive visuals=" + this.AppliedRepairedRecursiveVisuals +
                    ", visuals placed=" + this.AppliedVisualsPlaced +
                    ", visuals skipped=" + this.AppliedVisualsSkipped +
+                   ", auto-fit concepts=" + this.AppliedAutoFitConcepts +
+                   ", auto-fit skipped=" + this.SkippedAutoFitConcepts +
                    "; warnings=" + this.Warnings.Count +
                    ", errors=" + this.Errors.Count;
         }

@@ -98,6 +98,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Obj = NewObject();
             AddIf(Obj, "autoPlaceNewItems", ImportOptions.AutoPlaceNewItems);
+            AddIf(Obj, "autoFitPlacedConcepts", ImportOptions.AutoFitPlacedConcepts);
             AddIf(Obj, "layoutMode", ImportOptions.LayoutMode);
             AddIf(Obj, "preventSelfRecursiveCompositeViews", ImportOptions.PreventSelfRecursiveCompositeViews);
             AddIf(Obj, "repairRecursiveVisuals", ImportOptions.RepairRecursiveVisuals);
@@ -312,6 +313,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "width", Operation.Width);
             AddIf(Obj, "height", Operation.Height);
             AddIf(Obj, "autoPlace", Operation.AutoPlace);
+            AddIf(Obj, "autoFit", Operation.AutoFit);
             Add(Obj, "originIdeaIds", Operation.OriginIdeaIds ?? new List<string>());
             Add(Obj, "originIdeaTechNames", Operation.OriginIdeaTechNames ?? new List<string>());
             Add(Obj, "targetIdeaIds", Operation.TargetIdeaIds ?? new List<string>());
@@ -328,6 +330,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Result = new CompositionJsonImportOptions();
             Result.AutoPlaceNewItems = GetNullableBool(Source, "autoPlaceNewItems");
+            Result.AutoFitPlacedConcepts = GetNullableBool(Source, "autoFitPlacedConcepts");
             Result.LayoutMode = GetString(Source, "layoutMode");
             Result.PreventSelfRecursiveCompositeViews = GetNullableBool(Source, "preventSelfRecursiveCompositeViews");
             Result.RepairRecursiveVisuals = GetNullableBool(Source, "repairRecursiveVisuals");
@@ -545,6 +548,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Width = GetNullableDouble(Source, "width");
             Result.Height = GetNullableDouble(Source, "height");
             Result.AutoPlace = GetNullableBool(Source, "autoPlace");
+            Result.AutoFit = GetNullableBool(Source, "autoFit");
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
             Result.OriginIdeaTechNames = ReadStringList(Source, "originIdeaTechNames");
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");

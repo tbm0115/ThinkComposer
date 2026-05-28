@@ -41,6 +41,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
     public class CompositionJsonImportOptions
     {
         public bool? AutoPlaceNewItems { get; set; }
+        public bool? AutoFitPlacedConcepts { get; set; }
         public string LayoutMode { get; set; }
         public bool? PreventSelfRecursiveCompositeViews { get; set; }
         public bool? RepairRecursiveVisuals { get; set; }
@@ -275,6 +276,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public double? Width { get; set; }
         public double? Height { get; set; }
         public bool? AutoPlace { get; set; }
+        public bool? AutoFit { get; set; }
         public List<string> OriginIdeaIds { get; set; }
         public List<string> OriginIdeaTechNames { get; set; }
         public List<string> TargetIdeaIds { get; set; }

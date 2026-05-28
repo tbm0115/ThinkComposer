@@ -36,7 +36,9 @@ These commands are intentionally disabled until their layout algorithms are impl
 
 ## JSON Import Relationship
 
-The auto-fit service and `LayoutSelectionContext` are UI-independent enough to be reused later by JSON import layout passes. JSON import can use the same measurement and visible-graph context instead of carrying a separate diagram layout implementation.
+JSON import now uses the same auto-fit service for concept visuals created or newly placed during import when `importOptions.autoFitPlacedConcepts` is omitted or true. A patch operation can override this with `autoFit: false`, or can force fitting for an updated existing concept with `autoFit: true`.
+
+The auto-fit service and `LayoutSelectionContext` remain UI-independent enough for future JSON import layout passes and manual layout tools to share the same measurement and visible-graph behavior.
 
 ## Manual Regression
 

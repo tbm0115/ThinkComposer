@@ -137,6 +137,10 @@
           "type": "boolean",
           "description": "When true or omitted by the importer, created concepts and relationships are placed in a suitable view when no explicit placement is supplied."
         },
+        "autoFitPlacedConcepts": {
+          "type": "boolean",
+          "description": "When true or omitted by the importer, newly created or newly placed concept visuals are resized to fit their visible text using the same ConceptAutoFitService as Edit > Appearance > Fit Concept Width to Text."
+        },
         "layoutMode": {
           "type": "string",
           "enum": [
@@ -828,6 +832,10 @@
           "type": "boolean",
           "description": "For create operations, overrides importOptions.autoPlaceNewItems for this item."
         },
+        "autoFit": {
+          "type": "boolean",
+          "description": "Overrides importOptions.autoFitPlacedConcepts for this operation. Set true to auto-fit an updated existing concept even when it is not newly placed; set false to keep a newly placed concept's supplied/default width."
+        },
         "originIdeaIds": {
           "type": "array",
           "description": "Relationship origin endpoints at operation top level. Top-level fields are preferred over set.* fields.",
@@ -1104,6 +1112,10 @@
         "autoPlace": {
           "type": "boolean"
         },
+        "autoFit": {
+          "type": "boolean",
+          "description": "Accepted inside set for GPT-authored patches, but top-level autoFit is preferred."
+        },
         "delete": {
           "type": "boolean"
         }
@@ -1150,6 +1162,7 @@
       "formatVersion": 1,
       "importOptions": {
         "autoPlaceNewItems": true,
+        "autoFitPlacedConcepts": true,
         "layoutMode": "gridNearViewport",
         "preventSelfRecursiveCompositeViews": true,
         "repairRecursiveVisuals": true

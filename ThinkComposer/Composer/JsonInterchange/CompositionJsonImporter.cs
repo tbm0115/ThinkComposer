@@ -16,6 +16,7 @@ using Instrumind.Common.EntityDefinition;
 using Instrumind.Common.Visualization;
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
+using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -37,6 +38,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly Dictionary<View, List<VisualObject>> ImportedVisualObjects = new Dictionary<View, List<VisualObject>>();
         private string LastOperationOutcome = null;
         private bool AutoPlaceNewItems = true;
+        private bool AutoFitPlacedConcepts = true;
         private bool PreventSelfRecursiveCompositeViews = true;
         private bool RepairRecursiveVisuals = true;
         private string LayoutMode = "gridNearViewport";
@@ -179,6 +181,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.AutoPlaceNewItems = Document.ImportOptions == null ||
                                      Document.ImportOptions.AutoPlaceNewItems == null ||
                                      Document.ImportOptions.AutoPlaceNewItems.Value;
+            this.AutoFitPlacedConcepts = Document.ImportOptions == null ||
+                                         Document.ImportOptions.AutoFitPlacedConcepts == null ||
+                                         Document.ImportOptions.AutoFitPlacedConcepts.Value;
             this.PreventSelfRecursiveCompositeViews = Document.ImportOptions == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value;
@@ -187,6 +192,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                           Document.ImportOptions.RepairRecursiveVisuals.Value;
             this.LayoutMode = NormalizeLayoutMode(Document.ImportOptions == null ? null : Document.ImportOptions.LayoutMode);
             this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
+                            ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
                             ", layoutMode=" + this.LayoutMode +
                             ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
                             ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
@@ -957,6 +963,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var BeforeSkipped = this.Report.Skipped;
             var BeforeVisualsPlaced = this.IsPreview ? this.Report.PlannedVisualsPlaced : this.Report.AppliedVisualsPlaced;
             var BeforeVisualsSkipped = this.IsPreview ? this.Report.PlannedVisualsSkipped : this.Report.AppliedVisualsSkipped;
+            var BeforeAutoFit = this.IsPreview ? this.Report.PlannedAutoFitConcepts : this.Report.AppliedAutoFitConcepts;
+            var BeforeAutoFitSkipped = this.Report.SkippedAutoFitConcepts;
 
             var Op = Operation.Op.NullDefault("").ToLowerInvariant();
             var Entity = Operation.Entity.NullDefault("").ToLowerInvariant();
@@ -977,7 +985,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.LastOperationOutcome == null)
                 this.LastOperationOutcome = InferOperationOutcome(BeforeUpdated, BeforeCreated, BeforeDeleted, BeforeSkipped,
-                                                                  BeforeVisualsPlaced, BeforeVisualsSkipped);
+                                                                  BeforeVisualsPlaced, BeforeVisualsSkipped,
+                                                                  BeforeAutoFit, BeforeAutoFitSkipped);
 
             this.Report.Log(FormatOperationPrefix() + Summary + " -> " + this.LastOperationOutcome);
         }
@@ -1004,7 +1013,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 var Changed = ApplySetToFormal(Concept, Operation.Set);
                 CountUpdated(Changed);
-                SetOperationOutcome((Changed ? Verb("update") : "no editable changes needed") + " matched " + DescribeTarget(Concept));
+                var AutoFitChanged = AutoFitExistingConceptIfRequested(Concept, Operation, "operation autoFit=true");
+                SetOperationOutcome((Changed ? Verb("update") : (AutoFitChanged ? Verb("concept auto-fit") : "no editable changes needed")) +
+                                    " matched " + DescribeTarget(Concept));
                 return;
             }
 
@@ -1055,6 +1066,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     Skip("Cannot create concept '" + Describe(Operation.Id, SourceTechName) + "' because a matching concept already exists. Use op:update to edit it.");
                     if (ShouldPlaceCreatedItem(Operation))
                         PlaceIdeaVisual(Existing, Operation, false);
+                    else
+                        AutoFitExistingConceptIfRequested(Existing, Operation, "matching existing concept autoFit=true");
                     return;
                 }
 
@@ -1073,7 +1086,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     PlanCreatedConceptVisual(Source, Operation);
                 else
                     if (Created != null)
+                    {
                         PlaceIdeaVisual(Created, Operation, false);
+                        if (!ShouldPlaceCreatedItem(Operation))
+                            SkipAutoFitForConcept(Created.TechName, null, "no visual representation was created for auto-fit", IsAutoFitExplicitlyEnabled(Operation));
+                    }
                 return;
             }
 
@@ -1251,7 +1268,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void PlanCreatedConceptVisual(CompositionJsonIdea Source, CompositionJsonOperation Operation)
         {
             if (!ShouldPlaceCreatedItem(Operation))
+            {
+                SkipAutoFitForConcept(Source.TechName, null, "no visual representation is planned for auto-fit", IsAutoFitExplicitlyEnabled(Operation));
                 return;
+            }
 
             var Definition = FindConceptDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
             var Container = Definition == null ? null : ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
@@ -1273,6 +1293,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Height = GetOperationDouble(Operation, "height") ?? GetConceptDefaultHeight(Definition);
             var Center = ResolvePlacementCenter(View, Operation, Width, Height, null);
             CountAndLogVisualPlaced("planned", "concept", Source.TechName, View, Center, Width, Height);
+            PlanAutoFitForConcept(Source.TechName, View, Operation, true, "new concept visual");
         }
 
         private void PlanCreatedRelationshipVisual(CompositionJsonRelationship Source, CompositionJsonOperation Operation)
@@ -1370,19 +1391,27 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (this.IsPreview)
             {
                 if (Existing == null || HasExplicitGeometry(Operation) || IsExplicitPlaceOperation)
+                {
                     CountAndLogVisualPlaced("planned", "concept", Concept.TechName, View, Center, Width, Height);
+                    PlanAutoFitForConcept(Concept.TechName, View, Operation, Existing == null, Existing == null ? "new concept visual" : "explicit concept placement/update");
+                }
                 else
+                {
+                    PlanAutoFitForConcept(Concept.TechName, View, Operation, false, "existing concept visual");
                     this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
+                }
                 return;
             }
 
             var Changed = false;
+            var CreatedVisualRepresentation = false;
             ConceptVisualRepresentation TargetRepresentation = Existing;
             if (TargetRepresentation == null)
             {
                 var AsShortcut = Concept.OwnerContainer != View.OwnerCompositeContainer;
                 TargetRepresentation = ConceptCreationCommand.CreateConceptVisualRepresentation(Concept, View, Center, AsShortcut, true, Width, Height);
                 Changed = true;
+                CreatedVisualRepresentation = true;
             }
             else
             {
@@ -1399,6 +1428,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 EnsureRepresentationViewChildren(TargetRepresentation);
                 var Symbol = TargetRepresentation.MainSymbol;
                 CountAndLogVisualPlaced("applied", "concept", Concept.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                AutoFitPlacedConceptIfNeeded(Concept, Symbol, Operation, CreatedVisualRepresentation, CreatedVisualRepresentation ? "new concept visual" : "explicit concept placement/update");
                 View.UpdateVersion();
             }
             else
@@ -1406,10 +1436,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 {
                     var Symbol = TargetRepresentation.MainSymbol;
                     CountAndLogVisualPlaced("applied", "concept", Concept.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                    AutoFitPlacedConceptIfNeeded(Concept, Symbol, Operation, true, "restored concept view child");
                     View.UpdateVersion();
                 }
             else
+            {
+                AutoFitPlacedConceptIfNeeded(Concept, TargetRepresentation == null ? null : TargetRepresentation.MainSymbol, Operation, false, "existing concept visual");
                 this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
+            }
         }
 
         private void PlaceRelationshipVisual(Relationship Relationship, View View, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
@@ -1898,6 +1932,168 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             " y=" + (Center.Y - Height / 2.0).ToString("0.###", CultureInfo.InvariantCulture) +
                             " width=" + Width.ToString("0.###", CultureInfo.InvariantCulture) +
                             " height=" + Height.ToString("0.###", CultureInfo.InvariantCulture) + ".");
+        }
+
+        private bool AutoFitExistingConceptIfRequested(Concept Concept, CompositionJsonOperation Operation, string Reason)
+        {
+            if (!IsAutoFitExplicitlyEnabled(Operation))
+                return false;
+
+            var Symbols = Concept == null
+                          ? new List<VisualSymbol>()
+                          : Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
+                                   .Where(Representation => Representation.MainSymbol != null)
+                                   .Select(Representation => Representation.MainSymbol)
+                                   .ToList();
+
+            if (Symbols.Count < 1)
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName, null,
+                                      "autoFit=true was requested, but the concept has no visual symbols", true);
+                return false;
+            }
+
+            var Changed = false;
+            foreach (var Symbol in Symbols)
+            {
+                if (this.IsPreview)
+                {
+                    PlanAutoFitForConcept(Concept.TechName, Symbol.GetDisplayingView(), Operation, false, Reason);
+                    Changed = true;
+                }
+                else
+                    Changed = AutoFitConceptSymbol(Concept, Symbol, Reason) || Changed;
+            }
+
+            return Changed;
+        }
+
+        private void PlanAutoFitForConcept(string TechName, View View, CompositionJsonOperation Operation, bool CreatedNewVisual, string Reason)
+        {
+            var AutoFit = GetOperationAutoFit(Operation);
+            if (AutoFit != null && !AutoFit.Value)
+            {
+                SkipAutoFitForConcept(TechName, View, "operation autoFit=false", true);
+                return;
+            }
+
+            if (!CreatedNewVisual && AutoFit != true)
+                return;
+
+            if (AutoFit == true || this.AutoFitPlacedConcepts)
+            {
+                this.Report.CountAutoFitConcept();
+                this.Report.Log(FormatOperationPrefix() + "planned concept auto-fit techName=" + TechName.ToStringAlways() +
+                                " view=" + DescribeView(View) +
+                                " reason=" + Reason.ToStringAlways() + ".");
+            }
+            else
+                SkipAutoFitForConcept(TechName, View, "importOptions.autoFitPlacedConcepts=false", true);
+        }
+
+        private void AutoFitPlacedConceptIfNeeded(Concept Concept, VisualSymbol Symbol, CompositionJsonOperation Operation, bool CreatedNewVisual, string Reason)
+        {
+            var AutoFit = GetOperationAutoFit(Operation);
+            if (AutoFit != null && !AutoFit.Value)
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName,
+                                      Symbol == null ? null : Symbol.GetDisplayingView(),
+                                      "operation autoFit=false", true);
+                return;
+            }
+
+            if (!CreatedNewVisual && AutoFit != true)
+                return;
+
+            if (!(AutoFit == true || this.AutoFitPlacedConcepts))
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName,
+                                      Symbol == null ? null : Symbol.GetDisplayingView(),
+                                      "importOptions.autoFitPlacedConcepts=false", true);
+                return;
+            }
+
+            if (Symbol == null)
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName, null,
+                                      "no visual symbol was available for auto-fit", true);
+                return;
+            }
+
+            AutoFitConceptSymbol(Concept, Symbol, Reason);
+        }
+
+        private bool AutoFitConceptSymbol(Concept Concept, VisualSymbol Symbol, string Reason)
+        {
+            if (Symbol == null)
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName, null,
+                                      "no visual symbol was available for auto-fit", true);
+                return false;
+            }
+
+            var View = Symbol.GetDisplayingView();
+            var OldWidth = Symbol.BaseWidth;
+            this.Report.Log(FormatOperationPrefix() + "applying concept auto-fit techName=" +
+                            (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
+                            " view=" + DescribeView(View) +
+                            " oldWidth=" + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) +
+                            " reason=" + Reason.ToStringAlways() + ".");
+
+            var Result = ConceptAutoFitService.FitSingleConceptWidth(this.Engine, Symbol, "JSON import " + Reason.ToStringAlways());
+            var NewWidth = Symbol.BaseWidth;
+
+            if (Result.SymbolsFitted > 0)
+            {
+                this.Report.CountAutoFitConcept();
+                MarkAffectedView(View, Symbol);
+                this.Report.Log(FormatOperationPrefix() + "applied concept auto-fit techName=" +
+                                (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
+                                " view=" + DescribeView(View) +
+                                " width " + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) +
+                                " -> " + NewWidth.ToString("0.###", CultureInfo.InvariantCulture) + ".");
+                return true;
+            }
+
+            if (Result.SymbolsSkipped > 0)
+            {
+                this.Report.CountAutoFitConceptSkipped();
+                this.Report.Log(FormatOperationPrefix() + "skipped concept auto-fit techName=" +
+                                (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
+                                " view=" + DescribeView(View) +
+                                " width=" + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) + ".");
+            }
+
+            foreach (var Warning in Result.Warnings)
+                this.Report.Warn("Auto-fit warning for concept '" +
+                                 (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
+                                 "': " + Warning);
+
+            return false;
+        }
+
+        private bool? GetOperationAutoFit(CompositionJsonOperation Operation)
+        {
+            if (Operation == null)
+                return null;
+
+            return Operation.AutoFit ?? GetSetBool(Operation.Set, "autoFit");
+        }
+
+        private bool IsAutoFitExplicitlyEnabled(CompositionJsonOperation Operation)
+        {
+            var AutoFit = GetOperationAutoFit(Operation);
+            return AutoFit != null && AutoFit.Value;
+        }
+
+        private void SkipAutoFitForConcept(string TechName, View View, string Reason, bool Count)
+        {
+            if (Count)
+                this.Report.CountAutoFitConceptSkipped();
+
+            this.Report.Log(FormatOperationPrefix() + "skipped concept auto-fit techName=" + TechName.ToStringAlways() +
+                            " view=" + DescribeView(View) +
+                            " reason=" + Reason.ToStringAlways() + ".");
         }
 
         private void MarkAffectedView(View View, VisualObject ImportedObject)
@@ -2400,7 +2596,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         }
 
         private string InferOperationOutcome(int BeforeUpdated, int BeforeCreated, int BeforeDeleted, int BeforeSkipped,
-                                             int BeforeVisualsPlaced, int BeforeVisualsSkipped)
+                                             int BeforeVisualsPlaced, int BeforeVisualsSkipped,
+                                             int BeforeAutoFit, int BeforeAutoFitSkipped)
         {
             if (this.Report.Skipped > BeforeSkipped)
                 return "skipped";
@@ -2412,6 +2609,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var VisualsSkipped = this.IsPreview ? this.Report.PlannedVisualsSkipped : this.Report.AppliedVisualsSkipped;
             if (VisualsSkipped > BeforeVisualsSkipped)
                 return "visual placement skipped";
+
+            var AutoFits = this.IsPreview ? this.Report.PlannedAutoFitConcepts : this.Report.AppliedAutoFitConcepts;
+            if (AutoFits > BeforeAutoFit)
+                return Verb("concept auto-fit");
+
+            if (this.Report.SkippedAutoFitConcepts > BeforeAutoFitSkipped)
+                return "concept auto-fit skipped";
 
             if (this.Report.Created > BeforeCreated)
                 return Verb("create");
@@ -2485,6 +2689,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var AutoPlace = Operation.AutoPlace ?? GetSetBool(Operation.Set, "autoPlace");
             if (AutoPlace != null)
                 Parts.Add("autoPlace=" + (AutoPlace.Value ? "true" : "false"));
+
+            var AutoFit = GetOperationAutoFit(Operation);
+            if (AutoFit != null)
+                Parts.Add("autoFit=" + (AutoFit.Value ? "true" : "false"));
 
             if (Operation.OriginIdeaIds != null && Operation.OriginIdeaIds.Count > 0)
                 Parts.Add("origins=" + Operation.OriginIdeaIds.Count.ToString(CultureInfo.InvariantCulture));

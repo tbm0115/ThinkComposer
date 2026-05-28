@@ -4,6 +4,7 @@
   "application": "ThinkComposer",
   "importOptions": {
     "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
     "layoutMode": "gridNearViewport",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -20,6 +21,7 @@
       "op": "update",
       "entity": "concept",
       "techName": "TAMS_MTConnect_Deployment_Manager",
+      "autoFit": true,
       "set": {
         "summary": "Updated by JSON patch import. Replace this techName with an existing concept in the active composition."
       }
@@ -31,6 +33,7 @@
       "definitionTechName": "Process",
       "containerTechName": "Deployment_Manager_Web_App",
       "viewTechName": "Main",
+      "autoFit": false,
       "x": 100.0,
       "y": 200.0,
       "width": 180.0,

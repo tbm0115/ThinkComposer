@@ -90,6 +90,7 @@ Full-state import updates matching objects by `id` first. If `id` is absent, it 
   "formatVersion": 1,
   "importOptions": {
     "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
     "layoutMode": "gridNearViewport",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -207,19 +208,22 @@ The importer will not place a concept inside its own composite view. It also wil
 
 Set `"autoPlace": false` on a single create operation, or `"importOptions": { "autoPlaceNewItems": false }` at the top level, to create model objects without automatic visual placement.
 
+Concept visuals created or newly placed during import are auto-fitted to their visible text by default. This uses the same `ConceptAutoFitService` as `Edit -> Appearance -> Fit Concept Width to Text`, so connector refresh and undo/redo behavior match the manual command. Existing concepts that are only text-updated are not resized unless their operation explicitly includes `"autoFit": true`. Use `"autoFit": false` on a create or place operation to keep the supplied/default width for that operation.
+
 Layout options:
 
 - `gridNearViewport` is the default. It places the batch near the visible center when the view is open, otherwise near the normal content cluster or `100,100` for an empty/outlier-only view.
 - `gridNearContainer` keeps the batch near the existing cluster for the target composite/container view.
 - `gridAfterExistingContent` uses the older behavior of placing the batch after existing non-outlier content.
 - `none` disables automatic placement unless an operation supplies explicit placement fields.
+- `autoFitPlacedConcepts` defaults to true. It fits newly created or newly placed concept symbols to text during import without resizing every existing concept in the view.
 - `preventSelfRecursiveCompositeViews` defaults to true and blocks self-recursive owner-in-own-view placements.
 - `repairRecursiveVisuals` defaults to true and removes previously imported self-recursive visuals during JSON import/re-import.
 
 GPT prompt example:
 
 ```text
-Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Also include viewTechName plus x/y/width/height for important new concepts, and add place operations for relationships so the new model items are visible in the intended view. Do not delete anything unless I explicitly request it.
+Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Also include viewTechName plus x/y/width/height for important new concepts, and add place operations for relationships so the new model items are visible in the intended view. Leave importOptions.autoFitPlacedConcepts true so new concept labels fit their text; use operation autoFit:false only when I provide a deliberate width. Do not delete anything unless I explicitly request it.
 ```
 
 Additional sample files are available at `samples/json-interchange-patch.sample.json` and `samples/json-interchange-regression.sample.json`.

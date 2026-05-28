@@ -8,11 +8,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Windows;
 
 using Instrumind.Common;
 using Instrumind.Common.EntityBase;
 using Instrumind.Common.EntityDefinition;
 using Instrumind.Common.Visualization;
+using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -29,7 +32,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly CompositionEngine Engine;
         private readonly bool IsPreview;
         private readonly CompositionJsonImportReport Report;
+        private readonly Dictionary<View, int> AutoPlacementIndexes = new Dictionary<View, int>();
         private string LastOperationOutcome = null;
+        private bool AutoPlaceNewItems = true;
 
         private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview)
         {
@@ -129,6 +134,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyDocument(CompositionJsonDocument Document)
         {
+            this.AutoPlaceNewItems = Document.ImportOptions == null ||
+                                     Document.ImportOptions.AutoPlaceNewItems == null ||
+                                     Document.ImportOptions.AutoPlaceNewItems.Value;
+            this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") + ".");
+
             if (Document.Warnings != null)
                 foreach (var Warning in Document.Warnings)
                     this.Report.Warn("Export warning preserved from JSON: " + Warning.ToStringAlways());
@@ -233,32 +243,32 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return IsNew || String.IsNullOrEmpty(Id);
         }
 
-        private void CreateConcept(CompositionJsonIdea Source)
+        private Concept CreateConcept(CompositionJsonIdea Source)
         {
             var Definition = FindConceptDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
             if (Definition == null)
             {
                 Skip("Cannot create concept '" + Source.Name.ToStringAlways() + "' because definition '" + Source.DefinitionTechName.ToStringAlways() + "' was not found.");
-                return;
+                return null;
             }
 
             var Container = ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
             if (Container == null)
             {
                 Skip("Cannot create concept '" + Source.Name.ToStringAlways() + "' because its container was not found or is not safe.");
-                return;
+                return null;
             }
 
             if (String.IsNullOrEmpty(Source.Name))
             {
                 Skip("Cannot create concept because name is missing.");
-                return;
+                return null;
             }
 
             if (this.IsPreview)
             {
                 this.Report.CountCreated();
-                return;
+                return null;
             }
 
             var Concept = new Concept(this.Composition, Definition, Source.Name, Source.TechName.NullDefault(Source.Name.TextToIdentifier()), Source.Summary.NullDefault(""));
@@ -272,35 +282,37 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             ApplyMarkers(Concept, Source.Markers);
             ApplyDetails(Concept, Source.Details);
+
+            return Concept;
         }
 
-        private void CreateRelationship(CompositionJsonRelationship Source)
+        private Relationship CreateRelationship(CompositionJsonRelationship Source)
         {
             var Definition = FindRelationshipDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
             if (Definition == null)
             {
                 Skip("Cannot create relationship '" + Source.Name.ToStringAlways() + "' because definition '" + Source.DefinitionTechName.ToStringAlways() + "' was not found.");
-                return;
+                return null;
             }
 
             var Container = ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
             if (Container == null)
             {
                 Skip("Cannot create relationship '" + Source.Name.ToStringAlways() + "' because its container was not found or is not safe.");
-                return;
+                return null;
             }
 
             var Name = Source.Name.NullDefault(Definition.Name);
             if (String.IsNullOrEmpty(Name))
             {
                 Skip("Cannot create relationship because name is missing.");
-                return;
+                return null;
             }
 
             if (this.IsPreview)
             {
                 this.Report.CountCreated();
-                return;
+                return null;
             }
 
             var Relationship = new Relationship(this.Composition, Definition, Name, Source.TechName.NullDefault(Name.TextToIdentifier()), Source.Summary.NullDefault(""));
@@ -315,6 +327,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             ApplyRelationshipLinks(Relationship, Source);
             ApplyMarkers(Relationship, Source.Markers);
             ApplyDetails(Relationship, Source.Details);
+
+            return Relationship;
         }
 
         private void ApplyRelationshipLinks(Relationship Relationship, CompositionJsonRelationship Source)
@@ -669,6 +683,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var BeforeCreated = this.Report.Created;
             var BeforeDeleted = this.Report.Deleted;
             var BeforeSkipped = this.Report.Skipped;
+            var BeforeVisualsPlaced = this.IsPreview ? this.Report.PlannedVisualsPlaced : this.Report.AppliedVisualsPlaced;
+            var BeforeVisualsSkipped = this.IsPreview ? this.Report.PlannedVisualsSkipped : this.Report.AppliedVisualsSkipped;
 
             var Op = Operation.Op.NullDefault("").ToLowerInvariant();
             var Entity = Operation.Entity.NullDefault("").ToLowerInvariant();
@@ -682,10 +698,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     if (Op == "delete")
                         ApplyDeleteOperation(Entity, Operation);
                     else
-                        Skip("Unsupported operation op '" + Operation.Op.ToStringAlways() + "'.");
+                        if (Op == "place")
+                            ApplyPlaceOperation(Entity, Operation);
+                        else
+                            Skip("Unsupported operation op '" + Operation.Op.ToStringAlways() + "'.");
 
             if (this.LastOperationOutcome == null)
-                this.LastOperationOutcome = InferOperationOutcome(BeforeUpdated, BeforeCreated, BeforeDeleted, BeforeSkipped);
+                this.LastOperationOutcome = InferOperationOutcome(BeforeUpdated, BeforeCreated, BeforeDeleted, BeforeSkipped,
+                                                                  BeforeVisualsPlaced, BeforeVisualsSkipped);
 
             this.Report.Log(FormatOperationPrefix() + Summary + " -> " + this.LastOperationOutcome);
         }
@@ -761,6 +781,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 {
                     SetOperationOutcome("skipped: matching concept already exists " + DescribeTarget(Existing));
                     Skip("Cannot create concept '" + Describe(Operation.Id, SourceTechName) + "' because a matching concept already exists. Use op:update to edit it.");
+                    if (ShouldPlaceCreatedItem(Operation))
+                        PlaceIdeaVisual(Existing, Operation, false);
                     return;
                 }
 
@@ -773,7 +795,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
                 Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
                 Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
-                CreateConcept(Source);
+                var BeforeCreated = this.Report.Created;
+                var Created = CreateConcept(Source);
+                if (this.IsPreview && this.Report.Created > BeforeCreated)
+                    PlanCreatedConceptVisual(Source, Operation);
+                else
+                    if (Created != null)
+                        PlaceIdeaVisual(Created, Operation, false);
                 return;
             }
 
@@ -785,6 +813,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 {
                     SetOperationOutcome("skipped: matching relationship already exists " + DescribeTarget(Existing));
                     Skip("Cannot create relationship '" + Describe(Operation.Id, SourceTechName) + "' because a matching relationship already exists. Use op:update to edit it.");
+                    if (ShouldPlaceCreatedItem(Operation))
+                        PlaceIdeaVisual(Existing, Operation, false);
                     return;
                 }
 
@@ -800,7 +830,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.OriginIdeaIds = Operation.OriginIdeaIds;
                 Source.TargetIdeaIds = Operation.TargetIdeaIds;
                 Source.Links = Operation.Links;
-                CreateRelationship(Source);
+                var BeforeCreated = this.Report.Created;
+                var Created = CreateRelationship(Source);
+                if (this.IsPreview && this.Report.Created > BeforeCreated)
+                    PlanCreatedRelationshipVisual(Source, Operation);
+                else
+                    if (Created != null)
+                        PlaceIdeaVisual(Created, Operation, false);
                 return;
             }
 
@@ -832,6 +868,473 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             Skip("Delete operation for entity '" + Entity + "' is not supported.");
+        }
+
+        private void ApplyPlaceOperation(string Entity, CompositionJsonOperation Operation)
+        {
+            if (Entity == "concept")
+            {
+                var Concept = FindConcept(Operation.Id, Operation.TechName.NullDefault(GetSetString(Operation.Set, "techName")));
+                if (Concept == null)
+                {
+                    SkipPlaceOperation("Cannot place concept '" + Describe(Operation.Id, Operation.TechName) + "' because it was not found.");
+                    return;
+                }
+
+                PlaceIdeaVisual(Concept, Operation, true);
+                return;
+            }
+
+            if (Entity == "relationship")
+            {
+                var Relationship = FindRelationship(Operation.Id, Operation.TechName.NullDefault(GetSetString(Operation.Set, "techName")));
+                if (Relationship == null)
+                {
+                    SkipPlaceOperation("Cannot place relationship '" + Describe(Operation.Id, Operation.TechName) + "' because it was not found.");
+                    return;
+                }
+
+                PlaceIdeaVisual(Relationship, Operation, true);
+                return;
+            }
+
+            Skip("Place operation for entity '" + Entity + "' is not supported.");
+        }
+
+        private void PlanCreatedConceptVisual(CompositionJsonIdea Source, CompositionJsonOperation Operation)
+        {
+            if (!ShouldPlaceCreatedItem(Operation))
+                return;
+
+            var Definition = FindConceptDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
+            var Container = Definition == null ? null : ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
+            if (Container == null)
+            {
+                SkipVisualPlacement("Cannot plan visual placement for concept '" + Source.TechName.ToStringAlways() + "' because its container could not be resolved.");
+                return;
+            }
+
+            string Reason;
+            var View = ResolvePlacementView(Container, Operation, true, out Reason);
+            if (View == null)
+            {
+                SkipVisualPlacement(Reason);
+                return;
+            }
+
+            var Width = GetOperationDouble(Operation, "width") ?? GetConceptDefaultWidth(Definition);
+            var Height = GetOperationDouble(Operation, "height") ?? GetConceptDefaultHeight(Definition);
+            var Center = ResolvePlacementCenter(View, Operation, Width, Height, null);
+            CountAndLogVisualPlaced("planned", "concept", Source.TechName, View, Center, Width, Height);
+        }
+
+        private void PlanCreatedRelationshipVisual(CompositionJsonRelationship Source, CompositionJsonOperation Operation)
+        {
+            if (!ShouldPlaceCreatedItem(Operation))
+                return;
+
+            var Definition = FindRelationshipDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
+            var Container = Definition == null ? null : ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
+            if (Container == null)
+            {
+                SkipVisualPlacement("Cannot plan visual placement for relationship '" + Source.TechName.ToStringAlways() + "' because its container could not be resolved.");
+                return;
+            }
+
+            string Reason;
+            var View = ResolvePlacementView(Container, Operation, true, out Reason);
+            if (View == null)
+            {
+                SkipVisualPlacement(Reason);
+                return;
+            }
+
+            var Width = GetOperationDouble(Operation, "width") ?? GetRelationshipDefaultWidth(Definition);
+            var Height = GetOperationDouble(Operation, "height") ?? GetRelationshipDefaultHeight(Definition);
+            var Center = ResolveRelationshipPlacementCenter(null, View, Operation, Width, Height, null);
+            CountAndLogVisualPlaced("planned", "relationship", Source.TechName, View, Center, Width, Height);
+        }
+
+        private void PlaceIdeaVisual(Idea Idea, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
+        {
+            if (Idea == null)
+                return;
+
+            if (!IsExplicitPlaceOperation && !ShouldPlaceCreatedItem(Operation))
+                return;
+
+            string Reason;
+            var View = ResolvePlacementView(Idea.OwnerContainer, Operation, IsExplicitPlaceOperation || ShouldPlaceCreatedItem(Operation), out Reason);
+            if (View == null)
+            {
+                if (IsExplicitPlaceOperation)
+                    SkipPlaceOperation(Reason);
+                else
+                    SkipVisualPlacement(Reason);
+                return;
+            }
+
+            var Concept = Idea as Concept;
+            if (Concept != null)
+            {
+                PlaceConceptVisual(Concept, View, Operation, IsExplicitPlaceOperation);
+                return;
+            }
+
+            var Relationship = Idea as Relationship;
+            if (Relationship != null)
+            {
+                PlaceRelationshipVisual(Relationship, View, Operation, IsExplicitPlaceOperation);
+                return;
+            }
+
+            SkipVisualPlacement("Cannot place idea '" + Idea.TechName.ToStringAlways() + "' because its type is not supported for JSON visual placement.");
+        }
+
+        private void PlaceConceptVisual(Concept Concept, View View, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
+        {
+            var Existing = Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
+                                  .FirstOrDefault(Representation => Representation.DisplayingView == View);
+            var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
+
+            var Width = GetOperationDouble(Operation, "width") ?? (ExistingSymbol == null ? GetConceptDefaultWidth(Concept.ConceptDefinitor.Value) : ExistingSymbol.BaseWidth);
+            var Height = GetOperationDouble(Operation, "height") ?? (ExistingSymbol == null ? GetConceptDefaultHeight(Concept.ConceptDefinitor.Value) : ExistingSymbol.BaseHeight);
+            var Center = ResolvePlacementCenter(View, Operation, Width, Height, ExistingSymbol);
+
+            if (this.IsPreview)
+            {
+                if (Existing == null || HasExplicitGeometry(Operation) || IsExplicitPlaceOperation)
+                    CountAndLogVisualPlaced("planned", "concept", Concept.TechName, View, Center, Width, Height);
+                else
+                    this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
+                return;
+            }
+
+            var Changed = false;
+            ConceptVisualRepresentation TargetRepresentation = Existing;
+            if (TargetRepresentation == null)
+            {
+                var AsShortcut = Concept.OwnerContainer != View.OwnerCompositeContainer;
+                TargetRepresentation = ConceptCreationCommand.CreateConceptVisualRepresentation(Concept, View, Center, AsShortcut, true, Width, Height);
+                Changed = true;
+            }
+            else
+            {
+                if (HasExplicitGeometry(Operation))
+                {
+                    TargetRepresentation.MainSymbol.ResizeTo(Width, Height);
+                    TargetRepresentation.MainSymbol.MoveTo(Center.X, Center.Y, true);
+                    Changed = true;
+                }
+            }
+
+            if (Changed)
+            {
+                var Symbol = TargetRepresentation.MainSymbol;
+                CountAndLogVisualPlaced("applied", "concept", Concept.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                View.UpdateVersion();
+            }
+            else
+                this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
+        }
+
+        private void PlaceRelationshipVisual(Relationship Relationship, View View, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
+        {
+            var Existing = Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
+                                      .FirstOrDefault(Representation => Representation.DisplayingView == View);
+            var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
+            var VisibleEndpointSymbols = GetVisibleRelationshipEndpointSymbols(Relationship, View).ToList();
+
+            if (Existing == null && VisibleEndpointSymbols.Count < 1 &&
+                Relationship.RelationshipDefinitor.Value.IsSimple &&
+                Relationship.RelationshipDefinitor.Value.HideCentralSymbolWhenSimple)
+            {
+                var Reason = "Cannot place relationship '" + Relationship.TechName + "' in " + DescribeView(View) +
+                             " because it hides its central symbol and none of its endpoints are visible in that view.";
+                if (IsExplicitPlaceOperation)
+                    SkipPlaceOperation(Reason);
+                else
+                    SkipVisualPlacement(Reason);
+                return;
+            }
+
+            var Width = GetOperationDouble(Operation, "width") ?? (ExistingSymbol == null ? GetRelationshipDefaultWidth(Relationship.RelationshipDefinitor.Value) : ExistingSymbol.BaseWidth);
+            var Height = GetOperationDouble(Operation, "height") ?? (ExistingSymbol == null ? GetRelationshipDefaultHeight(Relationship.RelationshipDefinitor.Value) : ExistingSymbol.BaseHeight);
+            var Center = ResolveRelationshipPlacementCenter(Relationship, View, Operation, Width, Height, ExistingSymbol);
+
+            if (this.IsPreview)
+            {
+                if (Existing == null || HasExplicitGeometry(Operation) || IsExplicitPlaceOperation)
+                    CountAndLogVisualPlaced("planned", "relationship", Relationship.TechName, View, Center, Width, Height);
+                else
+                    this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
+                return;
+            }
+
+            var Changed = false;
+            RelationshipVisualRepresentation TargetRepresentation = Existing;
+            if (TargetRepresentation == null)
+            {
+                var AsShortcut = Relationship.OwnerContainer != View.OwnerCompositeContainer;
+                TargetRepresentation = RelationshipCreationCommand.CreateRelationshipVisualRepresentation(Relationship, View, Center, AsShortcut);
+                Changed = true;
+            }
+
+            if (HasExplicitGeometry(Operation) && TargetRepresentation.MainSymbol != null)
+            {
+                TargetRepresentation.MainSymbol.ResizeTo(Width, Height);
+                TargetRepresentation.MainSymbol.MoveTo(Center.X, Center.Y, true);
+                Changed = true;
+            }
+
+            var ConnectorsAdded = EnsureRelationshipVisualConnectors(TargetRepresentation, View);
+            if (ConnectorsAdded > 0)
+                Changed = true;
+
+            if (Changed)
+            {
+                TargetRepresentation.Render();
+                var Symbol = TargetRepresentation.MainSymbol;
+                CountAndLogVisualPlaced("applied", "relationship", Relationship.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                View.UpdateVersion();
+            }
+            else
+                this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
+        }
+
+        private int EnsureRelationshipVisualConnectors(RelationshipVisualRepresentation Representation, View View)
+        {
+            var Added = 0;
+            foreach (var Link in Representation.RepresentedRelationship.Links)
+            {
+                if (Representation.VisualConnectors.Any(Connector => Connector.RepresentedLink == Link))
+                    continue;
+
+                var EndpointRepresentation = Link.AssociatedIdea.VisualRepresentators
+                                                 .FirstOrDefault(Visual => Visual.DisplayingView == View && Visual.MainSymbol != null);
+                if (EndpointRepresentation == null)
+                {
+                    this.Report.Warn("Relationship '" + Representation.RepresentedRelationship.TechName + "' connector for linked idea '" +
+                                     Link.AssociatedIdea.TechName + "' was not shown because the linked idea is not visible in " + DescribeView(View) + ".");
+                    continue;
+                }
+
+                VisualConnector NewConnector;
+                if (Link.RoleDefinitor.RoleType == ERoleType.Target)
+                    NewConnector = new VisualConnector(Representation, Link, Representation.MainSymbol, EndpointRepresentation.MainSymbol,
+                                                       Representation.MainSymbol.BaseCenter, EndpointRepresentation.MainSymbol.BaseCenter);
+                else
+                    NewConnector = new VisualConnector(Representation, Link, EndpointRepresentation.MainSymbol, Representation.MainSymbol,
+                                                       EndpointRepresentation.MainSymbol.BaseCenter, Representation.MainSymbol.BaseCenter);
+
+                Representation.AddVisualPart(NewConnector);
+                Added++;
+            }
+
+            return Added;
+        }
+
+        private bool ShouldPlaceCreatedItem(CompositionJsonOperation Operation)
+        {
+            if (Operation == null)
+                return false;
+
+            if (HasExplicitPlacement(Operation))
+                return true;
+
+            var AutoPlace = Operation.AutoPlace ?? GetSetBool(Operation.Set, "autoPlace");
+            return AutoPlace == null ? this.AutoPlaceNewItems : AutoPlace.Value;
+        }
+
+        private bool HasExplicitPlacement(CompositionJsonOperation Operation)
+        {
+            return Operation != null &&
+                   (!String.IsNullOrEmpty(Operation.ViewId) ||
+                    !String.IsNullOrEmpty(Operation.ViewTechName) ||
+                    !String.IsNullOrEmpty(GetSetString(Operation.Set, "viewId")) ||
+                    !String.IsNullOrEmpty(GetSetString(Operation.Set, "viewTechName")) ||
+                    HasExplicitGeometry(Operation));
+        }
+
+        private bool HasExplicitGeometry(CompositionJsonOperation Operation)
+        {
+            return Operation != null &&
+                   (GetOperationDouble(Operation, "x") != null ||
+                    GetOperationDouble(Operation, "y") != null ||
+                    GetOperationDouble(Operation, "width") != null ||
+                    GetOperationDouble(Operation, "height") != null);
+        }
+
+        private View ResolvePlacementView(Idea Container, CompositionJsonOperation Operation, bool AllowAuto, out string Reason)
+        {
+            Reason = null;
+            var ViewId = Operation == null ? null : Operation.ViewId.NullDefault(GetSetString(Operation.Set, "viewId"));
+            var ViewTechName = Operation == null ? null : Operation.ViewTechName.NullDefault(GetSetString(Operation.Set, "viewTechName"));
+
+            if (!String.IsNullOrEmpty(ViewId) || !String.IsNullOrEmpty(ViewTechName))
+            {
+                var ExplicitView = FindView(ViewId, ViewTechName);
+                if (ExplicitView == null)
+                    Reason = "Cannot resolve requested placement view '" + Describe(ViewId, ViewTechName) + "'.";
+                return ExplicitView;
+            }
+
+            if (!AllowAuto)
+                return null;
+
+            if (Container != null)
+            {
+                var ContainerView = Container.CompositeActiveView ?? Container.CompositeViews.FirstOrDefault();
+                if (ContainerView != null)
+                    return ContainerView;
+            }
+
+            if (this.Engine.CurrentView != null)
+                return this.Engine.CurrentView;
+
+            Reason = "Cannot place visual because no explicit view, container composite view, or active view is available.";
+            return null;
+        }
+
+        private Point ResolvePlacementCenter(View View, CompositionJsonOperation Operation, double Width, double Height, VisualSymbol ExistingSymbol)
+        {
+            var X = GetOperationDouble(Operation, "x");
+            var Y = GetOperationDouble(Operation, "y");
+            if (X != null || Y != null)
+            {
+                var Area = ExistingSymbol == null ? GetNextAutoPlacementArea(View, Width, Height) : ExistingSymbol.BaseArea;
+                var Left = X == null ? Area.Left : X.Value;
+                var Top = Y == null ? Area.Top : Y.Value;
+                return new Point(Left + Width / 2.0, Top + Height / 2.0);
+            }
+
+            if (ExistingSymbol != null)
+                return ExistingSymbol.BaseCenter;
+
+            var AutoArea = GetNextAutoPlacementArea(View, Width, Height);
+            return new Point(AutoArea.Left + AutoArea.Width / 2.0, AutoArea.Top + AutoArea.Height / 2.0);
+        }
+
+        private Point ResolveRelationshipPlacementCenter(Relationship Relationship, View View, CompositionJsonOperation Operation, double Width, double Height, VisualSymbol ExistingSymbol)
+        {
+            if (GetOperationDouble(Operation, "x") != null || GetOperationDouble(Operation, "y") != null || ExistingSymbol != null)
+                return ResolvePlacementCenter(View, Operation, Width, Height, ExistingSymbol);
+
+            if (Relationship != null)
+            {
+                var EndpointSymbols = GetVisibleRelationshipEndpointSymbols(Relationship, View).ToList();
+                if (EndpointSymbols.Count > 0)
+                    return new Point(EndpointSymbols.Average(Symbol => Symbol.BaseCenter.X),
+                                     EndpointSymbols.Average(Symbol => Symbol.BaseCenter.Y));
+            }
+
+            return ResolvePlacementCenter(View, Operation, Width, Height, ExistingSymbol);
+        }
+
+        private IEnumerable<VisualSymbol> GetVisibleRelationshipEndpointSymbols(Relationship Relationship, View View)
+        {
+            if (Relationship == null || View == null)
+                yield break;
+
+            foreach (var Link in Relationship.Links)
+            {
+                var Representation = Link.AssociatedIdea.VisualRepresentators
+                                        .FirstOrDefault(Visual => Visual.DisplayingView == View && Visual.MainSymbol != null);
+                if (Representation != null)
+                    yield return Representation.MainSymbol;
+            }
+        }
+
+        private Rect GetNextAutoPlacementArea(View View, double Width, double Height)
+        {
+            int Index;
+            if (!this.AutoPlacementIndexes.TryGetValue(View, out Index))
+                Index = 0;
+            this.AutoPlacementIndexes[View] = Index + 1;
+
+            var Bounds = GetExistingVisualBounds(View);
+            var SpacingX = Math.Max(Width, 180.0) + 60.0;
+            var SpacingY = Math.Max(Height, 80.0) + 50.0;
+            var BaseLeft = Bounds.IsEmpty ? 100.0 : Bounds.Right + 80.0;
+            var BaseTop = Bounds.IsEmpty ? 100.0 : Bounds.Top;
+            var Column = Index % 4;
+            var Row = Index / 4;
+
+            return new Rect(BaseLeft + Column * SpacingX, BaseTop + Row * SpacingY, Width, Height);
+        }
+
+        private Rect GetExistingVisualBounds(View View)
+        {
+            var Symbols = this.Composition.DeclaredIdeas
+                              .SelectMany(Idea => Idea.VisualRepresentators)
+                              .Where(Representation => Representation.DisplayingView == View && Representation.MainSymbol != null)
+                              .Select(Representation => Representation.MainSymbol.BaseArea)
+                              .ToList();
+
+            if (Symbols.Count < 1)
+                return Rect.Empty;
+
+            var Bounds = Symbols[0];
+            foreach (var Symbol in Symbols.Skip(1))
+                Bounds.Union(Symbol);
+
+            return Bounds;
+        }
+
+        private double GetConceptDefaultWidth(ConceptDefinition Definition)
+        {
+            return Definition.DefaultSymbolFormat.InitialWidth.SubstituteFor(0, ProductDirector.DefaultConceptBodySymbolSize.Width);
+        }
+
+        private double GetConceptDefaultHeight(ConceptDefinition Definition)
+        {
+            return Definition.DefaultSymbolFormat.InitialHeight.SubstituteFor(0, ProductDirector.DefaultConceptBodySymbolSize.Height);
+        }
+
+        private double GetRelationshipDefaultWidth(RelationshipDefinition Definition)
+        {
+            return Definition.DefaultSymbolFormat.InitialWidth.SubstituteFor(0, ProductDirector.DefaultRelationshipCentralSymbolSize.Width);
+        }
+
+        private double GetRelationshipDefaultHeight(RelationshipDefinition Definition)
+        {
+            return Definition.DefaultSymbolFormat.InitialHeight.SubstituteFor(0, ProductDirector.DefaultRelationshipCentralSymbolSize.Height);
+        }
+
+        private void CountAndLogVisualPlaced(string Phase, string Entity, string TechName, View View, Point Center, double Width, double Height)
+        {
+            this.Report.CountVisualPlaced();
+            this.Report.Log(FormatOperationPrefix() + Phase + " visual placement " + Entity +
+                            " techName=" + TechName.ToStringAlways() +
+                            " view=" + DescribeView(View) +
+                            " x=" + (Center.X - Width / 2.0).ToString("0.###", CultureInfo.InvariantCulture) +
+                            " y=" + (Center.Y - Height / 2.0).ToString("0.###", CultureInfo.InvariantCulture) +
+                            " width=" + Width.ToString("0.###", CultureInfo.InvariantCulture) +
+                            " height=" + Height.ToString("0.###", CultureInfo.InvariantCulture) + ".");
+        }
+
+        private void SkipVisualPlacement(string Warning)
+        {
+            this.Report.CountVisualSkipped();
+            this.Report.Warn(Warning);
+        }
+
+        private void SkipPlaceOperation(string Warning)
+        {
+            this.Report.CountSkipped();
+            this.Report.CountVisualSkipped();
+            this.Report.Warn(Warning);
+            SetOperationOutcome("skipped: " + Warning);
+        }
+
+        private string DescribeView(View View)
+        {
+            if (View == null)
+                return "<none>";
+
+            return "name='" + View.Name.ToStringAlways() +
+                   "' techName='" + View.TechName.ToStringAlways() +
+                   "' id=" + View.GlobalId.ToString("D");
         }
 
         private bool ApplySetToFormal(FormalElement Target, IDictionary<string, object> Set)
@@ -1158,6 +1661,37 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Current.Name == Desired.Name && Current.TechName == Desired.TechName && Current.Summary == Desired.Summary;
         }
 
+        private double? GetOperationDouble(CompositionJsonOperation Operation, string Key)
+        {
+            if (Operation == null)
+                return null;
+
+            double? Direct = null;
+            if (Key == "x")
+                Direct = Operation.X;
+            else
+                if (Key == "y")
+                    Direct = Operation.Y;
+                else
+                    if (Key == "width")
+                        Direct = Operation.Width;
+                    else
+                        if (Key == "height")
+                            Direct = Operation.Height;
+
+            return Direct ?? GetSetDouble(Operation.Set, Key);
+        }
+
+        private double? GetSetDouble(IDictionary<string, object> Set, string Key)
+        {
+            return CompositionJsonSerializer.GetNullableDouble(Set, Key);
+        }
+
+        private bool? GetSetBool(IDictionary<string, object> Set, string Key)
+        {
+            return CompositionJsonSerializer.GetNullableBool(Set, Key);
+        }
+
         private string GetSetString(IDictionary<string, object> Set, string Key)
         {
             if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
@@ -1187,10 +1721,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.LastOperationOutcome = Outcome;
         }
 
-        private string InferOperationOutcome(int BeforeUpdated, int BeforeCreated, int BeforeDeleted, int BeforeSkipped)
+        private string InferOperationOutcome(int BeforeUpdated, int BeforeCreated, int BeforeDeleted, int BeforeSkipped,
+                                             int BeforeVisualsPlaced, int BeforeVisualsSkipped)
         {
             if (this.Report.Skipped > BeforeSkipped)
                 return "skipped";
+
+            var VisualsPlaced = this.IsPreview ? this.Report.PlannedVisualsPlaced : this.Report.AppliedVisualsPlaced;
+            if (VisualsPlaced > BeforeVisualsPlaced)
+                return Verb("visual placement");
+
+            var VisualsSkipped = this.IsPreview ? this.Report.PlannedVisualsSkipped : this.Report.AppliedVisualsSkipped;
+            if (VisualsSkipped > BeforeVisualsSkipped)
+                return "visual placement skipped";
 
             if (this.Report.Created > BeforeCreated)
                 return Verb("create");
@@ -1242,6 +1785,28 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (!String.IsNullOrEmpty(Operation.ContainerTechName))
                 Parts.Add("container=" + Operation.ContainerTechName);
+
+            if (!String.IsNullOrEmpty(Operation.ViewId))
+                Parts.Add("viewId=" + Operation.ViewId);
+
+            if (!String.IsNullOrEmpty(Operation.ViewTechName))
+                Parts.Add("view=" + Operation.ViewTechName);
+
+            var X = GetOperationDouble(Operation, "x");
+            var Y = GetOperationDouble(Operation, "y");
+            if (X != null || Y != null)
+                Parts.Add("pos=" + (X == null ? "?" : X.Value.ToString("0.###", CultureInfo.InvariantCulture)) +
+                          "," + (Y == null ? "?" : Y.Value.ToString("0.###", CultureInfo.InvariantCulture)));
+
+            var Width = GetOperationDouble(Operation, "width");
+            var Height = GetOperationDouble(Operation, "height");
+            if (Width != null || Height != null)
+                Parts.Add("size=" + (Width == null ? "?" : Width.Value.ToString("0.###", CultureInfo.InvariantCulture)) +
+                          "x" + (Height == null ? "?" : Height.Value.ToString("0.###", CultureInfo.InvariantCulture)));
+
+            var AutoPlace = Operation.AutoPlace ?? GetSetBool(Operation.Set, "autoPlace");
+            if (AutoPlace != null)
+                Parts.Add("autoPlace=" + (AutoPlace.Value ? "true" : "false"));
 
             if (Operation.OriginIdeaIds != null && Operation.OriginIdeaIds.Count > 0)
                 Parts.Add("origins=" + Operation.OriginIdeaIds.Count.ToString(CultureInfo.InvariantCulture));

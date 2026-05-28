@@ -52,6 +52,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Document.ExportedAtUtc = GetString(Root, "exportedAtUtc");
             Document.Application = GetString(Root, "application");
             Document.Composition = ReadComposition(GetDictionary(Root, "composition"));
+            Document.ImportOptions = ReadImportOptions(GetDictionary(Root, "importOptions"));
             Document.Ideas = ReadList(Root, "ideas", ReadIdea);
             Document.Relationships = ReadList(Root, "relationships", ReadRelationship);
             Document.Views = ReadList(Root, "views", ReadView);
@@ -81,11 +82,22 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "exportedAtUtc", Document.ExportedAtUtc);
             Add(Obj, "application", Document.Application);
             AddIf(Obj, "composition", ToGraph(Document.Composition));
+            AddIf(Obj, "importOptions", ToGraph(Document.ImportOptions));
             Add(Obj, "ideas", ToList(Document.Ideas, ToGraph));
             Add(Obj, "relationships", ToList(Document.Relationships, ToGraph));
             Add(Obj, "views", ToList(Document.Views, ToGraph));
             Add(Obj, "operations", ToList(Document.Operations, ToGraph));
             Add(Obj, "warnings", Document.Warnings ?? new List<string>());
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonImportOptions ImportOptions)
+        {
+            if (ImportOptions == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "autoPlaceNewItems", ImportOptions.AutoPlaceNewItems);
             return Obj;
         }
 
@@ -288,11 +300,28 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "definitionTechName", Operation.DefinitionTechName);
             AddIf(Obj, "containerId", Operation.ContainerId);
             AddIf(Obj, "containerTechName", Operation.ContainerTechName);
+            AddIf(Obj, "viewId", Operation.ViewId);
+            AddIf(Obj, "viewTechName", Operation.ViewTechName);
+            AddIf(Obj, "x", Operation.X);
+            AddIf(Obj, "y", Operation.Y);
+            AddIf(Obj, "width", Operation.Width);
+            AddIf(Obj, "height", Operation.Height);
+            AddIf(Obj, "autoPlace", Operation.AutoPlace);
             Add(Obj, "originIdeaIds", Operation.OriginIdeaIds ?? new List<string>());
             Add(Obj, "targetIdeaIds", Operation.TargetIdeaIds ?? new List<string>());
             Add(Obj, "links", ToList(Operation.Links, ToGraph));
             Add(Obj, "set", ToOrderedDictionary(Operation.Set));
             return Obj;
+        }
+
+        private static CompositionJsonImportOptions ReadImportOptions(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonImportOptions();
+            Result.AutoPlaceNewItems = GetNullableBool(Source, "autoPlaceNewItems");
+            return Result;
         }
 
         private static CompositionJsonComposition ReadComposition(IDictionary<string, object> Source)
@@ -497,6 +526,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.DefinitionTechName = GetString(Source, "definitionTechName");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
+            Result.ViewId = GetString(Source, "viewId");
+            Result.ViewTechName = GetString(Source, "viewTechName");
+            Result.X = GetNullableDouble(Source, "x");
+            Result.Y = GetNullableDouble(Source, "y");
+            Result.Width = GetNullableDouble(Source, "width");
+            Result.Height = GetNullableDouble(Source, "height");
+            Result.AutoPlace = GetNullableBool(Source, "autoPlace");
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");
             Result.Links = ReadList(Source, "links", ReadRelationshipLink);
@@ -871,6 +907,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             bool Result;
             return Boolean.TryParse(Convert.ToString(Source[Key], CultureInfo.InvariantCulture), out Result) ? Result : DefaultValue;
+        }
+
+        public static bool? GetNullableBool(IDictionary<string, object> Source, string Key)
+        {
+            if (Source == null || !Source.ContainsKey(Key) || Source[Key] == null)
+                return null;
+
+            if (Source[Key] is bool)
+                return (bool)Source[Key];
+
+            bool Result;
+            return Boolean.TryParse(Convert.ToString(Source[Key], CultureInfo.InvariantCulture), out Result)
+                   ? (bool?)Result : null;
         }
 
         public static double? GetNullableDouble(IDictionary<string, object> Source, string Key)

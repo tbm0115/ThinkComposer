@@ -567,6 +567,10 @@ namespace Instrumind.ThinkComposer.Composer
                               Document.Views == null ? 0 : Document.Views.Count,
                               Document.Operations == null ? 0 : Document.Operations.Count,
                               Document.Warnings == null ? 0 : Document.Warnings.Count);
+            Console.WriteLine("JSON import options: autoPlaceNewItems={0}",
+                              Document.ImportOptions == null || Document.ImportOptions.AutoPlaceNewItems == null
+                              ? "default"
+                              : (Document.ImportOptions.AutoPlaceNewItems.Value ? "true" : "false"));
 
             if (Document.Operations != null && Document.Operations.Count > 0)
                 foreach (var Group in Document.Operations.GroupBy(Operation => Operation.Op.ToStringAlways() + "/" + Operation.Entity.ToStringAlways())

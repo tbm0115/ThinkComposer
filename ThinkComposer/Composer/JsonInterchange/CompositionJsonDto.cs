@@ -30,11 +30,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string ExportedAtUtc { get; set; }
         public string Application { get; set; }
         public CompositionJsonComposition Composition { get; set; }
+        public CompositionJsonImportOptions ImportOptions { get; set; }
         public List<CompositionJsonIdea> Ideas { get; set; }
         public List<CompositionJsonRelationship> Relationships { get; set; }
         public List<CompositionJsonView> Views { get; set; }
         public List<CompositionJsonOperation> Operations { get; set; }
         public List<string> Warnings { get; set; }
+    }
+
+    public class CompositionJsonImportOptions
+    {
+        public bool? AutoPlaceNewItems { get; set; }
     }
 
     public class CompositionJsonComposition
@@ -253,6 +259,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string DefinitionTechName { get; set; }
         public string ContainerId { get; set; }
         public string ContainerTechName { get; set; }
+        public string ViewId { get; set; }
+        public string ViewTechName { get; set; }
+        public double? X { get; set; }
+        public double? Y { get; set; }
+        public double? Width { get; set; }
+        public double? Height { get; set; }
+        public bool? AutoPlace { get; set; }
         public List<string> OriginIdeaIds { get; set; }
         public List<string> TargetIdeaIds { get; set; }
         public List<CompositionJsonRelationshipLink> Links { get; set; }

@@ -31,6 +31,9 @@
     "composition": {
       "$ref": "#/$defs/composition"
     },
+    "importOptions": {
+      "$ref": "#/$defs/importOptions"
+    },
     "ideas": {
       "type": "array",
       "description": "Concept nodes. Relationships are stored separately in the relationships array.",
@@ -125,6 +128,16 @@
         "FieldDefinition"
       ],
       "description": "Known exported definition kind."
+    },
+    "importOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "autoPlaceNewItems": {
+          "type": "boolean",
+          "description": "When true or omitted by the importer, created concepts and relationships are placed in a suitable view when no explicit placement is supplied."
+        }
+      }
     },
     "composition": {
       "type": "object",
@@ -660,9 +673,10 @@
           "enum": [
             "update",
             "create",
-            "delete"
+            "delete",
+            "place"
           ],
-          "description": "Requested import action. Use update for most GPT edits."
+          "description": "Requested import action. Use update for text edits, create for new model items, place for diagram visibility, and delete only when explicitly requested."
         },
         "entity": {
           "type": "string",
@@ -707,6 +721,9 @@
         "viewId": {
           "$ref": "#/$defs/guid"
         },
+        "viewTechName": {
+          "$ref": "#/$defs/techName"
+        },
         "ideaId": {
           "$ref": "#/$defs/guid"
         },
@@ -723,6 +740,28 @@
         "reason": {
           "$ref": "#/$defs/editableText",
           "description": "Optional human-readable reason for the operation."
+        },
+        "x": {
+          "type": "number",
+          "description": "Top-left X coordinate for explicit visual placement."
+        },
+        "y": {
+          "type": "number",
+          "description": "Top-left Y coordinate for explicit visual placement."
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional symbol width for concept placement."
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional symbol height for concept placement."
+        },
+        "autoPlace": {
+          "type": "boolean",
+          "description": "For create operations, overrides importOptions.autoPlaceNewItems for this item."
         },
         "set": {
           "$ref": "#/$defs/operationSet",
@@ -759,7 +798,8 @@
               "op": {
                 "enum": [
                   "update",
-                  "create"
+                  "create",
+                  "place"
                 ]
               }
             }
@@ -904,6 +944,12 @@
         "ownerIdeaTechName": {
           "$ref": "#/$defs/techName"
         },
+        "viewId": {
+          "$ref": "#/$defs/guid"
+        },
+        "viewTechName": {
+          "$ref": "#/$defs/techName"
+        },
         "visuals": {
           "type": "array",
           "items": {
@@ -932,6 +978,9 @@
         "height": {
           "type": "number",
           "minimum": 0
+        },
+        "autoPlace": {
+          "type": "boolean"
         },
         "delete": {
           "type": "boolean"
@@ -964,6 +1013,9 @@
             },
             "techName": {
               "$ref": "#/$defs/techName"
+            },
+            "path": {
+              "type": "string"
             }
           }
         }
@@ -974,6 +1026,9 @@
     {
       "format": "ThinkComposer.JsonInterchange",
       "formatVersion": 1,
+      "importOptions": {
+        "autoPlaceNewItems": true
+      },
       "operations": [
         {
           "op": "update",
@@ -989,11 +1044,24 @@
           "entity": "concept",
           "definitionTechName": "Concept",
           "containerId": "00000000-0000-0000-0000-000000000000",
+          "viewTechName": "Main",
+          "x": 100,
+          "y": 200,
           "set": {
             "name": "New concept from GPT",
             "techName": "New_concept_from_GPT",
             "summary": "Added by patch operation."
           }
+        },
+        {
+          "op": "place",
+          "entity": "concept",
+          "techName": "New_concept_from_GPT",
+          "viewTechName": "Main",
+          "x": 100,
+          "y": 200,
+          "width": 180,
+          "height": 80
         }
       ]
     }

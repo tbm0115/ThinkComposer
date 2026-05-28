@@ -31,6 +31,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int AppliedDeleted { get; set; }
         public int AppliedSkipped { get; set; }
 
+        public int PlannedVisualsPlaced { get; set; }
+        public int PlannedVisualsSkipped { get; set; }
+
+        public int AppliedVisualsPlaced { get; set; }
+        public int AppliedVisualsSkipped { get; set; }
+
         public int CurrentOperationIndex { get; set; }
         public int CurrentOperationTotal { get; set; }
         public string CurrentOperationSummary { get; set; }
@@ -90,7 +96,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool HasWarnings { get { return this.Warnings.Count > 0; } }
         public bool HasErrors { get { return this.Errors.Count > 0; } }
         public bool HasRiskyChanges { get { return this.Created > 0 || this.Deleted > 0 || this.Updated > 25; } }
-        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0; } }
+        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0; } }
 
         public void Log(string message)
         {
@@ -139,15 +145,31 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Skipped++;
         }
 
+        public void CountVisualPlaced()
+        {
+            if (this.IsPreview)
+                this.PlannedVisualsPlaced++;
+            else
+                this.AppliedVisualsPlaced++;
+        }
+
+        public void CountVisualSkipped()
+        {
+            if (this.IsPreview)
+                this.PlannedVisualsSkipped++;
+            else
+                this.AppliedVisualsSkipped++;
+        }
+
         public string ToSummaryString(bool IncludeWarnings)
         {
             var Text = new StringBuilder();
-            var Label = this.IsPreview ? "Planned " : "Applied ";
-
-            Text.AppendLine(Label + "updated: " + this.Updated);
-            Text.AppendLine(Label + "created: " + this.Created);
-            Text.AppendLine(Label + "deleted: " + this.Deleted);
-            Text.AppendLine(Label + "skipped: " + this.Skipped);
+            Text.AppendLine("Updated: " + this.Updated);
+            Text.AppendLine("Created: " + this.Created);
+            Text.AppendLine("Deleted: " + this.Deleted);
+            Text.AppendLine("Skipped: " + this.Skipped);
+            Text.AppendLine("Visuals placed: " + (this.IsPreview ? this.PlannedVisualsPlaced : this.AppliedVisualsPlaced));
+            Text.AppendLine("Visuals not placed: " + (this.IsPreview ? this.PlannedVisualsSkipped : this.AppliedVisualsSkipped));
             Text.AppendLine("Warnings: " + this.Warnings.Count);
 
             if (IncludeWarnings && this.Warnings.Count > 0)
@@ -171,10 +193,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", created=" + this.PlannedCreated +
                    ", deleted=" + this.PlannedDeleted +
                    ", skipped=" + this.PlannedSkipped +
+                   ", visuals placed=" + this.PlannedVisualsPlaced +
+                   ", visuals skipped=" + this.PlannedVisualsSkipped +
                    "; applied updated=" + this.AppliedUpdated +
                    ", created=" + this.AppliedCreated +
                    ", deleted=" + this.AppliedDeleted +
                    ", skipped=" + this.AppliedSkipped +
+                   ", visuals placed=" + this.AppliedVisualsPlaced +
+                   ", visuals skipped=" + this.AppliedVisualsSkipped +
                    "; warnings=" + this.Warnings.Count +
                    ", errors=" + this.Errors.Count;
         }

@@ -29,6 +29,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly CompositionEngine Engine;
         private readonly bool IsPreview;
         private readonly CompositionJsonImportReport Report;
+        private string LastOperationOutcome = null;
 
         private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview)
         {
@@ -36,6 +37,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Engine = Engine ?? Composition.Engine;
             this.IsPreview = IsPreview;
             this.Report = new CompositionJsonImportReport();
+            this.Report.IsPreview = IsPreview;
         }
 
         public static CompositionJsonImportReport Preview(Composition Composition, CompositionJsonDocument Document)
@@ -44,7 +46,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             CompositionJsonSerializer.Validate(Document);
 
             var Importer = new CompositionJsonImporter(Composition, Composition.Engine, true);
+            Importer.Report.Log("JSON import preview started for composition " + Importer.DescribeTarget(Composition) + ".");
             Importer.ApplyDocument(Document);
+            Importer.Report.Log("JSON import preview completed: " + Importer.Report.ToDetailedCountsString() + ".");
             return Importer.Report;
         }
 
@@ -55,27 +59,67 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false);
 
+            Importer.Report.Log("JSON import apply opening command variation for composition " + Importer.DescribeTarget(Engine.TargetComposition) + ".");
             Engine.StartCommandVariation("Import JSON");
             try
             {
                 Importer.ApplyDocument(Document);
 
+                Importer.Report.Log("JSON import refreshing affected views inside command variation.");
+                Importer.RefreshAffectedViews();
+
                 if (Engine.IsVariating)
                     Engine.CompleteCommandVariation();
 
-                if (Importer.Report.Updated > 0 || Importer.Report.Created > 0 || Importer.Report.Deleted > 0)
+                if (Importer.Report.HasAppliedChanges)
+                {
                     Engine.ExistenceStatus = EExistenceStatus.Modified;
+                    Importer.Report.Log("JSON import document marked modified.");
+                }
 
-                Importer.RefreshAffectedViews();
+                Importer.Report.Log("JSON import apply completed: " + Importer.Report.ToDetailedCountsString() + ".");
             }
-            catch
+            catch (Exception Problem)
             {
+                Importer.Report.Error("JSON import failed: " + Problem.Message);
+                Importer.Report.Log("JSON import failure details: " + Problem.ToString());
+                Importer.Report.Log("JSON import current operation: " + Importer.Report.CurrentOperationSummary.ToStringAlways());
+
                 if (Engine.IsVariating)
                 {
-                    var Completed = Engine.CompleteCommandVariation();
-                    if (Completed != null)
-                        Engine.Undo(false, false);
+                    Importer.Report.Log("JSON import rollback attempt: complete open variation and undo it.");
+                    try
+                    {
+                        var Completed = Engine.CompleteCommandVariation();
+                        if (Completed != null)
+                        {
+                            Engine.Undo(false, false);
+                            Importer.Report.Log("JSON import rollback succeeded via undo.");
+                        }
+                        else
+                            Importer.Report.Log("JSON import rollback warning: command variation completed with no recorded changes.");
+                    }
+                    catch (Exception RollbackProblem)
+                    {
+                        Importer.Report.Log("JSON import rollback via undo failed: " + RollbackProblem.ToString());
+
+                        if (Engine.IsVariating)
+                        {
+                            Importer.Report.Log("JSON import rollback fallback: discard open command variation.");
+                            try
+                            {
+                                Engine.DiscardCommandVariation();
+                                Importer.Report.Log("JSON import rollback fallback discard succeeded.");
+                            }
+                            catch (Exception DiscardProblem)
+                            {
+                                Importer.Report.Log("JSON import rollback fallback discard failed: " + DiscardProblem.ToString());
+                            }
+                        }
+                    }
                 }
+                else
+                    Importer.Report.Log("JSON import rollback skipped: no command variation was open.");
 
                 throw;
             }
@@ -87,7 +131,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             if (Document.Warnings != null)
                 foreach (var Warning in Document.Warnings)
-                    this.Report.Warn("Export warning preserved from JSON: " + Warning);
+                    this.Report.Warn("Export warning preserved from JSON: " + Warning.ToStringAlways());
 
             if (Document.Composition != null)
                 ApplyComposition(Document.Composition);
@@ -108,8 +152,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     ApplyView(View);
 
             if (Document.Operations != null)
-                foreach (var Operation in Document.Operations)
+            {
+                this.Report.CurrentOperationTotal = Document.Operations.Count;
+                for (int Index = 0; Index < Document.Operations.Count; Index++)
+                {
+                    var Operation = Document.Operations[Index];
+                    this.Report.CurrentOperationIndex = Index + 1;
                     ApplyOperation(Operation);
+                }
+            }
         }
 
         private void ApplyComposition(CompositionJsonComposition Source)
@@ -206,7 +257,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
-                this.Report.Created++;
+                this.Report.CountCreated();
                 return;
             }
 
@@ -217,7 +268,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Concept.Version = new VersionCard();
 
             Concept.AddToComposite(Container);
-            this.Report.Created++;
+            this.Report.CountCreated();
 
             ApplyMarkers(Concept, Source.Markers);
             ApplyDetails(Concept, Source.Details);
@@ -248,7 +299,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
-                this.Report.Created++;
+                this.Report.CountCreated();
                 return;
             }
 
@@ -259,7 +310,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Relationship.Version = new VersionCard();
 
             Relationship.AddToComposite(Container);
-            this.Report.Created++;
+            this.Report.CountCreated();
 
             ApplyRelationshipLinks(Relationship, Source);
             ApplyMarkers(Relationship, Source.Markers);
@@ -309,7 +360,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
-                this.Report.Updated++;
+                this.Report.CountUpdated();
                 return;
             }
 
@@ -319,7 +370,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var NewLink = new RoleBasedLink(Relationship, Idea, Role, Variant);
             Relationship.AddLink(NewLink);
-            this.Report.Updated++;
+            this.Report.CountUpdated();
         }
 
         private void DeleteIdea(Idea Target, string Entity, string Id, string TechName)
@@ -338,12 +389,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
-                this.Report.Deleted++;
+                this.Report.CountDeleted();
                 return;
             }
 
             Target.RemoveFromComposite(false, false);
-            this.Report.Deleted++;
+            this.Report.CountDeleted();
         }
 
         private void ApplyMarkers(Idea Idea, IList<CompositionJsonMarker> Markers)
@@ -372,7 +423,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                     if (!this.IsPreview)
                         Idea.Markings.Remove(Existing);
-                    this.Report.Deleted++;
+                    this.Report.CountDeleted();
                     continue;
                 }
 
@@ -382,7 +433,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 {
                     if (!this.IsPreview)
                         Idea.Markings.Add(new MarkerAssignment(this.Engine, Definition, Descriptor));
-                    this.Report.Updated++;
+                    this.Report.CountUpdated();
                 }
                 else
                 {
@@ -438,7 +489,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 if (this.IsPreview)
                 {
-                    this.Report.Updated++;
+                    this.Report.CountUpdated();
                     return;
                 }
 
@@ -457,7 +508,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
-                this.Report.Updated++;
+                this.Report.CountUpdated();
                 return;
             }
 
@@ -483,7 +534,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Existing.Add(Record);
             }
 
-            this.Report.Updated++;
+            this.Report.CountUpdated();
         }
 
         private void ApplyResourceLinkDetail(Idea Idea, CompositionJsonDetail Source)
@@ -516,12 +567,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
-                this.Report.Updated++;
+                this.Report.CountUpdated();
                 return;
             }
 
             Existing.TargetLocation = Source.TargetAddress;
-            this.Report.Updated++;
+            this.Report.CountUpdated();
         }
 
         private void ApplyInternalLinkDetail(Idea Idea, CompositionJsonDetail Source)
@@ -538,7 +589,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (SetKnownIdeaField(Idea, Source.TargetPropertyTechName, Source.Text))
             {
-                this.Report.Updated++;
+                this.Report.CountUpdated();
                 return;
             }
 
@@ -556,7 +607,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (!this.IsPreview)
                 Idea.Details.Remove(Existing);
-            this.Report.Deleted++;
+            this.Report.CountDeleted();
         }
 
         private void ApplyView(CompositionJsonView Source)
@@ -591,7 +642,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
-                this.Report.Updated++;
+                this.Report.CountUpdated();
                 return;
             }
 
@@ -604,11 +655,21 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Y = Source.Y == null ? Symbol.BaseTop : Source.Y.Value;
             Symbol.MoveTo(X + Symbol.BaseWidth / 2.0, Y + Symbol.BaseHeight / 2.0, true);
 
-            this.Report.Updated++;
+            this.Report.CountUpdated();
         }
 
         private void ApplyOperation(CompositionJsonOperation Operation)
         {
+            this.LastOperationOutcome = null;
+            var Summary = DescribeOperation(Operation);
+            this.Report.CurrentOperationSummary = Summary;
+            this.Report.Log(FormatOperationPrefix() + Summary + " -> " + (this.IsPreview ? "plan start" : "apply start"));
+
+            var BeforeUpdated = this.Report.Updated;
+            var BeforeCreated = this.Report.Created;
+            var BeforeDeleted = this.Report.Deleted;
+            var BeforeSkipped = this.Report.Skipped;
+
             var Op = Operation.Op.NullDefault("").ToLowerInvariant();
             var Entity = Operation.Entity.NullDefault("").ToLowerInvariant();
 
@@ -622,13 +683,20 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                         ApplyDeleteOperation(Entity, Operation);
                     else
                         Skip("Unsupported operation op '" + Operation.Op.ToStringAlways() + "'.");
+
+            if (this.LastOperationOutcome == null)
+                this.LastOperationOutcome = InferOperationOutcome(BeforeUpdated, BeforeCreated, BeforeDeleted, BeforeSkipped);
+
+            this.Report.Log(FormatOperationPrefix() + Summary + " -> " + this.LastOperationOutcome);
         }
 
         private void ApplyUpdateOperation(string Entity, CompositionJsonOperation Operation)
         {
             if (Entity == "composition")
             {
-                CountUpdated(ApplySetToFormal(this.Composition, Operation.Set));
+                var Changed = ApplySetToFormal(this.Composition, Operation.Set);
+                CountUpdated(Changed);
+                SetOperationOutcome((Changed ? Verb("update") : "no editable changes needed") + " matched " + DescribeTarget(this.Composition));
                 return;
             }
 
@@ -637,11 +705,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 var Concept = FindConcept(Operation.Id, Operation.TechName);
                 if (Concept == null)
                 {
+                    SetOperationOutcome("skipped: no matching concept by id or techName");
                     Skip("Cannot update concept '" + Describe(Operation.Id, Operation.TechName) + "' because it was not found.");
                     return;
                 }
 
-                CountUpdated(ApplySetToFormal(Concept, Operation.Set));
+                var Changed = ApplySetToFormal(Concept, Operation.Set);
+                CountUpdated(Changed);
+                SetOperationOutcome((Changed ? Verb("update") : "no editable changes needed") + " matched " + DescribeTarget(Concept));
                 return;
             }
 
@@ -650,11 +721,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 var Relationship = FindRelationship(Operation.Id, Operation.TechName);
                 if (Relationship == null)
                 {
+                    SetOperationOutcome("skipped: no matching relationship by id or techName");
                     Skip("Cannot update relationship '" + Describe(Operation.Id, Operation.TechName) + "' because it was not found.");
                     return;
                 }
 
-                CountUpdated(ApplySetToFormal(Relationship, Operation.Set));
+                var Changed = ApplySetToFormal(Relationship, Operation.Set);
+                CountUpdated(Changed);
+                SetOperationOutcome((Changed ? Verb("update") : "no editable changes needed") + " matched " + DescribeTarget(Relationship));
                 return;
             }
 
@@ -663,11 +737,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 var View = FindView(Operation.Id, Operation.TechName);
                 if (View == null)
                 {
+                    SetOperationOutcome("skipped: no matching view by id or techName");
                     Skip("Cannot update view '" + Describe(Operation.Id, Operation.TechName) + "' because it was not found.");
                     return;
                 }
 
-                CountUpdated(ApplySetToFormal(View, Operation.Set));
+                var Changed = ApplySetToFormal(View, Operation.Set);
+                CountUpdated(Changed);
+                SetOperationOutcome((Changed ? Verb("update") : "no editable changes needed") + " matched " + DescribeTarget(View));
                 return;
             }
 
@@ -678,32 +755,51 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             if (Entity == "concept")
             {
+                var SourceTechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
+                var Existing = FindConcept(Operation.Id, SourceTechName);
+                if (Existing != null)
+                {
+                    SetOperationOutcome("skipped: matching concept already exists " + DescribeTarget(Existing));
+                    Skip("Cannot create concept '" + Describe(Operation.Id, SourceTechName) + "' because a matching concept already exists. Use op:update to edit it.");
+                    return;
+                }
+
                 var Source = new CompositionJsonIdea();
                 Source.IsNew = true;
                 Source.Id = Operation.Id;
-                Source.TechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
+                Source.TechName = SourceTechName;
                 Source.Name = GetSetString(Operation.Set, "name");
                 Source.Summary = GetSetString(Operation.Set, "summary");
-                Source.DefinitionTechName = Operation.DefinitionTechName;
-                Source.ContainerId = Operation.ContainerId;
-                Source.ContainerTechName = Operation.ContainerTechName;
+                Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
+                Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
+                Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
                 CreateConcept(Source);
                 return;
             }
 
             if (Entity == "relationship")
             {
+                var SourceTechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
+                var Existing = FindRelationship(Operation.Id, SourceTechName);
+                if (Existing != null)
+                {
+                    SetOperationOutcome("skipped: matching relationship already exists " + DescribeTarget(Existing));
+                    Skip("Cannot create relationship '" + Describe(Operation.Id, SourceTechName) + "' because a matching relationship already exists. Use op:update to edit it.");
+                    return;
+                }
+
                 var Source = new CompositionJsonRelationship();
                 Source.IsNew = true;
                 Source.Id = Operation.Id;
-                Source.TechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
+                Source.TechName = SourceTechName;
                 Source.Name = GetSetString(Operation.Set, "name");
                 Source.Summary = GetSetString(Operation.Set, "summary");
-                Source.DefinitionTechName = Operation.DefinitionTechName;
-                Source.ContainerId = Operation.ContainerId;
-                Source.ContainerTechName = Operation.ContainerTechName;
+                Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
+                Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
+                Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
                 Source.OriginIdeaIds = Operation.OriginIdeaIds;
                 Source.TargetIdeaIds = Operation.TargetIdeaIds;
+                Source.Links = Operation.Links;
                 CreateRelationship(Source);
                 return;
             }
@@ -715,13 +811,23 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             if (Entity == "concept")
             {
-                DeleteIdea(FindConcept(Operation.Id, Operation.TechName), "concept", Operation.Id, Operation.TechName);
+                var Concept = FindConcept(Operation.Id, Operation.TechName);
+                if (Concept != null)
+                    SetOperationOutcome(Verb("delete") + " matched " + DescribeTarget(Concept));
+                else
+                    SetOperationOutcome("skipped: no matching concept by id or techName");
+                DeleteIdea(Concept, "concept", Operation.Id, Operation.TechName);
                 return;
             }
 
             if (Entity == "relationship")
             {
-                DeleteIdea(FindRelationship(Operation.Id, Operation.TechName), "relationship", Operation.Id, Operation.TechName);
+                var Relationship = FindRelationship(Operation.Id, Operation.TechName);
+                if (Relationship != null)
+                    SetOperationOutcome(Verb("delete") + " matched " + DescribeTarget(Relationship));
+                else
+                    SetOperationOutcome("skipped: no matching relationship by id or techName");
+                DeleteIdea(Relationship, "relationship", Operation.Id, Operation.TechName);
                 return;
             }
 
@@ -1063,13 +1169,100 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void CountUpdated(bool Changed)
         {
             if (Changed)
-                this.Report.Updated++;
+                this.Report.CountUpdated();
         }
 
         private void Skip(string Warning)
         {
-            this.Report.Skipped++;
+            if (this.LastOperationOutcome == null && this.Report.CurrentOperationIndex > 0)
+                this.LastOperationOutcome = "skipped: " + Warning;
+
+            this.Report.CountSkipped();
             this.Report.Warn(Warning);
+        }
+
+        private void SetOperationOutcome(string Outcome)
+        {
+            if (!String.IsNullOrEmpty(Outcome))
+                this.LastOperationOutcome = Outcome;
+        }
+
+        private string InferOperationOutcome(int BeforeUpdated, int BeforeCreated, int BeforeDeleted, int BeforeSkipped)
+        {
+            if (this.Report.Skipped > BeforeSkipped)
+                return "skipped";
+
+            if (this.Report.Created > BeforeCreated)
+                return Verb("create");
+
+            if (this.Report.Deleted > BeforeDeleted)
+                return Verb("delete");
+
+            if (this.Report.Updated > BeforeUpdated)
+                return Verb("update");
+
+            return "no editable changes needed";
+        }
+
+        private string Verb(string Action)
+        {
+            return (this.IsPreview ? "planned " : "applied ") + Action;
+        }
+
+        private string FormatOperationPrefix()
+        {
+            if (this.Report.CurrentOperationTotal > 0)
+                return "JSON import [" + this.Report.CurrentOperationIndex.ToString(CultureInfo.InvariantCulture) +
+                       "/" + this.Report.CurrentOperationTotal.ToString(CultureInfo.InvariantCulture) + "] ";
+
+            return "JSON import ";
+        }
+
+        private string DescribeOperation(CompositionJsonOperation Operation)
+        {
+            var Parts = new List<string>();
+            Parts.Add(Operation.Op.ToStringAlways().NullDefault("?"));
+            Parts.Add(Operation.Entity.ToStringAlways().NullDefault("?"));
+
+            if (!String.IsNullOrEmpty(Operation.Id))
+                Parts.Add("id=" + Operation.Id);
+
+            if (!String.IsNullOrEmpty(Operation.TechName))
+                Parts.Add("techName=" + Operation.TechName);
+
+            var SetTechName = GetSetString(Operation.Set, "techName");
+            if (String.IsNullOrEmpty(Operation.TechName) && !String.IsNullOrEmpty(SetTechName))
+                Parts.Add("set.techName=" + SetTechName);
+
+            if (!String.IsNullOrEmpty(Operation.DefinitionTechName))
+                Parts.Add("definition=" + Operation.DefinitionTechName);
+
+            if (!String.IsNullOrEmpty(Operation.ContainerId))
+                Parts.Add("containerId=" + Operation.ContainerId);
+
+            if (!String.IsNullOrEmpty(Operation.ContainerTechName))
+                Parts.Add("container=" + Operation.ContainerTechName);
+
+            if (Operation.OriginIdeaIds != null && Operation.OriginIdeaIds.Count > 0)
+                Parts.Add("origins=" + Operation.OriginIdeaIds.Count.ToString(CultureInfo.InvariantCulture));
+
+            if (Operation.TargetIdeaIds != null && Operation.TargetIdeaIds.Count > 0)
+                Parts.Add("targets=" + Operation.TargetIdeaIds.Count.ToString(CultureInfo.InvariantCulture));
+
+            if (Operation.Links != null && Operation.Links.Count > 0)
+                Parts.Add("links=" + Operation.Links.Count.ToString(CultureInfo.InvariantCulture));
+
+            return String.Join(" ", Parts.ToArray());
+        }
+
+        private string DescribeTarget(FormalElement Target)
+        {
+            if (Target == null)
+                return "<none>";
+
+            return Target.GetType().Name + " name='" + Target.Name.ToStringAlways() +
+                   "' techName='" + Target.TechName.ToStringAlways() +
+                   "' id=" + Target.GlobalId.ToString("D");
         }
 
         private string Describe(string Id, string TechName)
@@ -1088,7 +1281,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void RefreshAffectedViews()
         {
             foreach (var Idea in this.Composition.DeclaredIdeas)
-                Idea.UpdateVisualRepresentators();
+                try
+                {
+                    Idea.UpdateVisualRepresentators();
+                }
+                catch (Exception Problem)
+                {
+                    this.Report.Warn("Idea '" + Idea.TechName + "' visual representators could not be refreshed after import: " + Problem.Message);
+                }
 
             foreach (var View in this.Composition.GetSubgraphChildren().SelectMany(Idea => Idea.CompositeViews).Distinct())
                 try

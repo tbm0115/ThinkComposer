@@ -243,6 +243,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Set = new Dictionary<string, object>();
             this.OriginIdeaIds = new List<string>();
             this.TargetIdeaIds = new List<string>();
+            this.Links = new List<CompositionJsonRelationshipLink>();
         }
 
         public string Op { get; set; }
@@ -254,6 +255,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string ContainerTechName { get; set; }
         public List<string> OriginIdeaIds { get; set; }
         public List<string> TargetIdeaIds { get; set; }
+        public List<CompositionJsonRelationshipLink> Links { get; set; }
         public Dictionary<string, object> Set { get; set; }
     }
 }

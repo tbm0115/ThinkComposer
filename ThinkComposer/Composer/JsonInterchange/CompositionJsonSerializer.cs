@@ -56,7 +56,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Document.Relationships = ReadList(Root, "relationships", ReadRelationship);
             Document.Views = ReadList(Root, "views", ReadView);
             Document.Operations = ReadList(Root, "operations", ReadOperation);
-            Document.Warnings = ReadStringList(Root, "warnings");
+            Document.Warnings = ReadWarningList(Root, "warnings");
 
             return Document;
         }
@@ -290,6 +290,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "containerTechName", Operation.ContainerTechName);
             Add(Obj, "originIdeaIds", Operation.OriginIdeaIds ?? new List<string>());
             Add(Obj, "targetIdeaIds", Operation.TargetIdeaIds ?? new List<string>());
+            Add(Obj, "links", ToList(Operation.Links, ToGraph));
             Add(Obj, "set", ToOrderedDictionary(Operation.Set));
             return Obj;
         }
@@ -498,6 +499,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.ContainerTechName = GetString(Source, "containerTechName");
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");
+            Result.Links = ReadList(Source, "links", ReadRelationshipLink);
             Result.Set = GetObjectDictionary(Source, "set");
             return Result;
         }
@@ -538,6 +540,29 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             foreach (var Item in Items)
                 if (Item != null)
                     Result.Add(Convert.ToString(Item, CultureInfo.InvariantCulture));
+
+            return Result;
+        }
+
+        private static List<string> ReadWarningList(IDictionary<string, object> Source, string Key)
+        {
+            var Result = new List<string>();
+            if (Source == null || !Source.ContainsKey(Key) || Source[Key] == null)
+                return Result;
+
+            var Items = Source[Key] as IEnumerable;
+            if (Items == null || Source[Key] is string)
+            {
+                Result.Add(CompositionJsonWarningFormatter.Format(Source[Key], Key));
+                return Result;
+            }
+
+            var Index = 0;
+            foreach (var Item in Items)
+            {
+                Result.Add(CompositionJsonWarningFormatter.Format(Item, Key + "[" + Index.ToString(CultureInfo.InvariantCulture) + "]"));
+                Index++;
+            }
 
             return Result;
         }

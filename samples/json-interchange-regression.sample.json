@@ -1,0 +1,60 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "warnings": [
+    {
+      "code": "metadata-only",
+      "path": "attachments[0]",
+      "message": "Object-valued warnings should appear readably in the ThinkComposer log and preview dialog."
+    }
+  ],
+  "operations": [
+    {
+      "op": "update",
+      "entity": "concept",
+      "techName": "TAMS_MTConnect_Deployment_Manager",
+      "set": {
+        "summary": "Updated by JSON patch import. Replace this techName with an existing concept in the active composition."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "definitionTechName": "Process",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "set": {
+        "name": "Package Import Pipeline",
+        "techName": "Package_Import_Pipeline",
+        "summary": "Reduced regression create concept operation."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "originIdeaIds": [
+        "replace-with-origin-concept-guid"
+      ],
+      "targetIdeaIds": [
+        "replace-with-target-concept-guid"
+      ],
+      "links": [
+        {
+          "roleType": "Origin",
+          "ideaId": "replace-with-origin-concept-guid"
+        },
+        {
+          "roleType": "Target",
+          "ideaId": "replace-with-target-concept-guid"
+        }
+      ],
+      "set": {
+        "name": "Package Import Flow",
+        "techName": "Package_Import_Flow",
+        "summary": "Reduced regression create relationship operation."
+      }
+    }
+  ]
+}

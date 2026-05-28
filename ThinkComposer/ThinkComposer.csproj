@@ -258,6 +258,7 @@
     <Compile Include="Composer\JsonInterchange\CompositionJsonImporter.cs" />
     <Compile Include="Composer\JsonInterchange\CompositionJsonImportReport.cs" />
     <Compile Include="Composer\JsonInterchange\CompositionJsonSerializer.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonWarningFormatter.cs" />
     <Compile Include="Composer\CompositionsManager.ProjectCommands.cs" />
     <Compile Include="Composer\CompositionsManager.EditingCommands.cs" />
     <Compile Include="Composer\CompositionsManager.ExtrasCommands.cs" />

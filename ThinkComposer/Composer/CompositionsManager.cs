@@ -32,6 +32,7 @@ using Instrumind.Common.Visualization;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.ApplicationProduct.Widgets;
+using Instrumind.ThinkComposer.Composer.JsonInterchange;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
 using Instrumind.ThinkComposer.Composer.Reporting;
@@ -189,6 +190,36 @@ namespace Instrumind.ThinkComposer.Composer
                 });
             ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Export Image", ExposedWorkCommand.Name, "Exports the current document view as an Image (press [Ctrl] to use Transparency in .PNG format).", "diagram_export.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            // -------------------------------------------------------------------------------------
+            ExposedWorkCommand = new GenericCommand("ExportJson");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    if (Engine == null)
+                        return;
+
+                    ExportJson(Engine);
+                });
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Export JSON...", ExposedWorkCommand.Name, "Exports the current Composition as editable JSON interchange text.", "page_white_code_red.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            // -------------------------------------------------------------------------------------
+            ExposedWorkCommand = new GenericCommand("ImportJson");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    if (Engine == null)
+                        return;
+
+                    ImportJson(Engine);
+                });
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Import JSON...", ExposedWorkCommand.Name, "Merges editable JSON interchange text into the active Composition.", "page_code.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             // -------------------------------------------------------------------------------------

@@ -32,6 +32,7 @@ using Instrumind.Common.Visualization;
 using Instrumind.Common.Visualization.Widgets;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.Composer.JsonInterchange;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -393,6 +394,91 @@ namespace Instrumind.ThinkComposer.Composer
 
             if (!SendingResult.IsAbsent())
                 Display.DialogMessage("Error!", "Cannot send e-mail via Outlook.\n\nProblem: " + SendingResult, EMessageType.Warning);
+        }
+
+        public void ExportJson(CompositionEngine Engine)
+        {
+            General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
+
+            var FileName = Engine.TargetComposition.TechName.NullDefault("Composition") + ".tc.json";
+            var Location = Display.DialogGetSaveFile("Export Composition JSON",
+                                                     ".json",
+                                                     "JSON files (*.json)|*.json",
+                                                     FileName);
+            if (Location == null)
+                return;
+
+            var CurrentWindow = Display.GetCurrentWindow();
+            CurrentWindow.Cursor = Cursors.Wait;
+
+            try
+            {
+                var Document = CompositionJsonExporter.Export(Engine.TargetComposition);
+                CompositionJsonSerializer.Save(Document, Location.LocalPath);
+
+                CurrentWindow.Cursor = Cursors.Arrow;
+                var Message = "Composition JSON exported to:\n" + Location.LocalPath;
+                if (Document.Warnings.Count > 0)
+                    Message = Message + "\n\nWarnings: " + Document.Warnings.Count.ToString();
+
+                Display.DialogMessage("Export JSON", Message, Document.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
+            }
+            catch (Exception Problem)
+            {
+                CurrentWindow.Cursor = Cursors.Arrow;
+                Display.DialogMessage("Error!", "Cannot export Composition JSON.\n\nProblem: " + Problem.Message, EMessageType.Error);
+            }
+        }
+
+        public void ImportJson(CompositionEngine Engine)
+        {
+            General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
+
+            var Location = Display.DialogGetOpenFile("Import Composition JSON",
+                                                     ".json",
+                                                     "JSON files (*.json)|*.json");
+            if (Location == null)
+                return;
+
+            CompositionJsonDocument Document = null;
+            CompositionJsonImportReport Preview = null;
+
+            try
+            {
+                Document = CompositionJsonSerializer.Load(Location.LocalPath);
+                CompositionJsonSerializer.Validate(Document);
+                Preview = CompositionJsonImporter.Preview(Engine.TargetComposition, Document);
+            }
+            catch (Exception Problem)
+            {
+                Display.DialogMessage("Error!", "Cannot read Composition JSON.\n\nProblem: " + Problem.Message, EMessageType.Error);
+                return;
+            }
+
+            var Confirmation = Display.DialogMessage("Import JSON",
+                                                     "Apply JSON changes from:\n" + Location.LocalPath + "\n\n" +
+                                                     Preview.ToSummaryString(true),
+                                                     EMessageType.Question, MessageBoxButton.YesNo, MessageBoxResult.No);
+            if (Confirmation != MessageBoxResult.Yes)
+                return;
+
+            var CurrentWindow = Display.GetCurrentWindow();
+            CurrentWindow.Cursor = Cursors.Wait;
+
+            try
+            {
+                var Report = CompositionJsonImporter.Import(Engine, Document);
+                this.WorkspaceDirector.ShellProvider.RefreshSelection();
+
+                CurrentWindow.Cursor = Cursors.Arrow;
+                Display.DialogMessage("Import JSON completed", Report.ToSummaryString(true),
+                                      Report.HasWarnings ? EMessageType.Warning : EMessageType.Information);
+            }
+            catch (Exception Problem)
+            {
+                CurrentWindow.Cursor = Cursors.Arrow;
+                Display.DialogMessage("Error!", "Cannot import Composition JSON.\n\nNo changes were kept if rollback was possible.\n\nProblem: " + Problem.Message, EMessageType.Error);
+            }
         }
 
         public void ExportCurrentView(Composition TargetComposition)

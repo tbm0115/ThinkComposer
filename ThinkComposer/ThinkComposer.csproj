@@ -115,6 +115,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Printing" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp">
@@ -252,6 +253,11 @@
     <Compile Include="Composer\ComposerUI\Widgets\MarkingsEditor.xaml.cs">
       <DependentUpon>MarkingsEditor.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Composer\JsonInterchange\CompositionJsonDto.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonExporter.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonImporter.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonImportReport.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonSerializer.cs" />
     <Compile Include="Composer\CompositionsManager.ProjectCommands.cs" />
     <Compile Include="Composer\CompositionsManager.EditingCommands.cs" />
     <Compile Include="Composer\CompositionsManager.ExtrasCommands.cs" />

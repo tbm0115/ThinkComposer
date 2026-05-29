@@ -612,10 +612,20 @@ namespace Instrumind.ThinkComposer.Composer
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsSpiderMap");
-            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as Spider Map"));
-            ExposedWorkCommand.CanApply = (par => false);
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsSpiderMap(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsSpiderMap(Engine);
+                });
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Spider Map...", "ArrangeAsSpiderMap",
-                                                                                          "Arranges the active view as a spider map. Planned for a later layout pass.", "shape_align_center.png",
+                                                                                          "Arranges selected or visible concepts radially around a root concept.", "shape_align_center.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsFlowchart");

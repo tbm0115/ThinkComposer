@@ -60,11 +60,51 @@ Troubleshooting:
 - A hidden relationship junction inside an inflated concept obstacle invalidates the current route. If all hidden-central relationships are reported unchanged, check whether the log still says the current hidden center is inside an obstacle; that should force a new candidate or a skipped route.
 - In `samples/obstacle-avoidance-regression.sample.json`, Scenario A is expected to route around `OA_Test_A_Obstacle` with a one-bend hidden-center route; Scenario B is expected to use a hidden-center dogleg route if adequate clearance exists; Scenario C should remain straight or be straightened.
 
+## Arrange as Spider Map
+
+Use `Edit -> Appearance -> Arrange as Spider Map` to place one root concept near the center and arrange connected concepts radially around it.
+
+Selection behavior:
+
+- If selected objects include concept symbols, only those selected concepts are arranged.
+- Visible relationships whose endpoints are both in the arranged concept set are used for adjacency and post-layout routing.
+- If no concepts are selected, ThinkComposer asks before arranging all visible concepts in the active view.
+- The command is disabled when the active view has no visible concept symbols.
+
+Root selection:
+
+- If exactly one concept is selected, that concept is the root.
+- If multiple concepts are selected, the root is the selected concept with the highest visible relationship degree.
+- Ties are resolved by distance to the selection/view center, then by deterministic name/techName/id order.
+- When arranging all visible concepts, the highest-degree visible concept is used as root.
+
+Layout behavior:
+
+- The root keeps its current position when arranging a selection.
+- When arranging all visible concepts, the root moves to the current viewport center when available, otherwise to the visible cluster center.
+- First-level connected concepts are placed on a ring around the root.
+- Remaining concepts are placed on a second ring, grouped near their nearest already placed neighbor when possible.
+- The arranged batch is normalized into reachable canvas bounds with an 80px default padding. If preserving the root would put ring nodes above or left of the canvas, ThinkComposer shifts the whole arranged group back into the reachable area before routing links.
+- The command auto-fits arranged concept labels first, then moves concepts, then routes in-scope links with the same obstacle-avoidance service.
+- Relationship direction is ignored for layout adjacency in this first slice.
+
+Limitations:
+
+- Spider Map is a deterministic two-ring layout, not a full graph optimizer.
+- Dense graphs may still need manual cleanup.
+- Complements and group regions are not arranged.
+- Concepts outside the selected/all-visible scope are not moved.
+- The command does not create, delete, or relink model entities.
+
+Troubleshooting:
+
+- If arranged concepts appear off-canvas, inspect the application log for `Spider Map normalize bounds`. The final bounds should have x/y at or above the configured canvas padding.
+- The command reveals the arranged bounds with a non-mutating `BringIntoView` call after the undoable layout command completes. If the view is not open or cannot reveal the bounds, the log reports `action=none`.
+
 ## Future Appearance Tools
 
 The Appearance group includes disabled placeholders for planned layout tools:
 
-- Arrange as Spider Map
 - Arrange as Flowchart
 - Arrange as Hierarchy Map
 - Arrange as System Map
@@ -101,3 +141,9 @@ The auto-fit service, link-routing service, and `LayoutSelectionContext` remain 
 18. Verify Scenario B chooses a horizontal or vertical hidden-center dogleg route, and Scenario C remains straight or is straightened.
 19. Save, close, reopen, and verify routed connector intermediate points or hidden junction positions persist.
 20. Export PDF and verify routed connectors render.
+21. Select one central concept and several connected concepts, then run `Edit -> Appearance -> Arrange as Spider Map`.
+22. Verify the selected/root concept remains central, child concepts are placed radially, labels are readable, and links are routed after movement.
+23. Undo and redo the Spider Map arrangement.
+24. Run Spider Map with no selected concepts and verify the all-visible confirmation appears.
+25. Verify no arranged concepts are above or left of the scrollable canvas origin.
+26. Save, close, reopen, and verify arranged concept positions persist.

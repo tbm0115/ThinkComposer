@@ -429,7 +429,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_03DD7C9D46CC47CE9E0FC04D0B9BAC9C"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\IconPics\\Instrumind_ThinkComposer.ico"
+            "SourcePath" = "8:Instrumind_ThinkComposer.ico"
             "TargetName" = "8:Instrumind_ThinkComposer.ico"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -509,7 +509,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_22A838FB16354A9B8A76E62373AAB1F7"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\IconPics\\TC_Domain.ico"
+            "SourcePath" = "8:TC_Domain.ico"
             "TargetName" = "8:TC_Domain.ico"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -620,7 +620,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_384904FFDFE14F55BF2AA6FD45759F97"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\IconPics\\install.ico"
+            "SourcePath" = "8:install.ico"
             "TargetName" = "8:install.ico"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -640,7 +640,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_399C3B6CA04F485BAB72CE85EE90A402"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\IconPics\\acro_pdf.ico"
+            "SourcePath" = "8:acro_pdf.ico"
             "TargetName" = "8:acro_pdf.ico"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -680,7 +680,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_43AA895F286048AEBD1959B50E7EEFF6"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\IconPics\\Instrumind.ico"
+            "SourcePath" = "8:Instrumind.ico"
             "TargetName" = "8:Instrumind.ico"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -891,7 +891,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8B865F3FEDF941E3B79EC7EC25B3CE67"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\IconPics\\ThinkComposer.ico"
+            "SourcePath" = "8:ThinkComposer.ico"
             "TargetName" = "8:ThinkComposer.ico"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -1062,7 +1062,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B783CE67366143D08E11A156FE4C8AB7"
             {
-            "SourcePath" = "8:D:\\Instrumind_Documentation\\InstrumindThinkComposer_Manual.pdf"
+            "SourcePath" = "8:InstrumindThinkComposer_Manual.pdf"
             "TargetName" = "8:InstrumindThinkComposer_Manual.pdf"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -1102,7 +1102,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C43D0D99DA3F4CEFA14586FE5BBABCA9"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\Logos\\ThinkComposer_byInstrumind_banner.jpg"
+            "SourcePath" = "8:ThinkComposer_byInstrumind_banner.jpg"
             "TargetName" = "8:ThinkComposer_byInstrumind_banner.jpg"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -1122,7 +1122,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D0FB684977A242BA8448837550E9E9EE"
             {
-            "SourcePath" = "8:D:\\Instrumind_Resources\\Images\\IconPics\\TC_Composition.ico"
+            "SourcePath" = "8:TC_Composition.ico"
             "TargetName" = "8:TC_Composition.ico"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
@@ -1346,7 +1346,7 @@
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:1.5.1606"
+        "ProductVersion" = "8:1.5.1607"
         "Manufacturer" = "8:Instrumind"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"

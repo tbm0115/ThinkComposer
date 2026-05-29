@@ -261,6 +261,9 @@
     <Compile Include="Composer\JsonInterchange\CompositionJsonWarningFormatter.cs" />
     <Compile Include="Composer\Layout\CompositionAppearanceCommands.cs" />
     <Compile Include="Composer\Layout\ConceptAutoFitService.cs" />
+    <Compile Include="Composer\Layout\FlowchartLayoutOptions.cs" />
+    <Compile Include="Composer\Layout\FlowchartLayoutResult.cs" />
+    <Compile Include="Composer\Layout\FlowchartLayoutService.cs" />
     <Compile Include="Composer\Layout\HierarchyMapLayoutOptions.cs" />
     <Compile Include="Composer\Layout\HierarchyMapLayoutResult.cs" />
     <Compile Include="Composer\Layout\HierarchyMapLayoutService.cs" />
@@ -269,9 +272,15 @@
     <Compile Include="Composer\Layout\LinkObstacleRoutingOptions.cs" />
     <Compile Include="Composer\Layout\LinkObstacleRoutingResult.cs" />
     <Compile Include="Composer\Layout\LinkObstacleRoutingService.cs" />
+    <Compile Include="Composer\Layout\RelationshipNodeDeclutterOptions.cs" />
+    <Compile Include="Composer\Layout\RelationshipNodeDeclutterResult.cs" />
+    <Compile Include="Composer\Layout\RelationshipNodeDeclutterService.cs" />
     <Compile Include="Composer\Layout\SpiderMapLayoutOptions.cs" />
     <Compile Include="Composer\Layout\SpiderMapLayoutResult.cs" />
     <Compile Include="Composer\Layout\SpiderMapLayoutService.cs" />
+    <Compile Include="Composer\Layout\SystemMapLayoutOptions.cs" />
+    <Compile Include="Composer\Layout\SystemMapLayoutResult.cs" />
+    <Compile Include="Composer\Layout\SystemMapLayoutService.cs" />
     <Compile Include="Composer\CompositionsManager.ProjectCommands.cs" />
     <Compile Include="Composer\CompositionsManager.EditingCommands.cs" />
     <Compile Include="Composer\CompositionsManager.ExtrasCommands.cs" />

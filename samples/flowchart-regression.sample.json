@@ -1,0 +1,305 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": false,
+    "autoFitPlacedConcepts": false,
+    "autoRoutePlacedLinks": false,
+    "layoutMode": "none",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 120,
+      "y": 120,
+      "set": {
+        "name": "Start Request",
+        "techName": "Flow_Start_Request",
+        "summary": "Entry point for Flowchart layout regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 320,
+      "y": 120,
+      "set": {
+        "name": "Validate Input",
+        "techName": "Flow_Validate_Input",
+        "summary": "Checks request shape and required fields."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 520,
+      "y": 80,
+      "set": {
+        "name": "Valid",
+        "techName": "Flow_Branch_Valid",
+        "summary": "Valid input branch."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000004",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 520,
+      "y": 220,
+      "set": {
+        "name": "Invalid",
+        "techName": "Flow_Branch_Invalid",
+        "summary": "Invalid input branch."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000005",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 760,
+      "y": 80,
+      "set": {
+        "name": "Transform Payload",
+        "techName": "Flow_Transform_Payload",
+        "summary": "Transforms validated input into storage shape."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000006",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 980,
+      "y": 80,
+      "set": {
+        "name": "Store Result",
+        "techName": "Flow_Store_Result",
+        "summary": "Persists the transformed result."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000007",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 1200,
+      "y": 80,
+      "set": {
+        "name": "Notify User",
+        "techName": "Flow_Notify_User",
+        "summary": "Sends completion notice."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000008",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 1420,
+      "y": 80,
+      "set": {
+        "name": "End",
+        "techName": "Flow_End",
+        "summary": "Successful flow end."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "92000000-0000-4000-8000-000000000009",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "x": 760,
+      "y": 260,
+      "set": {
+        "name": "Error Handler",
+        "techName": "Flow_Error_Handler",
+        "summary": "Handles invalid input or storage failure."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Start To Validate",
+        "techName": "Flow_Start_To_Validate",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Start_Request" },
+          { "roleType": "Target", "ideaTechName": "Flow_Validate_Input" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Validate To Valid",
+        "techName": "Flow_Validate_To_Valid",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Validate_Input" },
+          { "roleType": "Target", "ideaTechName": "Flow_Branch_Valid" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Validate To Invalid",
+        "techName": "Flow_Validate_To_Invalid",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Validate_Input" },
+          { "roleType": "Target", "ideaTechName": "Flow_Branch_Invalid" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Valid To Transform",
+        "techName": "Flow_Valid_To_Transform",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Branch_Valid" },
+          { "roleType": "Target", "ideaTechName": "Flow_Transform_Payload" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Transform To Store",
+        "techName": "Flow_Transform_To_Store",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Transform_Payload" },
+          { "roleType": "Target", "ideaTechName": "Flow_Store_Result" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Store To Notify",
+        "techName": "Flow_Store_To_Notify",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Store_Result" },
+          { "roleType": "Target", "ideaTechName": "Flow_Notify_User" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Notify To End",
+        "techName": "Flow_Notify_To_End",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Notify_User" },
+          { "roleType": "Target", "ideaTechName": "Flow_End" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Invalid To Error",
+        "techName": "Flow_Invalid_To_Error",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Branch_Invalid" },
+          { "roleType": "Target", "ideaTechName": "Flow_Error_Handler" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Store Failure To Error",
+        "techName": "Flow_Store_Failure_To_Error",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Store_Result" },
+          { "roleType": "Target", "ideaTechName": "Flow_Error_Handler" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Flowchart",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Error Feedback To Validate",
+        "techName": "Flow_Error_Feedback_To_Validate",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Flow_Error_Handler" },
+          { "roleType": "Target", "ideaTechName": "Flow_Validate_Input" }
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    "Sample for manually exercising Edit -> Appearance -> Arrange as Flowchart.",
+    "Regression target: feedback edge Error Handler -> Validate Input should log cycle handling without crashing.",
+    "Expected Flowchart result: Error Feedback bubble is placed in an outer feedback lane and does not overlap Invalid or Invalid To Error."
+  ]
+}

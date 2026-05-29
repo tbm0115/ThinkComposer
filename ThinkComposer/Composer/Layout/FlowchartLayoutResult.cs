@@ -15,11 +15,11 @@ using System.Windows;
 namespace Instrumind.ThinkComposer.Composer.Layout
 {
     /// <summary>
-    /// Summary of a Hierarchy Map arrangement run.
+    /// Summary of a Flowchart arrangement run.
     /// </summary>
-    public class HierarchyMapLayoutResult
+    public class FlowchartLayoutResult
     {
-        public HierarchyMapLayoutResult()
+        public FlowchartLayoutResult()
         {
             this.Warnings = new List<string>();
             this.BoundsBeforeNormalization = Rect.Empty;
@@ -43,11 +43,33 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
         public int UnclearRelationships { get; set; }
 
+        public int PrimaryForwardEdges { get; set; }
+
+        public int BranchForwardEdges { get; set; }
+
+        public int SameLevelEdges { get; set; }
+
+        public int FeedbackReverseEdges { get; set; }
+
+        public int LongCrossLinkEdges { get; set; }
+
+        public int AmbiguousEdges { get; set; }
+
+        public int FeedbackLaneRelationships { get; set; }
+
+        public int FeedbackLaneRelationshipsMoved { get; set; }
+
+        public int FeedbackLaneRelationshipsRouted { get; set; }
+
+        public int FeedbackLaneRelationshipsSkipped { get; set; }
+
+        public int FlowchartValidationWarnings { get; set; }
+
         public int ComponentCount { get; set; }
 
-        public int RootCount { get; set; }
+        public int StartCount { get; set; }
 
-        public int LevelCount { get; set; }
+        public int StepCount { get; set; }
 
         public int CyclesDetected { get; set; }
 
@@ -76,6 +98,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             get
             {
                 return this.ConceptsMoved > 0 ||
+                       this.FeedbackLaneRelationshipsMoved > 0 ||
+                       this.FeedbackLaneRelationshipsRouted > 0 ||
                        (this.AutoFitResult != null && this.AutoFitResult.SymbolsFitted > 0) ||
                        (this.RelationshipNodeDeclutterResult != null && this.RelationshipNodeDeclutterResult.HasMutations) ||
                        (this.RoutingResult != null && this.RoutingResult.HasMutations);
@@ -87,14 +111,14 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             get
             {
                 return this.RoutingResult == null
-                       ? 0
-                       : this.RoutingResult.Routed + this.RoutingResult.Straightened + this.RoutingResult.DoglegRouted;
+                       ? this.FeedbackLaneRelationshipsRouted
+                       : this.FeedbackLaneRelationshipsRouted + this.RoutingResult.Routed + this.RoutingResult.Straightened + this.RoutingResult.DoglegRouted;
             }
         }
 
         public int SkippedTotal
         {
-            get { return this.ConceptsSkipped + (this.RoutingResult == null ? 0 : this.RoutingResult.Skipped); }
+            get { return this.ConceptsSkipped + this.FeedbackLaneRelationshipsSkipped + (this.RoutingResult == null ? 0 : this.RoutingResult.Skipped); }
         }
 
         public void AddWarning(string Warning)

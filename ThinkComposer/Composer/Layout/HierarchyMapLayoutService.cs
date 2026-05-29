@@ -113,6 +113,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
                 var Graph = BuildDirectedGraph(Context, ScopeSymbols, Result);
                 var Components = BuildComponents(Context, ScopeSymbols, Graph, Options, Result);
+                var LevelBySymbol = GetLevelMap(Components);
                 var PlannedPositions = ComputePositions(Components, Graph, Options, Result);
 
                 Console.WriteLine("Appearance: Hierarchy Map layout bounds before apply: {0}.",
@@ -132,6 +133,17 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 }
                 else
                     Result.BoundsAfterNormalization = LayoutBoundsNormalizer.ComputeSymbolBounds(ScopeSymbols);
+
+                if (Options.DeclutterRelationshipNodesAfterArrange)
+                {
+                    Result.RelationshipNodeDeclutterResult = RelationshipNodeDeclutterService.Declutter(View,
+                                                                                                        Graph.RelationshipRepresentations,
+                                                                                                        ScopeSymbols,
+                                                                                                        LevelBySymbol,
+                                                                                                        Options.RelationshipNodeDeclutterOptions);
+                    foreach (var Warning in Result.RelationshipNodeDeclutterResult.Warnings)
+                        Result.AddWarning(Warning);
+                }
 
                 if (Options.RouteLinksAfterArrange)
                     Result.RoutingResult = RouteScopeLinks(Context, Graph);
@@ -504,6 +516,14 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             return Positions;
         }
 
+        private static Dictionary<VisualSymbol, int> GetLevelMap(IEnumerable<HierarchyComponent> Components)
+        {
+            return (Components ?? Enumerable.Empty<HierarchyComponent>())
+                   .SelectMany(Component => Component.Levels)
+                   .GroupBy(Pair => Pair.Key)
+                   .ToDictionary(Group => Group.Key, Group => Group.Min(Pair => Pair.Value));
+        }
+
         private static List<VisualSymbol> OrderLevelNodes(IList<VisualSymbol> Nodes, HierarchyComponent Component,
                                                           DirectedConceptGraph Graph,
                                                           IDictionary<VisualSymbol, int> PreviousOrder)
@@ -602,6 +622,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var RouteContext = LayoutSelectionContext.FromViewSelection(Context.Engine, Context.ActiveView, Connectors);
             var RouteOptions = new LinkObstacleRoutingOptions();
             RouteOptions.RouteSelectedConnectorsOnly = true;
+            RouteOptions.IncludeRelationshipCentralSymbolsAsObstacles = true;
             return LinkObstacleRoutingService.RouteVisibleConnectors(RouteContext, RouteOptions);
         }
 
@@ -751,6 +772,21 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                   Result.RoutingResult.Straightened,
                                   Result.RoutingResult.Unchanged,
                                   Result.RoutingResult.Skipped);
+
+            if (Result.RelationshipNodeDeclutterResult != null)
+                Console.WriteLine("Appearance: Hierarchy Map relationship node declutter summary; inspected={0}; moved={1}; skipped={2}; initialOverlaps={3}; overlapGroups={4}; globalPasses={5}; globalMoves={6}; corridorCorrections={7}; corridorViolations={8}; finalBubbleOverlaps={9}; finalConceptOverlaps={10}; warnings={11}.",
+                                  Result.RelationshipNodeDeclutterResult.RelationshipSymbolsInspected,
+                                  Result.RelationshipNodeDeclutterResult.RelationshipSymbolsMoved,
+                                  Result.RelationshipNodeDeclutterResult.RelationshipSymbolsSkipped,
+                                  Result.RelationshipNodeDeclutterResult.InitialOverlapCount,
+                                  Result.RelationshipNodeDeclutterResult.OverlapGroupsDetected,
+                                  Result.RelationshipNodeDeclutterResult.GlobalDeclutterPasses,
+                                  Result.RelationshipNodeDeclutterResult.GlobalDeclutterMoves,
+                                  Result.RelationshipNodeDeclutterResult.CorridorCorrections,
+                                  Result.RelationshipNodeDeclutterResult.CorridorViolations,
+                                  Result.RelationshipNodeDeclutterResult.FinalOverlapCount,
+                                  Result.RelationshipNodeDeclutterResult.FinalConceptOverlapCount,
+                                  Result.RelationshipNodeDeclutterResult.Warnings.Count);
 
             Console.WriteLine("Appearance: Hierarchy Map bounds summary; beforeNormalize={0}; dx={1:0.##}; dy={2:0.##}; final={3}; withinSafeCanvas={4}; reveal={5}.",
                               LayoutBoundsNormalizer.FormatRect(Result.BoundsBeforeNormalization),

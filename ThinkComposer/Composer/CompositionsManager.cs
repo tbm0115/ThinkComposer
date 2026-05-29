@@ -629,10 +629,20 @@ namespace Instrumind.ThinkComposer.Composer
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsFlowchart");
-            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as Flowchart"));
-            ExposedWorkCommand.CanApply = (par => false);
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsFlowchart(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsFlowchart(Engine);
+                });
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Flowchart...", "ArrangeAsFlowchart",
-                                                                                          "Arranges the active view as a flowchart. Planned for a later layout pass.", "shape_spacing_both.png",
+                                                                                          "Arranges selected or visible concepts into a left-to-right process flow.", "shape_spacing_both.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsHierarchyMap");
@@ -653,10 +663,20 @@ namespace Instrumind.ThinkComposer.Composer
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsSystemMap");
-            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as System Map"));
-            ExposedWorkCommand.CanApply = (par => false);
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsSystemMap(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsSystemMap(Engine);
+                });
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as System Map...", "ArrangeAsSystemMap",
-                                                                                          "Arranges the active view as a system map. Planned for a later layout pass.", "diagram_export.png",
+                                                                                          "Arranges selected or visible concepts into a system boundary map.", "diagram_export.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             // ............................................................................................................

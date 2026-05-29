@@ -11,11 +11,11 @@
 namespace Instrumind.ThinkComposer.Composer.Layout
 {
     /// <summary>
-    /// Options for the first-pass top-down hierarchy arrangement.
+    /// Options for the first-pass left-to-right flowchart arrangement.
     /// </summary>
-    public class HierarchyMapLayoutOptions
+    public class FlowchartLayoutOptions
     {
-        public HierarchyMapLayoutOptions()
+        public FlowchartLayoutOptions()
         {
             this.ArrangeSelectedConceptsOnly = true;
             this.AutoFitConceptsBeforeArrange = true;
@@ -23,10 +23,15 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             this.DeclutterRelationshipNodesAfterArrange = true;
             this.NormalizeBounds = true;
             this.RevealArrangedContent = true;
-            this.LevelSpacingY = 180.0;
-            this.NodeSpacingX = 80.0;
-            this.ComponentSpacingX = 220.0;
+            this.StepSpacingX = 240.0;
+            this.LaneSpacingY = 140.0;
+            this.ComponentSpacingY = 220.0;
             this.CanvasPadding = LayoutBoundsNormalizer.DefaultCanvasPadding;
+            this.FeedbackLanePlacement = "Auto";
+            this.FeedbackLanePaddingY = 100.0;
+            this.FeedbackLaneSpacingY = 60.0;
+            this.CrossLinkLanePaddingY = 80.0;
+            this.PreferTopFeedbackLane = true;
             this.RelationshipNodeDeclutterOptions = new RelationshipNodeDeclutterOptions();
         }
 
@@ -42,13 +47,23 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
         public bool RevealArrangedContent { get; set; }
 
-        public double LevelSpacingY { get; set; }
+        public double StepSpacingX { get; set; }
 
-        public double NodeSpacingX { get; set; }
+        public double LaneSpacingY { get; set; }
 
-        public double ComponentSpacingX { get; set; }
+        public double ComponentSpacingY { get; set; }
 
         public double CanvasPadding { get; set; }
+
+        public string FeedbackLanePlacement { get; set; }
+
+        public double FeedbackLanePaddingY { get; set; }
+
+        public double FeedbackLaneSpacingY { get; set; }
+
+        public double CrossLinkLanePaddingY { get; set; }
+
+        public bool PreferTopFeedbackLane { get; set; }
 
         public RelationshipNodeDeclutterOptions RelationshipNodeDeclutterOptions { get; set; }
     }

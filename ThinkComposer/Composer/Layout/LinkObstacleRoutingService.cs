@@ -179,6 +179,20 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 Obstacles.Add(new ObstacleInfo { Symbol = Symbol, Bounds = Area });
             }
 
+            if (Options.IncludeRelationshipCentralSymbolsAsObstacles)
+                foreach (var Symbol in Context.VisibleRelationshipRepresentations
+                                      .Where(Representation => Representation != null)
+                                      .Select(Representation => Representation.MainSymbol)
+                                      .Where(Symbol => Symbol != null && !Symbol.IsHidden && Symbol.IsRelatedVisible))
+                {
+                    var Area = Symbol.TotalArea;
+                    if (!IsUsableRect(Area))
+                        continue;
+
+                    Area.Inflate(Options.ObstaclePadding, Options.ObstaclePadding);
+                    Obstacles.Add(new ObstacleInfo { Symbol = Symbol, Bounds = Area });
+                }
+
             return Obstacles;
         }
 
@@ -227,7 +241,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 .Where(Obstacle => Obstacle != null &&
                                    IsUsableRect(Obstacle.Bounds) &&
                                    Obstacle.Symbol != Route.SourceSymbol &&
-                                   Obstacle.Symbol != Route.TargetSymbol)
+                                   Obstacle.Symbol != Route.TargetSymbol &&
+                                   Obstacle.Symbol != Route.MainSymbol)
                 .ToList();
             var OldCenter = Route.MainSymbol.BaseCenter;
             var Existing = BuildHiddenExistingCandidate(Route, Source, Target, OldCenter, FilteredObstacleInfos, Options);

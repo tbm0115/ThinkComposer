@@ -196,6 +196,109 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             return HierarchyMapLayoutService.CanArrange(Context);
         }
 
+        public static bool CanArrangeAsFlowchart(CompositionEngine Engine)
+        {
+            var Context = LayoutSelectionContext.FromActiveView(Engine);
+            return FlowchartLayoutService.CanArrange(Context);
+        }
+
+        public static bool CanArrangeAsSystemMap(CompositionEngine Engine)
+        {
+            var Context = LayoutSelectionContext.FromActiveView(Engine);
+            return SystemMapLayoutService.CanArrange(Context);
+        }
+
+        public static void ArrangeAsFlowchart(CompositionEngine Engine)
+        {
+            var Context = LayoutSelectionContext.FromActiveView(Engine);
+            if (Context.ActiveView == null)
+                return;
+
+            var Options = new FlowchartLayoutOptions();
+            Options.ArrangeSelectedConceptsOnly = Context.SelectedConceptSymbols.Count > 0;
+
+            if (!Options.ArrangeSelectedConceptsOnly)
+            {
+                var Confirmation = Display.DialogMessage("Arrange as Flowchart",
+                                                         "No concepts are selected. Arrange all visible concepts in the active view as a Flowchart?",
+                                                         EMessageType.Question, MessageBoxButton.YesNo, MessageBoxResult.No);
+                if (Confirmation != MessageBoxResult.Yes)
+                    return;
+            }
+
+            try
+            {
+                Console.WriteLine("Appearance command: Arrange as Flowchart requested. View={0} ({1}) id={2}; scope={3}.",
+                                  Context.ActiveView.Name, Context.ActiveView.TechName, Context.ActiveView.GlobalId,
+                                  Options.ArrangeSelectedConceptsOnly ? "selected concepts" : "all visible concepts");
+
+                var Result = FlowchartLayoutService.Arrange(Context, Options);
+
+                Display.DialogMessage("Arrange as Flowchart",
+                                      "Concepts arranged: " + Result.ConceptsArranged + "\n" +
+                                      "Starts: " + Result.StartCount + "\n" +
+                                      "Flow steps: " + Result.StepCount + "\n" +
+                                      "Links routed: " + Result.LinksRouted + "\n" +
+                                      "Skipped/warnings: " + (Result.SkippedTotal + Result.Warnings.Count) + "\n\n" +
+                                      "See the application log for details.",
+                                      Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Appearance command failed: Arrange as Flowchart. Problem: {0}", Problem.Message);
+                Console.WriteLine(Problem.ToString());
+                Display.DialogMessage("Arrange as Flowchart",
+                                      "Cannot arrange as Flowchart.\n\nProblem: " + Problem.Message,
+                                      EMessageType.Error);
+            }
+        }
+
+        public static void ArrangeAsSystemMap(CompositionEngine Engine)
+        {
+            var Context = LayoutSelectionContext.FromActiveView(Engine);
+            if (Context.ActiveView == null)
+                return;
+
+            var Options = new SystemMapLayoutOptions();
+            Options.ArrangeSelectedConceptsOnly = Context.SelectedConceptSymbols.Count > 0;
+
+            if (!Options.ArrangeSelectedConceptsOnly)
+            {
+                var Confirmation = Display.DialogMessage("Arrange as System Map",
+                                                         "No concepts are selected. Arrange all visible concepts in the active view as a System Map?",
+                                                         EMessageType.Question, MessageBoxButton.YesNo, MessageBoxResult.No);
+                if (Confirmation != MessageBoxResult.Yes)
+                    return;
+            }
+
+            try
+            {
+                Console.WriteLine("Appearance command: Arrange as System Map requested. View={0} ({1}) id={2}; scope={3}.",
+                                  Context.ActiveView.Name, Context.ActiveView.TechName, Context.ActiveView.GlobalId,
+                                  Options.ArrangeSelectedConceptsOnly ? "selected concepts" : "all visible concepts");
+
+                var Result = SystemMapLayoutService.Arrange(Context, Options);
+
+                Display.DialogMessage("Arrange as System Map",
+                                      "Concepts arranged: " + Result.ConceptsArranged + "\n" +
+                                      "Internal: " + (Result.InternalCount + Result.AmbiguousCount) + "\n" +
+                                      "External: " + Result.ExternalCount + "\n" +
+                                      "Links routed: " + Result.LinksRouted + "\n" +
+                                      "Group region: " + Result.GroupRegionStatus + "\n" +
+                                      "Warnings: " + Result.Warnings.Count + "\n\n" +
+                                      "See the application log for details.",
+                                      Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Appearance command failed: Arrange as System Map. Problem: {0}", Problem.Message);
+                Console.WriteLine(Problem.ToString());
+                Display.DialogMessage("Arrange as System Map",
+                                      "Cannot arrange as System Map.\n\nProblem: " + Problem.Message,
+                                      EMessageType.Error);
+            }
+        }
+
         public static void ArrangeAsHierarchyMap(CompositionEngine Engine)
         {
             var Context = LayoutSelectionContext.FromActiveView(Engine);

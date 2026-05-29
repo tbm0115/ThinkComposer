@@ -6,6 +6,7 @@
     "autoPlaceNewItems": false,
     "autoFitPlacedConcepts": false,
     "autoRoutePlacedLinks": false,
+    "useActiveCompositionAsContainer": true,
     "layoutMode": "none",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -373,7 +374,7 @@
     }
   ],
   "warnings": [
-    "Sample for manually exercising Edit -> Appearance -> Arrange as Hierarchy Map.",
+    "Sample for manually exercising Edit -> Appearance -> Arrange as Hierarchy Map. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__Hierarchy_Map or replace containerTechName values.",
     "Regression target: Publish Notes To Planning and Discovery To Stakeholders should remain as separate visible relationship bubbles after hierarchy relationship-node declutter.",
     "Regression target: Qualify To Estimate Cross Link should remain inside or near its endpoint corridor instead of being pushed far away from Qualify Need and Estimate Work."
   ]

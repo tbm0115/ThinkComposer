@@ -43,9 +43,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool AutoPlaceNewItems = true;
         private bool AutoFitPlacedConcepts = true;
         private bool AutoRoutePlacedLinks = true;
+        private bool UseActiveCompositionAsContainer = false;
         private bool PreventSelfRecursiveCompositeViews = true;
         private bool RepairRecursiveVisuals = true;
         private string LayoutMode = "gridNearViewport";
+        private readonly Dictionary<string, int> MissingContainerSkipCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<View, Point> AutoPlacementOrigins = new Dictionary<View, Point>();
         private readonly Dictionary<View, int> AutoPlacementIgnoredOutliers = new Dictionary<View, int>();
         private readonly Dictionary<string, PlannedConceptReference> PlannedConceptsById = new Dictionary<string, PlannedConceptReference>(StringComparer.OrdinalIgnoreCase);
@@ -202,6 +204,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.AutoRoutePlacedLinks = Document.ImportOptions == null ||
                                         Document.ImportOptions.AutoRoutePlacedLinks == null ||
                                         Document.ImportOptions.AutoRoutePlacedLinks.Value;
+            this.UseActiveCompositionAsContainer = Document.ImportOptions != null &&
+                                                   Document.ImportOptions.UseActiveCompositionAsContainer != null &&
+                                                   Document.ImportOptions.UseActiveCompositionAsContainer.Value;
             this.PreventSelfRecursiveCompositeViews = Document.ImportOptions == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value;
@@ -212,6 +217,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
                             ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
                             ", autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
+                            ", useActiveCompositionAsContainer=" + (this.UseActiveCompositionAsContainer ? "true" : "false") +
                             ", layoutMode=" + this.LayoutMode +
                             ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
                             ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
@@ -221,7 +227,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Document.Warnings != null)
                 foreach (var Warning in Document.Warnings)
-                    this.Report.Warn("Export warning preserved from JSON: " + Warning.ToStringAlways());
+                    this.Report.SourceWarning(Warning.ToStringAlways());
 
             if (Document.Composition != null)
                 ApplyComposition(Document.Composition);
@@ -257,6 +263,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (!this.IsPreview)
                 ApplyQueuedAutoRoutes();
+
+            EmitMissingContainerSkipNotes();
         }
 
         private string NormalizeLayoutMode(string Mode)
@@ -312,7 +320,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyComposition(CompositionJsonComposition Source)
         {
-            var Changed = ApplyFormalSet(this.Composition, Source.Name, Source.TechName, Source.Summary, Source.Version);
+            var Changed = ApplyFormalSet(this.Composition, Source.Name, Source.TechName, Source.Summary, Source.TechSpec, Source.Version);
 
             if (!String.IsNullOrEmpty(Source.ViewsPrefix) && this.Composition.ViewsPrefix != Source.ViewsPrefix)
             {
@@ -336,7 +344,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Existing != null)
             {
-                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null);
+                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.TechSpec, (CompositionJsonVersion)null);
                 CountUpdated(Changed);
                 ApplyMarkers(Existing, Source.Markers);
                 ApplyDetails(Existing, Source.Details);
@@ -361,7 +369,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Existing != null)
             {
-                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null);
+                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.TechSpec, (CompositionJsonVersion)null);
                 CountUpdated(Changed);
                 var RepairResult = RepairRelationshipLinks(Existing, BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, "top-level"));
                 if (RepairResult.Added > 0)
@@ -394,7 +402,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Container = ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
             if (Container == null)
             {
-                Skip("Cannot create concept '" + Source.Name.ToStringAlways() + "' because its container was not found or is not safe.");
+                RecordMissingContainerSkip(Source.ContainerId, Source.ContainerTechName);
+                Skip("Cannot create concept '" + Source.Name.ToStringAlways() + "' because its container '" +
+                     RequestedContainerDescription(Source.ContainerId, Source.ContainerTechName) + "' was not found or is not safe.");
                 return null;
             }
 
@@ -473,7 +483,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Container = ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
             if (Container == null)
             {
-                Skip("Cannot create relationship '" + Source.Name.ToStringAlways() + "' because its container was not found or is not safe.");
+                RecordMissingContainerSkip(Source.ContainerId, Source.ContainerTechName);
+                Skip("Cannot create relationship '" + Source.Name.ToStringAlways() + "' because its container '" +
+                     RequestedContainerDescription(Source.ContainerId, Source.ContainerTechName) + "' was not found or is not safe.");
                 return null;
             }
 
@@ -996,7 +1008,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            CountUpdated(ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null));
+            CountUpdated(ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null, (CompositionJsonVersion)null));
 
             if (Source.Visuals == null)
                 return;
@@ -2431,7 +2443,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             this.Report.CountSkipped();
             this.Report.CountVisualSkipped();
-            this.Report.Warn(Warning);
+            this.Report.SkippedMessage(Warning);
             SetOperationOutcome("skipped: " + Warning);
         }
 
@@ -2453,18 +2465,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Name = GetSetString(Set, "name");
             var TechName = GetSetString(Set, "techName");
             var Summary = GetSetString(Set, "summary");
+            var TechSpec = GetSetString(Set, "techSpec");
             var VersionAnnotation = GetSetString(Set, "versionAnnotation");
             var VersionNumber = GetSetString(Set, "versionNumber");
 
-            return ApplyFormalSet(Target, Name, TechName, Summary, VersionAnnotation, VersionNumber);
+            return ApplyFormalSet(Target, Name, TechName, Summary, TechSpec, VersionAnnotation, VersionNumber);
         }
 
-        private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, CompositionJsonVersion Version)
+        private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string TechSpec, CompositionJsonVersion Version)
         {
-            return ApplyFormalSet(Target, Name, TechName, Summary, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
+            return ApplyFormalSet(Target, Name, TechName, Summary, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
         }
 
-        private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string VersionAnnotation, string VersionNumber = null)
+        private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string TechSpec, string VersionAnnotation, string VersionNumber = null)
         {
             var Changed = false;
 
@@ -2486,6 +2499,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 if (!this.IsPreview)
                     Target.Summary = Summary;
+                Changed = true;
+            }
+
+            if (TechSpec != null && Target.TechSpec != TechSpec)
+            {
+                if (!this.IsPreview)
+                    Target.TechSpec = TechSpec;
+
+                this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") + " techSpec for " + DescribeTarget(Target));
                 Changed = true;
             }
 
@@ -2540,6 +2562,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return true;
             }
 
+            if (StringEquals(PropertyTechName, FormalElement.__TechSpec.TechName))
+            {
+                if (!this.IsPreview)
+                    Idea.TechSpec = Value;
+                return true;
+            }
+
             if (StringEquals(PropertyTechName, FormalElement.__Description.TechName))
             {
                 if (!this.IsPreview)
@@ -2577,6 +2606,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Container == null && String.IsNullOrEmpty(ContainerId) && String.IsNullOrEmpty(ContainerTechName))
                 Container = this.Composition;
 
+            if (Container == null && this.UseActiveCompositionAsContainer &&
+                CanFallbackToActiveCompositionContainer(ContainerId, ContainerTechName))
+            {
+                Container = this.Composition;
+                this.Report.Log("JSON import container fallback: requested='" +
+                                RequestedContainerDescription(ContainerId, ContainerTechName) +
+                                "' not found; using active composition '" +
+                                this.Composition.TechName.ToStringAlways() + "'.");
+            }
+
             if (Container == null)
                 return null;
 
@@ -2588,6 +2627,64 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return null;
 
             return Container;
+        }
+
+        private bool CanFallbackToActiveCompositionContainer(string ContainerId, string ContainerTechName)
+        {
+            if (!String.IsNullOrWhiteSpace(ContainerId) && IsUsableGuid(ContainerId))
+                return false;
+
+            if (String.IsNullOrWhiteSpace(ContainerTechName))
+                return true;
+
+            var Normalized = ContainerTechName.Trim().ToLowerInvariant();
+            return Normalized.StartsWith("test__", StringComparison.OrdinalIgnoreCase) ||
+                   Normalized.StartsWith("replace-with", StringComparison.OrdinalIgnoreCase) ||
+                   Normalized.Contains("root-composition") ||
+                   Normalized.Contains("active-composition") ||
+                   Normalized.Contains("composition-root") ||
+                   Normalized == "composition" ||
+                   Normalized == "composition1";
+        }
+
+        private static bool IsUsableGuid(string Id)
+        {
+            Guid Parsed;
+            return !String.IsNullOrWhiteSpace(Id) &&
+                   Guid.TryParse(Id, out Parsed) &&
+                   Parsed != Guid.Empty;
+        }
+
+        private void RecordMissingContainerSkip(string ContainerId, string ContainerTechName)
+        {
+            var Key = RequestedContainerDescription(ContainerId, ContainerTechName);
+            if (!this.MissingContainerSkipCounts.ContainsKey(Key))
+                this.MissingContainerSkipCounts[Key] = 0;
+            this.MissingContainerSkipCounts[Key]++;
+        }
+
+        private void EmitMissingContainerSkipNotes()
+        {
+            foreach (var Pair in this.MissingContainerSkipCounts.OrderBy(Item => Item.Key))
+            {
+                if (Pair.Value < 2)
+                    continue;
+
+                this.Report.Note(Pair.Value.ToString(CultureInfo.InvariantCulture) +
+                                 " operations skipped because container '" + Pair.Key +
+                                 "' was not found. Create/open the matching test composition or enable importOptions.useActiveCompositionAsContainer for root-level fixture imports.");
+            }
+        }
+
+        private static string RequestedContainerDescription(string ContainerId, string ContainerTechName)
+        {
+            if (!String.IsNullOrWhiteSpace(ContainerTechName))
+                return ContainerTechName;
+
+            if (!String.IsNullOrWhiteSpace(ContainerId))
+                return ContainerId;
+
+            return "<active composition>";
         }
 
         private Concept FindConcept(string Id, string TechName)
@@ -2887,7 +2984,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.LastOperationOutcome = "skipped: " + Warning;
 
             this.Report.CountSkipped();
-            this.Report.Warn(Warning);
+            this.Report.SkippedMessage(Warning);
         }
 
         private void SetOperationOutcome(string Outcome)

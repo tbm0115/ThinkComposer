@@ -32,6 +32,7 @@ These commands are intended to make imported or hand-authored diagrams readable 
 - Link routing operates on selected connectors/relationship visuals; if no routeable link is selected, it asks before routing all visible links.
 - Every command runs inside one undoable ThinkComposer command variation. Normal undo/redo should restore positions, widths, connector bends, hidden junctions, and Group Region changes.
 - Layout results are native visual model changes. After saving, closing, and reopening the `.tcom`, positions/routes/Group Regions are expected to persist.
+- Completion dialogs separate changed/applied counts, unchanged counts, skipped items, notes, layout warnings, and errors. If a command inspects items and leaves them unchanged because they are already valid, that is a successful no-op rather than a warning.
 - Detailed diagnostics go to the lower-left application log. Completion dialogs stay intentionally concise.
 
 ## Feature Matrix
@@ -48,14 +49,13 @@ These commands are intended to make imported or hand-authored diagrams readable 
 
 ## Backlog
 
-- `.tdom` JSON import/export.
-- `.tdom` to `.tcom` domain update/sync.
-- Tech Spec JSON coverage beyond current `.tcom` interchange behavior.
 - Custom domain shape import.
 - Full multi-bend general connector route model.
 - Full graph crossing minimization.
 - Better layout option dialogs.
 - JSON import integration for Spider, Hierarchy, Flowchart, and System Map beyond the current auto-place, auto-fit, and auto-route options.
+
+Domain JSON import/export and explicit embedded-domain updates are covered by `docs/domain-json-interchange.md` and `docs/domain-sync.md`; they are separate from these manual Appearance layout commands.
 
 ## Command Details
 

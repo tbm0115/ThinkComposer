@@ -37,6 +37,7 @@ using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
 using Instrumind.ThinkComposer.Composer.Reporting;
+using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -222,6 +223,26 @@ namespace Instrumind.ThinkComposer.Composer
             ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Import JSON...", ExposedWorkCommand.Name, "Merges editable JSON interchange text into the active Composition.", "page_code.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            // -------------------------------------------------------------------------------------
+            ExposedGroup = new SimpleElement("Domain", "Domain");
+            this.CommandGroups_.PutIntoSublist(ExposedArea.TechName, ExposedGroup);
+
+            ExposedWorkCommand = new GenericCommand("UpdateEmbeddedDomain");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    if (Engine == null)
+                        return;
+
+                    DomainJsonInterchangeCommands.UpdateEmbeddedDomain(Engine);
+                });
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Update Embedded Domain...", ExposedWorkCommand.Name, "Safely previews and merges a newer Domain into the active Composition's embedded Domain snapshot.", "book_refresh.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedGroup = new SimpleElement("File", "File");
 
             // -------------------------------------------------------------------------------------
             /* For export to PDF...

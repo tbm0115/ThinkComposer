@@ -16,6 +16,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public CompositionJsonImportReport()
         {
             this.Warnings = new List<string>();
+            this.SourceWarnings = new List<string>();
+            this.ImportWarnings = new List<string>();
+            this.Notes = new List<string>();
+            this.SkippedMessages = new List<string>();
             this.Errors = new List<string>();
             this.InfoLogLines = new List<string>();
             this.AffectedViewNames = new List<string>();
@@ -59,6 +63,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string CurrentOperationSummary { get; set; }
 
         public List<string> Warnings { get; private set; }
+        public List<string> SourceWarnings { get; private set; }
+        public List<string> ImportWarnings { get; private set; }
+        public List<string> Notes { get; private set; }
+        public List<string> SkippedMessages { get; private set; }
         public List<string> Errors { get; private set; }
         public List<string> InfoLogLines { get; private set; }
         public List<string> AffectedViewNames { get; private set; }
@@ -112,6 +120,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         }
 
         public bool HasWarnings { get { return this.Warnings.Count > 0; } }
+        public bool HasImportWarnings { get { return this.ImportWarnings.Count > 0; } }
         public bool HasErrors { get { return this.Errors.Count > 0; } }
         public bool HasRiskyChanges { get { return this.Created > 0 || this.Deleted > 0 || this.Updated > 25; } }
         public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0 || this.AppliedAutoFitConcepts > 0 || this.AppliedAutoRouteLinks > 0; } }
@@ -127,11 +136,46 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         public void Warn(string warning)
         {
+            this.ImportWarning(warning);
+        }
+
+        public void SourceWarning(string warning)
+        {
             if (String.IsNullOrEmpty(warning))
                 return;
 
+            this.SourceWarnings.Add(warning);
+            this.Warnings.Add(warning);
+            this.Log("JSON import source warning: " + warning);
+        }
+
+        public void ImportWarning(string warning)
+        {
+            if (String.IsNullOrEmpty(warning))
+                return;
+
+            this.ImportWarnings.Add(warning);
             this.Warnings.Add(warning);
             this.Log("JSON import warning: " + warning);
+        }
+
+        public void Note(string message)
+        {
+            if (String.IsNullOrEmpty(message))
+                return;
+
+            this.Notes.Add(message);
+            this.Log("JSON import note: " + message);
+        }
+
+        public void SkippedMessage(string message)
+        {
+            if (String.IsNullOrEmpty(message))
+                return;
+
+            this.SkippedMessages.Add(message);
+            this.Warnings.Add(message);
+            this.Log("JSON import skipped: " + message);
         }
 
         public void Error(string error)
@@ -266,7 +310,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Text.AppendLine("Concepts not auto-fit: " + this.SkippedAutoFitConcepts);
             Text.AppendLine("Links routed: " + (this.IsPreview ? this.PlannedAutoRouteLinks : this.AppliedAutoRouteLinks));
             Text.AppendLine("Links not routed: " + this.SkippedAutoRouteLinks);
-            Text.AppendLine("Warnings: " + this.Warnings.Count);
+            Text.AppendLine("Source warnings: " + this.SourceWarnings.Count);
+            Text.AppendLine("Import warnings: " + this.ImportWarnings.Count);
+            Text.AppendLine("Notes: " + this.Notes.Count);
+            Text.AppendLine("Errors: " + this.Errors.Count);
 
             if (!this.IsPreview && this.AffectedViewNames.Count > 0)
             {
@@ -279,16 +326,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     Text.AppendLine("- ... " + (this.AffectedViewNames.Count - 8) + " more");
             }
 
-            if (IncludeWarnings && this.Warnings.Count > 0)
+            if (IncludeWarnings && (this.SourceWarnings.Count + this.ImportWarnings.Count + this.SkippedMessages.Count + this.Errors.Count) > 0)
             {
-                Text.AppendLine();
-                Text.AppendLine("Warnings:");
-                var Limit = Math.Min(this.Warnings.Count, 12);
-                for (int Index = 0; Index < Limit; Index++)
-                    Text.AppendLine("- " + this.Warnings[Index]);
-
-                if (this.Warnings.Count > Limit)
-                    Text.AppendLine("- ...and " + (this.Warnings.Count - Limit) + " more.");
+                AppendPreviewLines(Text, "Source warnings", this.SourceWarnings, 6);
+                AppendPreviewLines(Text, "Import warnings", this.ImportWarnings, 8);
+                AppendPreviewLines(Text, "Skipped operations", this.SkippedMessages, 6);
+                AppendPreviewLines(Text, "Errors", this.Errors, 6);
             }
 
             return Text.ToString();
@@ -319,8 +362,25 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", auto-route links=" + this.AppliedAutoRouteLinks +
                    ", auto-route skipped=" + this.SkippedAutoRouteLinks +
                    ", dogleg routed links=" + this.DoglegRoutedLinks +
-                   "; warnings=" + this.Warnings.Count +
+                   "; source warnings=" + this.SourceWarnings.Count +
+                   ", import warnings=" + this.ImportWarnings.Count +
+                   ", notes=" + this.Notes.Count +
                    ", errors=" + this.Errors.Count;
+        }
+
+        private static void AppendPreviewLines(StringBuilder Text, string Title, IList<string> Messages, int Limit)
+        {
+            if (Messages == null || Messages.Count < 1)
+                return;
+
+            Text.AppendLine();
+            Text.AppendLine(Title + ":");
+            var Count = Math.Min(Messages.Count, Limit);
+            for (int Index = 0; Index < Count; Index++)
+                Text.AppendLine("- " + Messages[Index]);
+
+            if (Messages.Count > Count)
+                Text.AppendLine("- ...and " + (Messages.Count - Count) + " more.");
         }
     }
 }

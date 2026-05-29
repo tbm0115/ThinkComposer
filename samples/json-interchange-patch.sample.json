@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "application": "ThinkComposer",
   "warnings": [
-    "Sample for the JSON import patch workflow. Replace placeholder ids and container ids with values from the active composition before importing.",
+    "Sample for the JSON import patch workflow. Replace placeholder ids and container ids with values from the active composition before importing; importOptions.useActiveCompositionAsContainer only helps root container placeholders and does not replace endpoint ids.",
     "Expected result: one composition summary update, one concept update, one new concept, and one new relationship are planned without deleting omitted native objects."
   ],
   "operations": [

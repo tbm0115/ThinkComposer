@@ -6,6 +6,7 @@
     "autoPlaceNewItems": false,
     "autoFitPlacedConcepts": false,
     "autoRoutePlacedLinks": false,
+    "useActiveCompositionAsContainer": true,
     "layoutMode": "none",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -298,7 +299,7 @@
     }
   ],
   "warnings": [
-    "Sample for manually exercising Edit -> Appearance -> Arrange as Flowchart.",
+    "Sample for manually exercising Edit -> Appearance -> Arrange as Flowchart. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__Flowchart or replace containerTechName values.",
     "Regression target: feedback edge Error Handler -> Validate Input should log cycle handling without crashing.",
     "Expected Flowchart result: Error Feedback bubble is placed in an outer feedback lane and does not overlap Invalid or Invalid To Error."
   ]

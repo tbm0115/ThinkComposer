@@ -112,7 +112,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                       "Dogleg routed links: " + Result.DoglegRouted + "\n" +
                                       "Straightened links: " + Result.Straightened + "\n" +
                                       "Unchanged: " + Result.Unchanged + "\n" +
-                                      "Skipped: " + Result.Skipped + "\n\n" +
+                                      "Skipped: " + Result.Skipped + "\n" +
+                                      "Layout warnings: " + Result.Warnings.Count + "\n\n" +
                                       "See the application log for details.",
                                       Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
             }
@@ -176,7 +177,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 Display.DialogMessage("Arrange as Spider Map",
                                       "Concepts arranged: " + Result.ConceptsArranged + "\n" +
                                       "Links routed: " + Result.LinksRouted + "\n" +
-                                      "Skipped: " + Result.SkippedTotal + "\n\n" +
+                                      "Skipped: " + Result.SkippedTotal + "\n" +
+                                      "Layout warnings: " + Result.Warnings.Count + "\n\n" +
                                       "See the application log for details.",
                                       Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
             }
@@ -239,7 +241,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                       "Starts: " + Result.StartCount + "\n" +
                                       "Flow steps: " + Result.StepCount + "\n" +
                                       "Links routed: " + Result.LinksRouted + "\n" +
-                                      "Skipped/warnings: " + (Result.SkippedTotal + Result.Warnings.Count) + "\n\n" +
+                                      "Skipped: " + Result.SkippedTotal + "\n" +
+                                      "Layout warnings: " + Result.Warnings.Count + "\n\n" +
                                       "See the application log for details.",
                                       Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
             }
@@ -285,7 +288,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                       "External: " + Result.ExternalCount + "\n" +
                                       "Links routed: " + Result.LinksRouted + "\n" +
                                       "Group region: " + Result.GroupRegionStatus + "\n" +
-                                      "Warnings: " + Result.Warnings.Count + "\n\n" +
+                                      "Skipped: " + Result.SkippedTotal + "\n" +
+                                      "Layout warnings: " + Result.Warnings.Count + "\n\n" +
                                       "See the application log for details.",
                                       Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
             }
@@ -330,7 +334,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                       "Roots: " + Result.RootCount + "\n" +
                                       "Levels: " + Result.LevelCount + "\n" +
                                       "Links routed: " + Result.LinksRouted + "\n" +
-                                      "Skipped/warnings: " + (Result.SkippedTotal + Result.Warnings.Count) + "\n\n" +
+                                      "Skipped: " + Result.SkippedTotal + "\n" +
+                                      "Layout warnings: " + Result.Warnings.Count + "\n\n" +
                                       "See the application log for details.",
                                       Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
             }

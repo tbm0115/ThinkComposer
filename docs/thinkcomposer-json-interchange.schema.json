@@ -145,6 +145,11 @@
           "type": "boolean",
           "description": "When true or omitted by the importer, relationship visuals/connectors created, placed, or repaired by import are routed with the same obstacle-avoidance service as Edit > Appearance > Route Links with Obstacle Avoidance."
         },
+        "useActiveCompositionAsContainer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt-in fixture convenience. When true, root-level create operations with missing, placeholder-like, or unresolved test composition container references may use the active composition as the container. Default false. Intended for regression fixtures and GPT patches targeting the active root composition, not nested imports."
+        },
         "layoutMode": {
           "type": "string",
           "enum": [
@@ -186,6 +191,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the composition. It is imported as text only and never executed."
         },
         "viewsPrefix": {
           "type": "string"
@@ -260,6 +269,10 @@
         "summary": {
           "$ref": "#/$defs/editableText"
         },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the embedded domain summary. It is imported as text only and never executed."
+        },
         "definitions": {
           "type": "array",
           "items": {
@@ -293,6 +306,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the exported definition summary. It is imported as text only and never executed."
         }
       }
     },
@@ -410,6 +427,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the concept or relationship. Omission preserves the existing value; an explicit empty string clears it."
         },
         "containerId": {
           "$ref": "#/$defs/guid",
@@ -992,6 +1013,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text to apply to entities that expose TechSpec. Omission preserves the existing value; an explicit empty string clears it."
         },
         "description": {
           "$ref": "#/$defs/editableText"

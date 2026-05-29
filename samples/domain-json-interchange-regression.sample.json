@@ -1,0 +1,162 @@
+{
+  "format": "ThinkComposer.DomainJsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "warnings": [
+    "Sample for Domain JSON export/import regression coverage. Expected result: Domain metadata, definitions, tables, fields, roles, templates, and TechSpec merge safely without deleting omitted native objects."
+  ],
+  "domain": {
+    "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "name": "Deployment Management Domain",
+    "techName": "Deployment_Management_Domain",
+    "summary": "Domain JSON regression sample.",
+    "description": "Reduced Domain Interchange document for safe merge testing.",
+    "techSpec": "domain-version: 1\nowner: deployment-architecture"
+  },
+  "externalLanguages": [
+    {
+      "name": "Markdown",
+      "techName": "Markdown",
+      "summary": "Markdown output language."
+    }
+  ],
+  "linkRoleVariants": [
+    {
+      "name": "Consumes",
+      "techName": "Consumes",
+      "summary": "Source consumes target capability."
+    }
+  ],
+  "conceptDefinitionClusters": [
+    {
+      "name": "Deployment Concepts",
+      "techName": "Deployment_Concepts"
+    }
+  ],
+  "relationshipDefinitionClusters": [
+    {
+      "name": "Deployment Relationships",
+      "techName": "Deployment_Relationships"
+    }
+  ],
+  "markerClusters": [
+    {
+      "name": "Deployment Markers",
+      "techName": "Deployment_Markers"
+    }
+  ],
+  "markerDefinitions": [
+    {
+      "name": "Requires Review",
+      "techName": "Requires_Review",
+      "summary": "Imported marker definition.",
+      "clusterTechName": "Deployment_Markers",
+      "techSpec": "marker: review"
+    }
+  ],
+  "tableDefinitionCategories": [
+    {
+      "name": "Deployment Tables",
+      "techName": "Deployment_Tables"
+    }
+  ],
+  "fieldDefinitionCategories": [
+    {
+      "name": "Deployment Fields",
+      "techName": "Deployment_Fields"
+    }
+  ],
+  "tableDefinitions": [
+    {
+      "name": "Deployment Metadata",
+      "techName": "Deployment_Metadata",
+      "summary": "Table added by Domain JSON regression sample.",
+      "categoryTechName": "Deployment_Tables",
+      "techSpec": "table: deployment metadata",
+      "fields": [
+        {
+          "name": "Owner Team",
+          "techName": "Owner_Team",
+          "summary": "Owning team for the deployment artifact.",
+          "categoryTechName": "Deployment_Fields",
+          "dataTypeTechName": "Text",
+          "order": 1,
+          "techSpec": "field: owner"
+        },
+        {
+          "name": "Retention Days",
+          "techName": "Retention_Days",
+          "summary": "Retention period.",
+          "categoryTechName": "Deployment_Fields",
+          "dataTypeTechName": "Number",
+          "order": 2
+        }
+      ]
+    }
+  ],
+  "conceptDefinitions": [
+    {
+      "name": "Deployment Component",
+      "techName": "Deployment_Component",
+      "summary": "Component definition added through Domain JSON.",
+      "description": "Used for architecture elements in deployment compositions.",
+      "techSpec": "shape: rectangle\nsemantics: deployable component",
+      "clusterTechName": "Deployment_Concepts",
+      "representativeShape": "Rectangle",
+      "isComposable": true,
+      "isVersionable": true,
+      "customFieldsTableTechName": "Deployment_Metadata",
+      "outputTemplates": [
+        {
+          "name": "Deployment Component Markdown",
+          "techName": "Deployment_Component_Markdown",
+          "ownerKind": "conceptDefinition",
+          "ownerTechName": "Deployment_Component",
+          "externalLanguageTechName": "Markdown",
+          "targetFileExtension": "md",
+          "templateText": "# {{Name}}\n\n{{Summary}}\n"
+        }
+      ]
+    }
+  ],
+  "relationshipDefinitions": [
+    {
+      "name": "Deploys To",
+      "techName": "Deploys_To",
+      "summary": "Deployment relationship added through Domain JSON.",
+      "techSpec": "direction: source-to-target",
+      "clusterTechName": "Deployment_Relationships",
+      "isSimple": true,
+      "hideCentralSymbolWhenSimple": true,
+      "roles": [
+        {
+          "name": "Origin",
+          "techName": "Origin",
+          "roleType": "Origin",
+          "summary": "Deploying component.",
+          "allowedVariantTechNames": [
+            "Consumes"
+          ]
+        },
+        {
+          "name": "Target",
+          "techName": "Target",
+          "roleType": "Target",
+          "summary": "Deployment target."
+        }
+      ],
+      "outputTemplates": [
+        {
+          "name": "Deploys To Markdown",
+          "techName": "Deploys_To_Markdown",
+          "ownerKind": "relationshipDefinition",
+          "ownerTechName": "Deploys_To",
+          "externalLanguageTechName": "Markdown",
+          "targetFileExtension": "md",
+          "templateText": "{{Origin}} deploys to {{Target}}\n"
+        }
+      ]
+    }
+  ],
+  "operations": []
+}

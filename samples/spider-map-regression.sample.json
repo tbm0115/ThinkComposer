@@ -6,6 +6,7 @@
     "autoPlaceNewItems": true,
     "autoFitPlacedConcepts": true,
     "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
     "layoutMode": "gridNearViewport",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -148,7 +149,7 @@
     }
   ],
   "warnings": [
-    "Sample for manually exercising Edit -> Appearance -> Arrange as Spider Map in Test__Object_Avoidance.",
+    "Sample for manually exercising Edit -> Appearance -> Arrange as Spider Map. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__Object_Avoidance or replace containerTechName values.",
     "Expected result: the selected or highest-degree planning/root concept remains central, connected concepts are placed radially, bounds stay reachable, and in-scope links route after movement."
   ]
 }

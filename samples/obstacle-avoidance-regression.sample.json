@@ -6,6 +6,7 @@
     "autoPlaceNewItems": true,
     "autoFitPlacedConcepts": true,
     "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
     "layoutMode": "gridNearViewport",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -220,7 +221,7 @@
     }
   ],
   "warnings": [
-    "Sample for manually exercising Edit -> Appearance -> Route Links with Obstacle Avoidance in Test__Object_Avoidance.",
+    "Sample for manually exercising Edit -> Appearance -> Route Links with Obstacle Avoidance. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__Object_Avoidance or replace containerTechName values.",
     "Expected result: Scenario A routes around the obstacle with a hidden-center one-bend route, Scenario B uses a hidden-center dogleg route, and Scenario C remains straight or is straightened."
   ]
 }

@@ -32,6 +32,7 @@ using Instrumind.Common.EntityBase;
 using Instrumind.Common.Visualization;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.Definitor;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
@@ -270,6 +271,16 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                         case ESymbolManipulationAction.ActionAddDetail:
                             if (ManipulatedSymbol != null)
                                 this.OwnerView.AppendDetailToVisualRepresentation(ManipulatedSymbol.OwnerRepresentation);
+                            break;
+
+                        case ESymbolManipulationAction.Resize:
+                            if (IsMouseLeftDoubleClicked
+                                && ManipulatedSymbol != null
+                                && ManipulatedSymbol.OwnerRepresentation is ConceptVisualRepresentation
+                                && (SymbolModifier.ResizingDirection == EManipulationDirection.Left
+                                    || SymbolModifier.ResizingDirection == EManipulationDirection.Right))
+                                CompositionAppearanceCommands.FitConceptWidthToText(this.OwnerView.Engine, ManipulatedSymbol,
+                                                                                     "resize-handle double-click");
                             break;
 
                         case ESymbolManipulationAction.EditInPlace:
@@ -1029,6 +1040,16 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
         // -----------------------------------------------------------------------------------------------------------------------
         public void ShowCompositeAsDetail(VisualSymbol TargetSymbol)
         {
+            Console.WriteLine(CompositeViewIntegrity.GetToggleDiagnostic(TargetSymbol));
+
+            string Warning;
+            if (!CompositeViewIntegrity.CanShowCompositeContentAsDetail(TargetSymbol, out Warning))
+            {
+                Console.WriteLine(Warning);
+                Display.DialogMessage("Nested Content", Warning, EMessageType.Warning);
+                return;
+            }
+
             TargetSymbol.OwnerRepresentation.RepresentedIdea.OwnerComposition.Engine.StartCommandVariation("Show Composite-Content as Detail");
             var PrevHeight = TargetSymbol.TotalHeight;
 

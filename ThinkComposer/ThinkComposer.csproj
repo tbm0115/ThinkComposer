@@ -115,6 +115,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Printing" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp">
@@ -228,6 +229,16 @@
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.RelationshipDefClusters.cs" />
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ConceptDefClusters.cs" />
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ExternalLanguages.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonDto.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonExporter.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImporter.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImportReport.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonInterchangeCommands.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonMergeApplier.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonMergePlanner.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonReferenceResolver.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonSerializer.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonWarningFormatter.cs" />
     <Compile Include="Definitor\DefinitorUI\Widgets\TemplateEditor.xaml.cs">
       <DependentUpon>TemplateEditor.xaml</DependentUpon>
     </Compile>
@@ -252,6 +263,34 @@
     <Compile Include="Composer\ComposerUI\Widgets\MarkingsEditor.xaml.cs">
       <DependentUpon>MarkingsEditor.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Composer\JsonInterchange\CompositionJsonDto.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonExporter.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonImporter.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonImportReport.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonSerializer.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonWarningFormatter.cs" />
+    <Compile Include="Composer\Layout\CompositionAppearanceCommands.cs" />
+    <Compile Include="Composer\Layout\ConceptAutoFitService.cs" />
+    <Compile Include="Composer\Layout\FlowchartLayoutOptions.cs" />
+    <Compile Include="Composer\Layout\FlowchartLayoutResult.cs" />
+    <Compile Include="Composer\Layout\FlowchartLayoutService.cs" />
+    <Compile Include="Composer\Layout\HierarchyMapLayoutOptions.cs" />
+    <Compile Include="Composer\Layout\HierarchyMapLayoutResult.cs" />
+    <Compile Include="Composer\Layout\HierarchyMapLayoutService.cs" />
+    <Compile Include="Composer\Layout\LayoutBoundsNormalizer.cs" />
+    <Compile Include="Composer\Layout\LayoutSelectionContext.cs" />
+    <Compile Include="Composer\Layout\LinkObstacleRoutingOptions.cs" />
+    <Compile Include="Composer\Layout\LinkObstacleRoutingResult.cs" />
+    <Compile Include="Composer\Layout\LinkObstacleRoutingService.cs" />
+    <Compile Include="Composer\Layout\RelationshipNodeDeclutterOptions.cs" />
+    <Compile Include="Composer\Layout\RelationshipNodeDeclutterResult.cs" />
+    <Compile Include="Composer\Layout\RelationshipNodeDeclutterService.cs" />
+    <Compile Include="Composer\Layout\SpiderMapLayoutOptions.cs" />
+    <Compile Include="Composer\Layout\SpiderMapLayoutResult.cs" />
+    <Compile Include="Composer\Layout\SpiderMapLayoutService.cs" />
+    <Compile Include="Composer\Layout\SystemMapLayoutOptions.cs" />
+    <Compile Include="Composer\Layout\SystemMapLayoutResult.cs" />
+    <Compile Include="Composer\Layout\SystemMapLayoutService.cs" />
     <Compile Include="Composer\CompositionsManager.ProjectCommands.cs" />
     <Compile Include="Composer\CompositionsManager.EditingCommands.cs" />
     <Compile Include="Composer\CompositionsManager.ExtrasCommands.cs" />
@@ -430,6 +469,7 @@
     <Compile Include="MetaModel\VisualMetaModel\ETableLayoutStyle.cs" />
     <Compile Include="Model\InformationModel\Link.cs" />
     <Compile Include="Model\VisualModel\ConceptVisualRepresentation.cs" />
+    <Compile Include="Model\VisualModel\CompositeViewIntegrity.cs" />
     <Compile Include="Model\VisualModel\VisualComplement.GenerateLegend.cs" />
     <Compile Include="Model\VisualModel\VisualComplement.GenerateInfoCard.cs" />
     <Compile Include="Model\VisualModel\VisualComplement.cs" />

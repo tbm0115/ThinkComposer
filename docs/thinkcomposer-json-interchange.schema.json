@@ -1,0 +1,1245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thinkcomposer.local/schemas/thinkcomposer-json-interchange-1.schema.json",
+  "title": "ThinkComposer JSON Interchange",
+  "description": "Schema for ThinkComposer.JsonInterchange formatVersion 1. Use this schema to validate full-state exports/merges and GPT-authored patch-operation documents. Native .tcom remains the authoritative ThinkComposer file format; this JSON format is an editable interchange layer.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "ThinkComposer.JsonInterchange",
+      "description": "Fixed format discriminator. GPT responses must preserve this exact value."
+    },
+    "formatVersion": {
+      "const": 1,
+      "description": "Schema/version discriminator for this interchange format."
+    },
+    "exportedAtUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of the export. Optional for patch-only GPT responses."
+    },
+    "application": {
+      "type": "string",
+      "const": "ThinkComposer",
+      "description": "Producing application. Optional for patch-only GPT responses."
+    },
+    "composition": {
+      "$ref": "#/$defs/composition"
+    },
+    "importOptions": {
+      "$ref": "#/$defs/importOptions"
+    },
+    "ideas": {
+      "type": "array",
+      "description": "Concept nodes. Relationships are stored separately in the relationships array.",
+      "items": {
+        "$ref": "#/$defs/concept"
+      },
+      "default": []
+    },
+    "relationships": {
+      "type": "array",
+      "description": "Relationship nodes and their origin/target role links.",
+      "items": {
+        "$ref": "#/$defs/relationship"
+      },
+      "default": []
+    },
+    "views": {
+      "type": "array",
+      "description": "View and lightweight layout information. Visual styling and binary data are intentionally omitted.",
+      "items": {
+        "$ref": "#/$defs/view"
+      },
+      "default": []
+    },
+    "operations": {
+      "type": "array",
+      "description": "Patch-style edits. Preferred shape for GPT responses when editing an existing project. Do not include deletes unless explicitly requested.",
+      "items": {
+        "$ref": "#/$defs/operation"
+      },
+      "default": []
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Exporter/importer warnings. GPTs may include warnings only when they intentionally skip requested edits.",
+      "items": {
+        "$ref": "#/$defs/warning"
+      },
+      "default": []
+    }
+  },
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "required": [
+            "composition",
+            "ideas",
+            "relationships",
+            "views"
+          ],
+          "description": "Full-state export or merge document."
+        },
+        {
+          "required": [
+            "operations"
+          ],
+          "properties": {
+            "operations": {
+              "minItems": 1
+            }
+          },
+          "description": "Patch-only document for GPT-authored edits."
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "guid": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "ThinkComposer stable GlobalId/Guid string."
+    },
+    "techName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ThinkComposer technical name. It is not guaranteed to be globally unique; use id/GlobalId for matching whenever possible."
+    },
+    "editableText": {
+      "type": "string",
+      "description": "Editable text. Preserve line breaks exactly when round-tripping summaries or rich text converted to plain text."
+    },
+    "definitionKind": {
+      "type": "string",
+      "enum": [
+        "ConceptDefinition",
+        "RelationshipDefinition",
+        "MarkerDefinition",
+        "DetailDefinition",
+        "TableDefinition",
+        "FieldDefinition"
+      ],
+      "description": "Known exported definition kind."
+    },
+    "importOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "autoPlaceNewItems": {
+          "type": "boolean",
+          "description": "When true or omitted by the importer, created concepts and relationships are placed in a suitable view when no explicit placement is supplied."
+        },
+        "autoFitPlacedConcepts": {
+          "type": "boolean",
+          "description": "When true or omitted by the importer, newly created or newly placed concept visuals are resized to fit their visible text using the same ConceptAutoFitService as Edit > Appearance > Fit Concept Width to Text."
+        },
+        "autoRoutePlacedLinks": {
+          "type": "boolean",
+          "description": "When true or omitted by the importer, relationship visuals/connectors created, placed, or repaired by import are routed with the same obstacle-avoidance service as Edit > Appearance > Route Links with Obstacle Avoidance."
+        },
+        "useActiveCompositionAsContainer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt-in fixture convenience. When true, root-level create operations with missing, placeholder-like, or unresolved test composition container references may use the active composition as the container. Default false. Intended for regression fixtures and GPT patches targeting the active root composition, not nested imports."
+        },
+        "layoutMode": {
+          "type": "string",
+          "enum": [
+            "gridNearViewport",
+            "gridNearContainer",
+            "gridAfterExistingContent",
+            "none"
+          ],
+          "description": "Controls automatic placement for created items without explicit coordinates. Default is gridNearViewport, which keeps imported batches near the visible/normal content cluster and ignores extreme outliers."
+        },
+        "preventSelfRecursiveCompositeViews": {
+          "type": "boolean",
+          "description": "When true or omitted, the importer will not place a concept inside its own composite view or place a relationship visual in a composite view when an endpoint is that view's owner."
+        },
+        "repairRecursiveVisuals": {
+          "type": "boolean",
+          "description": "When true or omitted, import scans for previously imported self-recursive visual representations and removes only the invalid visuals, preserving concepts and relationships."
+        }
+      }
+    },
+    "composition": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "techName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the composition. It is imported as text only and never executed."
+        },
+        "viewsPrefix": {
+          "type": "string"
+        },
+        "rootViewId": {
+          "$ref": "#/$defs/guid"
+        },
+        "activeViewId": {
+          "$ref": "#/$defs/guid"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "domain": {
+          "$ref": "#/$defs/domain"
+        },
+        "delete": {
+          "type": "boolean",
+          "description": "Reserved. Do not use for composition deletion in GPT responses."
+        }
+      }
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "versionSequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "versionNumber": {
+          "type": "string"
+        },
+        "creator": {
+          "type": "string"
+        },
+        "lastModifier": {
+          "type": "string"
+        },
+        "creation": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastModification": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "annotation": {
+          "$ref": "#/$defs/editableText"
+        }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "techName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the embedded domain summary. It is imported as text only and never executed."
+        },
+        "definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/definition"
+          },
+          "default": []
+        }
+      }
+    },
+    "definition": {
+      "type": "object",
+      "required": [
+        "kind",
+        "name",
+        "techName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "kind": {
+          "$ref": "#/$defs/definitionKind"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the exported definition summary. It is imported as text only and never executed."
+        }
+      }
+    },
+    "concept": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ideaBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "Concept"
+            }
+          }
+        }
+      ]
+    },
+    "relationship": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ideaBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "originIdeaIds",
+            "targetIdeaIds",
+            "links"
+          ],
+          "properties": {
+            "kind": {
+              "const": "Relationship"
+            },
+            "originIdeaIds": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/guid"
+              },
+              "default": []
+            },
+            "originIdeaTechNames": {
+              "type": "array",
+              "description": "Origin endpoints by techName. Prefer ids when available.",
+              "items": {
+                "$ref": "#/$defs/techName"
+              },
+              "default": []
+            },
+            "targetIdeaIds": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/guid"
+              },
+              "default": []
+            },
+            "targetIdeaTechNames": {
+              "type": "array",
+              "description": "Target endpoints by techName. Prefer ids when available.",
+              "items": {
+                "$ref": "#/$defs/techName"
+              },
+              "default": []
+            },
+            "links": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relationshipLink"
+              },
+              "default": []
+            }
+          }
+        }
+      ]
+    },
+    "ideaBase": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "techName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Concept",
+            "Relationship"
+          ]
+        },
+        "definitionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "definitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "definitionName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text attached to the concept or relationship. Omission preserves the existing value; an explicit empty string clears it."
+        },
+        "containerId": {
+          "$ref": "#/$defs/guid",
+          "description": "Id of the containing Composition, Concept, or Relationship."
+        },
+        "containerTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "childIdeaIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/guid"
+          },
+          "default": []
+        },
+        "compositeViewIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/guid"
+          },
+          "default": []
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/detail"
+          },
+          "default": []
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/marker"
+          },
+          "default": []
+        },
+        "originIdeaIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/guid"
+          },
+          "default": []
+        },
+        "originIdeaTechNames": {
+          "type": "array",
+          "description": "Origin endpoints by techName. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
+        "targetIdeaIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/guid"
+          },
+          "default": []
+        },
+        "targetIdeaTechNames": {
+          "type": "array",
+          "description": "Target endpoints by techName. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/relationshipLink"
+          },
+          "default": []
+        },
+        "delete": {
+          "type": "boolean",
+          "description": "Only set true when explicitly requesting deletion. Omission must not be interpreted as deletion."
+        }
+      }
+    },
+    "relationshipLink": {
+      "type": "object",
+      "required": [
+        "roleType"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "roleType": {
+          "type": "string",
+          "enum": [
+            "Origin",
+            "Target",
+            "origin",
+            "target"
+          ],
+          "description": "Relationship role side. Current exporter emits Origin and Target."
+        },
+        "roleDefinitionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "roleDefinitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "roleDefinitionName": {
+          "type": "string"
+        },
+        "roleVariantTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "roleVariantName": {
+          "type": "string"
+        },
+        "ideaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "ideaTechName": {
+          "$ref": "#/$defs/techName"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "ideaId"
+          ]
+        },
+        {
+          "required": [
+            "ideaTechName"
+          ]
+        }
+      ]
+    },
+    "marker": {
+      "type": "object",
+      "required": [
+        "definitionTechName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "definitionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "definitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "definitionName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "delete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "detail": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Text",
+            "Table",
+            "Attachment",
+            "Link",
+            "Resource",
+            "Unknown"
+          ],
+          "description": "Editable detail kind. Prefer Text for GPT-authored content unless the export contains a more specific kind."
+        },
+        "definitionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "definitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "definitionName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "text": {
+          "$ref": "#/$defs/editableText"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "array",
+          "description": "Table detail rows, when exported as editable data.",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "integer",
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Safe non-binary metadata for unsupported details.",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "delete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "view": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "techName",
+        "ownerIdeaId",
+        "visuals"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "ownerIdeaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "ownerIdeaTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "visuals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/visual"
+          },
+          "default": []
+        },
+        "delete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "required": [
+        "ideaId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ideaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "ideaTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "representationId": {
+          "$ref": "#/$defs/guid"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "delete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "required": [
+        "op",
+        "entity"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "update",
+            "create",
+            "delete",
+            "place"
+          ],
+          "description": "Requested import action. Use update for text edits, create for new model items, place for diagram visibility, and delete only when explicitly requested."
+        },
+        "entity": {
+          "type": "string",
+          "enum": [
+            "composition",
+            "concept",
+            "relationship",
+            "detail",
+            "marker",
+            "view",
+            "visual"
+          ],
+          "description": "Target entity type."
+        },
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parentId": {
+          "$ref": "#/$defs/guid"
+        },
+        "parentTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "containerId": {
+          "$ref": "#/$defs/guid"
+        },
+        "containerTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "definitionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "definitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "viewId": {
+          "$ref": "#/$defs/guid"
+        },
+        "viewTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "ideaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "relationshipId": {
+          "$ref": "#/$defs/guid"
+        },
+        "roleType": {
+          "type": "string",
+          "enum": [
+            "Origin",
+            "Target",
+            "origin",
+            "target"
+          ]
+        },
+        "reason": {
+          "$ref": "#/$defs/editableText",
+          "description": "Optional human-readable reason for the operation."
+        },
+        "x": {
+          "type": "number",
+          "description": "Top-left X coordinate for explicit visual placement."
+        },
+        "y": {
+          "type": "number",
+          "description": "Top-left Y coordinate for explicit visual placement."
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional symbol width for concept placement."
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional symbol height for concept placement."
+        },
+        "autoPlace": {
+          "type": "boolean",
+          "description": "For create operations, overrides importOptions.autoPlaceNewItems for this item."
+        },
+        "autoFit": {
+          "type": "boolean",
+          "description": "Overrides importOptions.autoFitPlacedConcepts for this operation. Set true to auto-fit an updated existing concept even when it is not newly placed; set false to keep a newly placed concept's supplied/default width."
+        },
+        "autoRoute": {
+          "type": "boolean",
+          "description": "Overrides importOptions.autoRoutePlacedLinks for this operation. Set true to route an existing visible relationship touched by update/place; set false to keep a newly placed or repaired relationship's current connector route."
+        },
+        "originIdeaIds": {
+          "type": "array",
+          "description": "Relationship origin endpoints at operation top level. Top-level fields are preferred over set.* fields.",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "originIdeaTechNames": {
+          "type": "array",
+          "description": "Relationship origin endpoints by techName at operation top level. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          }
+        },
+        "targetIdeaIds": {
+          "type": "array",
+          "description": "Relationship target endpoints at operation top level. Top-level fields are preferred over set.* fields.",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "targetIdeaTechNames": {
+          "type": "array",
+          "description": "Relationship target endpoints by techName at operation top level. Prefer ids when available.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          }
+        },
+        "links": {
+          "type": "array",
+          "description": "Relationship role links at operation top level. Top-level links are preferred over set.links.",
+          "items": {
+            "$ref": "#/$defs/relationshipLink"
+          }
+        },
+        "set": {
+          "$ref": "#/$defs/operationSet",
+          "description": "Editable fields to apply for create/update operations."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "delete"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "id"
+                ]
+              },
+              {
+                "required": [
+                  "techName"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "enum": [
+                  "update",
+                  "create",
+                  "place"
+                ]
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "id"
+                ]
+              },
+              {
+                "required": [
+                  "set"
+                ]
+              },
+              {
+                "required": [
+                  "name"
+                ]
+              },
+              {
+                "required": [
+                  "techName"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entity": {
+                "enum": [
+                  "concept",
+                  "relationship"
+                ]
+              },
+              "op": {
+                "const": "create"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "definitionTechName"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "containerId"
+                ]
+              },
+              {
+                "required": [
+                  "containerTechName"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "operationSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text to apply to entities that expose TechSpec. Omission preserves the existing value; an explicit empty string clears it."
+        },
+        "description": {
+          "$ref": "#/$defs/editableText"
+        },
+        "viewsPrefix": {
+          "type": "string"
+        },
+        "versionNumber": {
+          "type": "string"
+        },
+        "versionAnnotation": {
+          "$ref": "#/$defs/editableText"
+        },
+        "definitionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "definitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "containerId": {
+          "$ref": "#/$defs/guid"
+        },
+        "containerTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "childIdeaIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "compositeViewIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "originIdeaIds": {
+          "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level originIdeaIds is preferred.",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "originIdeaTechNames": {
+          "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level originIdeaTechNames is preferred.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          }
+        },
+        "targetIdeaIds": {
+          "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level targetIdeaIds is preferred.",
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "targetIdeaTechNames": {
+          "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level targetIdeaTechNames is preferred.",
+          "items": {
+            "$ref": "#/$defs/techName"
+          }
+        },
+        "links": {
+          "type": "array",
+          "description": "Accepted inside set for GPT-authored relationship create/update patches; top-level links is preferred.",
+          "items": {
+            "$ref": "#/$defs/relationshipLink"
+          }
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/detail"
+          }
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/marker"
+          }
+        },
+        "ownerIdeaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "ownerIdeaTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "viewId": {
+          "$ref": "#/$defs/guid"
+        },
+        "viewTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "visuals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/visual"
+          }
+        },
+        "ideaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "ideaTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "representationId": {
+          "$ref": "#/$defs/guid"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "autoPlace": {
+          "type": "boolean"
+        },
+        "autoFit": {
+          "type": "boolean",
+          "description": "Accepted inside set for GPT-authored patches, but top-level autoFit is preferred."
+        },
+        "autoRoute": {
+          "type": "boolean",
+          "description": "Accepted inside set for GPT-authored patches, but top-level autoRoute is preferred."
+        },
+        "delete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "warning": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "message"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "entity": {
+              "type": "string"
+            },
+            "id": {
+              "$ref": "#/$defs/guid"
+            },
+            "techName": {
+              "$ref": "#/$defs/techName"
+            },
+            "path": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "format": "ThinkComposer.JsonInterchange",
+      "formatVersion": 1,
+      "importOptions": {
+        "autoPlaceNewItems": true,
+        "autoFitPlacedConcepts": true,
+        "autoRoutePlacedLinks": true,
+        "layoutMode": "gridNearViewport",
+        "preventSelfRecursiveCompositeViews": true,
+        "repairRecursiveVisuals": true
+      },
+      "operations": [
+        {
+          "op": "update",
+          "entity": "concept",
+          "id": "00000000-0000-0000-0000-000000000000",
+          "set": {
+            "name": "Renamed concept",
+            "summary": "New GPT-edited summary."
+          }
+        },
+        {
+          "op": "create",
+          "entity": "concept",
+          "definitionTechName": "Concept",
+          "containerId": "00000000-0000-0000-0000-000000000000",
+          "viewTechName": "Main",
+          "x": 100,
+          "y": 200,
+          "set": {
+            "name": "New concept from GPT",
+            "techName": "New_concept_from_GPT",
+            "summary": "Added by patch operation."
+          }
+        },
+        {
+          "op": "place",
+          "entity": "concept",
+          "techName": "New_concept_from_GPT",
+          "viewTechName": "Main",
+          "x": 100,
+          "y": 200,
+          "width": 180,
+          "height": 80
+        }
+      ]
+    }
+  ]
+}

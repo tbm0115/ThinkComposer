@@ -1,0 +1,3 @@
+interface:
+  display_name: "ThinkComposer JSON Interchange"
+  short_description: "Create, edit, and validate ThinkComposer JSON import/export documents."

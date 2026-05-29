@@ -1,0 +1,136 @@
+{
+  "format": "ThinkComposer.DomainJsonInterchange",
+  "formatVersion": 1,
+  "warnings": [
+    "Patch-only Domain JSON sample. Expected result: explicit create/update operations merge safely; delete and incompatible field changes are skipped unless future tools add explicit destructive confirmation."
+  ],
+  "operations": [
+    {
+      "op": "update",
+      "entity": "domain",
+      "set": {
+        "summary": "Updated by Domain JSON patch import.",
+        "techSpec": "domain-owner: architecture\nreview-cycle: quarterly"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "linkRoleVariant",
+      "techName": "Consumes",
+      "set": {
+        "name": "Consumes",
+        "summary": "Source consumes the target capability."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "markerDefinition",
+      "techName": "Requires_Review",
+      "set": {
+        "name": "Requires Review",
+        "clusterTechName": "Deployment_Markers",
+        "summary": "Imported marker definition.",
+        "techSpec": "marker: review"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "tableDefinition",
+      "techName": "Deployment_Metadata",
+      "set": {
+        "name": "Deployment Metadata",
+        "summary": "Custom table for deployment concepts.",
+        "categoryTechName": "Deployment_Tables",
+        "techSpec": "table: deployment metadata"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "fieldDefinition",
+      "techName": "Owner_Team",
+      "ownerTechName": "Deployment_Metadata",
+      "set": {
+        "name": "Owner Team",
+        "dataTypeTechName": "Text",
+        "summary": "Owning team for the deployment artifact.",
+        "techSpec": "field: owner"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "conceptDefinition",
+      "techName": "Deployment_Component",
+      "set": {
+        "name": "Deployment Component",
+        "clusterTechName": "Deployment_Concepts",
+        "representativeShape": "Rectangle",
+        "summary": "Deployable architecture component.",
+        "techSpec": "shape: rectangle\nsemantics: deployable component"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationshipDefinition",
+      "techName": "Deploys_To",
+      "set": {
+        "name": "Deploys To",
+        "clusterTechName": "Deployment_Relationships",
+        "isSimple": true,
+        "hideCentralSymbolWhenSimple": true,
+        "summary": "Directed deployment target relationship.",
+        "techSpec": "direction: source-to-target"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationshipRole",
+      "techName": "Origin",
+      "ownerTechName": "Deploys_To",
+      "set": {
+        "name": "Origin",
+        "roleType": "Origin",
+        "summary": "Deploying component."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationshipRole",
+      "techName": "Target",
+      "ownerTechName": "Deploys_To",
+      "set": {
+        "name": "Target",
+        "roleType": "Target",
+        "summary": "Deployment target."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "outputTemplate",
+      "techName": "Deployment_Component_Markdown",
+      "ownerTechName": "Deployment_Component",
+      "set": {
+        "name": "Deployment Component Markdown",
+        "ownerKind": "conceptDefinition",
+        "externalLanguageTechName": "Markdown",
+        "targetFileExtension": "md",
+        "templateText": "# {{Name}}\n\n{{Summary}}\n"
+      }
+    },
+    {
+      "op": "update",
+      "entity": "outputTemplate",
+      "techName": "Deploys_To_Markdown",
+      "ownerTechName": "Deploys_To",
+      "set": {
+        "templateText": "{{Origin}} deploys to {{Target}}\n\n{{Summary}}\n"
+      }
+    },
+    {
+      "op": "delete",
+      "entity": "fieldDefinition",
+      "techName": "Legacy_Field",
+      "ownerTechName": "Deployment_Metadata",
+      "reason": "Dangerous deletion example. Importer should skip by default."
+    }
+  ]
+}

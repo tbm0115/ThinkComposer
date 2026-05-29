@@ -1,0 +1,69 @@
+{
+  "format": "ThinkComposer.DomainJsonInterchange",
+  "formatVersion": 1,
+  "operations": [
+    {
+      "op": "create",
+      "entity": "tableDefinition",
+      "techName": "Interchange_Metadata",
+      "set": {
+        "name": "Interchange Metadata",
+        "summary": "Table added by additive Domain JSON regression sample.",
+        "techSpec": "table: interchange metadata\nsafety: additive"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "fieldDefinition",
+      "techName": "Interchange_Source",
+      "ownerTechName": "Interchange_Metadata",
+      "set": {
+        "name": "Interchange Source",
+        "dataTypeTechName": "Text",
+        "order": 1,
+        "summary": "Name of the source system or patch that created this element.",
+        "techSpec": "field: source\nrequired: false"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "fieldDefinition",
+      "techName": "Interop_Notes",
+      "ownerTechName": "Interchange_Metadata",
+      "set": {
+        "name": "Interop Notes",
+        "dataTypeTechName": "Text",
+        "order": 2,
+        "summary": "Human-readable notes for interchange testing.",
+        "techSpec": "field: notes\nmultiline: true"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "conceptDefinition",
+      "techName": "Interchange_Component",
+      "set": {
+        "name": "Interchange Component",
+        "summary": "Concept definition added by additive Domain JSON regression sample.",
+        "representativeShape": "Rectangle",
+        "customFieldsTableTechName": "Interchange_Metadata",
+        "techSpec": "definition: interchange component\nshape: rectangle"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "outputTemplate",
+      "techName": "Interchange_Component_Markdown",
+      "ownerTechName": "Interchange_Component",
+      "set": {
+        "name": "Interchange Component Markdown",
+        "ownerScope": "conceptDefinition",
+        "externalLanguageTechName": "Text",
+        "targetFileExtension": "txt",
+        "summary": "Template added as text only by Domain JSON import.",
+        "techSpec": "template: text\nexecute: false",
+        "templateText": "# {{Name}}\n\n{{Summary}}\n\nSource: {{Interchange_Source}}\n"
+      }
+    }
+  ]
+}

@@ -136,8 +136,12 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             foreach(var Connector in this.VisualConnectors)
                 Connector.UpdateIntermediatePoint(Display.NULL_POINT);
 
-            if (this.OriginRepresentations.First() != null)
-                this.OriginRepresentations.First().MainSymbol.UpdateDependents();
+            var OriginRepresentation = this.OriginRepresentations.FirstOrDefault();
+            if (OriginRepresentation != null)
+                OriginRepresentation.MainSymbol.UpdateDependents();
+            else
+                Console.WriteLine("Cannot straighten relationship visual representation for '{0}' ({1}) because it has no origin representation.",
+                                  this.RepresentedRelationship.Name, this.RepresentedRelationship.TechName);
 
             this.DisplayingView.UpdateVersion();
             this.EditEngine.CompleteCommandVariation();

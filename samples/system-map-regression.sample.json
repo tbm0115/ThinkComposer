@@ -1,0 +1,261 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": false,
+    "autoFitPlacedConcepts": false,
+    "autoRoutePlacedLinks": false,
+    "useActiveCompositionAsContainer": true,
+    "layoutMode": "none",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 520,
+      "y": 240,
+      "set": {
+        "name": "Deployment Manager System",
+        "techName": "Deployment_Manager_System",
+        "summary": "System/root concept for System Map layout regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 520,
+      "y": 380,
+      "set": {
+        "name": "Web App",
+        "techName": "Web_App",
+        "summary": "Internal user-facing deployment management application."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 700,
+      "y": 380,
+      "set": {
+        "name": "Package Catalog",
+        "techName": "Package_Catalog",
+        "summary": "Internal package metadata and revision catalog."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000004",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 880,
+      "y": 380,
+      "set": {
+        "name": "Job Orchestrator",
+        "techName": "Job_Orchestrator",
+        "summary": "Internal workflow coordinator."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000005",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 520,
+      "y": 520,
+      "set": {
+        "name": "Configuration Manager",
+        "techName": "Configuration_Manager",
+        "summary": "Internal configuration management component."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000006",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 700,
+      "y": 520,
+      "set": {
+        "name": "Audit Log",
+        "techName": "Audit_Log",
+        "summary": "Internal audit trail for deployment events."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000007",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 200,
+      "y": 360,
+      "set": {
+        "name": "User",
+        "techName": "External_User",
+        "summary": "External user actor."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000008",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 1180,
+      "y": 400,
+      "set": {
+        "name": "Host Agent",
+        "techName": "Host_Agent",
+        "summary": "External host-side deployment agent."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000009",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 200,
+      "y": 520,
+      "set": {
+        "name": "Package Source",
+        "techName": "External_Package_Source",
+        "summary": "External source for deployment packages."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "93000000-0000-4000-8000-000000000010",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "x": 1380,
+      "y": 520,
+      "set": {
+        "name": "OT Network Endpoint",
+        "techName": "OT_Network_Endpoint",
+        "summary": "External operational technology endpoint."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "User Opens Web App",
+        "techName": "User_To_Web_App",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "External_User" },
+          { "roleType": "Target", "ideaTechName": "Web_App" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Package Source Feeds Catalog",
+        "techName": "Package_Source_To_Catalog",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "External_Package_Source" },
+          { "roleType": "Target", "ideaTechName": "Package_Catalog" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Web App Starts Job",
+        "techName": "Web_App_To_Job_Orchestrator",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Web_App" },
+          { "roleType": "Target", "ideaTechName": "Job_Orchestrator" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Job Orchestrator Commands Agent",
+        "techName": "Job_Orchestrator_To_Host_Agent",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Job_Orchestrator" },
+          { "roleType": "Target", "ideaTechName": "Host_Agent" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Host Agent Updates Endpoint",
+        "techName": "Host_Agent_To_OT_Network_Endpoint",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Host_Agent" },
+          { "roleType": "Target", "ideaTechName": "OT_Network_Endpoint" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__System_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Web App Writes Audit Log",
+        "techName": "Web_App_To_Audit_Log",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Web_App" },
+          { "roleType": "Target", "ideaTechName": "Audit_Log" }
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    "Sample for manually exercising Edit -> Appearance -> Arrange as System Map. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__System_Map or replace containerTechName values.",
+    "Expected System Map result: Deployment Manager System becomes the root/header, Web App/Package Catalog/Job Orchestrator/Configuration Manager/Audit Log are comfortably inside a visible Group Region, and User/Package Source/Host Agent/OT Network Endpoint are external.",
+    "Regression target: Web App and Package Catalog should not touch the lower Group Region border, Package_Source_To_Catalog should not overlap External_User, User_To_Web_App should not overlap Package_Source_To_Catalog, and Web_App_To_Audit_Log should not overlap User_To_Web_App after System Map side-lane relationship bubble placement."
+  ]
+}

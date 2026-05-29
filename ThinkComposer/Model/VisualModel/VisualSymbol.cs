@@ -961,7 +961,22 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             if (this.OwnerRepresentation.RepresentedIdea.CompositeActiveView == null)
                 return;
 
-            this.OwnerRepresentation.RepresentedIdea.CompositeActiveView.DrawContent(Context, AvailableArea, !PutBackgroundBrush);
+            string Warning;
+            if (!CompositeViewIntegrity.TryEnterCompositeContentRender(this, out Warning))
+            {
+                Console.WriteLine("Cannot show nested content for concept '{0}'. {1}",
+                                  this.OwnerRepresentation.RepresentedIdea.TechName.ToStringAlways(), Warning);
+                return;
+            }
+
+            try
+            {
+                this.OwnerRepresentation.RepresentedIdea.CompositeActiveView.DrawContent(Context, AvailableArea, !PutBackgroundBrush);
+            }
+            finally
+            {
+                CompositeViewIntegrity.ExitCompositeContentRender(this);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1370,8 +1385,15 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
 
             if (DoAutomaticReposition)
             {
-                var TargetingConnector = IntermediateSymbol.TargetConnections.First();
-                var OriginatingConnector = IntermediateSymbol.OriginConnections.First();
+                var TargetingConnector = IntermediateSymbol.TargetConnections.FirstOrDefault();
+                var OriginatingConnector = IntermediateSymbol.OriginConnections.FirstOrDefault();
+                if (TargetingConnector == null || OriginatingConnector == null)
+                {
+                    Console.WriteLine("Cannot auto-reposition relationship symbol for '{0}' because it is missing an origin or target connector.",
+                                      IntermediateSymbol.OwnerRepresentation.RepresentedIdea.ToStringAlways());
+                    return false;
+                }
+
                 var LocalPosition = (IsOriginated ? Connector.OriginPosition : Connector.TargetPosition);
                 Point OppositePosition;
                 VisualSymbol OppositeSymbol = null;

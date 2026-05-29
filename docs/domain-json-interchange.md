@@ -1,0 +1,190 @@
+# ThinkComposer Domain JSON Interchange
+
+Domain JSON Interchange exports a ThinkComposer `.tdom` domain to editable JSON and merges edited JSON back into an open domain. It is also the merge source used when updating an existing `.tcom` composition's embedded domain snapshot.
+
+Native `.tdom` files remain authoritative. JSON is a safe interchange and patch format only; it does not replace ThinkComposer native persistence.
+
+## Workflow
+
+1. Open a domain in ThinkComposer.
+2. Use `Domain > Export Domain JSON...`.
+3. Edit the JSON manually or with GPT assistance.
+4. Reopen or keep the original `.tdom` domain active.
+5. Use `Domain > Import/Update Domain JSON...`.
+6. Review the preview summary, source warnings, import warnings, skipped operations, and errors.
+7. Confirm the merge, then save the `.tdom` normally.
+
+Every supported file starts with:
+
+```json
+{
+  "format": "ThinkComposer.DomainJsonInterchange",
+  "formatVersion": 1
+}
+```
+
+The schema is maintained at `docs/thinkcomposer-domain-json-interchange.schema.json`.
+
+## Export Coverage
+
+The first-pass exporter writes deterministic, pretty-printed JSON for text-safe domain content:
+
+- Domain metadata: id, name, techName, summary, description, TechSpec, version/default table references, and safe view/grid metadata.
+- External languages and link-role variants.
+- Concept definition, relationship definition, marker, table, and field clusters/categories.
+- Marker definitions, excluding binary image payloads.
+- Table definitions and field definitions, including data type/category references and TechSpec where available.
+- Concept definitions, including cluster, ancestor, shape/composability/versionability metadata, custom field table references, detail designator summaries, and attached output templates.
+- Relationship definitions, including cluster, ancestor, shape/simple/hidden-central metadata, role definitions, allowed/default variants, and attached output templates.
+- Output templates as text, including owner definition and external language references.
+
+The exporter intentionally reports source/export warnings instead of inlining unsupported binary, image, rich-style, or unsafe native object graph details. Repeated missing-category notices are grouped in summaries with examples so successful exports and imports do not look like failures.
+
+## Patch Operations
+
+Patch-only files use the top-level `operations` array:
+
+```json
+{
+  "format": "ThinkComposer.DomainJsonInterchange",
+  "formatVersion": 1,
+  "operations": [
+    {
+      "op": "update",
+      "entity": "domain",
+      "set": {
+        "summary": "Updated summary",
+        "techSpec": "owner: architecture"
+      }
+    }
+  ]
+}
+```
+
+Supported operation values are `update`, `create`, and `delete`. Supported entity values include `domain`, `externalLanguage`, `linkRoleVariant`, `markerCluster`, `markerDefinition`, `conceptDefinitionCluster`, `relationshipDefinitionCluster`, `tableDefinitionCategory`, `fieldDefinitionCategory`, `tableDefinition`, `fieldDefinition`, `detailDesignator`, `conceptDefinition`, `relationshipDefinition`, `relationshipRole`, and `outputTemplate`.
+
+Matching order is:
+
+1. `id` / GlobalId when supplied.
+2. `techName`.
+3. `ownerTechName` plus `techName` for child entities such as fields, roles, and templates.
+4. Name-only matches are reported as warnings/manual hints rather than applied silently.
+
+Omitted fields preserve existing values. An explicit empty string clears editable text fields such as `summary`, `description`, or `techSpec`.
+
+External language references for output templates use a tolerant fallback after exact matching. Exact id and exact `techName` are preferred. If those do not resolve, the importer normalizes punctuation, whitespace, repeated underscores, dashes, dots, and case, so values such as `Mermaid.js_Flowchart`, `Mermaid JS Flowchart`, and `Mermaid_JS_Flowchart` can resolve to the same external language. The fallback is applied only when it produces exactly one candidate. Ambiguous normalized matches are skipped with a warning listing the conflicting candidates.
+
+## Safe Merge Rules
+
+The importer is intentionally conservative:
+
+- Updates apply only explicit fields.
+- Nothing is deleted by omission.
+- Delete operations are skipped by default and reported as dangerous changes unless a future destructive-confirmation workflow is added.
+- Missing safe objects can be created when required fields are present.
+- Existing legacy domain objects are retained by default.
+- Field deletion, incompatible field data type changes, table deletion, and relationship role changes that can invalidate compositions are skipped by default.
+- Output template bodies are imported as text only. Templates, scripts, TechSpec, and external language text are never executed.
+- If an external language or owner definition is missing for a template, the template is skipped unless that dependency exists or is created earlier in the patch.
+
+The preview dialog summarizes planned changes. Detailed parse, planning, apply, skip, conflict, and rollback diagnostics are written to the lower-left application log.
+
+## Report Categories
+
+Domain JSON dialogs separate message categories:
+
+- `Source warnings` come from the imported/exported JSON itself, such as text-only template export notes, summarized binary/visual content, or grouped missing-category notices. They are useful context, not new failures from the current import.
+- `Import warnings` are generated while planning or applying the current import/merge.
+- `Skipped` counts operations intentionally left unchanged, with operation-indexed reasons in the log.
+- `Dangerous skipped` counts destructive or unsafe changes skipped by design.
+- `Notes` are expected reminders, such as saving the containing `.tcom` when a domain is embedded in a composition.
+- `Errors` are actual failures that prevented the operation or part of it.
+
+Missing field/table category warnings are usually non-fatal. They mean `categoryTechName` was omitted from JSON because the native domain object has no category assigned. Output templates remain text-only and are never executed.
+
+For small metadata patches, the confirmation dialog also lists the planned field updates. The application log always includes field-level details such as `field=summary`, `field=techSpec`, old/new values, and the match method when available. External language updates log whether the target matched by `id` or `techName`.
+
+## TechSpec
+
+`techSpec` is supported wherever the target domain object exposes ThinkComposer TechSpec or a text-like equivalent. This includes domain metadata, definition metadata, table/field definitions, roles, markers, and output templates where supported by the native model.
+
+TechSpec is treated as plain text. It is not parsed as code and is never executed.
+
+Example:
+
+```json
+{
+  "op": "update",
+  "entity": "conceptDefinition",
+  "techName": "Deployment_Component",
+  "set": {
+    "techSpec": "shape: rectangle\nsemantics: deployable component"
+  }
+}
+```
+
+## Samples
+
+Sample documents are maintained under `samples/`:
+
+- `domain-json-interchange-regression.sample.json` covers a full-state Domain JSON document with tables, fields, roles, definitions, output templates, and TechSpec.
+- `domain-json-interchange-patch.sample.json` covers patch-style create/update operations and a skipped dangerous delete example.
+- `domain-json-metadata-update.sample.json` covers a metadata-only Domain and external language TechSpec update with no destructive operations. Expected fresh result after adapting the external language techName if needed: `Applied updated: 2`, `Applied skipped: 0`, `Source warnings: 0`, `Import warnings: 0`, `Errors: 0`.
+- `domain-json-additive-definition.sample.json` covers additive creation of one concept definition, one table, two fields, and one output template. Expected fresh result: `Applied created: 5`, `Applied skipped: 0`, `Source warnings: 0`, `Import warnings: 0`, `Errors: 0`. Re-importing the same sample should update or leave existing items unchanged rather than duplicating definitions.
+- `domain-sync-update.sample.json` is intended for updating an existing composition's embedded domain snapshot.
+
+## Manual Regression
+
+1. Open or create a `.tdom`.
+2. Export Domain JSON.
+3. Import a patch that updates domain summary and TechSpec.
+4. Add a concept definition, table, field, link role variant, marker definition, relationship definition, roles, and output template.
+5. Confirm dangerous delete examples are skipped with warnings.
+6. Save and reopen the `.tdom`.
+7. Confirm changes persist and no omitted native domain objects were deleted.
+
+## Re-Export Verification
+
+Use this path after importing a metadata/TechSpec patch such as `samples/domain-json-metadata-update.sample.json`:
+
+1. Open the target `.tdom` or composition-embedded domain.
+2. Run `Domain > Import/Update Domain JSON...` and import the metadata patch.
+3. Confirm the preview shows the planned domain and external language updates.
+4. Apply the patch and verify the lower-left log includes field-level lines for `summary` and `techSpec`, including the external language match method.
+5. Save the active `.tdom` or save the containing `.tcom` if the domain is embedded in an open composition.
+6. Close and reopen the file.
+7. Run `Domain > Export Domain JSON...`.
+8. Inspect the exported JSON and verify:
+   - `domain.techSpec` contains the imported TechSpec text.
+   - The target `externalLanguages[]` item contains the imported `summary`.
+   - The target `externalLanguages[]` item contains the imported `techSpec`.
+   - No destructive operations were applied by omission.
+
+## Additive Sample Verification
+
+Use `samples/domain-json-additive-definition.sample.json` against a copied test composition/domain:
+
+1. Run `Domain > Import/Update Domain JSON...`.
+2. Confirm preview shows five planned creates and no planned skips, import warnings, or errors.
+3. Apply and confirm the final summary reports five created items:
+   - one `tableDefinition`
+   - two `fieldDefinition` objects under `Interchange_Metadata`
+   - one `conceptDefinition`
+   - one `outputTemplate`
+4. Verify the log shows field parent/data type resolution:
+   - parent table `Interchange_Metadata`
+   - data type `Text`
+5. Verify the output template resolves:
+   - owner scope `conceptDefinition`
+   - owner `Interchange_Component`
+   - external language `Text`
+6. Save and reopen the `.tdom` or containing `.tcom`.
+7. Export Domain JSON again and confirm the table, fields, concept definition, custom fields table reference, and output template are present.
+
+If the output template is skipped, check the log for an unresolved owner scope, owner definition, or external language. The importer accepts `ownerScope` and the alias `ownerKind`; supported scopes are `domainConcept`, `domainRelationship`, `conceptDefinition`, and `relationshipDefinition`.
+
+For embedded-domain updates from older `.tdom` sources, output template language references may contain punctuation variants. For example, `Mermaid.js_Flowchart` should resolve to `Mermaid_JS_Flowchart` when that is the only normalized match in the target domain. If two external languages normalize to the same key, the importer skips the template instead of guessing.
+
+## Limits
+
+This first pass does not import custom domain shapes, binary image resources, rich visual style object graphs, full destructive migrations, or executable behavior. `.tdom` JSON import/export is not live sync. Use `docs/domain-sync.md` for the explicit `.tdom` / Domain JSON to `.tcom` embedded-domain update workflow.

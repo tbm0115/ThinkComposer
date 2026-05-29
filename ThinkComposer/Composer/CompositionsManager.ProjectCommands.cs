@@ -32,6 +32,7 @@ using Instrumind.Common.Visualization;
 using Instrumind.Common.Visualization.Widgets;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.Composer.JsonInterchange;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -393,6 +394,205 @@ namespace Instrumind.ThinkComposer.Composer
 
             if (!SendingResult.IsAbsent())
                 Display.DialogMessage("Error!", "Cannot send e-mail via Outlook.\n\nProblem: " + SendingResult, EMessageType.Warning);
+        }
+
+        public void ExportJson(CompositionEngine Engine)
+        {
+            General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
+
+            var FileName = Engine.TargetComposition.TechName.NullDefault("Composition") + ".tc.json";
+            var Location = Display.DialogGetSaveFile("Export Composition JSON",
+                                                     ".json",
+                                                     "JSON files (*.json)|*.json",
+                                                     FileName);
+            if (Location == null)
+                return;
+
+            Console.WriteLine("JSON export start: source={0}; destination={1}",
+                              DescribeJsonLogComposition(Engine.TargetComposition),
+                              Location.LocalPath);
+
+            var CurrentWindow = Display.GetCurrentWindow();
+            CurrentWindow.Cursor = Cursors.Wait;
+
+            try
+            {
+                var Document = CompositionJsonExporter.Export(Engine.TargetComposition);
+                CompositionJsonSerializer.Save(Document, Location.LocalPath);
+                LogJsonExportSummary(Document);
+                Console.WriteLine("JSON export succeeded: {0}", Location.LocalPath);
+
+                CurrentWindow.Cursor = Cursors.Arrow;
+                var Message = "Composition JSON exported to:\n" + Location.LocalPath;
+                if (Document.Warnings.Count > 0)
+                    Message = Message + "\n\nExport warnings: " + Document.Warnings.Count.ToString() +
+                              "\nSee the application log for details.";
+
+                Display.DialogMessage("Export JSON", Message, EMessageType.Information);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("JSON export failed: {0}", Problem.Message);
+                Console.WriteLine(Problem.ToString());
+                AppExec.LogException(Problem, "JSON export");
+                CurrentWindow.Cursor = Cursors.Arrow;
+                Display.DialogMessage("Error!", "Cannot export Composition JSON.\n\nProblem: " + Problem.Message, EMessageType.Error);
+            }
+        }
+
+        public void ImportJson(CompositionEngine Engine)
+        {
+            General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
+
+            var Location = Display.DialogGetOpenFile("Import Composition JSON",
+                                                     ".json",
+                                                     "JSON files (*.json)|*.json");
+            if (Location == null)
+                return;
+
+            Console.WriteLine("JSON import start: source={0}; active composition={1}",
+                              Location.LocalPath,
+                              DescribeJsonLogComposition(Engine.TargetComposition));
+
+            CompositionJsonDocument Document = null;
+            CompositionJsonImportReport Preview = null;
+
+            try
+            {
+                Document = CompositionJsonSerializer.Load(Location.LocalPath);
+                CompositionJsonSerializer.Validate(Document);
+                LogJsonParseSummary(Document);
+                Preview = CompositionJsonImporter.Preview(Engine.TargetComposition, Document);
+                Console.WriteLine("JSON import preview summary: {0}", Preview.ToDetailedCountsString());
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("JSON import parse/preview failed: {0}", Problem.Message);
+                Console.WriteLine(Problem.ToString());
+                AppExec.LogException(Problem, "JSON import preview");
+                Display.DialogMessage("Error!", "Cannot read Composition JSON.\n\nProblem: " + Problem.Message, EMessageType.Error);
+                return;
+            }
+
+            var Confirmation = Display.DialogMessage("Import JSON",
+                                                     "Apply JSON changes from:\n" + Location.LocalPath + "\n\n" +
+                                                     Preview.ToSummaryString(true),
+                                                     EMessageType.Question, MessageBoxButton.YesNo, MessageBoxResult.No);
+            if (Confirmation != MessageBoxResult.Yes)
+                return;
+
+            var CurrentWindow = Display.GetCurrentWindow();
+            CurrentWindow.Cursor = Cursors.Wait;
+
+            try
+            {
+                var Report = CompositionJsonImporter.Import(Engine, Document, Preview);
+                this.WorkspaceDirector.ShellProvider.RefreshSelection();
+                Console.WriteLine("JSON import planned summary: {0}", Preview.ToDetailedCountsString());
+                Console.WriteLine("JSON import applied summary: {0}", Report.ToDetailedCountsString());
+
+                CurrentWindow.Cursor = Cursors.Arrow;
+                Display.DialogMessage("Import JSON completed", Report.ToSummaryString(true),
+                                      Report.HasImportWarnings || Report.HasErrors ? EMessageType.Warning : EMessageType.Information);
+            }
+            catch (Exception Problem)
+            {
+                if (Preview != null)
+                    Console.WriteLine("JSON import planned summary before failure: {0}", Preview.ToDetailedCountsString());
+
+                Console.WriteLine("JSON import failed: {0}", Problem.Message);
+                Console.WriteLine(Problem.ToString());
+                AppExec.LogException(Problem, "JSON import");
+                CurrentWindow.Cursor = Cursors.Arrow;
+                Display.DialogMessage("Error!", "Cannot import Composition JSON.\n\nNo changes were kept if rollback was possible.\n\nProblem: " + Problem.Message, EMessageType.Error);
+            }
+        }
+
+        private static string DescribeJsonLogComposition(Composition Composition)
+        {
+            if (Composition == null)
+                return "<none>";
+
+            return "name='" + Composition.Name.ToStringAlways() +
+                   "' techName='" + Composition.TechName.ToStringAlways() +
+                   "' id=" + Composition.GlobalId.ToString("D");
+        }
+
+        private static void LogJsonExportSummary(CompositionJsonDocument Document)
+        {
+            var IdeaCount = Document.Ideas == null ? 0 : Document.Ideas.Count;
+            var RelationshipCount = Document.Relationships == null ? 0 : Document.Relationships.Count;
+            var ViewCount = Document.Views == null ? 0 : Document.Views.Count;
+            var DetailCount = 0;
+            var MarkerCount = 0;
+
+            if (Document.Ideas != null)
+                foreach (var Idea in Document.Ideas)
+                {
+                    DetailCount += Idea.Details == null ? 0 : Idea.Details.Count;
+                    MarkerCount += Idea.Markers == null ? 0 : Idea.Markers.Count;
+                }
+
+            if (Document.Relationships != null)
+                foreach (var Relationship in Document.Relationships)
+                {
+                    DetailCount += Relationship.Details == null ? 0 : Relationship.Details.Count;
+                    MarkerCount += Relationship.Markers == null ? 0 : Relationship.Markers.Count;
+                }
+
+            Console.WriteLine("JSON export summary: ideas={0}, relationships={1}, views={2}, details={3}, markers={4}, export warnings={5}",
+                              IdeaCount, RelationshipCount, ViewCount, DetailCount, MarkerCount,
+                              Document.Warnings == null ? 0 : Document.Warnings.Count);
+
+            if (Document.Warnings != null)
+                foreach (var Warning in Document.Warnings)
+                    Console.WriteLine("JSON export warning: {0}", Warning);
+        }
+
+        private static void LogJsonParseSummary(CompositionJsonDocument Document)
+        {
+            var HasFullState = Document.Composition != null ||
+                               (Document.Ideas != null && Document.Ideas.Count > 0) ||
+                               (Document.Relationships != null && Document.Relationships.Count > 0) ||
+                               (Document.Views != null && Document.Views.Count > 0);
+            var HasPatch = Document.Operations != null && Document.Operations.Count > 0;
+            var Mode = HasFullState && HasPatch ? "full-state merge plus patch operations"
+                     : HasFullState ? "full-state merge"
+                     : HasPatch ? "patch operations"
+                     : "empty";
+
+            Console.WriteLine("JSON import parsed: format={0}, formatVersion={1}, mode={2}, ideas={3}, relationships={4}, views={5}, operations={6}, source warnings={7}",
+                              Document.Format, Document.FormatVersion, Mode,
+                              Document.Ideas == null ? 0 : Document.Ideas.Count,
+                              Document.Relationships == null ? 0 : Document.Relationships.Count,
+                              Document.Views == null ? 0 : Document.Views.Count,
+                              Document.Operations == null ? 0 : Document.Operations.Count,
+                              Document.Warnings == null ? 0 : Document.Warnings.Count);
+            Console.WriteLine("JSON import options: autoPlaceNewItems={0}, layoutMode={1}, preventSelfRecursiveCompositeViews={2}, repairRecursiveVisuals={3}, useActiveCompositionAsContainer={4}",
+                              Document.ImportOptions == null || Document.ImportOptions.AutoPlaceNewItems == null
+                              ? "default"
+                              : (Document.ImportOptions.AutoPlaceNewItems.Value ? "true" : "false"),
+                              Document.ImportOptions == null || String.IsNullOrEmpty(Document.ImportOptions.LayoutMode)
+                              ? "default"
+                              : Document.ImportOptions.LayoutMode,
+                              Document.ImportOptions == null || Document.ImportOptions.PreventSelfRecursiveCompositeViews == null
+                              ? "default"
+                              : (Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value ? "true" : "false"),
+                              Document.ImportOptions == null || Document.ImportOptions.RepairRecursiveVisuals == null
+                              ? "default"
+                              : (Document.ImportOptions.RepairRecursiveVisuals.Value ? "true" : "false"),
+                              Document.ImportOptions == null || Document.ImportOptions.UseActiveCompositionAsContainer == null
+                              ? "default(false)"
+                              : (Document.ImportOptions.UseActiveCompositionAsContainer.Value ? "true" : "false"));
+
+            if (Document.Operations != null && Document.Operations.Count > 0)
+                foreach (var Group in Document.Operations.GroupBy(Operation => Operation.Op.ToStringAlways() + "/" + Operation.Entity.ToStringAlways())
+                                                         .OrderBy(Group => Group.Key))
+                    Console.WriteLine("JSON import operations: {0} = {1}", Group.Key, Group.Count());
+
+            if (Document.Warnings != null)
+                foreach (var Warning in Document.Warnings)
+                    Console.WriteLine("JSON import source warning: {0}", Warning);
         }
 
         public void ExportCurrentView(Composition TargetComposition)

@@ -32,9 +32,12 @@ using Instrumind.Common.Visualization;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.ApplicationProduct.Widgets;
+using Instrumind.ThinkComposer.Composer.JsonInterchange;
+using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
 using Instrumind.ThinkComposer.Composer.Reporting;
+using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -190,6 +193,56 @@ namespace Instrumind.ThinkComposer.Composer
             ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Export Image", ExposedWorkCommand.Name, "Exports the current document view as an Image (press [Ctrl] to use Transparency in .PNG format).", "diagram_export.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            // -------------------------------------------------------------------------------------
+            ExposedWorkCommand = new GenericCommand("ExportJson");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    if (Engine == null)
+                        return;
+
+                    ExportJson(Engine);
+                });
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Export JSON...", ExposedWorkCommand.Name, "Exports the current Composition as editable JSON interchange text.", "page_white_code_red.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            // -------------------------------------------------------------------------------------
+            ExposedWorkCommand = new GenericCommand("ImportJson");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    if (Engine == null)
+                        return;
+
+                    ImportJson(Engine);
+                });
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Import JSON...", ExposedWorkCommand.Name, "Merges editable JSON interchange text into the active Composition.", "page_code.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            // -------------------------------------------------------------------------------------
+            ExposedGroup = new SimpleElement("Domain", "Domain");
+            this.CommandGroups_.PutIntoSublist(ExposedArea.TechName, ExposedGroup);
+
+            ExposedWorkCommand = new GenericCommand("UpdateEmbeddedDomain");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    if (Engine == null)
+                        return;
+
+                    DomainJsonInterchangeCommands.UpdateEmbeddedDomain(Engine);
+                });
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Update Embedded Domain...", ExposedWorkCommand.Name, "Safely previews and merges a newer Domain into the active Composition's embedded Domain snapshot.", "book_refresh.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedGroup = new SimpleElement("File", "File");
 
             // -------------------------------------------------------------------------------------
             /* For export to PDF...
@@ -485,6 +538,23 @@ namespace Instrumind.ThinkComposer.Composer
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Switch Details", ExposedWorkCommand.Name, "Shows/Hides the Details poster of the selected Ideas.", "detail_poster.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
+            ExposedWorkCommand = new GenericCommand("FitConceptWidthToText");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.FitConceptWidthToText(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanFitConceptWidthToText(Engine);
+                });
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Fit Concept Width to Text", "FitConceptWidthToText",
+                                                                                          "Fits selected Concept symbols to their visible title text.", "shape_same_width.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
             ExposedWorkCommand = new GenericCommand("FillBrush");
             ExposedWorkCommand.Apply = CommandSelectFillBrush_Execution;
             ExposedWorkCommand.CanApply = CommandSelectFillBrush_IsEnabled;
@@ -543,6 +613,91 @@ namespace Instrumind.ThinkComposer.Composer
             ExposedWorkCommand.Apply = CommandApplyFormat_Execution;
             ExposedWorkCommand.CanApply = CommandApplyFormat_IsEnabled;
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Apply format", "ApplyFormat", "Applies the last getted format to the selected Ideas.", "style_setter.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("RouteLinksWithObstacleAvoidance");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.RouteLinksWithObstacleAvoidance(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanRouteLinksWithObstacleAvoidance(Engine);
+                });
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Route Links with Obstacle Avoidance...", "RouteLinksWithObstacleAvoidance",
+                                                                                          "Routes visible links with conservative single-bend obstacle avoidance.", "shape_move_forwards.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsSpiderMap");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsSpiderMap(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsSpiderMap(Engine);
+                });
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Spider Map...", "ArrangeAsSpiderMap",
+                                                                                          "Arranges selected or visible concepts radially around a root concept.", "shape_align_center.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsFlowchart");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsFlowchart(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsFlowchart(Engine);
+                });
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Flowchart...", "ArrangeAsFlowchart",
+                                                                                          "Arranges selected or visible concepts into a left-to-right process flow.", "shape_spacing_both.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsHierarchyMap");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsHierarchyMap(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsHierarchyMap(Engine);
+                });
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Hierarchy Map...", "ArrangeAsHierarchyMap",
+                                                                                          "Arranges selected or visible concepts into top-down hierarchy levels.", "shape_move_backwards.png",
+                                                                                          EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("ArrangeAsSystemMap");
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsSystemMap(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsSystemMap(Engine);
+                });
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as System Map...", "ArrangeAsSystemMap",
+                                                                                          "Arranges selected or visible concepts into a system boundary map.", "diagram_export.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             // ............................................................................................................

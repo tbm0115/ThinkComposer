@@ -1,0 +1,150 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for JSON import regression coverage against an MTConnect/Deployment Manager composition. Replace techNames/containerTechNames if testing against a different composition.",
+    "Expected result: object-valued warnings render readably, update/create/place operations plan accurately, newly placed concepts auto-fit, and newly placed/repaired links auto-route.",
+    {
+      "code": "metadata-only",
+      "path": "attachments[0]",
+      "message": "Object-valued warnings should appear readably in the ThinkComposer log and preview dialog."
+    }
+  ],
+  "operations": [
+    {
+      "op": "update",
+      "entity": "concept",
+      "techName": "TAMS_MTConnect_Deployment_Manager",
+      "autoFit": true,
+      "set": {
+        "summary": "Updated by JSON patch import. Replace this techName with an existing concept in the active composition.",
+        "techSpec": "api: /api/packages/import\nstorage: PackageStorageRoot\npersistence: PostgreSQL"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "11111111-1111-4111-8111-111111111111",
+      "definitionTechName": "Process",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "viewTechName": "Main",
+      "autoFit": false,
+      "x": 100.0,
+      "y": 200.0,
+      "width": 180.0,
+      "height": 80.0,
+      "set": {
+        "name": "Package Import Pipeline",
+        "techName": "Package_Import_Pipeline",
+        "summary": "Reduced regression create concept operation with explicit visual placement."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "22222222-2222-4222-8222-222222222222",
+      "definitionTechName": "Process",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "set": {
+        "name": "Auto Placed Validation Step",
+        "techName": "Auto_Placed_Validation_Step",
+        "summary": "No coordinates supplied; importer should auto-place this concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "33333333-3333-4333-8333-333333333333",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "autoRoute": true,
+      "set": {
+        "name": "Package Import Flow",
+        "techName": "Package_Import_Flow",
+        "summary": "Reduced regression create relationship operation with links under set.",
+        "originIdeaTechNames": [
+          "Package_Import_Pipeline"
+        ],
+        "targetIdeaTechNames": [
+          "Auto_Placed_Validation_Step"
+        ],
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaId": "11111111-1111-4111-8111-111111111111",
+            "ideaTechName": "Package_Import_Pipeline"
+          },
+          {
+            "roleType": "target",
+            "ideaId": "22222222-2222-4222-8222-222222222222",
+            "ideaTechName": "Auto_Placed_Validation_Step"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "44444444-4444-4444-8444-444444444444",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "set": {
+        "name": "Skipped Linkless Relationship",
+        "techName": "Skipped_Linkless_Relationship",
+        "summary": "Importer should skip this operation because it has no origin or target links."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "55555555-5555-4555-8555-555555555555",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Deployment_Manager_Web_App",
+      "autoRoute": false,
+      "set": {
+        "name": "Owner To Package Import Pipeline",
+        "techName": "Owner_To_Package_Import_Pipeline",
+        "summary": "The relationship model link should be created or repaired, but the visual should be skipped in the owner's own composite view because it would require placing Deployment_Manager_Web_App inside itself.",
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaTechName": "Deployment_Manager_Web_App"
+          },
+          {
+            "roleType": "target",
+            "ideaTechName": "Package_Import_Pipeline"
+          }
+        ]
+      }
+    },
+    {
+      "op": "place",
+      "entity": "concept",
+      "id": "11111111-1111-4111-8111-111111111111",
+      "techName": "Package_Import_Pipeline",
+      "viewTechName": "Main",
+      "x": 100.0,
+      "y": 200.0,
+      "width": 180.0,
+      "height": 80.0
+    },
+    {
+      "op": "place",
+      "entity": "relationship",
+      "id": "33333333-3333-4333-8333-333333333333",
+      "techName": "Package_Import_Flow",
+      "viewTechName": "Main",
+      "x": 340.0,
+      "y": 220.0
+    }
+  ]
+}

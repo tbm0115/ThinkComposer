@@ -1,0 +1,72 @@
+{
+  "format": "ThinkComposer.DomainJsonInterchange",
+  "formatVersion": 1,
+  "warnings": [
+    "Sample for Composition > Domain > Update Embedded Domain. Expected result: active .tcom embedded domain receives safe additions/updates while legacy definitions and existing composition ideas are preserved."
+  ],
+  "domain": {
+    "name": "Deployment Management Domain",
+    "techName": "Deployment_Management_Domain",
+    "summary": "Newer Domain snapshot for explicit embedded-domain update.",
+    "techSpec": "sync-source: domain-sync-update.sample.json\nmode: safe-merge"
+  },
+  "linkRoleVariants": [
+    {
+      "name": "Publishes",
+      "techName": "Publishes",
+      "summary": "Source publishes data to target."
+    }
+  ],
+  "tableDefinitions": [
+    {
+      "name": "Operational Metadata",
+      "techName": "Operational_Metadata",
+      "summary": "Table added to existing compositions by embedded-domain update.",
+      "fields": [
+        {
+          "name": "Runbook URI",
+          "techName": "Runbook_URI",
+          "dataTypeTechName": "Text",
+          "summary": "Operational runbook link."
+        }
+      ]
+    }
+  ],
+  "conceptDefinitions": [
+    {
+      "name": "Deployment Runbook",
+      "techName": "Deployment_Runbook",
+      "summary": "New concept definition made available to older compositions.",
+      "clusterTechName": "Deployment_Concepts",
+      "representativeShape": "Rectangle",
+      "customFieldsTableTechName": "Operational_Metadata",
+      "techSpec": "definition: operational documentation"
+    }
+  ],
+  "relationshipDefinitions": [
+    {
+      "name": "Publishes To",
+      "techName": "Publishes_To",
+      "summary": "New relationship definition made available to older compositions.",
+      "clusterTechName": "Deployment_Relationships",
+      "isSimple": true,
+      "hideCentralSymbolWhenSimple": true,
+      "roles": [
+        {
+          "name": "Origin",
+          "techName": "Origin",
+          "roleType": "Origin"
+        },
+        {
+          "name": "Target",
+          "techName": "Target",
+          "roleType": "Target",
+          "allowedVariantTechNames": [
+            "Publishes"
+          ]
+        }
+      ]
+    }
+  ],
+  "operations": []
+}

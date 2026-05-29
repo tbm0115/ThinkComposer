@@ -119,7 +119,16 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             this.MeasuredSize = new Size((RightMostPos - LeftMostPos) + 1.0, (BottomMostPos - TopMostPos) + 1.0); */
 
             if (this.MeasuredSize == default(Size))
-                this.MeasuredSize = this.OwnerView.ViewChildren.First(reg => reg.Key == this.OwnerView.BackgroundSheet).Content.ContentBounds.Size;
+            {
+                var BackgroundChild = this.OwnerView.ViewChildren.FirstOrDefault(reg => reg.Key == this.OwnerView.BackgroundSheet);
+                if (BackgroundChild != null && BackgroundChild.Content != null)
+                    this.MeasuredSize = BackgroundChild.Content.ContentBounds.Size;
+                else
+                {
+                    Console.WriteLine("Warning: View '{0}' has no materialized background sheet while measuring.", this.OwnerView);
+                    this.MeasuredSize = new Size(1.0, 1.0);
+                }
+            }
 
             return this.MeasuredSize;
         }

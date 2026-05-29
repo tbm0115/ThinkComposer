@@ -30,8 +30,10 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             this.SelectedConceptSymbols = new List<VisualSymbol>();
             this.SelectedRelationshipRepresentations = new List<RelationshipVisualRepresentation>();
             this.SelectedRelationshipConnectors = new List<VisualConnector>();
+            this.SelectedRouteableConnectors = new List<VisualConnector>();
             this.VisibleConceptSymbols = new List<VisualSymbol>();
             this.VisibleRelationshipRepresentations = new List<RelationshipVisualRepresentation>();
+            this.VisibleRelationshipConnectors = new List<VisualConnector>();
             this.VisibleRelationships = new List<Relationship>();
             this.VisibleSymbolBounds = new Dictionary<VisualSymbol, Rect>();
         }
@@ -50,9 +52,13 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
         public IList<VisualConnector> SelectedRelationshipConnectors { get; private set; }
 
+        public IList<VisualConnector> SelectedRouteableConnectors { get; private set; }
+
         public IList<VisualSymbol> VisibleConceptSymbols { get; private set; }
 
         public IList<RelationshipVisualRepresentation> VisibleRelationshipRepresentations { get; private set; }
+
+        public IList<VisualConnector> VisibleRelationshipConnectors { get; private set; }
 
         public IList<Relationship> VisibleRelationships { get; private set; }
 
@@ -70,12 +76,16 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
         public static LayoutSelectionContext FromSelection(CompositionEngine Engine, IEnumerable<VisualObject> Selection)
         {
+            return FromViewSelection(Engine, Engine == null ? null : Engine.CurrentView, Selection);
+        }
+
+        public static LayoutSelectionContext FromViewSelection(CompositionEngine Engine, View View, IEnumerable<VisualObject> Selection)
+        {
             var Context = Empty(Engine);
 
-            if (Engine == null || Engine.CurrentView == null)
+            if (Engine == null || View == null)
                 return Context;
 
-            var View = Engine.CurrentView;
             var SelectedObjects = (Selection ?? Enumerable.Empty<VisualObject>()).Where(Object => Object != null).ToList();
             var VisibleObjects = View.ViewChildren == null
                                  ? Enumerable.Empty<VisualObject>()
@@ -99,6 +109,12 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                                         .OfType<RelationshipVisualRepresentation>())
                                                     .Distinct()
                                                     .ToList();
+            Context.SelectedRouteableConnectors = Context.SelectedRelationshipConnectors
+                                                    .Concat(Context.SelectedRelationshipRepresentations
+                                                        .SelectMany(Representation => Representation.VisualConnectors))
+                                                    .Where(Connector => Connector != null)
+                                                    .Distinct()
+                                                    .ToList();
 
             Context.VisibleConceptSymbols = VisibleObjects.OfType<VisualSymbol>()
                                                     .Where(Symbol => Symbol.OwnerRepresentation is ConceptVisualRepresentation)
@@ -107,6 +123,12 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             Context.VisibleRelationshipRepresentations = VisibleObjects.OfType<VisualElement>()
                                                     .Select(Element => Element.OwnerRepresentation)
                                                     .OfType<RelationshipVisualRepresentation>()
+                                                    .Distinct()
+                                                    .ToList();
+            Context.VisibleRelationshipConnectors = VisibleObjects.OfType<VisualConnector>()
+                                                    .Concat(Context.VisibleRelationshipRepresentations
+                                                        .SelectMany(Representation => Representation.VisualConnectors))
+                                                    .Where(Connector => Connector != null)
                                                     .Distinct()
                                                     .ToList();
             Context.VisibleRelationships = Context.VisibleRelationshipRepresentations

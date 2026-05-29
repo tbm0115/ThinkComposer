@@ -49,6 +49,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int AppliedAutoFitConcepts { get; set; }
         public int SkippedAutoFitConcepts { get; set; }
 
+        public int PlannedAutoRouteLinks { get; set; }
+        public int AppliedAutoRouteLinks { get; set; }
+        public int SkippedAutoRouteLinks { get; set; }
+        public int DoglegRoutedLinks { get; set; }
+
         public int CurrentOperationIndex { get; set; }
         public int CurrentOperationTotal { get; set; }
         public string CurrentOperationSummary { get; set; }
@@ -109,7 +114,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool HasWarnings { get { return this.Warnings.Count > 0; } }
         public bool HasErrors { get { return this.Errors.Count > 0; } }
         public bool HasRiskyChanges { get { return this.Created > 0 || this.Deleted > 0 || this.Updated > 25; } }
-        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0 || this.AppliedAutoFitConcepts > 0; } }
+        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0 || this.AppliedAutoFitConcepts > 0 || this.AppliedAutoRouteLinks > 0; } }
 
         public void Log(string message)
         {
@@ -203,6 +208,24 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.SkippedAutoFitConcepts++;
         }
 
+        public void CountAutoRouteLink()
+        {
+            if (this.IsPreview)
+                this.PlannedAutoRouteLinks++;
+            else
+                this.AppliedAutoRouteLinks++;
+        }
+
+        public void CountAutoRouteLinkSkipped()
+        {
+            this.SkippedAutoRouteLinks++;
+        }
+
+        public void CountDoglegRoutedLink()
+        {
+            this.DoglegRoutedLinks++;
+        }
+
         public void AddAffectedView(string viewName)
         {
             if (String.IsNullOrEmpty(viewName) || this.AffectedViewNames.Contains(viewName))
@@ -225,6 +248,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.PlannedRepairedRelationships = preview.PlannedRepairedRelationships;
             this.PlannedRepairedRecursiveVisuals = preview.PlannedRepairedRecursiveVisuals;
             this.PlannedAutoFitConcepts = preview.PlannedAutoFitConcepts;
+            this.PlannedAutoRouteLinks = preview.PlannedAutoRouteLinks;
         }
 
         public string ToSummaryString(bool IncludeWarnings)
@@ -240,6 +264,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Text.AppendLine("Visuals not placed: " + (this.IsPreview ? this.PlannedVisualsSkipped : this.AppliedVisualsSkipped));
             Text.AppendLine("Concepts auto-fit: " + (this.IsPreview ? this.PlannedAutoFitConcepts : this.AppliedAutoFitConcepts));
             Text.AppendLine("Concepts not auto-fit: " + this.SkippedAutoFitConcepts);
+            Text.AppendLine("Links routed: " + (this.IsPreview ? this.PlannedAutoRouteLinks : this.AppliedAutoRouteLinks));
+            Text.AppendLine("Links not routed: " + this.SkippedAutoRouteLinks);
             Text.AppendLine("Warnings: " + this.Warnings.Count);
 
             if (!this.IsPreview && this.AffectedViewNames.Count > 0)
@@ -279,6 +305,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", visuals placed=" + this.PlannedVisualsPlaced +
                    ", visuals skipped=" + this.PlannedVisualsSkipped +
                    ", auto-fit concepts=" + this.PlannedAutoFitConcepts +
+                   ", auto-route links=" + this.PlannedAutoRouteLinks +
                    "; applied updated=" + this.AppliedUpdated +
                    ", created=" + this.AppliedCreated +
                    ", deleted=" + this.AppliedDeleted +
@@ -289,6 +316,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", visuals skipped=" + this.AppliedVisualsSkipped +
                    ", auto-fit concepts=" + this.AppliedAutoFitConcepts +
                    ", auto-fit skipped=" + this.SkippedAutoFitConcepts +
+                   ", auto-route links=" + this.AppliedAutoRouteLinks +
+                   ", auto-route skipped=" + this.SkippedAutoRouteLinks +
+                   ", dogleg routed links=" + this.DoglegRoutedLinks +
                    "; warnings=" + this.Warnings.Count +
                    ", errors=" + this.Errors.Count;
         }

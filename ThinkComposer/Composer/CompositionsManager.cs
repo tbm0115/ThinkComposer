@@ -595,10 +595,20 @@ namespace Instrumind.ThinkComposer.Composer
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("RouteLinksWithObstacleAvoidance");
-            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Route Links with Obstacle Avoidance"));
-            ExposedWorkCommand.CanApply = (par => false);
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.RouteLinksWithObstacleAvoidance(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanRouteLinksWithObstacleAvoidance(Engine);
+                });
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Route Links with Obstacle Avoidance...", "RouteLinksWithObstacleAvoidance",
-                                                                                          "Routes links while avoiding visible Concept symbols. Planned for a later layout pass.", "shape_move_forwards.png",
+                                                                                          "Routes visible links with conservative single-bend obstacle avoidance.", "shape_move_forwards.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsSpiderMap");

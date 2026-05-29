@@ -5,6 +5,7 @@
   "importOptions": {
     "autoPlaceNewItems": true,
     "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
     "layoutMode": "gridNearViewport",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -62,6 +63,7 @@
       "id": "33333333-3333-4333-8333-333333333333",
       "definitionTechName": "Relationship",
       "containerTechName": "Deployment_Manager_Web_App",
+      "autoRoute": true,
       "set": {
         "name": "Package Import Flow",
         "techName": "Package_Import_Flow",
@@ -104,6 +106,7 @@
       "id": "55555555-5555-4555-8555-555555555555",
       "definitionTechName": "Relationship",
       "containerTechName": "Deployment_Manager_Web_App",
+      "autoRoute": false,
       "set": {
         "name": "Owner To Package Import Pipeline",
         "techName": "Owner_To_Package_Import_Pipeline",

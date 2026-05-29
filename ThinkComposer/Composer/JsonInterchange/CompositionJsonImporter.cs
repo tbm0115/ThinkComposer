@@ -36,14 +36,27 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly Dictionary<View, int> AutoPlacementIndexes = new Dictionary<View, int>();
         private readonly List<View> AffectedViews = new List<View>();
         private readonly Dictionary<View, List<VisualObject>> ImportedVisualObjects = new Dictionary<View, List<VisualObject>>();
+        private readonly Dictionary<View, List<RelationshipVisualRepresentation>> PendingAutoRouteRelationships = new Dictionary<View, List<RelationshipVisualRepresentation>>();
+        private readonly HashSet<string> PendingAutoRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> PlannedAutoRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private string LastOperationOutcome = null;
         private bool AutoPlaceNewItems = true;
         private bool AutoFitPlacedConcepts = true;
+        private bool AutoRoutePlacedLinks = true;
         private bool PreventSelfRecursiveCompositeViews = true;
         private bool RepairRecursiveVisuals = true;
         private string LayoutMode = "gridNearViewport";
         private readonly Dictionary<View, Point> AutoPlacementOrigins = new Dictionary<View, Point>();
         private readonly Dictionary<View, int> AutoPlacementIgnoredOutliers = new Dictionary<View, int>();
+        private readonly Dictionary<string, PlannedConceptReference> PlannedConceptsById = new Dictionary<string, PlannedConceptReference>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, PlannedConceptReference> PlannedConceptsByTechName = new Dictionary<string, PlannedConceptReference>(StringComparer.OrdinalIgnoreCase);
+
+        private class PlannedConceptReference
+        {
+            public string Id;
+            public string TechName;
+            public IdeaDefinition Definitor;
+        }
 
         private class RelationshipLinkImportSpec
         {
@@ -52,7 +65,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             public string IdeaId;
             public string IdeaTechName;
             public Idea ResolvedIdea;
+            public IdeaDefinition ResolvedIdeaDefinitor;
             public LinkRoleDefinition ResolvedRole;
+            public bool ResolvedFromPreviewPlan;
         }
 
         private class RelationshipLinkImportPlan
@@ -184,6 +199,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.AutoFitPlacedConcepts = Document.ImportOptions == null ||
                                          Document.ImportOptions.AutoFitPlacedConcepts == null ||
                                          Document.ImportOptions.AutoFitPlacedConcepts.Value;
+            this.AutoRoutePlacedLinks = Document.ImportOptions == null ||
+                                        Document.ImportOptions.AutoRoutePlacedLinks == null ||
+                                        Document.ImportOptions.AutoRoutePlacedLinks.Value;
             this.PreventSelfRecursiveCompositeViews = Document.ImportOptions == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value;
@@ -193,6 +211,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.LayoutMode = NormalizeLayoutMode(Document.ImportOptions == null ? null : Document.ImportOptions.LayoutMode);
             this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
                             ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
+                            ", autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
                             ", layoutMode=" + this.LayoutMode +
                             ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
                             ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
@@ -235,6 +254,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.RepairRecursiveVisuals && !this.IsPreview)
                 RepairRecursiveVisualsAfterImport();
+
+            if (!this.IsPreview)
+                ApplyQueuedAutoRoutes();
         }
 
         private string NormalizeLayoutMode(string Mode)
@@ -341,7 +363,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null);
                 CountUpdated(Changed);
-                RepairRelationshipLinks(Existing, BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, "top-level"));
+                var RepairResult = RepairRelationshipLinks(Existing, BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, "top-level"));
+                if (RepairResult.Added > 0)
+                    PlanOrQueueAutoRouteForRelationship(Existing, null, true, "relationship links repaired from full-state import");
                 ApplyMarkers(Existing, Source.Markers);
                 ApplyDetails(Existing, Source.Details);
                 return;
@@ -382,6 +406,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.IsPreview)
             {
+                RegisterPlannedConcept(Source, Definition);
                 this.Report.CountCreated();
                 return null;
             }
@@ -399,6 +424,41 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             ApplyDetails(Concept, Source.Details);
 
             return Concept;
+        }
+
+        private void RegisterPlannedConcept(CompositionJsonIdea Source, IdeaDefinition Definition)
+        {
+            if (!this.IsPreview || Source == null || Definition == null)
+                return;
+
+            var Planned = new PlannedConceptReference();
+            Planned.Id = Source.Id;
+            Planned.TechName = Source.TechName.NullDefault(Source.Name.NullDefault("Concept").TextToIdentifier());
+            Planned.Definitor = Definition;
+
+            if (!String.IsNullOrEmpty(Planned.Id))
+                this.PlannedConceptsById[Planned.Id] = Planned;
+
+            if (!String.IsNullOrEmpty(Planned.TechName))
+                this.PlannedConceptsByTechName[Planned.TechName] = Planned;
+
+            this.Report.Log("JSON import preview planned concept endpoint: techName=" +
+                            Planned.TechName.ToStringAlways() +
+                            ", id=" + Planned.Id.ToStringAlways() +
+                            ", definition=" + Definition.TechName.ToStringAlways() + ".");
+        }
+
+        private PlannedConceptReference FindPlannedConcept(string Id, string TechName)
+        {
+            PlannedConceptReference Planned;
+
+            if (!String.IsNullOrEmpty(Id) && this.PlannedConceptsById.TryGetValue(Id, out Planned))
+                return Planned;
+
+            if (!String.IsNullOrEmpty(TechName) && this.PlannedConceptsByTechName.TryGetValue(TechName, out Planned))
+                return Planned;
+
+            return null;
         }
 
         private Relationship CreateRelationship(CompositionJsonRelationship Source)
@@ -486,9 +546,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             foreach (var Spec in LinkPlan.Specs)
             {
-                if (Spec.ResolvedIdea == null || Spec.ResolvedRole == null)
+                if ((Spec.ResolvedIdea == null && !Spec.ResolvedFromPreviewPlan) || Spec.ResolvedRole == null)
                 {
                     Result.Unresolved++;
+                    continue;
+                }
+
+                if (this.IsPreview && Spec.ResolvedIdea == null && Spec.ResolvedFromPreviewPlan)
+                {
+                    Result.Added++;
                     continue;
                 }
 
@@ -580,12 +646,31 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 var Idea = FindIdea(Spec.IdeaId, Spec.IdeaTechName);
                 if (Idea == null)
                 {
-                    Plan.Warnings.Add("Cannot resolve relationship endpoint '" + Describe(Spec.IdeaId, Spec.IdeaTechName) + "'.");
+                    var Planned = this.IsPreview ? FindPlannedConcept(Spec.IdeaId, Spec.IdeaTechName) : null;
+                    if (Planned == null || Planned.Definitor == null)
+                    {
+                        Plan.Warnings.Add("Cannot resolve relationship endpoint '" + Describe(Spec.IdeaId, Spec.IdeaTechName) + "'.");
+                        continue;
+                    }
+
+                    Spec.ResolvedIdeaDefinitor = Planned.Definitor;
+                    Spec.ResolvedFromPreviewPlan = true;
+                    Spec.ResolvedRole = Role;
+
+                    if (RequestedRole == ERoleType.Target)
+                        Plan.ResolvedTargetCount++;
+                    else
+                        Plan.ResolvedOriginCount++;
+
+                    this.Report.Log(FormatOperationPrefix() + "relationship endpoint '" +
+                                    Describe(Spec.IdeaId, Spec.IdeaTechName) +
+                                    "' resolved from planned concept map.");
                     continue;
                 }
 
                 Spec.ResolvedRole = Role;
                 Spec.ResolvedIdea = Idea;
+                Spec.ResolvedIdeaDefinitor = Idea.IdeaDefinitor;
 
                 if (RequestedRole == ERoleType.Target)
                     Plan.ResolvedTargetCount++;
@@ -639,14 +724,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return false;
             }
 
-            var Origins = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdea != null && ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition) == ERoleType.Origin)
-                                        .Select(Spec => Spec.ResolvedIdea)
+            var Origins = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdeaDefinitor != null && ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition) == ERoleType.Origin)
+                                        .Select(Spec => Spec.ResolvedIdeaDefinitor)
                                         .ToList();
-            var Targets = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdea != null && ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition) == ERoleType.Target)
-                                        .Select(Spec => Spec.ResolvedIdea)
+            var Targets = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdeaDefinitor != null && ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition) == ERoleType.Target)
+                                        .Select(Spec => Spec.ResolvedIdeaDefinitor)
                                         .ToList();
 
-            if (!Origins.SelectMany(Origin => Targets.Select(Target => Definition.CanLink(Origin.IdeaDefinitor, Target.IdeaDefinitor))).Any(Result => Result.Result))
+            if (!Origins.SelectMany(Origin => Targets.Select(Target => Definition.CanLink(Origin, Target))).Any(Result => Result.Result))
             {
                 Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': resolved endpoints are not valid for definition '" + Definition.TechName + "'.");
                 return false;
@@ -965,6 +1050,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var BeforeVisualsSkipped = this.IsPreview ? this.Report.PlannedVisualsSkipped : this.Report.AppliedVisualsSkipped;
             var BeforeAutoFit = this.IsPreview ? this.Report.PlannedAutoFitConcepts : this.Report.AppliedAutoFitConcepts;
             var BeforeAutoFitSkipped = this.Report.SkippedAutoFitConcepts;
+            var BeforeAutoRoute = this.IsPreview ? this.Report.PlannedAutoRouteLinks : this.Report.AppliedAutoRouteLinks;
+            var BeforeAutoRouteSkipped = this.Report.SkippedAutoRouteLinks;
 
             var Op = Operation.Op.NullDefault("").ToLowerInvariant();
             var Entity = Operation.Entity.NullDefault("").ToLowerInvariant();
@@ -986,7 +1073,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (this.LastOperationOutcome == null)
                 this.LastOperationOutcome = InferOperationOutcome(BeforeUpdated, BeforeCreated, BeforeDeleted, BeforeSkipped,
                                                                   BeforeVisualsPlaced, BeforeVisualsSkipped,
-                                                                  BeforeAutoFit, BeforeAutoFitSkipped);
+                                                                  BeforeAutoFit, BeforeAutoFitSkipped,
+                                                                  BeforeAutoRoute, BeforeAutoRouteSkipped);
 
             this.Report.Log(FormatOperationPrefix() + Summary + " -> " + this.LastOperationOutcome);
         }
@@ -1031,7 +1119,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 var Changed = ApplySetToFormal(Relationship, Operation.Set);
                 CountUpdated(Changed);
-                SetOperationOutcome((Changed ? Verb("update") : "no editable changes needed") + " matched " + DescribeTarget(Relationship));
+                var AutoRouteQueued = PlanOrQueueAutoRouteForRelationship(Relationship, Operation, false, "operation autoRoute=true update relationship");
+                SetOperationOutcome((Changed ? Verb("update") : (AutoRouteQueued ? Verb("link auto-route") : "no editable changes needed")) +
+                                    " matched " + DescribeTarget(Relationship));
                 return;
             }
 
@@ -1115,7 +1205,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     var Changed = ApplySetToFormal(Existing, Operation.Set);
                     CountUpdated(Changed);
                     var LinkPlan = BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, LinkSourceName);
-                    RepairRelationshipLinks(Existing, LinkPlan);
+                    var RepairResult = RepairRelationshipLinks(Existing, LinkPlan);
+                    if (RepairResult.Added > 0)
+                        PlanOrQueueAutoRouteForRelationship(Existing, Operation, true, "relationship links repaired");
                     if (ShouldPlaceCreatedItem(Operation))
                         PlaceIdeaVisual(Existing, Operation, false);
                     SetOperationOutcome(Verb("repair") + " matched " + DescribeTarget(Existing));
@@ -1329,6 +1421,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Height = GetOperationDouble(Operation, "height") ?? GetRelationshipDefaultHeight(Definition);
             var Center = ResolveRelationshipPlacementCenter(null, View, Operation, Width, Height, null);
             CountAndLogVisualPlaced("planned", "relationship", Source.TechName, View, Center, Width, Height);
+            PlanOrQueueAutoRoute(Source.TechName, null, View, Operation, true, "planned new relationship visual");
         }
 
         private void PlaceIdeaVisual(Idea Idea, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
@@ -1496,9 +1589,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (this.IsPreview)
             {
                 if (Existing == null || HasExplicitGeometry(Operation) || IsExplicitPlaceOperation)
+                {
                     CountAndLogVisualPlaced("planned", "relationship", Relationship.TechName, View, Center, Width, Height);
+                    PlanOrQueueAutoRoute(Relationship.TechName, Existing, View, Operation, true,
+                                         Existing == null ? "planned new relationship visual" : "planned explicit relationship placement/update");
+                }
                 else
+                {
+                    PlanOrQueueAutoRoute(Relationship.TechName, Existing, View, Operation, false, "existing relationship visual");
                     this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
+                }
                 return;
             }
 
@@ -1528,6 +1628,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 EnsureRepresentationViewChildren(TargetRepresentation);
                 var Symbol = TargetRepresentation.MainSymbol;
                 CountAndLogVisualPlaced("applied", "relationship", Relationship.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                PlanOrQueueAutoRoute(Relationship.TechName, TargetRepresentation, View, Operation, true,
+                                     Existing == null ? "new relationship visual" :
+                                     (ConnectorsAdded > 0 ? "relationship connectors added" : "explicit relationship placement/update"));
                 View.UpdateVersion();
             }
             else
@@ -1536,10 +1639,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     TargetRepresentation.Render();
                     var Symbol = TargetRepresentation.MainSymbol;
                     CountAndLogVisualPlaced("applied", "relationship", Relationship.TechName, View, Symbol.BaseCenter, Symbol.BaseWidth, Symbol.BaseHeight);
+                    PlanOrQueueAutoRoute(Relationship.TechName, TargetRepresentation, View, Operation, true, "restored relationship view child");
                     View.UpdateVersion();
                 }
             else
+            {
+                PlanOrQueueAutoRoute(Relationship.TechName, TargetRepresentation, View, Operation, false, "existing relationship visual");
                 this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
+            }
         }
 
         private int EnsureRelationshipVisualConnectors(RelationshipVisualRepresentation Representation, View View)
@@ -2096,6 +2203,200 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             " reason=" + Reason.ToStringAlways() + ".");
         }
 
+        private bool? GetOperationAutoRoute(CompositionJsonOperation Operation)
+        {
+            if (Operation == null)
+                return null;
+
+            return Operation.AutoRoute ?? GetSetBool(Operation.Set, "autoRoute");
+        }
+
+        private bool IsAutoRouteExplicitlyEnabled(CompositionJsonOperation Operation)
+        {
+            var AutoRoute = GetOperationAutoRoute(Operation);
+            return AutoRoute != null && AutoRoute.Value;
+        }
+
+        private bool PlanOrQueueAutoRouteForRelationship(Relationship Relationship, CompositionJsonOperation Operation,
+                                                         bool TouchedByImport, string Reason)
+        {
+            var Representations = Relationship == null
+                                  ? new List<RelationshipVisualRepresentation>()
+                                  : Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
+                                                .Where(Representation => Representation.DisplayingView != null &&
+                                                                         Representation.MainSymbol != null)
+                                                .ToList();
+
+            if (Representations.Count < 1)
+            {
+                if (IsAutoRouteExplicitlyEnabled(Operation))
+                    SkipAutoRouteForRelationship(Relationship == null ? null : Relationship.TechName, null,
+                                                 "autoRoute=true was requested, but the relationship has no visible relationship representation", true);
+                return false;
+            }
+
+            var Queued = false;
+            foreach (var Representation in Representations)
+                Queued = PlanOrQueueAutoRoute(Relationship.TechName, Representation, Representation.DisplayingView,
+                                              Operation, TouchedByImport, Reason) || Queued;
+
+            return Queued;
+        }
+
+        private bool PlanOrQueueAutoRoute(string RelationshipTechName, RelationshipVisualRepresentation Representation, View View,
+                                          CompositionJsonOperation Operation, bool TouchedByImport, string Reason)
+        {
+            var AutoRoute = GetOperationAutoRoute(Operation);
+            this.Report.Log(FormatOperationPrefix() + "auto-route check relationship techName=" + RelationshipTechName.ToStringAlways() +
+                            " view=" + DescribeView(View) +
+                            " touchedByImport=" + (TouchedByImport ? "true" : "false") +
+                            " operationAutoRoute=" + (AutoRoute == null ? "<default>" : (AutoRoute.Value ? "true" : "false")) +
+                            " importOptions.autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
+                            " reason=" + Reason.ToStringAlways() + ".");
+
+            if (AutoRoute != null && !AutoRoute.Value)
+            {
+                SkipAutoRouteForRelationship(RelationshipTechName, View, "operation autoRoute=false", true);
+                return false;
+            }
+
+            if (!TouchedByImport && AutoRoute != true)
+                return false;
+
+            if (!(AutoRoute == true || this.AutoRoutePlacedLinks))
+            {
+                SkipAutoRouteForRelationship(RelationshipTechName, View, "importOptions.autoRoutePlacedLinks=false", true);
+                return false;
+            }
+
+            if (View == null)
+            {
+                SkipAutoRouteForRelationship(RelationshipTechName, null, "no target view was available for auto-route", true);
+                return false;
+            }
+
+            var Key = GetAutoRouteKey(RelationshipTechName, Representation, View);
+            if (this.IsPreview)
+            {
+                if (!this.PlannedAutoRouteKeys.Add(Key))
+                    return false;
+
+                this.Report.CountAutoRouteLink();
+                this.Report.Log(FormatOperationPrefix() + "planned link auto-route relationship techName=" +
+                                RelationshipTechName.ToStringAlways() +
+                                " view=" + DescribeView(View) +
+                                " reason=" + Reason.ToStringAlways() + ".");
+                return true;
+            }
+
+            if (Representation == null)
+            {
+                SkipAutoRouteForRelationship(RelationshipTechName, View, "no relationship visual representation was available for auto-route", true);
+                return false;
+            }
+
+            if (!this.PendingAutoRouteKeys.Add(Key))
+                return false;
+
+            List<RelationshipVisualRepresentation> Representations;
+            if (!this.PendingAutoRouteRelationships.TryGetValue(View, out Representations))
+            {
+                Representations = new List<RelationshipVisualRepresentation>();
+                this.PendingAutoRouteRelationships[View] = Representations;
+            }
+
+            Representations.Add(Representation);
+            this.Report.Log(FormatOperationPrefix() + "queued link auto-route relationship techName=" +
+                            RelationshipTechName.ToStringAlways() +
+                            " view=" + DescribeView(View) +
+                            " reason=" + Reason.ToStringAlways() + ".");
+            return true;
+        }
+
+        private void ApplyQueuedAutoRoutes()
+        {
+            if (this.PendingAutoRouteRelationships.Count < 1)
+                return;
+
+            this.Report.Log("JSON import auto-route applying queued relationship routes; views=" +
+                            this.PendingAutoRouteRelationships.Count.ToString(CultureInfo.InvariantCulture) + ".");
+
+            foreach (var Pair in this.PendingAutoRouteRelationships.ToList())
+            {
+                var View = Pair.Key;
+                var Representations = Pair.Value.Where(Representation => Representation != null &&
+                                                                         Representation.DisplayingView == View)
+                                                .Distinct()
+                                                .ToList();
+                if (View == null || Representations.Count < 1)
+                    continue;
+
+                var Selection = Representations.SelectMany(Representation => Representation.VisualConnectors)
+                                               .Where(Connector => Connector != null)
+                                               .Cast<VisualObject>()
+                                               .ToList();
+                if (Selection.Count < 1)
+                {
+                    foreach (var Representation in Representations)
+                        SkipAutoRouteForRelationship(Representation.RepresentedRelationship == null ? null : Representation.RepresentedRelationship.TechName,
+                                                     View, "relationship representation has no visual connectors", true);
+                    continue;
+                }
+
+                this.Report.Log("JSON import auto-route start view=" + DescribeView(View) +
+                                " relationships=" + Representations.Count.ToString(CultureInfo.InvariantCulture) +
+                                " connectors=" + Selection.Count.ToString(CultureInfo.InvariantCulture) + ".");
+
+                var Context = LayoutSelectionContext.FromViewSelection(this.Engine, View, Selection);
+                var Options = new LinkObstacleRoutingOptions();
+                Options.RouteSelectedConnectorsOnly = true;
+                var Result = LinkObstacleRoutingService.RouteVisibleConnectors(Context, Options);
+
+                var Routed = Result.Routed + Result.Straightened + Result.DoglegRouted;
+                for (int Index = 0; Index < Routed; Index++)
+                    this.Report.CountAutoRouteLink();
+
+                for (int Index = 0; Index < Result.Skipped; Index++)
+                    this.Report.CountAutoRouteLinkSkipped();
+
+                for (int Index = 0; Index < Result.DoglegRouted; Index++)
+                    this.Report.CountDoglegRoutedLink();
+
+                foreach (var Warning in Result.Warnings)
+                    this.Report.Warn("Auto-route warning: " + Warning);
+
+                if (Result.HasMutations)
+                {
+                    MarkAffectedView(View, null);
+                    View.UpdateVersion();
+                }
+
+                this.Report.Log("JSON import auto-route completed view=" + DescribeView(View) +
+                                "; routed=" + Result.Routed.ToString(CultureInfo.InvariantCulture) +
+                                ", dogleg routed=" + Result.DoglegRouted.ToString(CultureInfo.InvariantCulture) +
+                                ", straightened=" + Result.Straightened.ToString(CultureInfo.InvariantCulture) +
+                                ", unchanged=" + Result.Unchanged.ToString(CultureInfo.InvariantCulture) +
+                                ", skipped=" + Result.Skipped.ToString(CultureInfo.InvariantCulture) + ".");
+            }
+        }
+
+        private void SkipAutoRouteForRelationship(string TechName, View View, string Reason, bool Count)
+        {
+            if (Count)
+                this.Report.CountAutoRouteLinkSkipped();
+
+            this.Report.Log(FormatOperationPrefix() + "skipped link auto-route relationship techName=" + TechName.ToStringAlways() +
+                            " view=" + DescribeView(View) +
+                            " reason=" + Reason.ToStringAlways() + ".");
+        }
+
+        private string GetAutoRouteKey(string RelationshipTechName, RelationshipVisualRepresentation Representation, View View)
+        {
+            var Relationship = Representation == null ? null : Representation.RepresentedRelationship;
+            return (View == null ? "<no-view>" : View.GlobalId.ToString("D")) + "|" +
+                   (Relationship == null ? RelationshipTechName.ToStringAlways() : Relationship.GlobalId.ToString("D"));
+        }
+
         private void MarkAffectedView(View View, VisualObject ImportedObject)
         {
             if (View == null)
@@ -2597,7 +2898,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private string InferOperationOutcome(int BeforeUpdated, int BeforeCreated, int BeforeDeleted, int BeforeSkipped,
                                              int BeforeVisualsPlaced, int BeforeVisualsSkipped,
-                                             int BeforeAutoFit, int BeforeAutoFitSkipped)
+                                             int BeforeAutoFit, int BeforeAutoFitSkipped,
+                                             int BeforeAutoRoute, int BeforeAutoRouteSkipped)
         {
             if (this.Report.Skipped > BeforeSkipped)
                 return "skipped";
@@ -2616,6 +2918,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.Report.SkippedAutoFitConcepts > BeforeAutoFitSkipped)
                 return "concept auto-fit skipped";
+
+            var AutoRoutes = this.IsPreview ? this.Report.PlannedAutoRouteLinks : this.Report.AppliedAutoRouteLinks;
+            if (AutoRoutes > BeforeAutoRoute)
+                return Verb("link auto-route");
+
+            if (this.Report.SkippedAutoRouteLinks > BeforeAutoRouteSkipped)
+                return "link auto-route skipped";
 
             if (this.Report.Created > BeforeCreated)
                 return Verb("create");
@@ -2693,6 +3002,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var AutoFit = GetOperationAutoFit(Operation);
             if (AutoFit != null)
                 Parts.Add("autoFit=" + (AutoFit.Value ? "true" : "false"));
+
+            var AutoRoute = GetOperationAutoRoute(Operation);
+            if (AutoRoute != null)
+                Parts.Add("autoRoute=" + (AutoRoute.Value ? "true" : "false"));
 
             if (Operation.OriginIdeaIds != null && Operation.OriginIdeaIds.Count > 0)
                 Parts.Add("origins=" + Operation.OriginIdeaIds.Count.ToString(CultureInfo.InvariantCulture));

@@ -101,12 +101,51 @@ Troubleshooting:
 - If arranged concepts appear off-canvas, inspect the application log for `Spider Map normalize bounds`. The final bounds should have x/y at or above the configured canvas padding.
 - The command reveals the arranged bounds with a non-mutating `BringIntoView` call after the undoable layout command completes. If the view is not open or cannot reveal the bounds, the log reports `action=none`.
 
+## Arrange as Hierarchy Map
+
+Use `Edit -> Appearance -> Arrange as Hierarchy Map` to arrange concepts into top-down levels with root concepts at the top and child/dependent concepts below.
+
+Selection behavior:
+
+- If selected objects include concept symbols, only those selected concepts are arranged.
+- Visible relationships whose endpoints are both in the arranged concept set are used for hierarchy edges and post-layout routing.
+- If no concepts are selected, ThinkComposer asks before arranging all visible concepts in the active view.
+- The command is disabled when the active view has no visible concept symbols.
+
+Root detection:
+
+- Relationships are interpreted as directed from Origin/source roles to Target roles when role data is available.
+- Roots are concepts with no incoming in-scope directed edges.
+- If exactly one concept is selected and it has outgoing relationships, that concept is preferred as the root for the selected layout.
+- If a component has no roots because it is cyclic or rootless, the command chooses a deterministic fallback root by highest out-degree, then total degree, then distance to the selection/view center, then name/techName/id.
+- Relationships without clear origin/target role data are used for component membership, but not for parent/child direction unless a fallback is needed.
+
+Layout behavior:
+
+- Level assignment uses BFS from each component's root concepts.
+- Root level is 0; children are placed at parent level + 1, using the shallowest level when multiple paths reach the same concept.
+- Disconnected components are arranged as separate hierarchy groups and placed side-by-side.
+- Within each level, concepts are ordered by parent order where possible, then by deterministic name/techName/id.
+- The command auto-fits arranged concept labels first, moves concepts into top-down rows, normalizes the arranged batch into reachable canvas bounds, routes in-scope links, then reveals the final bounds.
+
+Cycle handling:
+
+- Cycle and cross edges are logged and do not loop forever.
+- Cycle members keep the first safe discovered level unless a shallower path is found.
+- Dense cyclic graphs may need manual cleanup after the first-pass layout.
+
+Limitations:
+
+- This is a simple BFS hierarchy, not a full crossing-minimization or Sugiyama layout.
+- Children are row-ordered near parent order, but complex shared-child graphs are not fully optimized.
+- Complements and group regions are not arranged.
+- The command does not create, delete, or relink model entities.
+
 ## Future Appearance Tools
 
 The Appearance group includes disabled placeholders for planned layout tools:
 
 - Arrange as Flowchart
-- Arrange as Hierarchy Map
 - Arrange as System Map
 
 These commands are intentionally disabled until their layout algorithms are implemented.
@@ -147,3 +186,7 @@ The auto-fit service, link-routing service, and `LayoutSelectionContext` remain 
 24. Run Spider Map with no selected concepts and verify the all-visible confirmation appears.
 25. Verify no arranged concepts are above or left of the scrollable canvas origin.
 26. Save, close, reopen, and verify arranged concept positions persist.
+27. Open `Test__Hierarchy_Map.tcom`, import `samples/hierarchy-map-regression.sample.json`, deselect everything, and run `Edit -> Appearance -> Arrange as Hierarchy Map`.
+28. Verify the all-visible prompt appears, roots are placed at the top, children and second-level items appear below, disconnected components are separated, and no concepts are off-canvas.
+29. Verify hierarchy links are routed after movement, then undo and redo.
+30. Save, close, reopen, and export PDF/report to confirm the hierarchy layout persists and renders.

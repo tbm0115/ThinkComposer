@@ -636,10 +636,20 @@ namespace Instrumind.ThinkComposer.Composer
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsHierarchyMap");
-            ExposedWorkCommand.Apply = (par => CompositionAppearanceCommands.ShowFutureAppearanceToolMessage("Arrange as Hierarchy Map"));
-            ExposedWorkCommand.CanApply = (par => false);
+            ExposedWorkCommand.Apply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    CompositionAppearanceCommands.ArrangeAsHierarchyMap(Engine);
+                });
+            ExposedWorkCommand.CanApply =
+                (par =>
+                {
+                    var Engine = this.WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+                    return CompositionAppearanceCommands.CanArrangeAsHierarchyMap(Engine);
+                });
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Arrange as Hierarchy Map...", "ArrangeAsHierarchyMap",
-                                                                                          "Arranges the active view as a hierarchy map. Planned for a later layout pass.", "shape_move_backwards.png",
+                                                                                          "Arranges selected or visible concepts into top-down hierarchy levels.", "shape_move_backwards.png",
                                                                                           EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("ArrangeAsSystemMap");

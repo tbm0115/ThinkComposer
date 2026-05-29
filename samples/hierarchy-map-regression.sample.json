@@ -1,0 +1,378 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": false,
+    "autoFitPlacedConcepts": false,
+    "autoRoutePlacedLinks": false,
+    "layoutMode": "none",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 180,
+      "y": 120,
+      "set": {
+        "name": "Hierarchy Root",
+        "techName": "Hierarchy_Root",
+        "summary": "Root concept for Hierarchy Map layout regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 360,
+      "y": 120,
+      "set": {
+        "name": "Discovery",
+        "techName": "Hierarchy_Discovery",
+        "summary": "First-level child."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 540,
+      "y": 120,
+      "set": {
+        "name": "Planning",
+        "techName": "Hierarchy_Planning",
+        "summary": "First-level child."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000004",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 720,
+      "y": 120,
+      "set": {
+        "name": "Delivery",
+        "techName": "Hierarchy_Delivery",
+        "summary": "First-level child."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000005",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 180,
+      "y": 260,
+      "set": {
+        "name": "Qualify Need",
+        "techName": "Hierarchy_Qualify_Need",
+        "summary": "Second-level concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000006",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 360,
+      "y": 260,
+      "set": {
+        "name": "Map Stakeholders",
+        "techName": "Hierarchy_Map_Stakeholders",
+        "summary": "Second-level concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000007",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 540,
+      "y": 260,
+      "set": {
+        "name": "Estimate Work",
+        "techName": "Hierarchy_Estimate_Work",
+        "summary": "Second-level concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000008",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 720,
+      "y": 260,
+      "set": {
+        "name": "Schedule Team",
+        "techName": "Hierarchy_Schedule_Team",
+        "summary": "Second-level concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000009",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 900,
+      "y": 260,
+      "set": {
+        "name": "Package Release",
+        "techName": "Hierarchy_Package_Release",
+        "summary": "Second-level concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000010",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 1080,
+      "y": 260,
+      "set": {
+        "name": "Publish Notes",
+        "techName": "Hierarchy_Publish_Notes",
+        "summary": "Second-level concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000011",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 1320,
+      "y": 180,
+      "set": {
+        "name": "External Component",
+        "techName": "Hierarchy_External_Component",
+        "summary": "Disconnected component root."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "90000000-0000-4000-8000-000000000012",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "x": 1500,
+      "y": 180,
+      "set": {
+        "name": "External Child",
+        "techName": "Hierarchy_External_Child",
+        "summary": "Disconnected component child."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Root To Discovery",
+        "techName": "Hierarchy_Root_To_Discovery",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Root" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Discovery" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Root To Planning",
+        "techName": "Hierarchy_Root_To_Planning",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Root" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Planning" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Root To Delivery",
+        "techName": "Hierarchy_Root_To_Delivery",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Root" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Delivery" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Discovery To Qualify",
+        "techName": "Hierarchy_Discovery_To_Qualify",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Discovery" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Qualify_Need" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Discovery To Stakeholders",
+        "techName": "Hierarchy_Discovery_To_Stakeholders",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Discovery" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Map_Stakeholders" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Planning To Estimate",
+        "techName": "Hierarchy_Planning_To_Estimate",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Planning" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Estimate_Work" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Planning To Schedule",
+        "techName": "Hierarchy_Planning_To_Schedule",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Planning" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Schedule_Team" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Delivery To Package",
+        "techName": "Hierarchy_Delivery_To_Package",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Delivery" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Package_Release" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Delivery To Publish",
+        "techName": "Hierarchy_Delivery_To_Publish",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Delivery" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Publish_Notes" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Qualify To Estimate Cross Link",
+        "techName": "Hierarchy_Qualify_To_Estimate_Cross_Link",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Qualify_Need" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Estimate_Work" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Publish Back To Planning Cycle",
+        "techName": "Hierarchy_Publish_Back_To_Planning_Cycle",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_Publish_Notes" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_Planning" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Hierarchy_Map",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "External Component To Child",
+        "techName": "Hierarchy_External_Component_To_Child",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Hierarchy_External_Component" },
+          { "roleType": "Target", "ideaTechName": "Hierarchy_External_Child" }
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    "Sample for manually exercising Edit -> Appearance -> Arrange as Hierarchy Map."
+  ]
+}

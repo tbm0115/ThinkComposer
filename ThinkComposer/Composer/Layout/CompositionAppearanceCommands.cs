@@ -190,6 +190,57 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             }
         }
 
+        public static bool CanArrangeAsHierarchyMap(CompositionEngine Engine)
+        {
+            var Context = LayoutSelectionContext.FromActiveView(Engine);
+            return HierarchyMapLayoutService.CanArrange(Context);
+        }
+
+        public static void ArrangeAsHierarchyMap(CompositionEngine Engine)
+        {
+            var Context = LayoutSelectionContext.FromActiveView(Engine);
+            if (Context.ActiveView == null)
+                return;
+
+            var Options = new HierarchyMapLayoutOptions();
+            Options.ArrangeSelectedConceptsOnly = Context.SelectedConceptSymbols.Count > 0;
+
+            if (!Options.ArrangeSelectedConceptsOnly)
+            {
+                var Confirmation = Display.DialogMessage("Arrange as Hierarchy Map",
+                                                         "No concepts are selected. Arrange all visible concepts in the active view as a Hierarchy Map?",
+                                                         EMessageType.Question, MessageBoxButton.YesNo, MessageBoxResult.No);
+                if (Confirmation != MessageBoxResult.Yes)
+                    return;
+            }
+
+            try
+            {
+                Console.WriteLine("Appearance command: Arrange as Hierarchy Map requested. View={0} ({1}) id={2}; scope={3}.",
+                                  Context.ActiveView.Name, Context.ActiveView.TechName, Context.ActiveView.GlobalId,
+                                  Options.ArrangeSelectedConceptsOnly ? "selected concepts" : "all visible concepts");
+
+                var Result = HierarchyMapLayoutService.Arrange(Context, Options);
+
+                Display.DialogMessage("Arrange as Hierarchy Map",
+                                      "Concepts arranged: " + Result.ConceptsArranged + "\n" +
+                                      "Roots: " + Result.RootCount + "\n" +
+                                      "Levels: " + Result.LevelCount + "\n" +
+                                      "Links routed: " + Result.LinksRouted + "\n" +
+                                      "Skipped/warnings: " + (Result.SkippedTotal + Result.Warnings.Count) + "\n\n" +
+                                      "See the application log for details.",
+                                      Result.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Appearance command failed: Arrange as Hierarchy Map. Problem: {0}", Problem.Message);
+                Console.WriteLine(Problem.ToString());
+                Display.DialogMessage("Arrange as Hierarchy Map",
+                                      "Cannot arrange as Hierarchy Map.\n\nProblem: " + Problem.Message,
+                                      EMessageType.Error);
+            }
+        }
+
         public static bool IsFutureAppearanceToolEnabled(CompositionEngine Engine)
         {
             return false;

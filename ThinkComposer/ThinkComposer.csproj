@@ -261,6 +261,9 @@
     <Compile Include="Composer\JsonInterchange\CompositionJsonWarningFormatter.cs" />
     <Compile Include="Composer\Layout\CompositionAppearanceCommands.cs" />
     <Compile Include="Composer\Layout\ConceptAutoFitService.cs" />
+    <Compile Include="Composer\Layout\HierarchyMapLayoutOptions.cs" />
+    <Compile Include="Composer\Layout\HierarchyMapLayoutResult.cs" />
+    <Compile Include="Composer\Layout\HierarchyMapLayoutService.cs" />
     <Compile Include="Composer\Layout\LayoutBoundsNormalizer.cs" />
     <Compile Include="Composer\Layout\LayoutSelectionContext.cs" />
     <Compile Include="Composer\Layout\LinkObstacleRoutingOptions.cs" />

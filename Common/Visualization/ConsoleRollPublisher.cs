@@ -39,6 +39,7 @@ namespace Instrumind.Common.Visualization
         private ObservableCollection<TextLine> TextRollList = new ObservableCollection<TextLine>();
         private TextLine CurrentLine = null;
         private int CurrentIndex = -1;
+        private bool LastCompletedLineWasWhitespaceOnly = false;
 
         /// <summary>
         /// Default maximum lines for console output.
@@ -89,6 +90,14 @@ namespace Instrumind.Common.Visualization
                     return;
                 }
 
+                if (this.CurrentLine == null && AddNewLine && String.IsNullOrWhiteSpace(Value))
+                {
+                    if (this.LastCompletedLineWasWhitespaceOnly)
+                        return;
+
+                    Value = String.Empty;
+                }
+
                 if (this.CurrentLine == null)
                 {
                     /* Needed only for Server type software
@@ -107,7 +116,10 @@ namespace Instrumind.Common.Visualization
                 }
 
                 if (AddNewLine)
+                {
+                    this.LastCompletedLineWasWhitespaceOnly = String.IsNullOrWhiteSpace(this.CurrentLine.ToString());
                     this.CurrentLine = null;
+                }
             }
             catch (Exception Problem)
             {

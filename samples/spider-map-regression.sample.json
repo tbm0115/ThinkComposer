@@ -1,0 +1,155 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "80000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "x": 400,
+      "y": 300,
+      "set": {
+        "name": "Spider Map Root",
+        "techName": "Spider_Map_Root",
+        "summary": "Central concept for Spider Map layout regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "80000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Discovery Intake",
+        "techName": "Spider_Discovery_Intake",
+        "summary": "Child concept suitable for radial placement."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "80000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Planning Board",
+        "techName": "Spider_Planning_Board",
+        "summary": "Child concept suitable for radial placement."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "80000000-0000-4000-8000-000000000004",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Review Loop",
+        "techName": "Spider_Review_Loop",
+        "summary": "Child concept suitable for radial placement."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "80000000-0000-4000-8000-000000000005",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "set": {
+        "name": "Release Notes",
+        "techName": "Spider_Release_Notes",
+        "summary": "Second-ring concept connected through the planning board."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "80000000-0000-4000-8000-000000000101",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "autoRoute": true,
+      "set": {
+        "name": "Root To Discovery",
+        "techName": "Spider_Root_To_Discovery",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Spider_Map_Root" },
+          { "roleType": "Target", "ideaTechName": "Spider_Discovery_Intake" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "80000000-0000-4000-8000-000000000102",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "autoRoute": true,
+      "set": {
+        "name": "Root To Planning",
+        "techName": "Spider_Root_To_Planning",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Spider_Map_Root" },
+          { "roleType": "Target", "ideaTechName": "Spider_Planning_Board" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "80000000-0000-4000-8000-000000000103",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "autoRoute": true,
+      "set": {
+        "name": "Root To Review",
+        "techName": "Spider_Root_To_Review",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Spider_Map_Root" },
+          { "roleType": "Target", "ideaTechName": "Spider_Review_Loop" }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "80000000-0000-4000-8000-000000000104",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main_View",
+      "autoRoute": true,
+      "set": {
+        "name": "Planning To Release Notes",
+        "techName": "Spider_Planning_To_Release_Notes",
+        "links": [
+          { "roleType": "Origin", "ideaTechName": "Spider_Planning_Board" },
+          { "roleType": "Target", "ideaTechName": "Spider_Release_Notes" }
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    "Sample for manually exercising Edit -> Appearance -> Arrange as Spider Map. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__Object_Avoidance or replace containerTechName values.",
+    "Expected result: the selected or highest-degree planning/root concept remains central, connected concepts are placed radially, bounds stay reachable, and in-scope links route after movement."
+  ]
+}

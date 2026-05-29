@@ -83,6 +83,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = Composition.Name;
             Result.TechName = Composition.TechName;
             Result.Summary = Composition.Summary;
+            Result.TechSpec = Composition.TechSpec;
             Result.ViewsPrefix = Composition.ViewsPrefix;
             Result.RootViewId = IdOf(Composition.RootView);
             Result.ActiveViewId = IdOf(Composition.ActiveView);
@@ -96,6 +97,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Result.Domain.Name = Domain.Name;
                 Result.Domain.TechName = Domain.TechName;
                 Result.Domain.Summary = Domain.Summary;
+                Result.Domain.TechSpec = Domain.TechSpec;
             }
 
             return Result;
@@ -109,6 +111,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = Definition.Name;
             Result.TechName = Definition.TechName;
             Result.Summary = Definition.Summary;
+            Result.TechSpec = Definition.TechSpec;
             return Result;
         }
 
@@ -133,6 +136,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Name = Source.Name;
             Target.TechName = Source.TechName;
             Target.Summary = Source.Summary;
+            Target.TechSpec = Source.TechSpec;
             FillDefinition(Target, Source.IdeaDefinitor);
             Target.ContainerId = IdOf(Source.OwnerContainer);
             Target.ContainerTechName = Source.OwnerContainer == null ? null : Source.OwnerContainer.TechName;
@@ -149,6 +153,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Name = Source.Name;
             Target.TechName = Source.TechName;
             Target.Summary = Source.Summary;
+            Target.TechSpec = Source.TechSpec;
             Target.DefinitionId = IdOf(Source.IdeaDefinitor);
             Target.DefinitionTechName = Source.IdeaDefinitor == null ? null : Source.IdeaDefinitor.TechName;
             Target.DefinitionName = Source.IdeaDefinitor == null ? null : Source.IdeaDefinitor.Name;

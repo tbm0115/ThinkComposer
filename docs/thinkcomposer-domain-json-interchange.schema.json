@@ -1,0 +1,631 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thinkcomposer.local/schemas/thinkcomposer-domain-json-interchange-1.schema.json",
+  "title": "ThinkComposer Domain JSON Interchange",
+  "description": "Schema for ThinkComposer.DomainJsonInterchange formatVersion 1. Native .tdom remains the authoritative Domain file format; this JSON format is an editable export, patch, and safe merge layer.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "ThinkComposer.DomainJsonInterchange",
+      "description": "Fixed format discriminator for Domain JSON Interchange."
+    },
+    "formatVersion": {
+      "const": 1,
+      "description": "Schema/version discriminator for this interchange format."
+    },
+    "exportedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "application": {
+      "type": "string",
+      "const": "ThinkComposer"
+    },
+    "domain": {
+      "$ref": "#/$defs/domain"
+    },
+    "externalLanguages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/namedElement"
+      },
+      "default": []
+    },
+    "linkRoleVariants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/namedElement"
+      },
+      "default": []
+    },
+    "conceptDefinitionClusters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/namedElement"
+      },
+      "default": []
+    },
+    "relationshipDefinitionClusters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/namedElement"
+      },
+      "default": []
+    },
+    "markerClusters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/namedElement"
+      },
+      "default": []
+    },
+    "markerDefinitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/markerDefinition"
+      },
+      "default": []
+    },
+    "tableDefinitionCategories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/namedElement"
+      },
+      "default": []
+    },
+    "fieldDefinitionCategories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/namedElement"
+      },
+      "default": []
+    },
+    "tableDefinitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tableDefinition"
+      },
+      "default": []
+    },
+    "conceptDefinitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/conceptDefinition"
+      },
+      "default": []
+    },
+    "relationshipDefinitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relationshipDefinition"
+      },
+      "default": []
+    },
+    "conceptDefinitionOutputTemplates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/outputTemplate"
+      },
+      "default": []
+    },
+    "relationshipDefinitionOutputTemplates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/outputTemplate"
+      },
+      "default": []
+    },
+    "operations": {
+      "type": "array",
+      "description": "Patch operations. Preferred shape for GPT-authored Domain edits.",
+      "items": {
+        "$ref": "#/$defs/operation"
+      },
+      "default": []
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/warning"
+      },
+      "default": []
+    }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "domain"
+      ],
+      "description": "Full-state Domain export or merge document."
+    },
+    {
+      "required": [
+        "operations"
+      ],
+      "properties": {
+        "operations": {
+          "minItems": 1
+        }
+      },
+      "description": "Patch-only Domain document."
+    }
+  ],
+  "$defs": {
+    "guid": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "techName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ThinkComposer technical name. Use id/GlobalId for matching when available."
+    },
+    "editableText": {
+      "type": "string",
+      "description": "Editable plain text. Preserve line breaks exactly. TechSpec, templates, summaries, and descriptions are treated as text only and never executed."
+    },
+    "namedElement": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText"
+        },
+        "order": {
+          "type": "integer"
+        }
+      }
+    },
+    "domain": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "versionNumber": {
+              "type": "string"
+            },
+            "defaultTableDefinitionTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "viewGridSize": {
+              "type": "number"
+            }
+          }
+        }
+      ]
+    },
+    "markerDefinition": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "clusterTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "pictogramTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "color": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "tableDefinition": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "categoryTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "alterability": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/fieldDefinition"
+              },
+              "default": []
+            }
+          }
+        }
+      ]
+    },
+    "fieldDefinition": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "ownerTableTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "categoryTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "dataTypeTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "order": {
+              "type": "integer"
+            },
+            "defaultValue": {
+              "type": [
+                "string",
+                "number",
+                "integer",
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "detailDesignator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "tableDefinitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "fieldDefinitionTechName": {
+          "$ref": "#/$defs/techName"
+        }
+      }
+    },
+    "conceptDefinition": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "clusterTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "ancestorTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "representativeShape": {
+              "type": "string"
+            },
+            "isComposable": {
+              "type": "boolean"
+            },
+            "isVersionable": {
+              "type": "boolean"
+            },
+            "canAutomaticallyCreateRelatedConcepts": {
+              "type": "boolean"
+            },
+            "automaticCreationConceptDefinitionTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "automaticCreationRelationshipDefinitionTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "customFieldsTableTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "detailDesignators": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/detailDesignator"
+              },
+              "default": []
+            },
+            "outputTemplates": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/outputTemplate"
+              },
+              "default": []
+            }
+          }
+        }
+      ]
+    },
+    "relationshipDefinition": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "clusterTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "ancestorTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "representativeShape": {
+              "type": "string"
+            },
+            "isSimple": {
+              "type": "boolean"
+            },
+            "hideCentralSymbolWhenSimple": {
+              "type": "boolean"
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relationshipRole"
+              },
+              "default": []
+            },
+            "outputTemplates": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/outputTemplate"
+              },
+              "default": []
+            }
+          }
+        }
+      ]
+    },
+    "relationshipRole": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "ownerRelationshipDefinitionTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "roleType": {
+              "type": "string",
+              "enum": [
+                "Origin",
+                "Target",
+                "origin",
+                "target",
+                "Other"
+              ]
+            },
+            "allowedVariantTechNames": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/techName"
+              },
+              "default": []
+            },
+            "defaultVariantTechName": {
+              "$ref": "#/$defs/techName"
+            }
+          }
+        }
+      ]
+    },
+    "outputTemplate": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/namedElement"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "ownerKind": {
+              "type": "string",
+              "enum": [
+                "conceptDefinition",
+                "relationshipDefinition",
+                "domain",
+                "unknown"
+              ]
+            },
+            "ownerTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "externalLanguageTechName": {
+              "$ref": "#/$defs/techName"
+            },
+            "targetFileName": {
+              "type": "string"
+            },
+            "targetFileExtension": {
+              "type": "string"
+            },
+            "templateText": {
+              "$ref": "#/$defs/editableText",
+              "description": "Template body text. It is imported/exported as text and is never executed by the interchange layer."
+            }
+          }
+        }
+      ]
+    },
+    "operation": {
+      "type": "object",
+      "required": [
+        "op",
+        "entity"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "update",
+            "create",
+            "delete"
+          ]
+        },
+        "entity": {
+          "type": "string",
+          "enum": [
+            "domain",
+            "externalLanguage",
+            "linkRoleVariant",
+            "markerCluster",
+            "markerDefinition",
+            "conceptDefinitionCluster",
+            "relationshipDefinitionCluster",
+            "tableDefinitionCategory",
+            "fieldDefinitionCategory",
+            "tableDefinition",
+            "fieldDefinition",
+            "detailDesignator",
+            "conceptDefinition",
+            "relationshipDefinition",
+            "relationshipRole",
+            "outputTemplate"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "ownerId": {
+          "$ref": "#/$defs/guid"
+        },
+        "ownerTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "reason": {
+          "$ref": "#/$defs/editableText"
+        },
+        "set": {
+          "$ref": "#/$defs/operationSet"
+        }
+      }
+    },
+    "operationSet": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText",
+          "description": "Technical specification text. Omission preserves existing text; an explicit empty string clears it."
+        },
+        "ownerTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "clusterTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "categoryTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "dataTypeTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "roleType": {
+          "type": "string"
+        },
+        "templateText": {
+          "$ref": "#/$defs/editableText"
+        }
+      }
+    },
+    "warning": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "message"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "entity": {
+              "type": "string"
+            },
+            "id": {
+              "$ref": "#/$defs/guid"
+            },
+            "techName": {
+              "$ref": "#/$defs/techName"
+            },
+            "path": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

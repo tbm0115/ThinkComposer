@@ -41,6 +41,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
     public class CompositionJsonImportOptions
     {
         public bool? AutoPlaceNewItems { get; set; }
+        public bool? AutoFitPlacedConcepts { get; set; }
+        public bool? AutoRoutePlacedLinks { get; set; }
+        public bool? UseActiveCompositionAsContainer { get; set; }
         public string LayoutMode { get; set; }
         public bool? PreventSelfRecursiveCompositeViews { get; set; }
         public bool? RepairRecursiveVisuals { get; set; }
@@ -58,6 +61,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string TechSpec { get; set; }
         public string ViewsPrefix { get; set; }
         public string RootViewId { get; set; }
         public string ActiveViewId { get; set; }
@@ -76,6 +80,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string TechSpec { get; set; }
         public List<CompositionJsonDefinition> Definitions { get; set; }
     }
 
@@ -86,6 +91,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string TechSpec { get; set; }
     }
 
     public class CompositionJsonVersion
@@ -117,6 +123,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string TechSpec { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
         public string DefinitionName { get; set; }
@@ -151,6 +158,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string TechSpec { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
         public string DefinitionName { get; set; }
@@ -275,6 +283,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public double? Width { get; set; }
         public double? Height { get; set; }
         public bool? AutoPlace { get; set; }
+        public bool? AutoFit { get; set; }
+        public bool? AutoRoute { get; set; }
         public List<string> OriginIdeaIds { get; set; }
         public List<string> OriginIdeaTechNames { get; set; }
         public List<string> TargetIdeaIds { get; set; }

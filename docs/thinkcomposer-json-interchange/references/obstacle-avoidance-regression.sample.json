@@ -1,0 +1,227 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "aaaaaaaa-0001-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 120.0,
+      "y": 120.0,
+      "width": 160.0,
+      "height": 70.0,
+      "set": {
+        "name": "OA Test A Source",
+        "techName": "OA_Test_A_Source",
+        "summary": "Scenario A source endpoint."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "aaaaaaaa-0002-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 520.0,
+      "y": 120.0,
+      "width": 160.0,
+      "height": 70.0,
+      "set": {
+        "name": "OA Test A Target",
+        "techName": "OA_Test_A_Target",
+        "summary": "Scenario A target endpoint."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "aaaaaaaa-0003-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 320.0,
+      "y": 110.0,
+      "width": 180.0,
+      "height": 80.0,
+      "set": {
+        "name": "OA Test A Obstacle",
+        "techName": "OA_Test_A_Obstacle",
+        "summary": "Scenario A obstacle; the straight link should route around this concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "aaaaaaaa-0004-4000-8000-000000000004",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "set": {
+        "name": "OA Test A Flow Should Route",
+        "techName": "OA_Test_A_Flow_Should_Route",
+        "summary": "Hidden-central simple relationship expected to become one-bend L-shaped around the obstacle.",
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaId": "aaaaaaaa-0001-4000-8000-000000000001",
+            "ideaTechName": "OA_Test_A_Source"
+          },
+          {
+            "roleType": "target",
+            "ideaId": "aaaaaaaa-0002-4000-8000-000000000002",
+            "ideaTechName": "OA_Test_A_Target"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "bbbbbbbb-0001-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 120.0,
+      "y": 340.0,
+      "width": 160.0,
+      "height": 70.0,
+      "set": {
+        "name": "OA Test B Source",
+        "techName": "OA_Test_B_Source"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "bbbbbbbb-0002-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 520.0,
+      "y": 340.0,
+      "width": 160.0,
+      "height": 70.0,
+      "set": {
+        "name": "OA Test B Target",
+        "techName": "OA_Test_B_Target"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "bbbbbbbb-0003-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 320.0,
+      "y": 250.0,
+      "width": 220.0,
+      "height": 240.0,
+      "set": {
+        "name": "OA Test B Wide Obstacle",
+        "techName": "OA_Test_B_Wide_Obstacle",
+        "summary": "Scenario B should use hidden-center dogleg routing because one elbow is not enough."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "bbbbbbbb-0004-4000-8000-000000000004",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "set": {
+        "name": "OA Test B Dogleg Should Route",
+        "techName": "OA_Test_B_Dogleg_Should_Route",
+        "summary": "Hidden-central simple relationship expected to route above or below the same-row obstacle using connector intermediate points.",
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaId": "bbbbbbbb-0001-4000-8000-000000000001",
+            "ideaTechName": "OA_Test_B_Source"
+          },
+          {
+            "roleType": "target",
+            "ideaId": "bbbbbbbb-0002-4000-8000-000000000002",
+            "ideaTechName": "OA_Test_B_Target"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "cccccccc-0001-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 120.0,
+      "y": 620.0,
+      "width": 160.0,
+      "height": 70.0,
+      "set": {
+        "name": "OA Test C Source",
+        "techName": "OA_Test_C_Source"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "cccccccc-0002-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "x": 520.0,
+      "y": 620.0,
+      "width": 160.0,
+      "height": 70.0,
+      "set": {
+        "name": "OA Test C Target",
+        "techName": "OA_Test_C_Target"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "cccccccc-0003-4000-8000-000000000003",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Test__Object_Avoidance",
+      "viewTechName": "Main",
+      "set": {
+        "name": "OA Test C Clear Path",
+        "techName": "OA_Test_C_Clear_Path",
+        "summary": "Scenario C should stay straight or be straightened because there is no obstacle between endpoints.",
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaId": "cccccccc-0001-4000-8000-000000000001",
+            "ideaTechName": "OA_Test_C_Source"
+          },
+          {
+            "roleType": "target",
+            "ideaId": "cccccccc-0002-4000-8000-000000000002",
+            "ideaTechName": "OA_Test_C_Target"
+          }
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    "Sample for manually exercising Edit -> Appearance -> Route Links with Obstacle Avoidance. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__Object_Avoidance or replace containerTechName values.",
+    "Expected result: Scenario A routes around the obstacle with a hidden-center one-bend route, Scenario B uses a hidden-center dogleg route, and Scenario C remains straight or is straightened."
+  ]
+}

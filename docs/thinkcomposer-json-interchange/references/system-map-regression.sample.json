@@ -6,6 +6,7 @@
     "autoPlaceNewItems": false,
     "autoFitPlacedConcepts": false,
     "autoRoutePlacedLinks": false,
+    "useActiveCompositionAsContainer": true,
     "layoutMode": "none",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -253,7 +254,7 @@
     }
   ],
   "warnings": [
-    "Sample for manually exercising Edit -> Appearance -> Arrange as System Map.",
+    "Sample for manually exercising Edit -> Appearance -> Arrange as System Map. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__System_Map or replace containerTechName values.",
     "Expected System Map result: Deployment Manager System becomes the root/header, Web App/Package Catalog/Job Orchestrator/Configuration Manager/Audit Log are comfortably inside a visible Group Region, and User/Package Source/Host Agent/OT Network Endpoint are external.",
     "Regression target: Web App and Package Catalog should not touch the lower Group Region border, Package_Source_To_Catalog should not overlap External_User, User_To_Web_App should not overlap Package_Source_To_Catalog, and Web_App_To_Audit_Log should not overlap User_To_Web_App after System Map side-lane relationship bubble placement."
   ]

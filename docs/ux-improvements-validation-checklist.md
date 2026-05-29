@@ -2,6 +2,8 @@
 
 Use this checklist before calling the `feature/UXImprovements` layout work stable for a build or pull request.
 
+For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain checks below before release.
+
 ## General
 
 - [ ] Build `ThinkComposer/ThinkComposer.csproj` with Debug configuration.
@@ -91,9 +93,58 @@ Use this checklist before calling the `feature/UXImprovements` layout work stabl
 - [ ] Undo import and confirm concept widths and connector routes revert.
 - [ ] Save, reopen, and export PDF/report.
 
+## Composition JSON TechSpec
+
+- [ ] Export a `.tcom` JSON file from a composition that has TechSpec on the composition, concepts, relationships, or definitions.
+- [ ] Confirm exported JSON includes `techSpec` where values exist.
+- [ ] Import `samples/json-interchange-regression.sample.json` after adapting tech names to the active composition.
+- [ ] Confirm `set.techSpec` updates an existing concept and logs the field-level update.
+- [ ] Save, reopen, and confirm TechSpec persists.
+
+## Composition JSON Fixture Imports
+
+- [ ] Create a fresh composition such as `Composition1`.
+- [ ] Import each layout fixture sample that declares `importOptions.useActiveCompositionAsContainer=true`.
+- [ ] Confirm create counts are greater than zero and root-level fixture containers fall back to the active composition.
+- [ ] Confirm the log includes `JSON import container fallback` for samples whose `containerTechName` names a missing `Test__...` composition.
+- [ ] Run the matching Appearance layout command for each imported fixture.
+- [ ] Confirm samples without the fallback still explain which `containerId`/`containerTechName` values must be replaced before import.
+
+## Domain JSON Interchange
+
+- [ ] Open or create a `.tdom`.
+- [ ] Run `Domain -> Export Domain JSON...`.
+- [ ] Run `Domain -> Import/Update Domain JSON...` with `samples/domain-json-interchange-patch.sample.json`.
+- [ ] Confirm the preview lists planned creates/updates and dangerous skipped deletes.
+- [ ] Confirm domain summary/TechSpec updates, and new definitions/tables/fields/templates are created when dependencies exist.
+- [ ] Confirm output template text is preserved as text and never executed.
+- [ ] Run `Domain -> Import/Update Domain JSON...` with `samples/domain-json-metadata-update.sample.json`.
+- [ ] Confirm field-level log lines include domain `summary`/`techSpec` and externalLanguage `summary`/`techSpec`, including match method.
+- [ ] Confirm metadata patch result is 2 updates, 0 skips, 0 source warnings, 0 import warnings, and 0 errors after adapting the external language techName if needed.
+- [ ] Save/reopen, export Domain JSON again, and verify `domain.techSpec` plus the target `externalLanguages[]` summary/TechSpec persisted.
+- [ ] Run `Domain -> Import/Update Domain JSON...` with `samples/domain-json-additive-definition.sample.json`.
+- [ ] Confirm additive patch result is 5 creates, 0 skips, 0 source warnings, 0 import warnings, and 0 errors on a fresh test copy.
+- [ ] Confirm additive table, fields, concept definition, and output template are created without destructive changes.
+- [ ] Confirm field logs show parent table and data type resolution, and template logs show owner scope/owner/language resolution.
+- [ ] Save, reopen, and confirm changes persist.
+
+## Embedded Domain Update
+
+- [ ] Open an older `.tcom` composition.
+- [ ] Run `Composition -> Domain -> Update Embedded Domain...`.
+- [ ] Select a newer `.tdom` or `samples/domain-sync-update.sample.json`.
+- [ ] Confirm the preview lists added/updated/legacy-retained domain objects.
+- [ ] Confirm source warnings, import warnings, skipped operations, dangerous skipped operations, and errors are listed separately.
+- [ ] Confirm preserved source/export warnings do not make a clean update look like a failed import.
+- [ ] Apply and confirm existing composition ideas remain intact.
+- [ ] Confirm new definitions/templates/tables appear in palettes/domain-dependent UI where supported.
+- [ ] Undo/redo if practical.
+- [ ] Save, reopen, and confirm the embedded domain update persists.
+
 ## Documentation and Skill Bundle
 
 - [ ] Parse `docs/thinkcomposer-json-interchange.schema.json` with `ConvertFrom-Json`.
+- [ ] Parse `docs/thinkcomposer-domain-json-interchange.schema.json` with `ConvertFrom-Json`.
 - [ ] Parse every `samples/*.sample.json` file with `ConvertFrom-Json`.
 - [ ] Sync the bundled skill references under `docs/thinkcomposer-json-interchange/references/`.
 - [ ] Regenerate `docs/thinkcomposer-json-interchange.zip`.

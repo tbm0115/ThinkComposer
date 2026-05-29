@@ -26,7 +26,8 @@
       "techName": "TAMS_MTConnect_Deployment_Manager",
       "autoFit": true,
       "set": {
-        "summary": "Updated by JSON patch import. Replace this techName with an existing concept in the active composition."
+        "summary": "Updated by JSON patch import. Replace this techName with an existing concept in the active composition.",
+        "techSpec": "api: /api/packages/import\nstorage: PackageStorageRoot\npersistence: PostgreSQL"
       }
     },
     {

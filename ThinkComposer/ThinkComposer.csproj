@@ -229,6 +229,16 @@
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.RelationshipDefClusters.cs" />
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ConceptDefClusters.cs" />
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ExternalLanguages.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonDto.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonExporter.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImporter.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImportReport.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonInterchangeCommands.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonMergeApplier.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonMergePlanner.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonReferenceResolver.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonSerializer.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonWarningFormatter.cs" />
     <Compile Include="Definitor\DefinitorUI\Widgets\TemplateEditor.xaml.cs">
       <DependentUpon>TemplateEditor.xaml</DependentUpon>
     </Compile>

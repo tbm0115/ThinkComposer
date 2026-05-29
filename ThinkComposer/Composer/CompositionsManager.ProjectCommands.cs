@@ -425,9 +425,10 @@ namespace Instrumind.ThinkComposer.Composer
                 CurrentWindow.Cursor = Cursors.Arrow;
                 var Message = "Composition JSON exported to:\n" + Location.LocalPath;
                 if (Document.Warnings.Count > 0)
-                    Message = Message + "\n\nWarnings: " + Document.Warnings.Count.ToString();
+                    Message = Message + "\n\nExport warnings: " + Document.Warnings.Count.ToString() +
+                              "\nSee the application log for details.";
 
-                Display.DialogMessage("Export JSON", Message, Document.Warnings.Count > 0 ? EMessageType.Warning : EMessageType.Information);
+                Display.DialogMessage("Export JSON", Message, EMessageType.Information);
             }
             catch (Exception Problem)
             {
@@ -492,7 +493,7 @@ namespace Instrumind.ThinkComposer.Composer
 
                 CurrentWindow.Cursor = Cursors.Arrow;
                 Display.DialogMessage("Import JSON completed", Report.ToSummaryString(true),
-                                      Report.HasWarnings ? EMessageType.Warning : EMessageType.Information);
+                                      Report.HasImportWarnings || Report.HasErrors ? EMessageType.Warning : EMessageType.Information);
             }
             catch (Exception Problem)
             {
@@ -539,7 +540,7 @@ namespace Instrumind.ThinkComposer.Composer
                     MarkerCount += Relationship.Markers == null ? 0 : Relationship.Markers.Count;
                 }
 
-            Console.WriteLine("JSON export summary: ideas={0}, relationships={1}, views={2}, details={3}, markers={4}, warnings={5}",
+            Console.WriteLine("JSON export summary: ideas={0}, relationships={1}, views={2}, details={3}, markers={4}, export warnings={5}",
                               IdeaCount, RelationshipCount, ViewCount, DetailCount, MarkerCount,
                               Document.Warnings == null ? 0 : Document.Warnings.Count);
 
@@ -560,14 +561,14 @@ namespace Instrumind.ThinkComposer.Composer
                      : HasPatch ? "patch operations"
                      : "empty";
 
-            Console.WriteLine("JSON import parsed: format={0}, formatVersion={1}, mode={2}, ideas={3}, relationships={4}, views={5}, operations={6}, warnings={7}",
+            Console.WriteLine("JSON import parsed: format={0}, formatVersion={1}, mode={2}, ideas={3}, relationships={4}, views={5}, operations={6}, source warnings={7}",
                               Document.Format, Document.FormatVersion, Mode,
                               Document.Ideas == null ? 0 : Document.Ideas.Count,
                               Document.Relationships == null ? 0 : Document.Relationships.Count,
                               Document.Views == null ? 0 : Document.Views.Count,
                               Document.Operations == null ? 0 : Document.Operations.Count,
                               Document.Warnings == null ? 0 : Document.Warnings.Count);
-            Console.WriteLine("JSON import options: autoPlaceNewItems={0}, layoutMode={1}, preventSelfRecursiveCompositeViews={2}, repairRecursiveVisuals={3}",
+            Console.WriteLine("JSON import options: autoPlaceNewItems={0}, layoutMode={1}, preventSelfRecursiveCompositeViews={2}, repairRecursiveVisuals={3}, useActiveCompositionAsContainer={4}",
                               Document.ImportOptions == null || Document.ImportOptions.AutoPlaceNewItems == null
                               ? "default"
                               : (Document.ImportOptions.AutoPlaceNewItems.Value ? "true" : "false"),
@@ -579,7 +580,10 @@ namespace Instrumind.ThinkComposer.Composer
                               : (Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value ? "true" : "false"),
                               Document.ImportOptions == null || Document.ImportOptions.RepairRecursiveVisuals == null
                               ? "default"
-                              : (Document.ImportOptions.RepairRecursiveVisuals.Value ? "true" : "false"));
+                              : (Document.ImportOptions.RepairRecursiveVisuals.Value ? "true" : "false"),
+                              Document.ImportOptions == null || Document.ImportOptions.UseActiveCompositionAsContainer == null
+                              ? "default(false)"
+                              : (Document.ImportOptions.UseActiveCompositionAsContainer.Value ? "true" : "false"));
 
             if (Document.Operations != null && Document.Operations.Count > 0)
                 foreach (var Group in Document.Operations.GroupBy(Operation => Operation.Op.ToStringAlways() + "/" + Operation.Entity.ToStringAlways())

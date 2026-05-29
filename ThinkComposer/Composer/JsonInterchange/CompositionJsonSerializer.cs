@@ -100,6 +100,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "autoPlaceNewItems", ImportOptions.AutoPlaceNewItems);
             AddIf(Obj, "autoFitPlacedConcepts", ImportOptions.AutoFitPlacedConcepts);
             AddIf(Obj, "autoRoutePlacedLinks", ImportOptions.AutoRoutePlacedLinks);
+            AddIf(Obj, "useActiveCompositionAsContainer", ImportOptions.UseActiveCompositionAsContainer);
             AddIf(Obj, "layoutMode", ImportOptions.LayoutMode);
             AddIf(Obj, "preventSelfRecursiveCompositeViews", ImportOptions.PreventSelfRecursiveCompositeViews);
             AddIf(Obj, "repairRecursiveVisuals", ImportOptions.RepairRecursiveVisuals);
@@ -116,6 +117,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Composition.Name);
             AddIf(Obj, "techName", Composition.TechName);
             AddIf(Obj, "summary", Composition.Summary);
+            AddIf(Obj, "techSpec", Composition.TechSpec);
             AddIf(Obj, "viewsPrefix", Composition.ViewsPrefix);
             AddIf(Obj, "rootViewId", Composition.RootViewId);
             AddIf(Obj, "activeViewId", Composition.ActiveViewId);
@@ -134,6 +136,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Domain.Name);
             AddIf(Obj, "techName", Domain.TechName);
             AddIf(Obj, "summary", Domain.Summary);
+            AddIf(Obj, "techSpec", Domain.TechSpec);
             Add(Obj, "definitions", ToList(Domain.Definitions, ToGraph));
             return Obj;
         }
@@ -146,6 +149,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Definition.Name);
             AddIf(Obj, "techName", Definition.TechName);
             AddIf(Obj, "summary", Definition.Summary);
+            AddIf(Obj, "techSpec", Definition.TechSpec);
             return Obj;
         }
 
@@ -178,6 +182,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Idea.Name);
             AddIf(Obj, "techName", Idea.TechName);
             AddIf(Obj, "summary", Idea.Summary);
+            AddIf(Obj, "techSpec", Idea.TechSpec);
             AddIf(Obj, "containerId", Idea.ContainerId);
             AddIf(Obj, "containerTechName", Idea.ContainerTechName);
             Add(Obj, "childIdeaIds", Idea.ChildIdeaIds ?? new List<string>());
@@ -200,6 +205,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Relationship.Name);
             AddIf(Obj, "techName", Relationship.TechName);
             AddIf(Obj, "summary", Relationship.Summary);
+            AddIf(Obj, "techSpec", Relationship.TechSpec);
             AddIf(Obj, "containerId", Relationship.ContainerId);
             AddIf(Obj, "containerTechName", Relationship.ContainerTechName);
             Add(Obj, "originIdeaIds", Relationship.OriginIdeaIds ?? new List<string>());
@@ -334,6 +340,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.AutoPlaceNewItems = GetNullableBool(Source, "autoPlaceNewItems");
             Result.AutoFitPlacedConcepts = GetNullableBool(Source, "autoFitPlacedConcepts");
             Result.AutoRoutePlacedLinks = GetNullableBool(Source, "autoRoutePlacedLinks");
+            Result.UseActiveCompositionAsContainer = GetNullableBool(Source, "useActiveCompositionAsContainer");
             Result.LayoutMode = GetString(Source, "layoutMode");
             Result.PreventSelfRecursiveCompositeViews = GetNullableBool(Source, "preventSelfRecursiveCompositeViews");
             Result.RepairRecursiveVisuals = GetNullableBool(Source, "repairRecursiveVisuals");
@@ -350,6 +357,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.TechSpec = GetString(Source, "techSpec");
             Result.ViewsPrefix = GetString(Source, "viewsPrefix");
             Result.RootViewId = GetString(Source, "rootViewId");
             Result.ActiveViewId = GetString(Source, "activeViewId");
@@ -368,6 +376,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.TechSpec = GetString(Source, "techSpec");
             Result.Definitions = ReadList(Source, "definitions", ReadDefinition);
             return Result;
         }
@@ -380,6 +389,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.TechSpec = GetString(Source, "techSpec");
             return Result;
         }
 
@@ -415,6 +425,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.TechSpec = GetString(Source, "techSpec");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
             Result.ChildIdeaIds = ReadStringList(Source, "childIdeaIds");
@@ -437,6 +448,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.TechSpec = GetString(Source, "techSpec");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");

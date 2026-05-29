@@ -30,19 +30,21 @@ Every supported file starts with:
 
 The repository also carries a bundled Codex skill under `docs/thinkcomposer-json-interchange/` plus `docs/thinkcomposer-json-interchange.zip`. Keep that skill bundle synchronized with this document, the schema, and the sample JSON files when the interchange format or layout-related import behavior changes.
 
-Exports include deterministic, pretty-printed DTO data rather than native binary or WPF object graphs. The main top-level sections are:
+Exports include deterministic, pretty-printed DTO data rather than native binary or WPF object graphs. TechSpec fields are exported where supported and imported as plain text only; ThinkComposer does not execute TechSpec text during JSON import. The main top-level sections are:
 
-- `composition`: document identity, name, tech name, summary, version fields, view prefix, active/root view ids, and domain summary.
-- `definitions`: domain definition names and tech names referenced by exported ideas.
-- `ideas`: concepts with stable ids, definition references, editable text, container, markers, details, and child idea ids.
-- `relationships`: relationships with stable ids, definition references, editable text, role links, origin/target idea ids, and container.
+- `composition`: document identity, name, tech name, summary, TechSpec, version fields, view prefix, active/root view ids, and domain summary.
+- `definitions`: domain definition names, tech names, summaries, and TechSpec where available for exported definitions referenced by ideas.
+- `ideas`: concepts with stable ids, definition references, editable text, TechSpec, container, markers, details, and child idea ids.
+- `relationships`: relationships with stable ids, definition references, editable text, TechSpec, role links, origin/target idea ids, and container.
 - `views`: view identity plus safe layout data for visible representations.
 - `operations`: optional patch instructions.
-- `warnings`: export notes for skipped or metadata-only native data.
+- `warnings`: source/export notes for skipped or metadata-only native data. These are preserved as source warnings during import rather than treated as new import failures.
 
 Import always merges into the active `.tcom` composition. Existing entities are matched by `id` first, then by `techName` when no id is supplied. Missing JSON objects are left untouched.
 
 Import and export write diagnostic messages to ThinkComposer's lower-left application log window. The confirmation dialog intentionally stays concise; use the log for parse details, per-operation planning, applied operation results, skipped reasons, warnings, and rollback diagnostics.
+
+Dialogs separate `Source warnings` from `Import warnings`. Source warnings are preserved notes from the JSON file, such as fixture notes or export limitations. Import warnings are generated while planning or applying the current operation. `Skipped` means an operation was intentionally not applied and the log contains the reason. `Errors` mean an actual failure occurred.
 
 ## Full-State Merge Example
 
@@ -94,6 +96,7 @@ Full-state import updates matching objects by `id` first. If `id` is absent, it 
     "autoPlaceNewItems": true,
     "autoFitPlacedConcepts": true,
     "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": false,
     "layoutMode": "gridNearViewport",
     "preventSelfRecursiveCompositeViews": true,
     "repairRecursiveVisuals": true
@@ -105,7 +108,8 @@ Full-state import updates matching objects by `id` first. If `id` is absent, it 
       "id": "existing-concept-guid",
       "set": {
         "name": "Renamed concept",
-        "summary": "New GPT-edited summary"
+        "summary": "New GPT-edited summary",
+        "techSpec": "api: /api/packages/import\nstorage: PackageStorageRoot\npersistence: PostgreSQL"
       }
     },
     {
@@ -157,6 +161,8 @@ Full-state import updates matching objects by `id` first. If `id` is absent, it 
 
 Supported operations are `update`, `create`, `delete`, and `place` for the entity types where the native model can safely apply them.
 
+`set.techSpec` is supported for compositions, concepts, relationships, and exported definition summaries where the target native object exposes TechSpec. Omission preserves the current value. An explicit empty string clears TechSpec. The importer logs applied, unchanged, and skipped TechSpec field updates.
+
 Patch semantics:
 
 - `update` operations must match an existing object by `id` or top-level `techName`; unmatched updates are skipped with warnings.
@@ -170,6 +176,26 @@ Relationship connectivity can be supplied at the operation top level or inside `
 Relationship create operations are upserts. If a `create relationship` operation matches an existing relationship by `id` or `techName`, the importer updates editable fields and repairs missing role links instead of creating a duplicate. Re-importing the same patch should not duplicate relationships, links, visuals, or connectors.
 
 Linkless relationships are skipped by default. This prevents invalid native relationship objects that can later break view or context-menu code expecting origin/target roles.
+
+## Container Matching
+
+Create operations normally resolve `containerId` first, then `containerTechName`. If both are omitted, the importer uses the active root composition as the container. If a named container is not found, the create operation is skipped so imports do not accidentally place items in the wrong nested concept.
+
+Regression fixtures and GPT-generated root-level samples can opt into:
+
+```json
+{
+  "importOptions": {
+    "useActiveCompositionAsContainer": true
+  }
+}
+```
+
+When this option is true, root-level create operations with missing, placeholder-like, or unresolved test-composition container references such as `Test__Flowchart` can fall back to the active composition root. The importer logs the fallback:
+
+`JSON import container fallback: requested='Test__Flowchart' not found; using active composition 'Composition1'.`
+
+This option is intended for fixtures and patches targeting the active root composition. It is not a nested-container repair tool; if a patch names a real existing container, that container is used, and nested imports should still specify the intended nested concept container explicitly. If many operations skip for the same missing container, the dialog/log adds a note explaining which container was missing and how to use the fallback.
 
 ## Visual Placement
 
@@ -223,6 +249,7 @@ Layout options:
 - `none` disables automatic placement unless an operation supplies explicit placement fields.
 - `autoFitPlacedConcepts` defaults to true. It fits newly created or newly placed concept symbols to text during import without resizing every existing concept in the view.
 - `autoRoutePlacedLinks` defaults to true. It routes newly created, newly placed, or repaired relationship visuals/connectors during import without routing every existing connector in the view.
+- `useActiveCompositionAsContainer` defaults to false. It is an opt-in convenience for root-level fixture imports into a fresh active composition.
 - `preventSelfRecursiveCompositeViews` defaults to true and blocks self-recursive owner-in-own-view placements.
 - `repairRecursiveVisuals` defaults to true and removes previously imported self-recursive visuals during JSON import/re-import.
 
@@ -236,6 +263,18 @@ Edit this ThinkComposer JSON using patch operations only. Update existing summar
 
 Additional sample files are available at `samples/json-interchange-patch.sample.json` and `samples/json-interchange-regression.sample.json`.
 
+## Domain Interchange
+
+Domain JSON Interchange is separate from Composition JSON Interchange. Use `format: "ThinkComposer.DomainJsonInterchange"` for `.tdom` export/import or for updating an active composition's embedded domain snapshot.
+
+Related docs:
+
+- `docs/domain-json-interchange.md`
+- `docs/domain-sync.md`
+- `docs/thinkcomposer-domain-json-interchange.schema.json`
+
+Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer `.tdom` or Domain JSON file. This command updates the embedded domain snapshot explicitly; it does not create a live sync link and does not delete legacy embedded-domain objects by omission.
+
 ## Manual Regression
 
 1. Open `MTConnect_Endless_Forge_and_LOTAR.tcom` or another composition with the same exported structure.
@@ -248,12 +287,12 @@ Additional sample files are available at `samples/json-interchange-patch.sample.
 8. Verify imported concepts may appear in nested composite views, not only the root view.
 9. Verify relationships have origin/target links and are visible when both endpoints are visible in the same view.
 10. Find `Deployment Manager Web App`, then right-click and toggle Display/Hide Composite-Content as Detail.
-11. Verify no `StackOverflowException` occurs; nested content either appears safely or a warning explains why it cannot be shown.
+11. Verify no `StackOverflowException` occurs; nested content either appears safely or an import warning explains why it cannot be shown.
 12. Re-import the same patch and verify it does not duplicate concepts, relationships, links, visual representations, connectors, or recursive self-visuals.
 13. Right-click imported concepts and relationships/links and verify no runtime exception appears.
 14. Save, close, reopen, and verify imported visuals and relationship links persist.
 15. Repeat the nested-content toggle after reopen.
-16. Verify warnings are readable, including object-valued warnings.
+16. Verify source warnings and import warnings are shown separately and object-valued warnings are readable.
 17. Verify no `Put-visual must be applied within a Command` error appears.
 18. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
 

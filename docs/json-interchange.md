@@ -402,9 +402,12 @@ Related docs:
 
 - `docs/domain-json-interchange.md`
 - `docs/domain-sync.md`
+- `docs/output-template-generation.md`
 - `docs/thinkcomposer-domain-json-interchange.schema.json`
 
 Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer `.tdom` or Domain JSON file. This command updates the embedded domain snapshot explicitly; it does not create a live sync link and does not delete legacy embedded-domain objects by omission.
+
+When an embedded Domain update adds or changes output templates, ThinkComposer still treats template bodies as text during import. Composition output generation prepares the imported definition-level templates before rendering, so users should not need to open Concept/Relationship Definition Output-Templates tabs after the update.
 
 ## Manual Regression
 

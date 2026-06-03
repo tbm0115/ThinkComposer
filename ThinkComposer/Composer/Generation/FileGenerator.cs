@@ -182,16 +182,19 @@ namespace Instrumind.ThinkComposer.Composer.Generation
 
         private Template CompositionTemplate = null;
         private Dictionary<IdeaDefinition, Template> CompiledTemplates = new Dictionary<IdeaDefinition, Template>();
+        private OutputTemplatePreparationResult PreparationResult = null;
 
         private ThreadWorker<int> CurrentWorker { get; set; }
 
         /// <summary>
         /// Constructor.
         /// </summary>
-        public FileGenerator(Composition SourceComposition, ExternalLanguageDeclaration Language, FileGenerationConfiguration NewConfiguration)
+        public FileGenerator(Composition SourceComposition, ExternalLanguageDeclaration Language, FileGenerationConfiguration NewConfiguration,
+                             OutputTemplatePreparationResult PreparationResult = null)
         {
             this.SourceComposition = SourceComposition;
             this.Language = Language;
+            this.PreparationResult = PreparationResult;
 
             if (NewConfiguration == null)
                 NewConfiguration = new FileGenerationConfiguration();
@@ -213,10 +216,22 @@ namespace Instrumind.ThinkComposer.Composer.Generation
                 this.CurrentWorker = Worker;
                 this.CurrentWorker.ReportProgress(0, "Starting.");
 
-                // Get Composition level template
-                var CompoTextTemplate = this.SourceComposition.IdeaDefinitor.GetGenerationFinalTemplate(this.Language);
-                this.CompositionTemplate = (CompoTextTemplate.IsAbsent()
-                                            ? null : CreateCompiledTemplate(this.SourceComposition.CompositeContentDomain.ToString(), CompoTextTemplate, true).Result);
+                this.CurrentWorker.ReportProgress(1, "Preparing output templates.");
+                var Preparation = this.PreparationResult;
+                if (Preparation == null)
+                    Preparation = OutputTemplatePreparationService.PrepareComposition(this.SourceComposition, this.Language, "Generate Files");
+
+                if (Preparation.HasBlockingErrors)
+                {
+                    Preparation.LogToConsole();
+                    return OperationResult.Failure<int>(Preparation.BuildBlockingMessage(), Result: GeneratedFiles);
+                }
+
+                this.Language = Preparation.Language;
+
+                this.CurrentWorker.ReportProgress(2, "Compiling output templates.");
+                this.CompilePreparedTemplates(Preparation);
+                Preparation.LogToConsole();
 
                 // Determine excluded ideas
                 var ExcludedIdeas = this.SourceComposition.DeclaredIdeas.Where(idea => idea.GlobalId.ToString().IsIn(this.Configuration.ExcludedIdeasGlobalIds)).ToArray();
@@ -238,6 +253,43 @@ namespace Instrumind.ThinkComposer.Composer.Generation
             }
 
             return OperationResult.Success<int>(GeneratedFiles, "A total of " + GeneratedFiles.ToString() + " files have been generated at:\n" + this.Configuration.TargetDirectory);
+        }
+
+        private void CompilePreparedTemplates(OutputTemplatePreparationResult Preparation)
+        {
+            this.CompositionTemplate = null;
+            this.CompiledTemplates.Clear();
+
+            var CompoTextTemplate = (Preparation == null
+                                     ? this.SourceComposition.IdeaDefinitor.GetGenerationFinalTemplate(this.Language)
+                                     : Preparation.CompositionTemplateText);
+            if (!CompoTextTemplate.IsAbsent())
+            {
+                this.CompositionTemplate = CreateCompiledTemplate(this.SourceComposition.CompositeContentDomain.ToString(), CompoTextTemplate, true).Result;
+                if (Preparation != null)
+                    Preparation.SubtemplatesRegistered += CountDeclaredSubtemplates(CompoTextTemplate);
+            }
+
+            if (Preparation == null)
+                return;
+
+            foreach (var PreparedTemplate in Preparation.PreparedDefinitionTemplateTexts)
+            {
+                if (PreparedTemplate.Value.IsAbsent())
+                    continue;
+
+                var CompiledTemplate = CreateCompiledTemplate(PreparedTemplate.Key.ToString(), PreparedTemplate.Value, true).Result;
+                this.CompiledTemplates.AddOrReplace(PreparedTemplate.Key, CompiledTemplate);
+                Preparation.SubtemplatesRegistered += CountDeclaredSubtemplates(PreparedTemplate.Value);
+            }
+        }
+
+        private static int CountDeclaredSubtemplates(string TemplateText)
+        {
+            if (TemplateText.IsAbsent())
+                return 0;
+
+            return GetContainedTemplateTexts(TemplateText).Keys.Count(Key => !Key.IsAbsent());
         }
 
         // -----------------------------------------------------------------------------------------

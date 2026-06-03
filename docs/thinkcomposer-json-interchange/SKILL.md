@@ -28,6 +28,7 @@ Use the most current accessible references in this order:
    - `references/json-interchange.md`
    - `references/domain-json-interchange.md`
    - `references/domain-sync.md`
+   - `references/output-template-generation.md`
    - `references/dcom-interchange-release-notes.md`
    - `references/appearance-layout-tools.md`
    - `references/layout-services.md`
@@ -153,6 +154,16 @@ Rules:
 - Output templates are imported as text only and never executed.
 - TechSpec is imported as text only and never executed.
 
+For output templates, preserve these fields exactly when present:
+
+- `externalLanguageTechName`
+- `ownerScope`
+- `ownerTechName`
+- `templateText`
+- `extendsBaseTemplate`
+
+If the user's goal is composition output generation, ensure the Domain JSON contains the required concept-definition and relationship-definition output templates for the selected external language, or usable Domain base templates. ThinkComposer prepares imported output templates during generation, so the user should not need to open every definition's Output-Templates tab after import/update.
+
 ## Embedded domain update
 
 `Composition -> Domain -> Update Embedded Domain...` updates the active `.tcom` composition's embedded domain snapshot from either a native `.tdom` or a Domain JSON file.
@@ -164,6 +175,7 @@ This is explicit safe merge, not live sync:
 - Retains legacy embedded-domain objects by default.
 - Does not delete by omission or replace the embedded Domain object wholesale.
 - Preserves existing composition ideas and relationship links.
+- Keeps output template bodies text-only; they are not executed during import/export or embedded-domain update.
 
 ## Report categories
 

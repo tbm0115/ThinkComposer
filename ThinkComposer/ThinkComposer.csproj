@@ -205,6 +205,7 @@
     </Compile>
     <Compile Include="Composer\Generation\FileGenerator.cs" />
     <Compile Include="Composer\Generation\GenerationManager.cs" />
+    <Compile Include="Composer\Generation\OutputTemplatePreparationService.cs" />
     <Compile Include="Composer\Generation\TemplateFilters.cs" />
     <Compile Include="Composer\Generation\Widgets\GeneratorSelectionEditor.xaml.cs">
       <DependentUpon>GeneratorSelectionEditor.xaml</DependentUpon>

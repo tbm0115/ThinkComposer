@@ -90,6 +90,12 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             ApplyOperations();
 
+            if (!this.IsPreview)
+            {
+                this.TargetDomain.DeclareExtraCollections();
+                this.Report.Log("Domain JSON output template base collections refreshed; definition-level templates will be prepared during generation.");
+            }
+
             this.Report.LegacyRetained = EstimateLegacyRetained();
             this.Report.Log("Domain JSON " + (this.IsPreview ? "preview" : "apply") + " completed. " +
                             (this.IsPreview ? this.Report.PreviewSummary().Replace("\n", "; ") : this.Report.ApplySummary().Replace("\n", "; ")) +

@@ -1228,6 +1228,13 @@ namespace Instrumind.ThinkComposer.Composer
                                                  EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
             this.CommandExpositors.Add(ExposedWorkCommand.Name, Expositor);
 
+            ExposedWorkCommand = new GenericCommand("Refresh Output Templates");
+            ExposedWorkCommand.Apply = (param => Generation.GenerationManager.RefreshOutputTemplates(this.WorkspaceDirector.ActiveDocument as Composition));
+            ExposedWorkCommand.CanApply = ((param) => (this.WorkspaceDirector.ActiveDocument as Composition) != null);
+            Expositor = new WorkCommandExpositor("Refresh Output Templates", "RefreshOutputTemplates", "Prepare Composition output templates without generating files.", "fgen_prev.png",
+                                                 EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, Expositor);
+
             ExposedWorkCommand = new GenericCommand("Generation Preview");
             ExposedWorkCommand.Apply = (param => Generation.GenerationManager.ShowGenerationFilePreview(
                                                     ((CompositionEngine)this.WorkspaceDirector.ActiveDocumentEngine).CurrentView

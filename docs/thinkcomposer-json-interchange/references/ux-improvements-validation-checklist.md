@@ -146,6 +146,15 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Confirm field logs show parent table and data type resolution, and template logs show owner scope/owner/language resolution.
 - [ ] Save, reopen, and confirm changes persist.
 
+## Output Template Generation
+
+- [ ] Baseline repro: open a composition using a domain with concept/relationship output templates, do not open any Concept/Relationship Definition dialogs, run `Tools -> Output -> Generate Files...`, and confirm generation succeeds or reports only real missing templates/languages/subtemplates.
+- [ ] Refresh command: run `Tools -> Output -> Refresh Output Templates` and confirm the dialog reports concept definitions inspected, relationship definitions inspected, templates prepared, warnings, and errors without generating files.
+- [ ] Save/reopen: import Domain JSON containing output templates, save the composition, close/reopen, generate composition output, and confirm no individual Output-Templates tabs need to be opened.
+- [ ] MTConnect case: open the MTConnect Machine Monitoring composition, import/update the companion MTConnect Domain JSON, and generate an MTConnectDevices, SHACL, Mermaid, Text, or Use-Case Proposal output if available.
+- [ ] Confirm the lower-left log contains `Output template preparation started`, active composition/domain/language context, inspected counts, materialized template counts, and per-template warnings/errors.
+- [ ] Confirm output templates are not executed during Domain JSON import/export or refresh-only preparation.
+
 ## Embedded Domain Update
 
 - [ ] Open an older `.tcom` composition.

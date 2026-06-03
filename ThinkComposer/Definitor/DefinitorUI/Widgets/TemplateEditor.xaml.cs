@@ -49,10 +49,8 @@ namespace Instrumind.ThinkComposer.Definitor.DefinitorUI.Widgets
                 var Template = this.WorkingTemplatesCollection.FirstOrDefault(tpl => tpl.Language == this.BaseDomain.CurrentExternalLanguage);
 
                 if (Template == null)
-                {
-                    Template = new TextTemplate(this.BaseDomain.CurrentExternalLanguage, "", this.BaseTemplatesCollectionDef != null);
-                    this.WorkingTemplatesCollection.Add(Template);
-                }
+                    Template = OutputTemplatePreparationService.EnsureTemplateForLanguage(this.WorkingTemplatesCollection, this.BaseDomain.CurrentExternalLanguage,
+                                                                                          this.BaseTemplatesCollectionDef != null);
 
                 return Template;
             }

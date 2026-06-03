@@ -8,6 +8,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - `Domain -> Export Domain JSON...` exports text-safe Domain JSON using `format: "ThinkComposer.DomainJsonInterchange"`.
 - `Domain -> Import/Update Domain JSON...` previews and applies safe additive domain merges.
 - `Composition -> Domain -> Update Embedded Domain...` safely updates an active `.tcom` composition's embedded domain snapshot from a native `.tdom` or Domain JSON file.
+- Composition output generation now prepares concept/relationship definition output templates automatically before rendering, including templates imported through Domain JSON.
 
 ## Supported Workflows
 
@@ -24,6 +25,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Keep unsupported GPT-authored details from blocking concept/relationship creation, with optional `detailFallbackMode` to append detail text/rows to TechSpec or Description.
 - Export `.tdom` domain metadata, definitions, tables, fields, roles, markers, external languages, and output templates as text-safe Domain JSON.
 - Import additive Domain JSON patches for metadata, TechSpec, definitions, tables/fields, external languages, and output templates.
+- Generate composition output without opening every involved definition's Output-Templates tab first.
 - Update an existing `.tcom` embedded domain snapshot without deleting legacy objects or replacing the domain wholesale.
 
 ## Validated Manual Scenarios

@@ -1,0 +1,89 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "requires": {
+    "domain": {
+      "techName": "All-Purpose"
+    }
+  },
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "layoutMode": "gridNearViewport",
+    "domainCompatibilityPolicy": "requireTechName",
+    "compositionVersionPolicy": "warn",
+    "strictRelationshipCompatibility": true,
+    "abortOnRelationshipCompatibilityFailure": true,
+    "strictDetailsCompatibility": false,
+    "abortOnDetailCompatibilityFailure": false,
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for strict Composition JSON domain compatibility. Import into a composition using the generic All-Purpose domain or adjust requires.domain.techName to the active embedded domain before importing.",
+    "Expected result with the All-Purpose domain: Created 3, Skipped 0, Relationships skipped by compatibility 0. If the active domain techName differs, import should be blocked before apply by domainCompatibilityPolicy=requireTechName."
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "98000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 140,
+      "y": 160,
+      "width": 180,
+      "height": 64,
+      "set": {
+        "name": "Strict Source",
+        "techName": "Strict_Domain_Source",
+        "summary": "Source endpoint for strict relationship compatibility regression.",
+        "techSpec": "strictCompatibility: source"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "98000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 440,
+      "y": 160,
+      "width": 180,
+      "height": 64,
+      "set": {
+        "name": "Strict Target",
+        "techName": "Strict_Domain_Target",
+        "summary": "Target endpoint for strict relationship compatibility regression.",
+        "techSpec": "strictCompatibility: target"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "98000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "autoRoute": true,
+      "set": {
+        "name": "Strict Valid Link",
+        "techName": "Strict_Domain_Valid_Link",
+        "summary": "Strict-mode relationship expected to pass native endpoint compatibility in the generic domain.",
+        "techSpec": "strictCompatibility: relationship",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Strict_Domain_Source"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Strict_Domain_Target"
+          }
+        ]
+      }
+    }
+  ]
+}

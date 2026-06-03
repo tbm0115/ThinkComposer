@@ -120,6 +120,14 @@
       },
       "default": []
     },
+    "relationshipCompatibility": {
+      "type": "array",
+      "description": "Exported relationship-definition endpoint compatibility metadata for GPT planning and strict composition import diagnostics.",
+      "items": {
+        "$ref": "#/$defs/relationshipCompatibility"
+      },
+      "default": []
+    },
     "operations": {
       "type": "array",
       "description": "Patch operations. Preferred shape for GPT-authored Domain edits.",
@@ -192,6 +200,10 @@
         },
         "techSpec": {
           "$ref": "#/$defs/editableText"
+        },
+        "compatibilitySignature": {
+          "type": "string",
+          "description": "Deterministic compatibility signature for domain elements that affect Composition JSON imports."
         },
         "order": {
           "type": "integer"
@@ -411,6 +423,13 @@
               },
               "default": []
             },
+            "roleDefinitions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/relationshipRole"
+              },
+              "default": []
+            },
             "outputTemplates": {
               "type": "array",
               "items": {
@@ -451,12 +470,84 @@
               },
               "default": []
             },
+            "associableIdeaDefinitionTechNames": {
+              "type": "array",
+              "description": "Concept definition techNames allowed on this role side. Empty means unrestricted or not discoverable from native metadata.",
+              "items": {
+                "$ref": "#/$defs/techName"
+              },
+              "default": []
+            },
             "defaultVariantTechName": {
               "$ref": "#/$defs/techName"
             }
           }
         }
       ]
+    },
+    "relationshipCompatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "relationshipDefinitionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "relationshipDefinitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "relationshipDefinitionName": {
+          "type": "string"
+        },
+        "originRoleTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "originRoleName": {
+          "type": "string"
+        },
+        "targetRoleTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "targetRoleName": {
+          "type": "string"
+        },
+        "allowedOriginConceptDefinitionTechNames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
+        "allowedTargetConceptDefinitionTechNames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
+        "allowedOriginVariantTechNames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
+        "allowedTargetVariantTechNames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
+        "isDirectional": {
+          "type": "boolean"
+        },
+        "isSimple": {
+          "type": "boolean"
+        },
+        "hideCentralSymbolWhenSimple": {
+          "type": "boolean"
+        }
+      }
     },
     "outputTemplate": {
       "allOf": [

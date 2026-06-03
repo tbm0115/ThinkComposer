@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 using Instrumind.Common;
 using Instrumind.Common.Visualization;
@@ -31,6 +33,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             var Document = new DomainJsonDocument();
             Document.ExportedAtUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
             Document.Domain = ExportDomain(Domain);
+            Document.Domain.CompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Domain);
 
             Document.ExternalLanguages = Existing(Domain.ExternalLanguages).OrderBy(Item => StableKey(Item)).Select(ExportExternalLanguage).ToList();
             Document.LinkRoleVariants = Existing(Domain.LinkRoleVariants).OrderBy(Item => StableKey(Item)).Select(Item => ExportSimple(Item, "linkRoleVariant")).ToList();
@@ -49,6 +52,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Document.RelationshipDefinitionOutputTemplates = ExportTemplates(Domain.OutputTemplatesForRelationships, "domainRelationship", null)
                                                              .Concat(Existing(Domain.RelationshipDefinitions).SelectMany(Definition => ExportTemplates(Definition.OutputTemplates, "relationshipDefinition", Definition.TechName)))
                                                              .OrderBy(Item => StableKey(Item)).ToList();
+            Document.RelationshipCompatibility = DomainJsonCompatibility.ExportRelationshipCompatibility(Domain);
 
             Warnings.AddRange(WarningCollector.ToWarnings());
             Warnings.Add("Visual style details are summarized only; binary pictogram/image content is not inlined in Domain JSON.");
@@ -65,6 +69,12 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.IsVersionable = Domain.IsVersionable;
             Result.DataTypeTechName = Domain.DefaultTableDef == null ? null : Domain.DefaultTableDef.TechName;
             Result.Set["viewGridSize"] = Domain.ViewGridSize;
+            if (Domain.Version != null)
+            {
+                Result.Set["versionNumber"] = Domain.Version.VersionNumber == null ? null : Domain.Version.VersionNumber.ToString();
+                Result.Set["versionSequence"] = Domain.Version.VersionSequence;
+                Result.Set["lastModification"] = Domain.Version.LastModification.ToString("o", CultureInfo.InvariantCulture);
+            }
             return Result;
         }
 
@@ -290,6 +300,137 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                                  String.Join(", ", Examples.ToArray()) + ".";
                 }
             }
+        }
+    }
+
+    public static class DomainJsonCompatibility
+    {
+        public static string ComputeSignature(Domain Domain)
+        {
+            if (Domain == null)
+                return null;
+
+            var Lines = new List<string>();
+            Lines.Add("domain|id=" + IdOf(Domain) +
+                      "|tech=" + Domain.TechName.NullDefault("") +
+                      "|version=" + (Domain.Version == null ? "" : Domain.Version.VersionSequence.ToString(CultureInfo.InvariantCulture)) +
+                      "|modified=" + (Domain.Version == null ? "" : Domain.Version.LastModification.ToString("o", CultureInfo.InvariantCulture)));
+
+            foreach (var Language in Existing(Domain.ExternalLanguages).OrderBy(Item => StableKey(Item)))
+                Lines.Add("externalLanguage|id=" + IdOf(Language) + "|tech=" + Language.TechName.NullDefault(""));
+
+            foreach (var ConceptDef in Existing(Domain.ConceptDefinitions).OrderBy(Item => StableKey(Item)))
+                Lines.Add("conceptDefinition|id=" + IdOf(ConceptDef) +
+                          "|tech=" + ConceptDef.TechName.NullDefault("") +
+                          "|ancestor=" + (ConceptDef.AncestorConceptDef == null ? "" : ConceptDef.AncestorConceptDef.TechName.NullDefault("")) +
+                          "|table=" + (ConceptDef.CustomFieldsTableDef == null ? "" : ConceptDef.CustomFieldsTableDef.TechName.NullDefault("")));
+
+            foreach (var RelDef in Existing(Domain.RelationshipDefinitions).OrderBy(Item => StableKey(Item)))
+            {
+                Lines.Add("relationshipDefinition|id=" + IdOf(RelDef) +
+                          "|tech=" + RelDef.TechName.NullDefault("") +
+                          "|simple=" + RelDef.IsSimple.ToString(CultureInfo.InvariantCulture) +
+                          "|directional=" + RelDef.IsDirectional.ToString(CultureInfo.InvariantCulture) +
+                          "|hideCentral=" + RelDef.HideCentralSymbolWhenSimple.ToString(CultureInfo.InvariantCulture));
+
+                foreach (var Role in RolesOf(RelDef))
+                    Lines.Add("relationshipRole|owner=" + RelDef.TechName.NullDefault("") +
+                              "|id=" + IdOf(Role) +
+                              "|tech=" + Role.TechName.NullDefault("") +
+                              "|type=" + Role.RoleType.ToString() +
+                              "|allowedIdeas=" + String.Join(",", Existing(Role.AssociableIdeaDefs).Select(Def => Def.TechName.NullDefault("")).OrderBy(Text => Text).ToArray()) +
+                              "|allowedVariants=" + String.Join(",", Existing(Role.AllowedVariants).Select(Variant => Variant.TechName.NullDefault("")).OrderBy(Text => Text).ToArray()));
+            }
+
+            foreach (var TableDef in Existing(Domain.TableDefinitions).OrderBy(Item => StableKey(Item)))
+            {
+                Lines.Add("tableDefinition|id=" + IdOf(TableDef) + "|tech=" + TableDef.TechName.NullDefault(""));
+                foreach (var FieldDef in Existing(TableDef.FieldDefinitions)
+                    .OrderBy(Field => Field.StorageIndex < 0 ? Int32.MaxValue : Field.StorageIndex)
+                    .ThenBy(Field => StableKey(Field)))
+                    Lines.Add("fieldDefinition|owner=" + TableDef.TechName.NullDefault("") +
+                              "|id=" + IdOf(FieldDef) +
+                              "|tech=" + FieldDef.TechName.NullDefault("") +
+                              "|type=" + (FieldDef.FieldType == null ? "" : FieldDef.FieldType.TechName.NullDefault("")) +
+                              "|order=" + FieldDef.StorageIndex.ToString(CultureInfo.InvariantCulture));
+            }
+
+            Lines.Sort(StringComparer.Ordinal);
+            using (var Hash = SHA256.Create())
+            {
+                var Bytes = Encoding.UTF8.GetBytes(String.Join("\n", Lines.ToArray()));
+                return BytesToHex(Hash.ComputeHash(Bytes));
+            }
+        }
+
+        public static List<DomainJsonRelationshipCompatibility> ExportRelationshipCompatibility(Domain Domain)
+        {
+            var Result = new List<DomainJsonRelationshipCompatibility>();
+            if (Domain == null)
+                return Result;
+
+            foreach (var Definition in Existing(Domain.RelationshipDefinitions).OrderBy(Item => StableKey(Item)))
+            {
+                var OriginRole = Definition.OriginOrParticipantLinkRoleDef;
+                var TargetRole = Definition.TargetLinkRoleDef;
+                if (OriginRole == null || TargetRole == null)
+                    continue;
+
+                Result.Add(new DomainJsonRelationshipCompatibility
+                {
+                    RelationshipDefinitionId = IdOf(Definition),
+                    RelationshipDefinitionTechName = Definition.TechName,
+                    RelationshipDefinitionName = Definition.Name,
+                    OriginRoleTechName = OriginRole.TechName,
+                    OriginRoleName = OriginRole.Name,
+                    TargetRoleTechName = TargetRole.TechName,
+                    TargetRoleName = TargetRole.Name,
+                    AllowedOriginConceptDefinitionTechNames = Existing(OriginRole.AssociableIdeaDefs).Select(Def => Def.TechName).Where(Text => !String.IsNullOrWhiteSpace(Text)).OrderBy(Text => Text).ToList(),
+                    AllowedTargetConceptDefinitionTechNames = Existing(TargetRole.AssociableIdeaDefs).Select(Def => Def.TechName).Where(Text => !String.IsNullOrWhiteSpace(Text)).OrderBy(Text => Text).ToList(),
+                    AllowedOriginVariantTechNames = Existing(OriginRole.AllowedVariants).Select(Variant => Variant.TechName).Where(Text => !String.IsNullOrWhiteSpace(Text)).OrderBy(Text => Text).ToList(),
+                    AllowedTargetVariantTechNames = Existing(TargetRole.AllowedVariants).Select(Variant => Variant.TechName).Where(Text => !String.IsNullOrWhiteSpace(Text)).OrderBy(Text => Text).ToList(),
+                    IsDirectional = Definition.IsDirectional,
+                    IsSimple = Definition.IsSimple,
+                    HideCentralSymbolWhenSimple = Definition.HideCentralSymbolWhenSimple
+                });
+            }
+
+            return Result;
+        }
+
+        private static IEnumerable<LinkRoleDefinition> RolesOf(RelationshipDefinition Definition)
+        {
+            if (Definition == null)
+                yield break;
+            if (Definition.OriginOrParticipantLinkRoleDef != null)
+                yield return Definition.OriginOrParticipantLinkRoleDef;
+            if (Definition.TargetLinkRoleDef != null)
+                yield return Definition.TargetLinkRoleDef;
+        }
+
+        private static IEnumerable<T> Existing<T>(IEnumerable<T> Source)
+            where T : class
+        {
+            return Source == null ? Enumerable.Empty<T>() : Source.Where(Item => Item != null);
+        }
+
+        private static string StableKey(IIdentifiableElement Element)
+        {
+            return (Element == null ? "" : (Element.TechName.NullDefault(Element.Name).NullDefault("") + "|" + Element.Name.NullDefault("")));
+        }
+
+        private static string IdOf(object Source)
+        {
+            var Unique = Source as UniqueElement;
+            return Unique == null ? null : Unique.GlobalId.ToString("D");
+        }
+
+        private static string BytesToHex(byte[] Bytes)
+        {
+            var Builder = new StringBuilder(Bytes.Length * 2);
+            foreach (var Byte in Bytes)
+                Builder.Append(Byte.ToString("x2", CultureInfo.InvariantCulture));
+            return Builder.ToString();
         }
     }
 }

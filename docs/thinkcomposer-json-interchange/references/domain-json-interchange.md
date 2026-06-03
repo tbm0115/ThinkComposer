@@ -37,8 +37,20 @@ The first-pass exporter writes deterministic, pretty-printed JSON for text-safe 
 - Concept definitions, including cluster, ancestor, shape/composability/versionability metadata, custom field table references, detail designator summaries, and attached output templates.
 - Relationship definitions, including cluster, ancestor, shape/simple/hidden-central metadata, role definitions, allowed/default variants, and attached output templates.
 - Output templates as text, including owner definition and external language references.
+- A deterministic domain `compatibilitySignature` for elements that affect Composition JSON import compatibility.
+- A `relationshipCompatibility` section summarizing each relationship definition's origin/target roles, allowed endpoint concept definition techNames when discoverable, allowed role variants, and simple/directional flags.
 
 The exporter intentionally reports source/export warnings instead of inlining unsupported binary, image, rich-style, or unsafe native object graph details. Repeated missing-category notices are grouped in summaries with examples so successful exports and imports do not look like failures.
+
+## Compatibility Metadata for Composition Patches
+
+Domain JSON exports include compatibility metadata intended for GPTs and strict Composition JSON imports:
+
+- `domain.compatibilitySignature` is a deterministic fingerprint of domain identity/version plus concept definitions, relationship definitions, roles, allowed endpoint definitions, table/field techNames, and external language techNames.
+- `relationshipDefinitions[].roleDefinitions[]` includes role techNames/types and `associableIdeaDefinitionTechNames` when the native domain exposes endpoint restrictions.
+- `relationshipCompatibility[]` provides a compact matrix for choosing domain-valid relationship definitions and roles in `.tcom` patches.
+
+The signature is a stale-contract detector, not a security boundary. Native ThinkComposer relationship validation remains authoritative. A GPT generating a domain-correct `.tcom` patch should inspect `relationshipCompatibility` before choosing definitions such as `Subject_Verb`, `MUST_be`, or `Targets_Device_Component`, because those definitions may not accept arbitrary concept-definition pairs.
 
 ## Patch Operations
 

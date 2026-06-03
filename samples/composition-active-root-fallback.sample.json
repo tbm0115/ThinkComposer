@@ -1,0 +1,78 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for Composition JSON active-root fallback. Import into any fresh composition that has the generic Concept and Relationship definitions.",
+    "Expected result: Created 3, Skipped 0. The importer should map containerTechName Active_Composition_Root to the active composition and use the active/root view when no viewTechName is supplied."
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "97000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 140,
+      "width": 180,
+      "height": 64,
+      "set": {
+        "name": "Active Root Source",
+        "techName": "Active_Root_Fallback_Source",
+        "summary": "First endpoint for the active-root container fallback regression sample.",
+        "techSpec": "sample: composition-active-root-fallback\nrole: source"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "97000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 420,
+      "y": 140,
+      "width": 180,
+      "height": 64,
+      "set": {
+        "name": "Active Root Target",
+        "techName": "Active_Root_Fallback_Target",
+        "summary": "Second endpoint for the active-root container fallback regression sample.",
+        "techSpec": "sample: composition-active-root-fallback\nrole: target"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "97000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "autoRoute": true,
+      "set": {
+        "name": "Active Root Link",
+        "techName": "Active_Root_Fallback_Link",
+        "summary": "Relationship created between concepts resolved earlier in the same patch.",
+        "techSpec": "sample: composition-active-root-fallback\nroute: auto",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Active_Root_Fallback_Source"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Active_Root_Fallback_Target"
+          }
+        ]
+      }
+    }
+  ]
+}

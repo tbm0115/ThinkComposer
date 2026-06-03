@@ -1,0 +1,106 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "treatMissingFullStateItemsAsCreates": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for importing a full-state-style Composition JSON document into a blank active composition. Patch-style operations remain preferred for GPT-authored creates.",
+    "Expected result: Concepts created 2, relationships created 1, visuals placed greater than 0, skipped 0 when the active domain has generic Concept and Relationship definitions."
+  ],
+  "composition": {
+    "id": "99000000-0000-4000-8000-000000000000",
+    "name": "Full State Create Sample",
+    "techName": "Full_State_Create_Sample",
+    "summary": "A full-state-style sample that creates missing items only because importOptions.treatMissingFullStateItemsAsCreates is true."
+  },
+  "ideas": [
+    {
+      "id": "99000000-0000-4000-8000-000000000001",
+      "kind": "Concept",
+      "definitionTechName": "Concept",
+      "name": "Full State Source",
+      "techName": "Full_State_Create_Source",
+      "summary": "Source concept created from top-level ideas[].",
+      "techSpec": "sample: composition-full-state-create\nrole: source",
+      "containerTechName": "Active_Composition_Root"
+    },
+    {
+      "id": "99000000-0000-4000-8000-000000000002",
+      "kind": "Concept",
+      "definitionTechName": "Concept",
+      "name": "Full State Target",
+      "techName": "Full_State_Create_Target",
+      "summary": "Target concept created from top-level ideas[].",
+      "techSpec": "sample: composition-full-state-create\nrole: target",
+      "containerTechName": "Active_Composition_Root"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "99000000-0000-4000-8000-000000000003",
+      "kind": "Relationship",
+      "definitionTechName": "Relationship",
+      "name": "Full State Link",
+      "techName": "Full_State_Create_Link",
+      "summary": "Relationship created from top-level relationships[].",
+      "techSpec": "sample: composition-full-state-create\nroute: auto",
+      "containerTechName": "Active_Composition_Root",
+      "links": [
+        {
+          "roleType": "Origin",
+          "ideaTechName": "Full_State_Create_Source"
+        },
+        {
+          "roleType": "Target",
+          "ideaTechName": "Full_State_Create_Target"
+        }
+      ],
+      "originIdeaTechNames": [
+        "Full_State_Create_Source"
+      ],
+      "targetIdeaTechNames": [
+        "Full_State_Create_Target"
+      ]
+    }
+  ],
+  "views": [
+    {
+      "id": "99000000-0000-4000-8000-000000000010",
+      "name": "Main View",
+      "techName": "Main_View",
+      "visuals": [
+        {
+          "ideaTechName": "Full_State_Create_Source",
+          "x": 140,
+          "y": 160,
+          "width": 180,
+          "height": 64
+        },
+        {
+          "ideaTechName": "Full_State_Create_Target",
+          "x": 460,
+          "y": 160,
+          "width": 180,
+          "height": 64
+        },
+        {
+          "ideaTechName": "Full_State_Create_Link",
+          "x": 310,
+          "y": 176,
+          "width": 96,
+          "height": 36
+        }
+      ]
+    }
+  ],
+  "operations": []
+}

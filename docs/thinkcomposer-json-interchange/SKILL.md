@@ -21,7 +21,7 @@ Native `.tcom` and `.tdom` files remain authoritative. JSON is an interchange, p
 Use the most current accessible references in this order:
 
 1. User-provided schema, docs, exports, samples, or instructions in the current conversation.
-2. Latest branch references from `tbm0115/ThinkComposer`, currently `feature/DcomInterchange`, when accessible and the user has not supplied newer files.
+2. Latest branch references from `tbm0115/ThinkComposer`, currently the active Dcom/Composition JSON import hardening branch, when accessible and the user has not supplied newer files.
 3. Bundled fallback references:
    - `references/thinkcomposer-json-interchange.schema.json`
    - `references/thinkcomposer-domain-json-interchange.schema.json`
@@ -87,6 +87,7 @@ Use this top-level shape for most `.tcom` patches when the selected schema suppo
 
 Rules:
 
+- Prefer patch-style `operations` for creating content. They make intent, ordering, and diagnostics clearer than full-state arrays.
 - Preserve `format` and `formatVersion` exactly.
 - Use `update` for text/TechSpec edits, `create` for new model items, `place` for diagram visibility, and `delete` only when explicitly requested.
 - Match by stable `id` when available, otherwise by top-level `techName`.
@@ -94,9 +95,41 @@ Rules:
 - `set.techSpec` is plain text; omission preserves existing TechSpec and explicit empty string clears it.
 - Relationship creates must include resolvable origin/target links. Linkless relationships are skipped by the importer.
 - Relationship links may appear at operation top level or inside `set`; top-level values are preferred.
+- Before generating relationships for a custom domain, inspect the Domain JSON relationship definitions when available. Do not assume a relationship definition can connect arbitrary concepts.
+- When a Domain JSON export is available, inspect `domain.compatibilitySignature`, `relationshipDefinitions[].roleDefinitions[]`, `associableIdeaDefinitionTechNames`, and `relationshipCompatibility[]` before choosing relationship definitions and roles.
+- For strict domain-correct imports, include a `requires.domain` block with at least domain `techName`, and include `id`, `versionSequence`, and `compatibilitySignature` when available from the user's export.
+- Use `importOptions.domainCompatibilityPolicy`, `compositionVersionPolicy`, `strictRelationshipCompatibility`, and `abortOnRelationshipCompatibilityFailure` when the user wants stale/mismatched JSON blocked before apply.
+- Domain-specific relationship definitions such as `Subject_Verb`, `MUST_be`, `Targets_Device_Component`, or similar may have strict endpoint concept-definition constraints. Endpoint concepts must use definitions valid for the selected relationship roles.
+- If the correct relationship definition is uncertain, use a generic relationship definition such as `Relationship` or `Reference` only when the user wants a draft graph, include an explicit `relationshipDefinitionFallbackTechName` for draft imports, or ask the user which definition to use. Do not use fallback silently.
+- Set `strictDefinition: true` on an operation when preserving the requested relationship definition is more important than importing a draft graph edge.
 - Use operation-level `autoFit` and `autoRoute` to override top-level import options.
+- Use `detailFallbackMode: "appendToTechSpec"` only when preserving generated detail text matters and native detail designators may be missing. Prefer `summary`, `description`, or `techSpec` for important generated text unless the target domain clearly supports matching details.
 - Do not place a concept inside its own composite view.
-- For normal imports, resolve containers by exact `containerId` or `containerTechName`. For root-level fixture patches that should import into whatever composition is active, set `importOptions.useActiveCompositionAsContainer: true`; this only falls back for missing, placeholder-like, or unresolved test/root composition references and should not be used for precise nested imports.
+- For normal imports, resolve containers by exact `containerId` or `containerTechName`.
+- For root-level GPT patches that should import into whatever composition is active, set `importOptions.useActiveCompositionAsContainer: true` and use the canonical sentinel `containerTechName: "Active_Composition_Root"`.
+- Accepted active-root variants include `ACTIVE_COMPOSITION_ROOT`, `activeCompositionRoot`, `active-composition-root`, `active_composition_root`, `__ACTIVE_COMPOSITION_ROOT__`, `Current_Composition`, `CurrentComposition`, `Active_Composition`, `Composition_Root`, and `Root_Composition`; still prefer `Active_Composition_Root` in generated JSON.
+- Active-root fallback only applies to safe root-level create/place behavior, not destructive update/delete operations or precise nested-container imports.
+- Prefer explicit `viewTechName` when the target view is known. If a root-level create/place omits view fields, the importer may use the active view or composition root view; accepted view sentinels include `Active_View`, `Main_View`, and `Active_Composition_Root_View`.
+- If a composition patch depends on custom Domain definitions, import/update the Domain JSON or embedded domain first. Do not assume `definitionTechName` values are present just because they appear in a generated composition patch.
+- If an import log contains `BEGIN THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT`, use that report to regenerate relationship definitions/endpoints/roles rather than asking the user to debug generic skipped counts.
+
+## Full-state-style composition documents
+
+Full-state `ideas[]`, `relationships[]`, and `views[]` are normally interpreted as updates/merge data for objects that already exist in the active `.tcom`. Do not generate top-level full-state arrays for blank-composition creation unless the user explicitly asks for that shape.
+
+For blank-composition generation, use one of these approaches:
+
+- Preferred: patch operations with `op: "create"` for concepts/relationships and optional `op: "place"` for visuals.
+- Explicit full-state-create mode: set `importOptions.treatMissingFullStateItemsAsCreates: true`.
+- Per-item full-state create: set `isNew: true` on each missing top-level concept/relationship.
+
+When using full-state-create mode:
+
+- Still set `importOptions.useActiveCompositionAsContainer: true` and `containerTechName: "Active_Composition_Root"` for root-level items.
+- Include `definitionTechName`, `name` or `techName`, and valid relationship endpoints.
+- Put visual placement in `views[].visuals[]` using `ideaTechName` and optional `x`, `y`, `width`, `height`.
+- Expect native relationship compatibility validation to run after concepts are planned/created.
+- If full-state missing IDs are skipped, enable the option or regenerate as patch operations.
 
 ## Domain patch defaults
 
@@ -156,8 +189,19 @@ Composition JSON import supports:
 - `importOptions.autoFitPlacedConcepts`
 - `importOptions.autoRoutePlacedLinks`
 - `importOptions.useActiveCompositionAsContainer`
+- `importOptions.treatMissingFullStateItemsAsCreates`
+- `importOptions.relationshipDefinitionFallbackTechName`
+- `importOptions.detailFallbackMode`
+- `importOptions.domainCompatibilityPolicy`
+- `importOptions.compositionVersionPolicy`
+- `importOptions.strictRelationshipCompatibility`
+- `importOptions.abortOnRelationshipCompatibilityFailure`
+- `importOptions.strictDetailsCompatibility`
+- `importOptions.abortOnDetailCompatibilityFailure`
 - operation-level `autoFit`
 - operation-level `autoRoute`
+- operation-level `fallbackDefinitionTechName`
+- operation-level `strictDefinition`
 
 Manual Appearance commands in the current build:
 

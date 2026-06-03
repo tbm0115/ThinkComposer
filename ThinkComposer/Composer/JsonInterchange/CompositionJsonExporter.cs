@@ -20,6 +20,7 @@ using Instrumind.ThinkComposer.Model;
 using Instrumind.ThinkComposer.Model.GraphModel;
 using Instrumind.ThinkComposer.Model.InformationModel;
 using Instrumind.ThinkComposer.Model.VisualModel;
+using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
 
 namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 {
@@ -33,6 +34,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Document = new CompositionJsonDocument();
             Document.ExportedAtUtc = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
             Document.Composition = ExportComposition(Composition);
+            Document.TargetContext = ExportTargetContext(Composition);
 
             var Ideas = Composition.DeclaredIdeas.ToList();
 
@@ -98,8 +100,37 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Result.Domain.TechName = Domain.TechName;
                 Result.Domain.Summary = Domain.Summary;
                 Result.Domain.TechSpec = Domain.TechSpec;
+                Result.Domain.CompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Domain);
             }
 
+            return Result;
+        }
+
+        private static CompositionJsonTargetContext ExportTargetContext(Composition Composition)
+        {
+            var Result = new CompositionJsonTargetContext();
+            Result.Composition = ExportContextElement(Composition, null);
+            Result.Domain = ExportContextElement(Composition == null ? null : Composition.CompositeContentDomain,
+                                                 Composition == null ? null : DomainJsonCompatibility.ComputeSignature(Composition.CompositeContentDomain));
+            return Result;
+        }
+
+        private static CompositionJsonContextElement ExportContextElement(FormalElement Element, string CompatibilitySignature)
+        {
+            if (Element == null)
+                return null;
+
+            var Result = new CompositionJsonContextElement();
+            Result.Id = IdOf(Element);
+            Result.Name = Element.Name;
+            Result.TechName = Element.TechName;
+            if (Element.Version != null)
+            {
+                Result.VersionNumber = Element.Version.VersionNumber == null ? null : Element.Version.VersionNumber.ToString();
+                Result.VersionSequence = Element.Version.VersionSequence;
+                Result.LastModification = Element.Version.LastModification.ToString("o", CultureInfo.InvariantCulture);
+            }
+            Result.CompatibilitySignature = CompatibilitySignature;
             return Result;
         }
 

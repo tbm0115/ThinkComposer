@@ -42,6 +42,12 @@ Updates run inside the active `CompositionEngine` command variation named `Updat
 
 After apply, ThinkComposer refreshes domain dependants and palettes when the existing services allow it.
 
+## Composition JSON Compatibility
+
+Composition JSON exports include the active embedded domain identity, version fields, and compatibility signature. GPT-generated `.tcom` patches can place those values in `requires.domain` so import can warn or block when the active composition's embedded domain is stale or mismatched.
+
+This is intentionally separate from embedded-domain update. If a generated composition patch depends on new domain definitions, run `Composition > Domain > Update Embedded Domain...` first, then import the composition patch. Version/signature checks help catch stale patches; native relationship compatibility validation still decides whether each relationship definition can connect the requested endpoint concept definitions.
+
 ## Manual Regression
 
 1. Create a `.tcom` from an older `.tdom`.

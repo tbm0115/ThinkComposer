@@ -28,6 +28,14 @@
       "const": "ThinkComposer",
       "description": "Producing application. Optional for patch-only GPT responses."
     },
+    "targetContext": {
+      "$ref": "#/$defs/targetContext",
+      "description": "Exporter-provided identity/version context for the composition and embedded domain used to generate this JSON."
+    },
+    "requires": {
+      "$ref": "#/$defs/targetContext",
+      "description": "Optional GPT-authored compatibility requirements. Import compares these values to the active composition/domain before apply according to importOptions policies."
+    },
     "composition": {
       "$ref": "#/$defs/composition"
     },
@@ -148,7 +156,71 @@
         "useActiveCompositionAsContainer": {
           "type": "boolean",
           "default": false,
-          "description": "Opt-in fixture convenience. When true, root-level create operations with missing, placeholder-like, or unresolved test composition container references may use the active composition as the container. Default false. Intended for regression fixtures and GPT patches targeting the active root composition, not nested imports."
+          "description": "Opt-in fixture/GPT convenience. When true, root-level create/place operations with missing, placeholder-like, unresolved test composition container references, or the canonical sentinel containerTechName Active_Composition_Root may use the active composition as the container. Default false. Intended for regression fixtures and GPT patches targeting the active root composition, not nested imports."
+        },
+        "treatMissingFullStateItemsAsCreates": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt-in full-state import convenience. When true, missing top-level ideas[] and relationships[] with enough safe create data can be created in the active composition. Default false, because full-state sections are normally interpreted as updates/merge references. Patch-style operations remain preferred for GPT-authored creates."
+        },
+        "relationshipDefinitionFallbackTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Optional draft-import fallback relationship definition. If a create relationship operation resolves endpoints but the requested relationship definition rejects their concept definitions, the importer may retry this fallback definition unless the operation has strictDefinition=true. Disabled when omitted."
+        },
+        "detailFallbackMode": {
+          "type": "string",
+          "enum": [
+            "skip",
+            "appendToTechSpec",
+            "appendToDescription"
+          ],
+          "default": "skip",
+          "description": "Controls unsupported GPT-authored details when no native detail designator can be applied. Default skip warns and preserves the idea. appendToTechSpec or appendToDescription appends a delimited text representation to the idea."
+        },
+        "domainCompatibilityPolicy": {
+          "type": "string",
+          "enum": [
+            "ignore",
+            "warn",
+            "requireTechName",
+            "requireId",
+            "requireVersion",
+            "requireSignature"
+          ],
+          "default": "warn",
+          "description": "How import handles requires.domain / targetContext.domain mismatches. Defaults to warn. requireSignature compares the deterministic embedded-domain compatibility signature."
+        },
+        "compositionVersionPolicy": {
+          "type": "string",
+          "enum": [
+            "ignore",
+            "warn",
+            "requireTechName",
+            "requireId",
+            "requireVersion"
+          ],
+          "default": "warn",
+          "description": "How import handles requires.composition / targetContext.composition mismatches. Defaults to warn."
+        },
+        "strictRelationshipCompatibility": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, relationship create operations are preflighted against native relationship-definition endpoint compatibility before apply."
+        },
+        "abortOnRelationshipCompatibilityFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true with strictRelationshipCompatibility, any relationship compatibility failure blocks the import before opening the command variation."
+        },
+        "strictDetailsCompatibility": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, unsupported details or missing detail designators are considered strict compatibility failures."
+        },
+        "abortOnDetailCompatibilityFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true with strictDetailsCompatibility, detail compatibility failures block the import before apply."
         },
         "layoutMode": {
           "type": "string",
@@ -167,6 +239,48 @@
         "repairRecursiveVisuals": {
           "type": "boolean",
           "description": "When true or omitted, import scans for previously imported self-recursive visual representations and removes only the invalid visuals, preserving concepts and relationships."
+        }
+      }
+    },
+    "targetContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "composition": {
+          "$ref": "#/$defs/contextElement"
+        },
+        "domain": {
+          "$ref": "#/$defs/contextElement"
+        }
+      }
+    },
+    "contextElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "versionNumber": {
+          "type": "string"
+        },
+        "versionSequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastModification": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "compatibilitySignature": {
+          "type": "string",
+          "description": "Deterministic embedded-domain compatibility signature. Used only for domain context."
         }
       }
     },
@@ -272,6 +386,10 @@
         "techSpec": {
           "$ref": "#/$defs/editableText",
           "description": "Technical specification text attached to the embedded domain summary. It is imported as text only and never executed."
+        },
+        "compatibilitySignature": {
+          "type": "string",
+          "description": "Deterministic compatibility signature for the embedded domain summary exported with the composition."
         },
         "definitions": {
           "type": "array",
@@ -409,6 +527,24 @@
             "Relationship"
           ]
         },
+        "entity": {
+          "type": "string",
+          "enum": [
+            "Concept",
+            "Relationship",
+            "concept",
+            "relationship"
+          ],
+          "description": "Tolerated alias for kind on GPT-authored full-state-style documents. Prefer kind."
+        },
+        "isNew": {
+          "type": "boolean",
+          "description": "When true, a missing top-level idea/relationship may be treated as a create even if it has an id. Prefer patch operations for GPT-created content."
+        },
+        "new": {
+          "type": "boolean",
+          "description": "Backward-compatible alias for isNew."
+        },
         "definitionId": {
           "$ref": "#/$defs/guid"
         },
@@ -437,7 +573,8 @@
           "description": "Id of the containing Composition, Concept, or Relationship."
         },
         "containerTechName": {
-          "$ref": "#/$defs/techName"
+          "$ref": "#/$defs/techName",
+          "description": "Container technical name. Use Active_Composition_Root with importOptions.useActiveCompositionAsContainer=true for root-level GPT patches intended to import into the active composition."
         },
         "childIdeaIds": {
           "type": "array",
@@ -578,11 +715,23 @@
         "definitionId": {
           "$ref": "#/$defs/guid"
         },
+        "designatorId": {
+          "$ref": "#/$defs/guid",
+          "description": "Native detail designator id alias used by exports."
+        },
         "definitionTechName": {
           "$ref": "#/$defs/techName"
         },
+        "designatorTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Native detail designator techName alias. GPT-authored patches may also use techName."
+        },
         "definitionName": {
           "type": "string"
+        },
+        "designatorName": {
+          "type": "string",
+          "description": "Native detail designator display name alias. GPT-authored patches may also use name."
         },
         "name": {
           "type": "string"
@@ -635,6 +784,18 @@
         "text": {
           "$ref": "#/$defs/editableText"
         },
+        "content": {
+          "$ref": "#/$defs/editableText",
+          "description": "Alias for text accepted by the importer for GPT-authored details."
+        },
+        "value": {
+          "$ref": "#/$defs/editableText",
+          "description": "Alias for text accepted by the importer for GPT-authored details."
+        },
+        "targetPropertyTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Optional known idea field to update, such as Name, Summary, Description, or TechSpec."
+        },
         "uri": {
           "type": "string"
         },
@@ -647,6 +808,22 @@
         "rows": {
           "type": "array",
           "description": "Table detail rows, when exported as editable data.",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "integer",
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        },
+        "records": {
+          "type": "array",
+          "description": "Alias for table detail rows accepted by the importer.",
           "items": {
             "type": "object",
             "additionalProperties": {
@@ -802,7 +979,8 @@
           "$ref": "#/$defs/guid"
         },
         "containerTechName": {
-          "$ref": "#/$defs/techName"
+          "$ref": "#/$defs/techName",
+          "description": "Container technical name. Use Active_Composition_Root with importOptions.useActiveCompositionAsContainer=true for root-level GPT patches intended to import into the active composition."
         },
         "definitionId": {
           "$ref": "#/$defs/guid"
@@ -810,11 +988,20 @@
         "definitionTechName": {
           "$ref": "#/$defs/techName"
         },
+        "fallbackDefinitionTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Optional per-operation fallback relationship definition for draft imports. Used only when the requested relationship definition exists but rejects the resolved endpoint concept definitions, and strictDefinition is not true."
+        },
+        "strictDefinition": {
+          "type": "boolean",
+          "description": "When true on a relationship create operation, disables relationshipDefinitionFallbackTechName and requires the requested relationship definition to accept the endpoints."
+        },
         "viewId": {
           "$ref": "#/$defs/guid"
         },
         "viewTechName": {
-          "$ref": "#/$defs/techName"
+          "$ref": "#/$defs/techName",
+          "description": "Placement view technical name. Prefer an exported view techName when known. Active_View, Main_View, or Active_Composition_Root_View may fall back to the active/root view when safe."
         },
         "ideaId": {
           "$ref": "#/$defs/guid"
@@ -898,6 +1085,20 @@
           "description": "Relationship role links at operation top level. Top-level links are preferred over set.links.",
           "items": {
             "$ref": "#/$defs/relationshipLink"
+          }
+        },
+        "details": {
+          "type": "array",
+          "description": "Optional details to apply to a created concept/relationship. Unsupported detail structures warn without skipping the concept or relationship.",
+          "items": {
+            "$ref": "#/$defs/detail"
+          }
+        },
+        "markers": {
+          "type": "array",
+          "description": "Optional marker assignments to apply to a created concept/relationship.",
+          "items": {
+            "$ref": "#/$defs/marker"
           }
         },
         "set": {
@@ -1036,11 +1237,20 @@
         "definitionTechName": {
           "$ref": "#/$defs/techName"
         },
+        "fallbackDefinitionTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Accepted inside set for GPT-authored relationship create patches; top-level fallbackDefinitionTechName is preferred."
+        },
+        "strictDefinition": {
+          "type": "boolean",
+          "description": "Accepted inside set for GPT-authored relationship create patches; top-level strictDefinition is preferred."
+        },
         "containerId": {
           "$ref": "#/$defs/guid"
         },
         "containerTechName": {
-          "$ref": "#/$defs/techName"
+          "$ref": "#/$defs/techName",
+          "description": "Accepted inside set for GPT-authored patches; top-level containerTechName is preferred. Active_Composition_Root is the canonical active-root sentinel when importOptions.useActiveCompositionAsContainer=true."
         },
         "childIdeaIds": {
           "type": "array",
@@ -1111,7 +1321,8 @@
           "$ref": "#/$defs/guid"
         },
         "viewTechName": {
-          "$ref": "#/$defs/techName"
+          "$ref": "#/$defs/techName",
+          "description": "Accepted inside set for GPT-authored patches; top-level viewTechName is preferred. Active_View, Main_View, or Active_Composition_Root_View may fall back to the active/root view when safe."
         },
         "visuals": {
           "type": "array",

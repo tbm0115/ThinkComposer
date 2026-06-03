@@ -64,6 +64,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Document.RelationshipDefinitions = ReadList(Root, "relationshipDefinitions", ReadElement);
             Document.ConceptDefinitionOutputTemplates = ReadList(Root, "conceptDefinitionOutputTemplates", ReadElement);
             Document.RelationshipDefinitionOutputTemplates = ReadList(Root, "relationshipDefinitionOutputTemplates", ReadElement);
+            Document.RelationshipCompatibility = ReadList(Root, "relationshipCompatibility", ReadRelationshipCompatibility);
             Document.Operations = ReadList(Root, "operations", ReadOperation);
             Document.Warnings = ReadWarningList(Root, "warnings");
             return Document;
@@ -102,6 +103,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Add(Obj, "relationshipDefinitions", ToList(Document.RelationshipDefinitions, ToGraph));
             Add(Obj, "conceptDefinitionOutputTemplates", ToList(Document.ConceptDefinitionOutputTemplates, ToGraph));
             Add(Obj, "relationshipDefinitionOutputTemplates", ToList(Document.RelationshipDefinitionOutputTemplates, ToGraph));
+            Add(Obj, "relationshipCompatibility", ToList(Document.RelationshipCompatibility, ToGraph));
             Add(Obj, "operations", ToList(Document.Operations, ToGraph));
             Add(Obj, "warnings", Document.Warnings ?? new List<string>());
             return Obj;
@@ -120,6 +122,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             AddIf(Obj, "summary", Element.Summary);
             AddIf(Obj, "description", Element.Description);
             AddIf(Obj, "techSpec", Element.TechSpec);
+            AddIf(Obj, "compatibilitySignature", Element.CompatibilitySignature);
             AddIf(Obj, "ownerId", Element.OwnerId);
             AddIf(Obj, "ownerTechName", Element.OwnerTechName);
             AddIf(Obj, "ownerScope", Element.OwnerScope);
@@ -151,6 +154,29 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             return Obj;
         }
 
+        private static object ToGraph(DomainJsonRelationshipCompatibility Compatibility)
+        {
+            if (Compatibility == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "relationshipDefinitionId", Compatibility.RelationshipDefinitionId);
+            AddIf(Obj, "relationshipDefinitionTechName", Compatibility.RelationshipDefinitionTechName);
+            AddIf(Obj, "relationshipDefinitionName", Compatibility.RelationshipDefinitionName);
+            AddIf(Obj, "originRoleTechName", Compatibility.OriginRoleTechName);
+            AddIf(Obj, "originRoleName", Compatibility.OriginRoleName);
+            AddIf(Obj, "targetRoleTechName", Compatibility.TargetRoleTechName);
+            AddIf(Obj, "targetRoleName", Compatibility.TargetRoleName);
+            AddIfNotEmpty(Obj, "allowedOriginConceptDefinitionTechNames", Compatibility.AllowedOriginConceptDefinitionTechNames);
+            AddIfNotEmpty(Obj, "allowedTargetConceptDefinitionTechNames", Compatibility.AllowedTargetConceptDefinitionTechNames);
+            AddIfNotEmpty(Obj, "allowedOriginVariantTechNames", Compatibility.AllowedOriginVariantTechNames);
+            AddIfNotEmpty(Obj, "allowedTargetVariantTechNames", Compatibility.AllowedTargetVariantTechNames);
+            AddIf(Obj, "isDirectional", Compatibility.IsDirectional);
+            AddIf(Obj, "isSimple", Compatibility.IsSimple);
+            AddIf(Obj, "hideCentralSymbolWhenSimple", Compatibility.HideCentralSymbolWhenSimple);
+            return Obj;
+        }
+
         private static object ToGraph(DomainJsonOperation Operation)
         {
             var Obj = NewObject();
@@ -178,6 +204,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.Summary = GetString(Source, "summary");
             Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
+            Result.CompatibilitySignature = GetString(Source, "compatibilitySignature");
             Result.OwnerId = GetString(Source, "ownerId");
             Result.OwnerTechName = GetString(Source, "ownerTechName");
             Result.OwnerScope = GetString(Source, "ownerScope");
@@ -206,6 +233,26 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.RoleDefinitions = ReadList(Source, "roleDefinitions", ReadElement);
             Result.OutputTemplates = ReadList(Source, "outputTemplates", ReadElement);
             Result.Set = GetObjectDictionary(Source, "set");
+            return Result;
+        }
+
+        private static DomainJsonRelationshipCompatibility ReadRelationshipCompatibility(IDictionary<string, object> Source)
+        {
+            var Result = new DomainJsonRelationshipCompatibility();
+            Result.RelationshipDefinitionId = GetString(Source, "relationshipDefinitionId");
+            Result.RelationshipDefinitionTechName = GetString(Source, "relationshipDefinitionTechName");
+            Result.RelationshipDefinitionName = GetString(Source, "relationshipDefinitionName");
+            Result.OriginRoleTechName = GetString(Source, "originRoleTechName");
+            Result.OriginRoleName = GetString(Source, "originRoleName");
+            Result.TargetRoleTechName = GetString(Source, "targetRoleTechName");
+            Result.TargetRoleName = GetString(Source, "targetRoleName");
+            Result.AllowedOriginConceptDefinitionTechNames = ReadStringList(Source, "allowedOriginConceptDefinitionTechNames");
+            Result.AllowedTargetConceptDefinitionTechNames = ReadStringList(Source, "allowedTargetConceptDefinitionTechNames");
+            Result.AllowedOriginVariantTechNames = ReadStringList(Source, "allowedOriginVariantTechNames");
+            Result.AllowedTargetVariantTechNames = ReadStringList(Source, "allowedTargetVariantTechNames");
+            Result.IsDirectional = GetNullableBool(Source, "isDirectional");
+            Result.IsSimple = GetNullableBool(Source, "isSimple");
+            Result.HideCentralSymbolWhenSimple = GetNullableBool(Source, "hideCentralSymbolWhenSimple");
             return Result;
         }
 

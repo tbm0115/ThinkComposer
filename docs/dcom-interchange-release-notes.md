@@ -13,6 +13,15 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 
 - Update `.tcom` composition, concept, relationship, and supported definition summary/TechSpec fields through `ThinkComposer.JsonInterchange`.
 - Create and visually place composition concepts/relationships with auto-place, auto-fit, auto-route, recursive-composite protection, and root fixture fallback via `importOptions.useActiveCompositionAsContainer`.
+- Author GPT-generated root-level `.tcom` patches with the canonical `containerTechName: "Active_Composition_Root"` sentinel so creates can target the active composition safely after preview.
+- Import GPT-generated full-state-style `.tcom` documents into blank compositions only when explicitly allowed with `importOptions.treatMissingFullStateItemsAsCreates=true` or per-item `isNew:true`.
+- Treat full-state `views[].visuals[]` for newly created ideas/relationships as safe placement requests, while grouping dependent visual skips when owners were not created.
+- Diagnose relationship definition compatibility skips with endpoint definitions, role names, native `CanLink` reasons, and grouped skip counts by relationship definition.
+- Export domain/composition compatibility metadata, including a deterministic embedded-domain compatibility signature, and use optional `requires` blocks plus import policies to catch stale or mismatched GPT patches.
+- Run strict relationship/detail compatibility preflight and block apply before opening a command variation when strict abort options are enabled.
+- Emit copyable `BEGIN THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT` log blocks to help regenerate domain-valid composition patches.
+- Preserve draft graph structure explicitly with `importOptions.relationshipDefinitionFallbackTechName` when a generated relationship uses an over-specific definition and `strictDefinition` is not set.
+- Keep unsupported GPT-authored details from blocking concept/relationship creation, with optional `detailFallbackMode` to append detail text/rows to TechSpec or Description.
 - Export `.tdom` domain metadata, definitions, tables, fields, roles, markers, external languages, and output templates as text-safe Domain JSON.
 - Import additive Domain JSON patches for metadata, TechSpec, definitions, tables/fields, external languages, and output templates.
 - Update an existing `.tcom` embedded domain snapshot without deleting legacy objects or replacing the domain wholesale.
@@ -26,6 +35,11 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Output-template external language alias resolution such as `Mermaid.js_Flowchart` to `Mermaid_JS_Flowchart`.
 - Source-warning vs import-warning dialog categorization.
 - Composition layout fixture import into a fresh blank composition using `useActiveCompositionAsContainer`.
+- Composition active-root fallback import using `samples/composition-active-root-fallback.sample.json`, expecting 2 concepts and 1 relationship created with zero missing-container skips.
+- Generated MTConnect composition patch workflow after importing/updating the companion Domain JSON first: `machine_monitoring_utilization_productivity_composition.json` should plan root-level concept and relationship creates instead of skipping `Active_Composition_Root`.
+- Machine-monitoring composition imports that use incompatible domain-specific relationship definitions now report compatibility skips as domain validation issues, not container/endpoint importer failures.
+- Full-state-style generated composition documents now produce a clear note when missing top-level IDs are update-only because full-state-create mode is disabled; enabling the option allows concepts to create before relationship compatibility is evaluated.
+- Strict mode on machine-monitoring-style generated patches should block partial imports before apply when domain relationship compatibility failures are detected; non-strict mode still imports compatible concepts/relationships and skips invalid relationships with diagnostics.
 - Existing Appearance layout commands remain manual v1 commands and are separate from JSON import layout modes.
 
 ## Warning Model
@@ -53,3 +67,4 @@ The bundled `thinkcomposer-json-interchange` Skill is maintained with the schema
 - Rich/binary content is summarized or preserved in native files, not fully exported/imported through JSON.
 - General full multi-bend connector routing and full graph crossing minimization remain backlog.
 - Spider, Hierarchy, Flowchart, and System Map are manual Appearance commands; JSON import currently integrates auto-placement, concept auto-fit, and link auto-route only.
+- Compatibility signatures detect stale domain contracts but are not security signatures and do not replace native relationship validation.

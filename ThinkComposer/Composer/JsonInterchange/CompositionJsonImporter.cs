@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Windows;
 
 using Instrumind.Common;
@@ -17,6 +18,7 @@ using Instrumind.Common.Visualization;
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.Layout;
+using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -44,20 +46,45 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool AutoFitPlacedConcepts = true;
         private bool AutoRoutePlacedLinks = true;
         private bool UseActiveCompositionAsContainer = false;
+        private bool TreatMissingFullStateItemsAsCreates = false;
         private bool PreventSelfRecursiveCompositeViews = true;
         private bool RepairRecursiveVisuals = true;
         private string LayoutMode = "gridNearViewport";
+        private string RelationshipDefinitionFallbackTechName = null;
+        private string DetailFallbackMode = "skip";
+        private string DomainCompatibilityPolicy = "warn";
+        private string CompositionVersionPolicy = "warn";
+        private bool StrictRelationshipCompatibility = false;
+        private bool AbortOnRelationshipCompatibilityFailure = false;
+        private bool StrictDetailsCompatibility = false;
+        private bool AbortOnDetailCompatibilityFailure = false;
+        private readonly List<string> RelationshipCompatibilityReportItems = new List<string>();
         private readonly Dictionary<string, int> MissingContainerSkipCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, int> RelationshipCompatibilitySkipCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> FullStateCreatedIdeaIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> FullStateCreatedIdeaTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private int FullStateConceptCreatesDisabled = 0;
+        private int FullStateRelationshipCreatesDisabled = 0;
+        private int FullStateDependentVisualSkips = 0;
         private readonly Dictionary<View, Point> AutoPlacementOrigins = new Dictionary<View, Point>();
         private readonly Dictionary<View, int> AutoPlacementIgnoredOutliers = new Dictionary<View, int>();
         private readonly Dictionary<string, PlannedConceptReference> PlannedConceptsById = new Dictionary<string, PlannedConceptReference>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, PlannedConceptReference> PlannedConceptsByTechName = new Dictionary<string, PlannedConceptReference>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, PlannedRelationshipReference> PlannedRelationshipsById = new Dictionary<string, PlannedRelationshipReference>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, PlannedRelationshipReference> PlannedRelationshipsByTechName = new Dictionary<string, PlannedRelationshipReference>(StringComparer.OrdinalIgnoreCase);
 
         private class PlannedConceptReference
         {
             public string Id;
             public string TechName;
             public IdeaDefinition Definitor;
+        }
+
+        private class PlannedRelationshipReference
+        {
+            public string Id;
+            public string TechName;
+            public RelationshipDefinition Definitor;
         }
 
         private class RelationshipLinkImportSpec
@@ -95,6 +122,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             public int Unresolved;
         }
 
+        private enum RelationshipLinkValidationStatus
+        {
+            Valid,
+            NoConnectivityInput,
+            UnresolvedConnectivity,
+            IncompatibleEndpoints
+        }
+
         private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview)
         {
             this.Composition = Composition;
@@ -120,6 +155,21 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
             CompositionJsonSerializer.Validate(Document);
+
+            if (PlannedReport == null && ImportRequiresCompatibilityGate(Document))
+                PlannedReport = Preview(Engine.TargetComposition, Document);
+
+            if (PlannedReport != null && PlannedReport.CompatibilityBlocked)
+            {
+                var BlockedReport = new CompositionJsonImportReport();
+                BlockedReport.CopyPlanFrom(PlannedReport);
+                BlockedReport.CompatibilityBlocked = true;
+                BlockedReport.CompatibilityBlockReason = PlannedReport.CompatibilityBlockReason;
+                BlockedReport.Error(PlannedReport.CompatibilityBlockReason);
+                BlockedReport.Note("No changes were applied because the import was blocked by strict compatibility policy.");
+                BlockedReport.Log("JSON import apply blocked before command variation: " + PlannedReport.CompatibilityBlockReason.ToStringAlways());
+                return BlockedReport;
+            }
 
             var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false);
             Importer.Report.CopyPlanFrom(PlannedReport);
@@ -193,6 +243,27 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Importer.Report;
         }
 
+        private static bool ImportRequiresCompatibilityGate(CompositionJsonDocument Document)
+        {
+            if (Document == null || Document.ImportOptions == null)
+                return Document != null && (Document.Requires != null || Document.TargetContext != null);
+
+            return Document.ImportOptions.StrictRelationshipCompatibility.IsTrue() ||
+                   Document.ImportOptions.AbortOnRelationshipCompatibilityFailure.IsTrue() ||
+                   Document.ImportOptions.StrictDetailsCompatibility.IsTrue() ||
+                   Document.ImportOptions.AbortOnDetailCompatibilityFailure.IsTrue() ||
+                   IsRequirePolicy(Document.ImportOptions.DomainCompatibilityPolicy) ||
+                   IsRequirePolicy(Document.ImportOptions.CompositionVersionPolicy);
+        }
+
+        private static bool IsRequirePolicy(string Policy)
+        {
+            if (String.IsNullOrWhiteSpace(Policy))
+                return false;
+
+            return Policy.StartsWith("require", StringComparison.OrdinalIgnoreCase);
+        }
+
         private void ApplyDocument(CompositionJsonDocument Document)
         {
             this.AutoPlaceNewItems = Document.ImportOptions == null ||
@@ -207,6 +278,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.UseActiveCompositionAsContainer = Document.ImportOptions != null &&
                                                    Document.ImportOptions.UseActiveCompositionAsContainer != null &&
                                                    Document.ImportOptions.UseActiveCompositionAsContainer.Value;
+            this.TreatMissingFullStateItemsAsCreates = Document.ImportOptions != null &&
+                                                       Document.ImportOptions.TreatMissingFullStateItemsAsCreates != null &&
+                                                       Document.ImportOptions.TreatMissingFullStateItemsAsCreates.Value;
             this.PreventSelfRecursiveCompositeViews = Document.ImportOptions == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews == null ||
                                                       Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value;
@@ -214,13 +288,36 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                           Document.ImportOptions.RepairRecursiveVisuals == null ||
                                           Document.ImportOptions.RepairRecursiveVisuals.Value;
             this.LayoutMode = NormalizeLayoutMode(Document.ImportOptions == null ? null : Document.ImportOptions.LayoutMode);
+            this.RelationshipDefinitionFallbackTechName = Document.ImportOptions == null ? null : Document.ImportOptions.RelationshipDefinitionFallbackTechName;
+            this.DetailFallbackMode = NormalizeDetailFallbackMode(Document.ImportOptions == null ? null : Document.ImportOptions.DetailFallbackMode);
+            this.DomainCompatibilityPolicy = NormalizeCompatibilityPolicy(Document.ImportOptions == null ? null : Document.ImportOptions.DomainCompatibilityPolicy, "domainCompatibilityPolicy");
+            this.CompositionVersionPolicy = NormalizeCompatibilityPolicy(Document.ImportOptions == null ? null : Document.ImportOptions.CompositionVersionPolicy, "compositionVersionPolicy");
+            this.StrictRelationshipCompatibility = Document.ImportOptions != null && Document.ImportOptions.StrictRelationshipCompatibility.IsTrue();
+            this.AbortOnRelationshipCompatibilityFailure = Document.ImportOptions != null && Document.ImportOptions.AbortOnRelationshipCompatibilityFailure.IsTrue();
+            this.StrictDetailsCompatibility = Document.ImportOptions != null && Document.ImportOptions.StrictDetailsCompatibility.IsTrue();
+            this.AbortOnDetailCompatibilityFailure = Document.ImportOptions != null && Document.ImportOptions.AbortOnDetailCompatibilityFailure.IsTrue();
             this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
                             ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
                             ", autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
                             ", useActiveCompositionAsContainer=" + (this.UseActiveCompositionAsContainer ? "true" : "false") +
+                            ", treatMissingFullStateItemsAsCreates=" + (this.TreatMissingFullStateItemsAsCreates ? "true" : "false") +
+                            ", relationshipDefinitionFallbackTechName=" + this.RelationshipDefinitionFallbackTechName.ToStringAlways("<none>") +
+                            ", detailFallbackMode=" + this.DetailFallbackMode +
+                            ", domainCompatibilityPolicy=" + this.DomainCompatibilityPolicy +
+                            ", compositionVersionPolicy=" + this.CompositionVersionPolicy +
+                            ", strictRelationshipCompatibility=" + (this.StrictRelationshipCompatibility ? "true" : "false") +
+                            ", abortOnRelationshipCompatibilityFailure=" + (this.AbortOnRelationshipCompatibilityFailure ? "true" : "false") +
+                            ", strictDetailsCompatibility=" + (this.StrictDetailsCompatibility ? "true" : "false") +
+                            ", abortOnDetailCompatibilityFailure=" + (this.AbortOnDetailCompatibilityFailure ? "true" : "false") +
                             ", layoutMode=" + this.LayoutMode +
                             ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
                             ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
+
+            EvaluateCompatibilityRequirements(Document);
+            RunPreflight(Document);
+
+            if (this.Report.CompatibilityBlocked)
+                return;
 
             if (this.RepairRecursiveVisuals)
                 RepairRecursiveVisualsBeforeImport();
@@ -265,6 +362,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 ApplyQueuedAutoRoutes();
 
             EmitMissingContainerSkipNotes();
+            EmitAllCreateSkippedNote(Document);
+            EmitFullStateCreateModeNotes(Document);
+            EmitRelationshipCompatibilitySummary();
+            EvaluateStrictImportBlock();
         }
 
         private string NormalizeLayoutMode(string Mode)
@@ -286,6 +387,415 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             this.Report.Warn("Unknown importOptions.layoutMode '" + Mode + "'; using gridNearViewport.");
             return "gridNearViewport";
+        }
+
+        private string NormalizeDetailFallbackMode(string Mode)
+        {
+            if (StringEquals(Mode, "appendToTechSpec"))
+                return "appendToTechSpec";
+
+            if (StringEquals(Mode, "appendToDescription"))
+                return "appendToDescription";
+
+            return "skip";
+        }
+
+        private string NormalizeCompatibilityPolicy(string Policy, string OptionName)
+        {
+            if (String.IsNullOrWhiteSpace(Policy))
+                return "warn";
+
+            if (StringEquals(Policy, "ignore"))
+                return "ignore";
+
+            if (StringEquals(Policy, "warn"))
+                return "warn";
+
+            if (StringEquals(Policy, "requireTechName"))
+                return "requireTechName";
+
+            if (StringEquals(Policy, "requireId"))
+                return "requireId";
+
+            if (StringEquals(Policy, "requireVersion"))
+                return "requireVersion";
+
+            if (StringEquals(Policy, "requireSignature"))
+                return "requireSignature";
+
+            this.Report.Warn("Unknown importOptions." + OptionName + " '" + Policy + "'; using warn.");
+            return "warn";
+        }
+
+        private void EvaluateCompatibilityRequirements(CompositionJsonDocument Document)
+        {
+            var Context = Document == null
+                ? null
+                : (HasTargetContext(Document.Requires)
+                    ? Document.Requires
+                    : (HasTargetContext(Document.TargetContext) ? Document.TargetContext : null));
+            if (Context == null)
+            {
+                this.Report.Log("JSON import compatibility metadata: no requires/targetContext block supplied.");
+                return;
+            }
+
+            this.Report.Log("JSON import compatibility metadata: " +
+                            (Document.Requires != null ? "requires" : "targetContext") + " block supplied.");
+            EvaluateContextElement("Domain compatibility", Context.Domain, BuildActiveContextElement(this.Composition.CompositeContentDomain, true), this.DomainCompatibilityPolicy, true);
+            EvaluateContextElement("Composition compatibility", Context.Composition, BuildActiveContextElement(this.Composition, false), this.CompositionVersionPolicy, false);
+        }
+
+        private bool HasTargetContext(CompositionJsonTargetContext Context)
+        {
+            return Context != null && (Context.Composition != null || Context.Domain != null);
+        }
+
+        private CompositionJsonContextElement BuildActiveContextElement(FormalElement Element, bool IncludeSignature)
+        {
+            if (Element == null)
+                return null;
+
+            var Result = new CompositionJsonContextElement();
+            Result.Id = Element.GlobalId.ToString("D");
+            Result.Name = Element.Name;
+            Result.TechName = Element.TechName;
+            if (Element.Version != null)
+            {
+                Result.VersionNumber = Element.Version.VersionNumber == null ? null : Element.Version.VersionNumber.ToString();
+                Result.VersionSequence = Element.Version.VersionSequence;
+                Result.LastModification = Element.Version.LastModification.ToString("o", CultureInfo.InvariantCulture);
+            }
+            if (IncludeSignature)
+                Result.CompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Element as Domain);
+            return Result;
+        }
+
+        private void EvaluateContextElement(string Label, CompositionJsonContextElement Required, CompositionJsonContextElement Active, string Policy, bool SupportsSignature)
+        {
+            Policy = Policy.NullDefault("warn");
+            if (Required == null)
+            {
+                this.Report.Log(Label + ": no required metadata supplied; policy=" + Policy + ".");
+                return;
+            }
+
+            this.Report.Log(Label + ": policy=" + Policy + ".");
+            LogContextComparison(Label, "techName", Required.TechName, Active == null ? null : Active.TechName);
+            LogContextComparison(Label, "id", Required.Id, Active == null ? null : Active.Id);
+            LogContextComparison(Label, "versionNumber", Required.VersionNumber, Active == null ? null : Active.VersionNumber);
+            LogContextComparison(Label, "versionSequence", Required.VersionSequence == null ? null : Required.VersionSequence.Value.ToString(CultureInfo.InvariantCulture), Active == null || Active.VersionSequence == null ? null : Active.VersionSequence.Value.ToString(CultureInfo.InvariantCulture));
+            LogContextComparison(Label, "lastModification", Required.LastModification, Active == null ? null : Active.LastModification);
+            if (SupportsSignature)
+                LogContextComparison(Label, "compatibilitySignature", Required.CompatibilitySignature, Active == null ? null : Active.CompatibilitySignature);
+
+            if (StringEquals(Policy, "ignore"))
+                return;
+
+            var Mismatches = GetContextMismatches(Required, Active, SupportsSignature).ToList();
+            if (Mismatches.Count < 1)
+                return;
+
+            if (StringEquals(Policy, "warn"))
+            {
+                foreach (var Mismatch in Mismatches)
+                    this.Report.Warn(Label + " mismatch: " + Mismatch);
+                return;
+            }
+
+            var Enforced = GetEnforcedContextMismatches(Required, Active, Policy, SupportsSignature).ToList();
+            if (Enforced.Count < 1)
+                return;
+
+            BlockImport(Label + " failed " + Policy + ": " + String.Join("; ", Enforced.ToArray()) + ".");
+        }
+
+        private void LogContextComparison(string Label, string FieldName, string Required, string Active)
+        {
+            if (String.IsNullOrWhiteSpace(Required))
+                return;
+
+            this.Report.Log(Label + ": required " + FieldName + "=" + Required.ToStringAlways() +
+                            ", active " + FieldName + "=" + Active.ToStringAlways("<none>") +
+                            ", result=" + (StringEquals(Required, Active) ? "ok" : "mismatch") + ".");
+        }
+
+        private IEnumerable<string> GetContextMismatches(CompositionJsonContextElement Required, CompositionJsonContextElement Active, bool IncludeSignature)
+        {
+            foreach (var Mismatch in CompareContextField("techName", Required == null ? null : Required.TechName, Active == null ? null : Active.TechName))
+                yield return Mismatch;
+            foreach (var Mismatch in CompareContextField("id", Required == null ? null : Required.Id, Active == null ? null : Active.Id))
+                yield return Mismatch;
+            foreach (var Mismatch in CompareContextField("versionNumber", Required == null ? null : Required.VersionNumber, Active == null ? null : Active.VersionNumber))
+                yield return Mismatch;
+            foreach (var Mismatch in CompareContextField("versionSequence", Required == null || Required.VersionSequence == null ? null : Required.VersionSequence.Value.ToString(CultureInfo.InvariantCulture), Active == null || Active.VersionSequence == null ? null : Active.VersionSequence.Value.ToString(CultureInfo.InvariantCulture)))
+                yield return Mismatch;
+            if (IncludeSignature)
+                foreach (var Mismatch in CompareContextField("compatibilitySignature", Required == null ? null : Required.CompatibilitySignature, Active == null ? null : Active.CompatibilitySignature))
+                    yield return Mismatch;
+        }
+
+        private IEnumerable<string> GetEnforcedContextMismatches(CompositionJsonContextElement Required, CompositionJsonContextElement Active, string Policy, bool SupportsSignature)
+        {
+            if (StringEquals(Policy, "requireTechName"))
+                return CompareContextField("techName", Required == null ? null : Required.TechName, Active == null ? null : Active.TechName);
+
+            if (StringEquals(Policy, "requireId"))
+                return CompareContextField("id", Required == null ? null : Required.Id, Active == null ? null : Active.Id);
+
+            if (StringEquals(Policy, "requireVersion"))
+                return CompareContextField("versionSequence", Required == null || Required.VersionSequence == null ? null : Required.VersionSequence.Value.ToString(CultureInfo.InvariantCulture), Active == null || Active.VersionSequence == null ? null : Active.VersionSequence.Value.ToString(CultureInfo.InvariantCulture))
+                    .Concat(CompareContextField("versionNumber", Required == null ? null : Required.VersionNumber, Active == null ? null : Active.VersionNumber));
+
+            if (StringEquals(Policy, "requireSignature") && SupportsSignature)
+                return CompareContextField("compatibilitySignature", Required == null ? null : Required.CompatibilitySignature, Active == null ? null : Active.CompatibilitySignature);
+
+            return Enumerable.Empty<string>();
+        }
+
+        private IEnumerable<string> CompareContextField(string FieldName, string Required, string Active)
+        {
+            if (String.IsNullOrWhiteSpace(Required))
+                yield break;
+
+            if (!StringEquals(Required, Active))
+                yield return FieldName + " required='" + Required + "' active='" + Active.ToStringAlways("<none>") + "'";
+        }
+
+        private void BlockImport(string Reason)
+        {
+            this.Report.CompatibilityBlocked = true;
+            if (String.IsNullOrWhiteSpace(this.Report.CompatibilityBlockReason))
+                this.Report.CompatibilityBlockReason = Reason;
+            else
+                this.Report.CompatibilityBlockReason += " " + Reason;
+            this.Report.Error(Reason);
+        }
+
+        private void RunPreflight(CompositionJsonDocument Document)
+        {
+            if (Document == null)
+                return;
+
+            var Operations = Document.Operations ?? new List<CompositionJsonOperation>();
+            var FullStateIdeas = Document.Ideas == null ? new List<CompositionJsonIdea>() : Document.Ideas;
+            var FullStateRelationships = Document.Relationships == null ? new List<CompositionJsonRelationship>() : Document.Relationships;
+            var FullStateViews = Document.Views == null ? new List<CompositionJsonView>() : Document.Views;
+            var PlannedConceptIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var PlannedConceptTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var PlannedRelationshipIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var PlannedRelationshipTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ConceptDefinitions = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var RelationshipDefinitions = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var UnresolvedConceptDefinitions = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var UnresolvedRelationshipDefinitions = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ReferencedContainers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var UnresolvedContainers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ReferencedViews = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var UnresolvedViews = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ReferencedEndpoints = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var UnresolvedEndpoints = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var CreateConcepts = 0;
+            var CreateRelationships = 0;
+            var ActiveRootFallbacks = 0;
+
+            if (this.TreatMissingFullStateItemsAsCreates)
+            {
+                foreach (var Idea in FullStateIdeas)
+                {
+                    if (!String.IsNullOrEmpty(Idea.Id))
+                        PlannedConceptIds.Add(Idea.Id);
+                    if (!String.IsNullOrEmpty(Idea.TechName))
+                        PlannedConceptTechNames.Add(Idea.TechName);
+                }
+
+                foreach (var Relationship in FullStateRelationships)
+                {
+                    if (!String.IsNullOrEmpty(Relationship.Id))
+                        PlannedRelationshipIds.Add(Relationship.Id);
+                    if (!String.IsNullOrEmpty(Relationship.TechName))
+                        PlannedRelationshipTechNames.Add(Relationship.TechName);
+                }
+            }
+
+            foreach (var Operation in Operations)
+            {
+                var Op = Operation.Op.NullDefault("").ToLowerInvariant();
+                var Entity = Operation.Entity.NullDefault("").ToLowerInvariant();
+                if (Op != "create")
+                    continue;
+
+                if (Entity == "concept")
+                {
+                    CreateConcepts++;
+                    var Id = Operation.Id;
+                    var TechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
+                    if (!String.IsNullOrEmpty(Id))
+                        PlannedConceptIds.Add(Id);
+                    if (!String.IsNullOrEmpty(TechName))
+                        PlannedConceptTechNames.Add(TechName);
+                }
+                else
+                    if (Entity == "relationship")
+                    {
+                        CreateRelationships++;
+                        var Id = Operation.Id;
+                        var TechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
+                        if (!String.IsNullOrEmpty(Id))
+                            PlannedRelationshipIds.Add(Id);
+                        if (!String.IsNullOrEmpty(TechName))
+                            PlannedRelationshipTechNames.Add(TechName);
+                    }
+            }
+
+            foreach (var Operation in Operations)
+            {
+                var Op = Operation.Op.NullDefault("").ToLowerInvariant();
+                var Entity = Operation.Entity.NullDefault("").ToLowerInvariant();
+
+                if (OperationNeedsRootContainer(Op, Entity))
+                {
+                    var ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
+                    var ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
+                    var ContainerKey = RequestedContainerDescription(ContainerId, ContainerTechName);
+                    ReferencedContainers.Add(ContainerKey);
+
+                    if (CanFallbackToActiveCompositionContainer(ContainerId, ContainerTechName))
+                        ActiveRootFallbacks++;
+                    else
+                        if (FindIdea(ContainerId, ContainerTechName) == null)
+                            UnresolvedContainers.Add(ContainerKey);
+                }
+
+                if (Entity == "concept" && (Op == "create" || Op == "place"))
+                {
+                    var DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
+                    if (!String.IsNullOrEmpty(DefinitionTechName))
+                    {
+                        ConceptDefinitions.Add(DefinitionTechName);
+                        if (FindConceptDefinition(null, DefinitionTechName, null) == null)
+                            UnresolvedConceptDefinitions.Add(DefinitionTechName);
+                    }
+                }
+
+                if (Entity == "relationship" && (Op == "create" || Op == "place"))
+                {
+                    var DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
+                    if (!String.IsNullOrEmpty(DefinitionTechName))
+                    {
+                        RelationshipDefinitions.Add(DefinitionTechName);
+                        if (FindRelationshipDefinition(null, DefinitionTechName, null) == null)
+                            UnresolvedRelationshipDefinitions.Add(DefinitionTechName);
+                    }
+                }
+
+                var ViewId = Operation.ViewId.NullDefault(GetSetString(Operation.Set, "viewId"));
+                var ViewTechName = Operation.ViewTechName.NullDefault(GetSetString(Operation.Set, "viewTechName"));
+                if (!String.IsNullOrEmpty(ViewId) || !String.IsNullOrEmpty(ViewTechName))
+                {
+                    var ViewKey = Describe(ViewId, ViewTechName);
+                    ReferencedViews.Add(ViewKey);
+                    if (!IsActiveViewSentinel(ViewTechName) && FindView(ViewId, ViewTechName) == null)
+                        UnresolvedViews.Add(ViewKey);
+                }
+
+                if (Entity == "relationship" && Op == "create")
+                    CollectPreflightRelationshipEndpoints(Operation, PlannedConceptIds, PlannedConceptTechNames, ReferencedEndpoints, UnresolvedEndpoints);
+            }
+
+            this.Report.Log("JSON import preflight:");
+            this.Report.Log("  active composition=" + DescribeTarget(this.Composition));
+            this.Report.Log("  active/root view active=" + DescribeView(GetPreferredActiveView()) + "; root=" + DescribeView(this.Composition.RootView));
+            this.Report.Log("  active domain=" + DescribeTarget(this.Composition.CompositeContentDomain));
+            this.Report.Log("  operations=" + Operations.Count.ToString(CultureInfo.InvariantCulture));
+            this.Report.Log("  full-state ideas=" + FullStateIdeas.Count.ToString(CultureInfo.InvariantCulture) +
+                            ", relationships=" + FullStateRelationships.Count.ToString(CultureInfo.InvariantCulture) +
+                            ", views=" + FullStateViews.Count.ToString(CultureInfo.InvariantCulture) +
+                            ", treatMissingFullStateItemsAsCreates=" + (this.TreatMissingFullStateItemsAsCreates ? "true" : "false"));
+            this.Report.Log("  create concepts=" + CreateConcepts.ToString(CultureInfo.InvariantCulture));
+            this.Report.Log("  create relationships=" + CreateRelationships.ToString(CultureInfo.InvariantCulture));
+            this.Report.Log("  active-root fallbacks=" + ActiveRootFallbacks.ToString(CultureInfo.InvariantCulture));
+            this.Report.Log("  required concept definitions=" + FormatSet(ConceptDefinitions));
+            this.Report.Log("  required relationship definitions=" + FormatSet(RelationshipDefinitions));
+            this.Report.Log("  unresolved concept definitions=" + FormatSet(UnresolvedConceptDefinitions));
+            this.Report.Log("  unresolved relationship definitions=" + FormatSet(UnresolvedRelationshipDefinitions));
+            this.Report.Log("  referenced containers=" + FormatSet(ReferencedContainers));
+            this.Report.Log("  unresolved containers=" + FormatSet(UnresolvedContainers));
+            this.Report.Log("  referenced views=" + FormatSet(ReferencedViews));
+            this.Report.Log("  unresolved views=" + FormatSet(UnresolvedViews));
+            this.Report.Log("  referenced endpoints=" + FormatSet(ReferencedEndpoints));
+            this.Report.Log("  unresolved endpoints=" + FormatSet(UnresolvedEndpoints));
+            this.Report.Log("  planned concept ids=" + PlannedConceptIds.Count.ToString(CultureInfo.InvariantCulture) +
+                            ", techNames=" + PlannedConceptTechNames.Count.ToString(CultureInfo.InvariantCulture) +
+                            "; planned relationship ids=" + PlannedRelationshipIds.Count.ToString(CultureInfo.InvariantCulture) +
+                            ", techNames=" + PlannedRelationshipTechNames.Count.ToString(CultureInfo.InvariantCulture) + ".");
+        }
+
+        private void CollectPreflightRelationshipEndpoints(CompositionJsonOperation Operation,
+                                                           HashSet<string> PlannedConceptIds,
+                                                           HashSet<string> PlannedConceptTechNames,
+                                                           SortedSet<string> ReferencedEndpoints,
+                                                           SortedSet<string> UnresolvedEndpoints)
+        {
+            var Source = new CompositionJsonRelationship();
+            PopulateRelationshipConnectivityFromOperation(Source, Operation);
+            var Specs = new List<CompositionJsonRelationshipLink>();
+
+            if (Source.Links != null)
+                Specs.AddRange(Source.Links);
+
+            AddPreflightEndpointSpecs(Specs, Source.OriginIdeaIds, Source.OriginIdeaTechNames);
+            AddPreflightEndpointSpecs(Specs, Source.TargetIdeaIds, Source.TargetIdeaTechNames);
+
+            foreach (var Spec in Specs)
+            {
+                var Key = Describe(Spec.IdeaId, Spec.IdeaTechName);
+                ReferencedEndpoints.Add(Key);
+                if (FindIdea(Spec.IdeaId, Spec.IdeaTechName) != null)
+                    continue;
+
+                if (!String.IsNullOrEmpty(Spec.IdeaId) && PlannedConceptIds.Contains(Spec.IdeaId))
+                    continue;
+
+                if (!String.IsNullOrEmpty(Spec.IdeaTechName) && PlannedConceptTechNames.Contains(Spec.IdeaTechName))
+                    continue;
+
+                UnresolvedEndpoints.Add(Key);
+            }
+        }
+
+        private void AddPreflightEndpointSpecs(List<CompositionJsonRelationshipLink> Specs, IList<string> IdeaIds, IList<string> IdeaTechNames)
+        {
+            var Count = Math.Max(IdeaIds == null ? 0 : IdeaIds.Count, IdeaTechNames == null ? 0 : IdeaTechNames.Count);
+            for (int Index = 0; Index < Count; Index++)
+                Specs.Add(new CompositionJsonRelationshipLink
+                {
+                    IdeaId = IdeaIds != null && Index < IdeaIds.Count ? IdeaIds[Index] : null,
+                    IdeaTechName = IdeaTechNames != null && Index < IdeaTechNames.Count ? IdeaTechNames[Index] : null
+                });
+        }
+
+        private bool OperationNeedsRootContainer(string Op, string Entity)
+        {
+            return (Op == "create" || Op == "place") &&
+                   (Entity == "concept" || Entity == "relationship");
+        }
+
+        private string FormatSet(IEnumerable<string> Values)
+        {
+            if (Values == null)
+                return "<none>";
+
+            var Items = Values.Where(Value => !String.IsNullOrEmpty(Value)).Take(18).ToList();
+            if (Items.Count < 1)
+                return "<none>";
+
+            var Total = Values.Count(Value => !String.IsNullOrEmpty(Value));
+            var Text = String.Join(", ", Items.ToArray());
+            if (Total > Items.Count)
+                Text += ", ... +" + (Total - Items.Count).ToString(CultureInfo.InvariantCulture);
+
+            return Text;
         }
 
         private void RepairRecursiveVisualsBeforeImport()
@@ -352,9 +862,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             if (CanCreateFromState(Source.Id, Source.IsNew))
-                CreateConcept(Source);
+            {
+                LogFullStateCreateDecision("concept", Source.TechName.NullDefault(Source.Name), Source.IsNew);
+                var BeforeCreated = this.Report.Created;
+                var Created = CreateConcept(Source);
+                if (this.Report.Created > BeforeCreated)
+                    RememberFullStateCreatedIdea(Source, Created);
+            }
             else
+            {
+                this.FullStateConceptCreatesDisabled++;
                 Skip("Concept '" + Describe(Source.Id, Source.TechName) + "' was not found. Add isNew:true or omit id and provide a definition/container to create it.");
+            }
         }
 
         private void ApplyRelationship(CompositionJsonRelationship Source)
@@ -380,14 +899,73 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             if (CanCreateFromState(Source.Id, Source.IsNew))
-                CreateRelationship(Source);
+            {
+                LogFullStateCreateDecision("relationship", Source.TechName.NullDefault(Source.Name), Source.IsNew);
+                var BeforeCreated = this.Report.Created;
+                var Created = CreateRelationship(Source);
+                if (this.Report.Created > BeforeCreated)
+                    RememberFullStateCreatedIdea(Source, Created);
+            }
             else
+            {
+                this.FullStateRelationshipCreatesDisabled++;
                 Skip("Relationship '" + Describe(Source.Id, Source.TechName) + "' was not found. Add isNew:true or omit id and provide a definition/container to create it.");
+            }
         }
 
         private bool CanCreateFromState(string Id, bool IsNew)
         {
-            return IsNew || String.IsNullOrEmpty(Id);
+            return IsNew || String.IsNullOrEmpty(Id) || this.TreatMissingFullStateItemsAsCreates;
+        }
+
+        private void LogFullStateCreateDecision(string Entity, string TechName, bool IsNew)
+        {
+            this.Report.Log("Full-state " + Entity + " '" + TechName.ToStringAlways() +
+                            "' was missing; treating as create because " +
+                            (IsNew ? "isNew=true" : "treatMissingFullStateItemsAsCreates=true") + ".");
+        }
+
+        private void RememberFullStateCreatedIdea(CompositionJsonIdea Source, Idea Created)
+        {
+            if (Source == null)
+                return;
+
+            var Id = Source.Id.NullDefault(Created == null ? null : Created.GlobalId.ToString("D"));
+            var TechName = Source.TechName.NullDefault(Source.Name == null ? null : Source.Name.TextToIdentifier())
+                                     .NullDefault(Created == null ? null : Created.TechName);
+
+            if (!String.IsNullOrEmpty(Id))
+                this.FullStateCreatedIdeaIds.Add(Id);
+            if (!String.IsNullOrEmpty(TechName))
+                this.FullStateCreatedIdeaTechNames.Add(TechName);
+        }
+
+        private void RememberFullStateCreatedIdea(CompositionJsonRelationship Source, Idea Created)
+        {
+            if (Source == null)
+                return;
+
+            var Id = Source.Id.NullDefault(Created == null ? null : Created.GlobalId.ToString("D"));
+            var TechName = Source.TechName.NullDefault(Source.Name == null ? null : Source.Name.TextToIdentifier())
+                                     .NullDefault(Created == null ? null : Created.TechName);
+
+            if (!String.IsNullOrEmpty(Id))
+                this.FullStateCreatedIdeaIds.Add(Id);
+            if (!String.IsNullOrEmpty(TechName))
+                this.FullStateCreatedIdeaTechNames.Add(TechName);
+        }
+
+        private bool WasFullStateCreatedOrPlanned(string Id, string TechName, Idea Idea)
+        {
+            if (Idea != null)
+            {
+                if (this.FullStateCreatedIdeaIds.Contains(Idea.GlobalId.ToString("D")) ||
+                    this.FullStateCreatedIdeaTechNames.Contains(Idea.TechName.ToStringAlways()))
+                    return true;
+            }
+
+            return (!String.IsNullOrEmpty(Id) && this.FullStateCreatedIdeaIds.Contains(Id)) ||
+                   (!String.IsNullOrEmpty(TechName) && this.FullStateCreatedIdeaTechNames.Contains(TechName));
         }
 
         private Concept CreateConcept(CompositionJsonIdea Source)
@@ -395,7 +973,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Definition = FindConceptDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
             if (Definition == null)
             {
-                Skip("Cannot create concept '" + Source.Name.ToStringAlways() + "' because definition '" + Source.DefinitionTechName.ToStringAlways() + "' was not found.");
+                Skip("Cannot create concept '" + Source.Name.ToStringAlways() + "': concept definition '" +
+                     Source.DefinitionTechName.ToStringAlways() + "' was not found in active domain '" +
+                     (this.Composition.CompositeContentDomain == null ? "<none>" : this.Composition.CompositeContentDomain.TechName.ToStringAlways()) +
+                     "'. Available close matches: " + GetDefinitionSuggestions<ConceptDefinition>(Source.DefinitionTechName).ToStringAlways() + ".");
                 return null;
             }
 
@@ -403,8 +984,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Container == null)
             {
                 RecordMissingContainerSkip(Source.ContainerId, Source.ContainerTechName);
-                Skip("Cannot create concept '" + Source.Name.ToStringAlways() + "' because its container '" +
-                     RequestedContainerDescription(Source.ContainerId, Source.ContainerTechName) + "' was not found or is not safe.");
+                Skip(GetContainerResolutionFailureMessage("concept", Source.Name, Source.ContainerId, Source.ContainerTechName));
                 return null;
             }
 
@@ -417,18 +997,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (this.IsPreview)
             {
                 RegisterPlannedConcept(Source, Definition);
-                this.Report.CountCreated();
+                this.Report.CountCreatedConcept();
                 return null;
             }
 
             var Concept = new Concept(this.Composition, Definition, Source.Name, Source.TechName.NullDefault(Source.Name.TextToIdentifier()), Source.Summary.NullDefault(""));
             AssignImportedId(Concept, Source.Id);
+            ApplyFormalSet(Concept, null, null, null, Source.TechSpec, (CompositionJsonVersion)null);
 
             if (Definition.IsVersionable)
                 Concept.Version = new VersionCard();
 
             Concept.AddToComposite(Container);
-            this.Report.CountCreated();
+            this.Report.CountCreatedConcept();
 
             ApplyMarkers(Concept, Source.Markers);
             ApplyDetails(Concept, Source.Details);
@@ -471,12 +1052,50 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return null;
         }
 
+        private void RegisterPlannedRelationship(CompositionJsonRelationship Source, RelationshipDefinition Definition)
+        {
+            if (!this.IsPreview || Source == null || Definition == null)
+                return;
+
+            var Planned = new PlannedRelationshipReference();
+            Planned.Id = Source.Id;
+            Planned.TechName = Source.TechName.NullDefault(Source.Name.NullDefault("Relationship").TextToIdentifier());
+            Planned.Definitor = Definition;
+
+            if (!String.IsNullOrEmpty(Planned.Id))
+                this.PlannedRelationshipsById[Planned.Id] = Planned;
+
+            if (!String.IsNullOrEmpty(Planned.TechName))
+                this.PlannedRelationshipsByTechName[Planned.TechName] = Planned;
+
+            this.Report.Log("JSON import preview planned relationship: techName=" +
+                            Planned.TechName.ToStringAlways() +
+                            ", id=" + Planned.Id.ToStringAlways() +
+                            ", definition=" + Definition.TechName.ToStringAlways() + ".");
+        }
+
+        private PlannedRelationshipReference FindPlannedRelationship(string Id, string TechName)
+        {
+            PlannedRelationshipReference Planned;
+
+            if (!String.IsNullOrEmpty(Id) && this.PlannedRelationshipsById.TryGetValue(Id, out Planned))
+                return Planned;
+
+            if (!String.IsNullOrEmpty(TechName) && this.PlannedRelationshipsByTechName.TryGetValue(TechName, out Planned))
+                return Planned;
+
+            return null;
+        }
+
         private Relationship CreateRelationship(CompositionJsonRelationship Source)
         {
             var Definition = FindRelationshipDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
             if (Definition == null)
             {
-                Skip("Cannot create relationship '" + Source.Name.ToStringAlways() + "' because definition '" + Source.DefinitionTechName.ToStringAlways() + "' was not found.");
+                Skip("Cannot create relationship '" + Source.Name.ToStringAlways() + "': relationship definition '" +
+                     Source.DefinitionTechName.ToStringAlways() + "' was not found in active domain '" +
+                     (this.Composition.CompositeContentDomain == null ? "<none>" : this.Composition.CompositeContentDomain.TechName.ToStringAlways()) +
+                     "'. Available close matches: " + GetDefinitionSuggestions<RelationshipDefinition>(Source.DefinitionTechName).ToStringAlways() + ".");
                 return null;
             }
 
@@ -484,8 +1103,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Container == null)
             {
                 RecordMissingContainerSkip(Source.ContainerId, Source.ContainerTechName);
-                Skip("Cannot create relationship '" + Source.Name.ToStringAlways() + "' because its container '" +
-                     RequestedContainerDescription(Source.ContainerId, Source.ContainerTechName) + "' was not found or is not safe.");
+                Skip(GetContainerResolutionFailureMessage("relationship", Source.Name, Source.ContainerId, Source.ContainerTechName));
                 return null;
             }
 
@@ -497,23 +1115,43 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             var LinkPlan = BuildRelationshipLinkPlan(Definition, Source, "top-level");
-            if (!ValidateRelationshipLinkPlan(Definition, Source.TechName.NullDefault(Name), LinkPlan))
-                return null;
+            var Validation = ValidateRelationshipLinkPlan(Definition, Source.TechName.NullDefault(Name), LinkPlan);
+            if (Validation != RelationshipLinkValidationStatus.Valid)
+            {
+                if (Validation == RelationshipLinkValidationStatus.IncompatibleEndpoints &&
+                    TryApplyRelationshipDefinitionFallback(Source, Source.TechName.NullDefault(Name), Definition, LinkPlan, out Definition, out LinkPlan))
+                {
+                    this.Report.Log(FormatOperationPrefix() + "Relationship '" + Source.TechName.NullDefault(Name).ToStringAlways() +
+                                    "' requested definition '" + Source.DefinitionTechName.ToStringAlways() +
+                                    "' failed compatibility; using fallback definition '" +
+                                    Definition.TechName.ToStringAlways() + "'.");
+                    Source.DefinitionId = Definition.GlobalId.ToString("D");
+                    Source.DefinitionTechName = Definition.TechName;
+                    Source.DefinitionName = Definition.Name;
+                }
+                else
+                {
+                    SkipRelationshipLinkValidationFailure(Definition, Source.TechName.NullDefault(Name), LinkPlan, Validation);
+                    return null;
+                }
+            }
 
             if (this.IsPreview)
             {
-                this.Report.CountCreated();
+                RegisterPlannedRelationship(Source, Definition);
+                this.Report.CountCreatedRelationship();
                 return null;
             }
 
             var Relationship = new Relationship(this.Composition, Definition, Name, Source.TechName.NullDefault(Name.TextToIdentifier()), Source.Summary.NullDefault(""));
             AssignImportedId(Relationship, Source.Id);
+            ApplyFormalSet(Relationship, null, null, null, Source.TechSpec, (CompositionJsonVersion)null);
 
             if (Definition.IsVersionable)
                 Relationship.Version = new VersionCard();
 
             Relationship.AddToComposite(Container);
-            this.Report.CountCreated();
+            this.Report.CountCreatedRelationship();
 
             ApplyRelationshipLinks(Relationship, LinkPlan);
             ApplyMarkers(Relationship, Source.Markers);
@@ -646,6 +1284,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             foreach (var Spec in Plan.Specs)
             {
+                if (!String.IsNullOrEmpty(Spec.RoleDefinitionTechName) &&
+                    !RelationshipDefinitionHasRole(Definition, Spec.RoleDefinitionTechName))
+                    Plan.Warnings.Add("Cannot resolve relationship roleDefinitionTechName '" +
+                                      Spec.RoleDefinitionTechName.ToStringAlways() +
+                                      "' for relationship definition '" + Definition.TechName + "'. Falling back to roleType '" +
+                                      Spec.RoleTypeName.ToStringAlways() + "'.");
+
                 var RequestedRole = ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition);
                 var Role = Definition.GetLinkForRole(RequestedRole);
                 if (Role == null)
@@ -654,6 +1299,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                       "' for relationship definition '" + Definition.TechName + "'.");
                     continue;
                 }
+
+                this.Report.Log(FormatOperationPrefix() + "relationship role resolved: roleType='" +
+                                Spec.RoleTypeName.ToStringAlways() +
+                                "', roleDefinitionTechName='" + Spec.RoleDefinitionTechName.ToStringAlways() +
+                                "', matched='" + Role.TechName.ToStringAlways() +
+                                "', type=" + Role.RoleType.GetFieldName() + ".");
 
                 var Idea = FindIdea(Spec.IdeaId, Spec.IdeaTechName);
                 if (Idea == null)
@@ -676,7 +1327,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                     this.Report.Log(FormatOperationPrefix() + "relationship endpoint '" +
                                     Describe(Spec.IdeaId, Spec.IdeaTechName) +
-                                    "' resolved from planned concept map.");
+                                    "' resolved from planned concept map by " +
+                                    (!String.IsNullOrEmpty(Spec.IdeaId) ? "id" : "techName") + ".");
                     continue;
                 }
 
@@ -688,7 +1340,24 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     Plan.ResolvedTargetCount++;
                 else
                     Plan.ResolvedOriginCount++;
+
+                this.Report.Log(FormatOperationPrefix() + "relationship endpoint '" +
+                                Describe(Spec.IdeaId, Spec.IdeaTechName) +
+                                "' resolved from existing idea " + DescribeTarget(Idea) + ".");
             }
+        }
+
+        private bool RelationshipDefinitionHasRole(RelationshipDefinition Definition, string RoleDefinitionTechName)
+        {
+            if (Definition == null || String.IsNullOrEmpty(RoleDefinitionTechName))
+                return false;
+
+            return (Definition.TargetLinkRoleDef != null &&
+                    (StringEquals(Definition.TargetLinkRoleDef.TechName, RoleDefinitionTechName) ||
+                     StringEquals(Definition.TargetLinkRoleDef.Name, RoleDefinitionTechName))) ||
+                   (Definition.OriginOrParticipantLinkRoleDef != null &&
+                    (StringEquals(Definition.OriginOrParticipantLinkRoleDef.TechName, RoleDefinitionTechName) ||
+                     StringEquals(Definition.OriginOrParticipantLinkRoleDef.Name, RoleDefinitionTechName)));
         }
 
         private ERoleType ResolveRoleType(string RoleTypeName, string RoleDefinitionTechName, RelationshipDefinition Definition)
@@ -715,26 +1384,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return ERoleType.Origin;
         }
 
-        private bool ValidateRelationshipLinkPlan(RelationshipDefinition Definition, string RelationshipTechName, RelationshipLinkImportPlan LinkPlan)
+        private RelationshipLinkValidationStatus ValidateRelationshipLinkPlan(RelationshipDefinition Definition, string RelationshipTechName, RelationshipLinkImportPlan LinkPlan)
         {
             this.Report.Log(FormatOperationPrefix() + "relationship links source=" +
                             (LinkPlan == null ? "none" : LinkPlan.SourceName.NullDefault("none")) +
                             " for relationship techName=" + RelationshipTechName.ToStringAlways() + ".");
 
             if (LinkPlan == null || !LinkPlan.HasConnectivityInput)
-            {
-                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': no valid origin/target links were provided.");
-                return false;
-            }
+                return RelationshipLinkValidationStatus.NoConnectivityInput;
 
             if (LinkPlan.ResolvedOriginCount < 1 || LinkPlan.ResolvedTargetCount < 1)
-            {
-                foreach (var Warning in LinkPlan.Warnings)
-                    this.Report.Warn(Warning);
-
-                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': no valid origin/target links were provided.");
-                return false;
-            }
+                return RelationshipLinkValidationStatus.UnresolvedConnectivity;
 
             var Origins = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdeaDefinitor != null && ResolveRoleType(Spec.RoleTypeName, Spec.RoleDefinitionTechName, Definition) == ERoleType.Origin)
                                         .Select(Spec => Spec.ResolvedIdeaDefinitor)
@@ -744,12 +1404,309 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                         .ToList();
 
             if (!Origins.SelectMany(Origin => Targets.Select(Target => Definition.CanLink(Origin, Target))).Any(Result => Result.Result))
+                return RelationshipLinkValidationStatus.IncompatibleEndpoints;
+
+            return RelationshipLinkValidationStatus.Valid;
+        }
+
+        private void SkipRelationshipLinkValidationFailure(RelationshipDefinition Definition, string RelationshipTechName, RelationshipLinkImportPlan LinkPlan, RelationshipLinkValidationStatus Validation)
+        {
+            if (Validation == RelationshipLinkValidationStatus.NoConnectivityInput)
             {
-                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': resolved endpoints are not valid for definition '" + Definition.TechName + "'.");
+                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': no valid origin/target links were provided.");
+                return;
+            }
+
+            if (Validation == RelationshipLinkValidationStatus.UnresolvedConnectivity)
+            {
+                if (LinkPlan != null)
+                    foreach (var Warning in LinkPlan.Warnings)
+                        this.Report.Warn(Warning);
+
+                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() + "': no valid origin/target links were provided.");
+                return;
+            }
+
+            if (Validation == RelationshipLinkValidationStatus.IncompatibleEndpoints)
+            {
+                RecordRelationshipCompatibilitySkip(Definition);
+                LogRelationshipCompatibilityFailure(Definition, RelationshipTechName, LinkPlan);
+                Skip("Skipped relationship '" + RelationshipTechName.ToStringAlways() +
+                     "': resolved endpoints are not valid for definition '" +
+                     (Definition == null ? "<none>" : Definition.TechName.ToStringAlways()) + "'.");
+            }
+        }
+
+        private bool TryApplyRelationshipDefinitionFallback(CompositionJsonRelationship Source,
+                                                            string RelationshipTechName,
+                                                            RelationshipDefinition RequestedDefinition,
+                                                            RelationshipLinkImportPlan RequestedPlan,
+                                                            out RelationshipDefinition FallbackDefinition,
+                                                            out RelationshipLinkImportPlan FallbackPlan)
+        {
+            FallbackDefinition = null;
+            FallbackPlan = null;
+
+            if (Source == null || Source.StrictDefinition.IsTrue())
+            {
+                this.Report.Log(FormatOperationPrefix() + "Relationship definition fallback skipped for '" +
+                                RelationshipTechName.ToStringAlways() + "': strictDefinition=true.");
+                return false;
+            }
+
+            var FallbackTechName = Source.FallbackDefinitionTechName.NullDefault(this.RelationshipDefinitionFallbackTechName);
+            if (String.IsNullOrEmpty(FallbackTechName))
+                return false;
+
+            if (RequestedDefinition != null && StringEquals(FallbackTechName, RequestedDefinition.TechName))
+            {
+                this.Report.Log(FormatOperationPrefix() + "Relationship definition fallback skipped for '" +
+                                RelationshipTechName.ToStringAlways() + "': fallback definition matches requested definition '" +
+                                FallbackTechName + "'.");
+                return false;
+            }
+
+            FallbackDefinition = FindRelationshipDefinition(null, FallbackTechName, null);
+            if (FallbackDefinition == null)
+            {
+                this.Report.Warn("Relationship definition fallback '" + FallbackTechName.ToStringAlways() +
+                                 "' was requested for relationship '" + RelationshipTechName.ToStringAlways() +
+                                 "' but was not found in active domain '" +
+                                 (this.Composition.CompositeContentDomain == null ? "<none>" : this.Composition.CompositeContentDomain.TechName.ToStringAlways()) + "'.");
+                return false;
+            }
+
+            FallbackPlan = BuildRelationshipFallbackLinkPlan(FallbackDefinition, RequestedPlan);
+            var FallbackValidation = ValidateRelationshipLinkPlan(FallbackDefinition, RelationshipTechName, FallbackPlan);
+            if (FallbackValidation != RelationshipLinkValidationStatus.Valid)
+            {
+                this.Report.Log(FormatOperationPrefix() + "Relationship definition fallback '" +
+                                FallbackDefinition.TechName.ToStringAlways() +
+                                "' was not valid for relationship '" + RelationshipTechName.ToStringAlways() +
+                                "': " + FallbackValidation.GetFieldName() + ".");
                 return false;
             }
 
             return true;
+        }
+
+        private RelationshipLinkImportPlan BuildRelationshipFallbackLinkPlan(RelationshipDefinition FallbackDefinition, RelationshipLinkImportPlan RequestedPlan)
+        {
+            var Plan = new RelationshipLinkImportPlan();
+            Plan.SourceName = "fallback";
+
+            if (RequestedPlan == null || FallbackDefinition == null)
+                return Plan;
+
+            foreach (var Spec in RequestedPlan.Specs)
+            {
+                if (Spec == null || Spec.ResolvedRole == null)
+                    continue;
+
+                var FallbackSpec = new RelationshipLinkImportSpec
+                {
+                    RoleTypeName = Spec.ResolvedRole.RoleType == ERoleType.Target ? "Target" : "Origin",
+                    IdeaId = Spec.IdeaId,
+                    IdeaTechName = Spec.IdeaTechName
+                };
+                Plan.Specs.Add(FallbackSpec);
+            }
+
+            Plan.HasConnectivityInput = Plan.Specs.Count > 0;
+            ResolveRelationshipLinkPlan(FallbackDefinition, Plan);
+            return Plan;
+        }
+
+        private void RecordRelationshipCompatibilitySkip(RelationshipDefinition Definition)
+        {
+            var Key = Definition == null ? "<none>" : Definition.TechName.ToStringAlways();
+            if (!this.RelationshipCompatibilitySkipCounts.ContainsKey(Key))
+                this.RelationshipCompatibilitySkipCounts[Key] = 0;
+
+            this.RelationshipCompatibilitySkipCounts[Key]++;
+            this.Report.CountRelationshipCompatibilitySkipped();
+        }
+
+        private void EmitRelationshipCompatibilitySummary()
+        {
+            if (this.RelationshipCompatibilitySkipCounts.Count < 1)
+                return;
+
+            var Total = this.RelationshipCompatibilitySkipCounts.Sum(Pair => Pair.Value);
+            this.Report.Log("Relationship compatibility skipped: " + Total.ToString(CultureInfo.InvariantCulture));
+            foreach (var Pair in this.RelationshipCompatibilitySkipCounts.OrderByDescending(Pair => Pair.Value).ThenBy(Pair => Pair.Key))
+                this.Report.Log("  " + Pair.Key + ": " + Pair.Value.ToString(CultureInfo.InvariantCulture) + " skipped");
+
+            this.Report.Note("Some relationships were skipped because their endpoint concept definitions are not valid for the requested relationship definitions. Regenerate the JSON with compatible relationship definitions or use relationshipDefinitionFallbackTechName for draft imports.");
+            EmitRelationshipCompatibilityReportBlock();
+        }
+
+        private void EmitRelationshipCompatibilityReportBlock()
+        {
+            if (this.RelationshipCompatibilityReportItems.Count < 1)
+                return;
+
+            var Domain = this.Composition == null ? null : this.Composition.CompositeContentDomain;
+            this.Report.Log("BEGIN THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT");
+            this.Report.Log("Active domain: " + (Domain == null ? "<none>" : Domain.TechName.ToStringAlways()));
+            this.Report.Log("Domain version: " + DescribeVersion(Domain));
+            this.Report.Log("Domain signature: " + DomainJsonCompatibility.ComputeSignature(Domain).ToStringAlways("<none>"));
+            this.Report.Log("");
+            this.Report.Log("Failures:");
+            foreach (var Item in this.RelationshipCompatibilityReportItems)
+                foreach (var Line in Item.Split(new[] { '\n' }, StringSplitOptions.None))
+                    this.Report.Log(Line);
+            this.Report.Log("END THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT");
+        }
+
+        private void EvaluateStrictImportBlock()
+        {
+            if (this.StrictRelationshipCompatibility &&
+                this.AbortOnRelationshipCompatibilityFailure &&
+                this.Report.RelationshipCompatibilitySkipped > 0)
+            {
+                BlockImport("Import blocked by strict relationship compatibility. Concepts planned: " +
+                            this.Report.PlannedConceptsCreated.ToString(CultureInfo.InvariantCulture) +
+                            "; relationships planned: " +
+                            this.Report.PlannedRelationshipsCreated.ToString(CultureInfo.InvariantCulture) +
+                            "; compatibility failures: " +
+                            this.Report.RelationshipCompatibilitySkipped.ToString(CultureInfo.InvariantCulture) +
+                            ". No changes were applied.");
+            }
+
+            if (this.StrictDetailsCompatibility &&
+                this.AbortOnDetailCompatibilityFailure &&
+                this.Report.DetailsSkipped > 0)
+            {
+                BlockImport("Import blocked by strict detail compatibility. Details skipped: " +
+                            this.Report.DetailsSkipped.ToString(CultureInfo.InvariantCulture) +
+                            ". No changes were applied.");
+            }
+        }
+
+        private void LogRelationshipCompatibilityFailure(RelationshipDefinition Definition, string RelationshipTechName, RelationshipLinkImportPlan LinkPlan)
+        {
+            this.Report.Log(FormatOperationPrefix() + "Relationship endpoint compatibility failed:");
+            this.Report.Log("  relationship=" + RelationshipTechName.ToStringAlways());
+            this.Report.Log("  definition=" + DescribeTarget(Definition));
+
+            if (Definition == null || LinkPlan == null)
+            {
+                this.Report.Log("  reason=relationship definition or link plan was not available.");
+                return;
+            }
+
+            this.Report.Log("  allowed origin definitions: " + DescribeAllowedDefinitions(Definition.OriginOrParticipantLinkRoleDef));
+            this.Report.Log("  allowed target definitions: " + DescribeAllowedDefinitions(Definition.TargetLinkRoleDef));
+            this.Report.Log("  allowed origin role variants: " + DescribeAllowedVariants(Definition.OriginOrParticipantLinkRoleDef));
+            this.Report.Log("  allowed target role variants: " + DescribeAllowedVariants(Definition.TargetLinkRoleDef));
+
+            var OriginSpecs = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdeaDefinitor != null &&
+                                                           Spec.ResolvedRole != null &&
+                                                           Spec.ResolvedRole.RoleType != ERoleType.Target)
+                                            .ToList();
+            var TargetSpecs = LinkPlan.Specs.Where(Spec => Spec.ResolvedIdeaDefinitor != null &&
+                                                           Spec.ResolvedRole != null &&
+                                                           Spec.ResolvedRole.RoleType == ERoleType.Target)
+                                            .ToList();
+
+            if (OriginSpecs.Count < 1 || TargetSpecs.Count < 1)
+            {
+                this.Report.Log("  reason=resolved origin or target endpoint specs were incomplete.");
+                return;
+            }
+
+            foreach (var Origin in OriginSpecs)
+                foreach (var Target in TargetSpecs)
+                {
+                    var CanLink = Definition.CanLink(Origin.ResolvedIdeaDefinitor, Target.ResolvedIdeaDefinitor);
+                    this.Report.Log("  origin=" + DescribeResolvedEndpoint(Origin) +
+                                    " role=" + DescribeRole(Origin.ResolvedRole));
+                    this.Report.Log("  target=" + DescribeResolvedEndpoint(Target) +
+                                    " role=" + DescribeRole(Target.ResolvedRole));
+                    this.Report.Log("  reason=" + (CanLink.Message.NullDefault("relationship definition " +
+                                    Definition.TechName.ToStringAlways() + " does not allow " +
+                                    Origin.ResolvedIdeaDefinitor.TechName.ToStringAlways() + " -> " +
+                                    Target.ResolvedIdeaDefinitor.TechName.ToStringAlways() +
+                                    " for these roles.")));
+                    AddRelationshipCompatibilityReportItem(Definition, RelationshipTechName, Origin, Target, CanLink.Message);
+                }
+        }
+
+        private void AddRelationshipCompatibilityReportItem(RelationshipDefinition Definition, string RelationshipTechName, RelationshipLinkImportSpec Origin, RelationshipLinkImportSpec Target, string Reason)
+        {
+            var Builder = new StringBuilder();
+            Builder.AppendLine("- operation: " + this.Report.CurrentOperationIndex.ToString(CultureInfo.InvariantCulture));
+            Builder.AppendLine("  relationshipTechName: " + RelationshipTechName.ToStringAlways());
+            Builder.AppendLine("  requestedDefinition: " + (Definition == null ? "<none>" : Definition.TechName.ToStringAlways()));
+            Builder.AppendLine("  origin:");
+            Builder.AppendLine("    ideaTechName: " + (Origin == null ? "<none>" : Origin.IdeaTechName.ToStringAlways(Origin.ResolvedIdea == null ? "<none>" : Origin.ResolvedIdea.TechName.ToStringAlways())));
+            Builder.AppendLine("    conceptDefinition: " + (Origin == null || Origin.ResolvedIdeaDefinitor == null ? "<none>" : Origin.ResolvedIdeaDefinitor.TechName.ToStringAlways()));
+            Builder.AppendLine("    role: " + (Origin == null || Origin.ResolvedRole == null ? "<none>" : Origin.ResolvedRole.TechName.ToStringAlways()));
+            Builder.AppendLine("  target:");
+            Builder.AppendLine("    ideaTechName: " + (Target == null ? "<none>" : Target.IdeaTechName.ToStringAlways(Target.ResolvedIdea == null ? "<none>" : Target.ResolvedIdea.TechName.ToStringAlways())));
+            Builder.AppendLine("    conceptDefinition: " + (Target == null || Target.ResolvedIdeaDefinitor == null ? "<none>" : Target.ResolvedIdeaDefinitor.TechName.ToStringAlways()));
+            Builder.AppendLine("    role: " + (Target == null || Target.ResolvedRole == null ? "<none>" : Target.ResolvedRole.TechName.ToStringAlways()));
+            Builder.AppendLine("  allowedOriginDefinitions: " + DescribeAllowedDefinitions(Definition == null ? null : Definition.OriginOrParticipantLinkRoleDef));
+            Builder.AppendLine("  allowedTargetDefinitions: " + DescribeAllowedDefinitions(Definition == null ? null : Definition.TargetLinkRoleDef));
+            Builder.AppendLine("  reason: " + Reason.NullDefault("relationship definition rejected this endpoint concept-definition pairing."));
+            Builder.AppendLine("  suggestedActions:");
+            Builder.AppendLine("    - choose a relationship definition compatible with these endpoint concept definitions");
+            Builder.AppendLine("    - change endpoint concept definitions");
+            Builder.AppendLine("    - ask the user whether to use generic relationshipDefinitionFallbackTechName for draft imports");
+            this.RelationshipCompatibilityReportItems.Add(Builder.ToString());
+        }
+
+        private string DescribeResolvedEndpoint(RelationshipLinkImportSpec Spec)
+        {
+            if (Spec == null)
+                return "<none>";
+
+            if (Spec.ResolvedIdea != null)
+                return DescribeTarget(Spec.ResolvedIdea) + " definition=" + DescribeTarget(Spec.ResolvedIdeaDefinitor);
+
+            return "id='" + Spec.IdeaId.ToStringAlways() +
+                   "' techName='" + Spec.IdeaTechName.ToStringAlways() +
+                   "' definition=" + DescribeTarget(Spec.ResolvedIdeaDefinitor) +
+                   (Spec.ResolvedFromPreviewPlan ? " source=planned" : "");
+        }
+
+        private string DescribeRole(LinkRoleDefinition Role)
+        {
+            if (Role == null)
+                return "<none>";
+
+            return "techName='" + Role.TechName.ToStringAlways() +
+                   "' name='" + Role.Name.ToStringAlways() +
+                   "' type=" + Role.RoleType.GetFieldName();
+        }
+
+        private string DescribeAllowedDefinitions(LinkRoleDefinition Role)
+        {
+            if (Role == null)
+                return "<role not defined>";
+
+            if (Role.AssociableIdeaDefs == null || Role.AssociableIdeaDefs.Count < 1)
+                return "<any>";
+
+            return String.Join(", ", Role.AssociableIdeaDefs
+                                           .OrderBy(Definition => Definition.TechName)
+                                           .Select(Definition => Definition.TechName.ToStringAlways())
+                                           .ToArray());
+        }
+
+        private string DescribeAllowedVariants(LinkRoleDefinition Role)
+        {
+            if (Role == null)
+                return "<role not defined>";
+
+            if (Role.AllowedVariants == null || Role.AllowedVariants.Count < 1)
+                return "<any/default>";
+
+            return String.Join(", ", Role.AllowedVariants
+                                           .OrderBy(Variant => Variant.TechName)
+                                           .Select(Variant => Variant.TechName.ToStringAlways())
+                                           .ToArray());
         }
 
         private string DescribeRelationshipLinks(Relationship Relationship)
@@ -844,6 +1801,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (StringEquals(Detail.Kind, "Table") || (Detail.Records != null && Detail.Records.Count > 0))
                     ApplyTableDetail(Idea, Detail);
                 else
+                    if (StringEquals(Detail.Kind, "Text"))
+                        ApplyTextDetail(Idea, Detail);
+                    else
                     if (StringEquals(Detail.Kind, "ResourceLink"))
                         ApplyResourceLinkDetail(Idea, Detail);
                     else
@@ -851,11 +1811,132 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             ApplyInternalLinkDetail(Idea, Detail);
                         else
                             if (StringEquals(Detail.Kind, "Attachment"))
-                                this.Report.Warn("Attachment detail '" + Detail.DesignatorTechName.ToStringAlways() + "' is metadata-only in JSON; native binary content was preserved.");
+                                WarnDetailSkipped(Idea, Detail, "attachment details are metadata-only in JSON; native binary content was preserved.", false);
                             else
                                 if (!String.IsNullOrEmpty(Detail.Kind))
-                                    this.Report.Warn("Detail kind '" + Detail.Kind + "' is not directly editable by JSON import and was preserved.");
+                                    WarnDetailSkipped(Idea, Detail, "detail kind is not directly editable by JSON import and was preserved.", false);
             }
+        }
+
+        private void WarnDetailSkipped(Idea Idea, CompositionJsonDetail Detail, string Reason, bool AllowFallback)
+        {
+            this.Report.CountDetailSkipped();
+
+            var DetailText = DescribeDetail(Detail);
+            var IdeaTechName = Idea == null ? "<none>" : Idea.TechName.ToStringAlways();
+            if (AllowFallback && TryApplyDetailFallback(Idea, Detail, Reason))
+            {
+                this.Report.Warn("Detail " + DetailText + " could not be imported for idea '" +
+                                 IdeaTechName + "': " + Reason +
+                                 " It was appended to " +
+                                 (this.DetailFallbackMode == "appendToDescription" ? "description" : "TechSpec") + ".");
+                return;
+            }
+
+            this.Report.Warn("Detail " + DetailText + " skipped for idea '" + IdeaTechName + "': " + Reason);
+        }
+
+        private string DescribeDetail(CompositionJsonDetail Detail)
+        {
+            if (Detail == null)
+                return "'<none>'";
+
+            var Name = Detail.DesignatorName.NullDefault(Detail.DesignatorTechName).NullDefault("<unnamed>");
+            var TechName = Detail.DesignatorTechName.ToStringAlways();
+            var Kind = Detail.Kind.NullDefault("<unspecified>");
+            return "'" + Name + "' (" + TechName + ", kind=" + Kind + ")";
+        }
+
+        private bool TryApplyDetailFallback(Idea Idea, CompositionJsonDetail Detail, string Reason)
+        {
+            if (Idea == null || Detail == null || this.DetailFallbackMode == "skip")
+                return false;
+
+            var Text = BuildDetailFallbackText(Detail, Reason);
+            if (String.IsNullOrWhiteSpace(Text))
+                return false;
+
+            if (this.IsPreview)
+            {
+                this.Report.CountUpdated();
+                return true;
+            }
+
+            if (this.DetailFallbackMode == "appendToDescription")
+                Idea.Description = AppendDelimitedSection(Idea.Description, Text);
+            else
+                Idea.TechSpec = AppendDelimitedSection(Idea.TechSpec, Text);
+
+            this.Report.CountUpdated();
+            return true;
+        }
+
+        private string BuildDetailFallbackText(CompositionJsonDetail Detail, string Reason)
+        {
+            var Text = new StringBuilder();
+            Text.AppendLine();
+            Text.AppendLine("[JSON Import Detail Fallback]");
+            Text.AppendLine("detail: " + Detail.DesignatorName.NullDefault(Detail.DesignatorTechName).NullDefault("<unnamed>"));
+            Text.AppendLine("techName: " + Detail.DesignatorTechName.ToStringAlways());
+            Text.AppendLine("kind: " + Detail.Kind.ToStringAlways());
+            Text.AppendLine("reason: " + Reason.ToStringAlways());
+
+            if (!String.IsNullOrEmpty(Detail.Text))
+            {
+                Text.AppendLine();
+                Text.AppendLine(Detail.Text);
+            }
+
+            if (Detail.Records != null && Detail.Records.Count > 0)
+            {
+                Text.AppendLine();
+                Text.AppendLine("records:");
+                foreach (var Record in Detail.Records)
+                    Text.AppendLine("- " + String.Join("; ", Record.OrderBy(Pair => Pair.Key)
+                                                            .Select(Pair => Pair.Key + ": " + Pair.Value.ToStringAlways())
+                                                            .ToArray()));
+            }
+
+            if (Detail.Fields != null && Detail.Fields.Count > 0)
+            {
+                Text.AppendLine();
+                Text.AppendLine("fields: " + String.Join(", ", Detail.Fields
+                                                                  .Select(Field => Field.TechName.NullDefault(Field.Name).ToStringAlways())
+                                                                  .ToArray()));
+            }
+
+            Text.AppendLine("[/JSON Import Detail Fallback]");
+            return Text.ToString();
+        }
+
+        private string AppendDelimitedSection(string ExistingText, string Section)
+        {
+            if (String.IsNullOrWhiteSpace(ExistingText))
+                return Section.Trim();
+
+            return ExistingText.TrimEnd() + Environment.NewLine + Environment.NewLine + Section.Trim();
+        }
+
+        private void ApplyTextDetail(Idea Idea, CompositionJsonDetail Source)
+        {
+            if (Source.Delete)
+            {
+                WarnDetailSkipped(Idea, Source, "deleting text details from JSON import is not supported.", false);
+                return;
+            }
+
+            if (!String.IsNullOrEmpty(Source.TargetPropertyTechName) &&
+                SetKnownIdeaField(Idea, Source.TargetPropertyTechName, Source.Text.NullDefault("")))
+            {
+                this.Report.CountUpdated();
+                this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") +
+                                " text detail '" + Source.DesignatorTechName.ToStringAlways() +
+                                "' to known idea field '" + Source.TargetPropertyTechName + "' for idea '" +
+                                Idea.TechName + "'.");
+                return;
+            }
+
+            WarnDetailSkipped(Idea, Source, "free-form text detail import is not implemented for this structure.", true);
         }
 
         private void ApplyTableDetail(Idea Idea, CompositionJsonDetail Source)
@@ -872,7 +1953,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 var Designator = FindDetailDesignator<TableDetailDesignator>(Idea, Source.DesignatorId, Source.DesignatorTechName);
                 if (Designator == null)
                 {
-                    Skip("Table detail '" + Source.DesignatorTechName.ToStringAlways() + "' was not found on idea '" + Idea.TechName + "'.");
+                    WarnDetailSkipped(Idea, Source, "table detail designator was not found on the idea.", true);
                     return;
                 }
 
@@ -891,7 +1972,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Existing.Definition == null)
             {
-                Skip("Table detail '" + Source.DesignatorTechName.ToStringAlways() + "' has no table definition and cannot import records.");
+                WarnDetailSkipped(Idea, Source, "table detail has no table definition and cannot import records.", true);
                 return;
             }
 
@@ -943,7 +2024,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 var Designator = FindDetailDesignator<LinkDetailDesignator>(Idea, Source.DesignatorId, Source.DesignatorTechName);
                 if (Designator == null)
                 {
-                    Skip("Resource link detail '" + Source.DesignatorTechName.ToStringAlways() + "' was not found on idea '" + Idea.TechName + "'.");
+                    WarnDetailSkipped(Idea, Source, "resource link detail designator was not found on the idea.", true);
                     return;
                 }
 
@@ -982,7 +2063,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            this.Report.Warn("Internal link detail '" + Source.DesignatorTechName.ToStringAlways() + "' was not directly editable and was preserved.");
+            WarnDetailSkipped(Idea, Source, "internal link detail was not directly editable and was preserved.", true);
         }
 
         private void DeleteDetail<TDetail>(Idea Idea, TDetail Existing, CompositionJsonDetail Source)
@@ -1002,13 +2083,37 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void ApplyView(CompositionJsonView Source)
         {
             var Existing = FindView(Source.Id, Source.TechName);
+            var ApplyViewMetadata = true;
             if (Existing == null)
             {
-                Skip("View '" + Describe(Source.Id, Source.TechName) + "' was not found. Creating views from JSON is not supported yet.");
-                return;
+                if (IsActiveViewSentinel(Source.TechName))
+                {
+                    Existing = GetPreferredActiveView();
+                    ApplyViewMetadata = false;
+                    this.Report.Log("JSON import view fallback: requested='" + Source.TechName.ToStringAlways() +
+                                    "'; using active/root view " + DescribeView(Existing) + ".");
+                }
+                else
+                    if (this.TreatMissingFullStateItemsAsCreates && Source.Visuals != null && Source.Visuals.Count > 0)
+                    {
+                        Existing = GetPreferredActiveView();
+                        ApplyViewMetadata = false;
+                        this.Report.Note("Full-state view '" + Describe(Source.Id, Source.TechName) +
+                                         "' was not found; using active/root view " + DescribeView(Existing) +
+                                         " for visual placement because treatMissingFullStateItemsAsCreates=true.");
+                    }
+
+                if (Existing == null)
+                {
+                    Skip("View '" + Describe(Source.Id, Source.TechName) + "' was not found. Creating views from JSON is not supported yet.");
+                    return;
+                }
             }
 
-            CountUpdated(ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null, (CompositionJsonVersion)null));
+            if (ApplyViewMetadata)
+                CountUpdated(ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null, (CompositionJsonVersion)null));
+            else
+                this.Report.Log("JSON import view fallback used only for visual placement; active view metadata was preserved.");
 
             if (Source.Visuals == null)
                 return;
@@ -1022,7 +2127,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Representation = FindVisualRepresentation(View, Source.RepresentationId, Source.IdeaId, Source.IdeaTechName);
             if (Representation == null || Representation.MainSymbol == null)
             {
-                Skip("Visual representation '" + Source.RepresentationId.ToStringAlways() + "' was not found in view '" + View.TechName + "'.");
+                if (TryPlaceMissingFullStateVisual(View, Source))
+                    return;
+
+                CountDependentVisualSkip("Visual representation '" + Source.RepresentationId.ToStringAlways() +
+                                         "' was not found in view '" + View.TechName +
+                                         "', and the represented idea/relationship was not created or matched.");
                 return;
             }
 
@@ -1045,6 +2155,85 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Symbol.MoveTo(X + Symbol.BaseWidth / 2.0, Y + Symbol.BaseHeight / 2.0, true);
 
             this.Report.CountUpdated();
+        }
+
+        private bool TryPlaceMissingFullStateVisual(View View, CompositionJsonVisual Source)
+        {
+            var Operation = CreatePlacementOperationFromVisual(View, Source);
+            var Idea = FindIdea(Source.IdeaId, Source.IdeaTechName);
+
+            if (Idea != null)
+            {
+                if (this.TreatMissingFullStateItemsAsCreates ||
+                    WasFullStateCreatedOrPlanned(Source.IdeaId, Source.IdeaTechName, Idea))
+                {
+                    PlaceIdeaVisual(Idea, Operation, true);
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (!this.IsPreview)
+                return false;
+
+            var PlannedConcept = FindPlannedConcept(Source.IdeaId, Source.IdeaTechName);
+            if (PlannedConcept != null)
+            {
+                PlanMissingFullStateConceptVisual(View, Source, PlannedConcept, Operation);
+                return true;
+            }
+
+            var PlannedRelationship = FindPlannedRelationship(Source.IdeaId, Source.IdeaTechName);
+            if (PlannedRelationship != null)
+            {
+                PlanMissingFullStateRelationshipVisual(View, Source, PlannedRelationship, Operation);
+                return true;
+            }
+
+            return false;
+        }
+
+        private CompositionJsonOperation CreatePlacementOperationFromVisual(View View, CompositionJsonVisual Source)
+        {
+            var Operation = new CompositionJsonOperation();
+            Operation.ViewId = View == null ? null : View.GlobalId.ToString("D");
+            Operation.ViewTechName = View == null ? null : View.TechName;
+            Operation.X = Source == null ? null : Source.X;
+            Operation.Y = Source == null ? null : Source.Y;
+            Operation.Width = Source == null ? null : Source.Width;
+            Operation.Height = Source == null ? null : Source.Height;
+            Operation.AutoPlace = true;
+            return Operation;
+        }
+
+        private void PlanMissingFullStateConceptVisual(View View, CompositionJsonVisual Source, PlannedConceptReference Planned, CompositionJsonOperation Operation)
+        {
+            var Width = GetOperationDouble(Operation, "width") ?? GetConceptDefaultWidth(Planned.Definitor as ConceptDefinition);
+            var Height = GetOperationDouble(Operation, "height") ?? GetConceptDefaultHeight(Planned.Definitor as ConceptDefinition);
+            var Center = ResolvePlacementCenter(View, Operation, Width, Height, null);
+            CountAndLogVisualPlaced("planned", "concept", Planned.TechName, View, Center, Width, Height);
+            PlanAutoFitForConcept(Planned.TechName, View, Operation, true, "full-state new concept visual");
+        }
+
+        private void PlanMissingFullStateRelationshipVisual(View View, CompositionJsonVisual Source, PlannedRelationshipReference Planned, CompositionJsonOperation Operation)
+        {
+            var Width = GetOperationDouble(Operation, "width") ?? GetRelationshipDefaultWidth(Planned.Definitor);
+            var Height = GetOperationDouble(Operation, "height") ?? GetRelationshipDefaultHeight(Planned.Definitor);
+            var Center = ResolveRelationshipPlacementCenter(null, View, Operation, Width, Height, null);
+            CountAndLogVisualPlaced("planned", "relationship", Planned.TechName, View, Center, Width, Height);
+            PlanOrQueueAutoRoute(Planned.TechName, null, View, Operation, true, "planned full-state new relationship visual");
+        }
+
+        private void CountDependentVisualSkip(string Message)
+        {
+            this.FullStateDependentVisualSkips++;
+            this.Report.CountSkipped();
+            this.Report.CountVisualSkipped();
+            if (this.FullStateDependentVisualSkips <= 8)
+                this.Report.SkippedMessage(Message);
+            else
+                this.Report.Log("JSON import skipped dependent visual: " + Message);
         }
 
         private void ApplyOperation(CompositionJsonOperation Operation)
@@ -1160,16 +2349,26 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             if (Entity == "concept")
             {
+                LogUnsupportedSetFields(Operation.Set, "concept create", new[]
+                {
+                    "name", "techName", "summary", "techSpec", "definitionTechName", "containerId", "containerTechName",
+                    "viewId", "viewTechName", "x", "y", "width", "height", "autoPlace", "autoFit", "details", "markers"
+                });
+
                 var SourceTechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
                 var Existing = FindConcept(Operation.Id, SourceTechName);
                 if (Existing != null)
                 {
-                    SetOperationOutcome("skipped: matching concept already exists " + DescribeTarget(Existing));
-                    Skip("Cannot create concept '" + Describe(Operation.Id, SourceTechName) + "' because a matching concept already exists. Use op:update to edit it.");
+                    this.Report.Log(FormatOperationPrefix() + "create concept matched existing target; applying as update/repair.");
+                    var Changed = ApplySetToFormal(Existing, Operation.Set);
+                    CountUpdated(Changed);
+                    ApplyMarkers(Existing, MergeOperationMarkers(Operation));
+                    ApplyDetails(Existing, MergeOperationDetails(Operation));
                     if (ShouldPlaceCreatedItem(Operation))
                         PlaceIdeaVisual(Existing, Operation, false);
                     else
                         AutoFitExistingConceptIfRequested(Existing, Operation, "matching existing concept autoFit=true");
+                    SetOperationOutcome((Changed ? Verb("update") : "repair") + " matched " + DescribeTarget(Existing));
                     return;
                 }
 
@@ -1179,9 +2378,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.TechName = SourceTechName;
                 Source.Name = GetSetString(Operation.Set, "name");
                 Source.Summary = GetSetString(Operation.Set, "summary");
+                Source.TechSpec = GetSetString(Operation.Set, "techSpec");
                 Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
                 Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
                 Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
+                Source.Details = MergeOperationDetails(Operation);
+                Source.Markers = MergeOperationMarkers(Operation);
                 var BeforeCreated = this.Report.Created;
                 var Created = CreateConcept(Source);
                 if (this.IsPreview && this.Report.Created > BeforeCreated)
@@ -1198,6 +2400,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Entity == "relationship")
             {
+                LogUnsupportedSetFields(Operation.Set, "relationship create", new[]
+                {
+                    "name", "techName", "summary", "techSpec", "definitionTechName", "containerId", "containerTechName",
+                    "viewId", "viewTechName", "x", "y", "width", "height", "autoPlace", "autoRoute", "details", "markers",
+                    "links", "originIdeaIds", "originIdeaTechNames", "targetIdeaIds", "targetIdeaTechNames",
+                    "fallbackDefinitionTechName", "strictDefinition"
+                });
+
                 var SourceTechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
                 var Source = new CompositionJsonRelationship();
                 Source.IsNew = true;
@@ -1205,9 +2415,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.TechName = SourceTechName;
                 Source.Name = GetSetString(Operation.Set, "name");
                 Source.Summary = GetSetString(Operation.Set, "summary");
+                Source.TechSpec = GetSetString(Operation.Set, "techSpec");
                 Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
+                Source.FallbackDefinitionTechName = Operation.FallbackDefinitionTechName.NullDefault(GetSetString(Operation.Set, "fallbackDefinitionTechName"));
+                Source.StrictDefinition = Operation.StrictDefinition ?? GetSetBool(Operation.Set, "strictDefinition");
                 Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
                 Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
+                Source.Details = MergeOperationDetails(Operation);
+                Source.Markers = MergeOperationMarkers(Operation);
                 var LinkSourceName = PopulateRelationshipConnectivityFromOperation(Source, Operation);
 
                 var Existing = FindRelationship(Operation.Id, SourceTechName);
@@ -1811,6 +3026,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     GetOperationDouble(Operation, "height") != null);
         }
 
+        private View GetPreferredActiveView()
+        {
+            if (this.Engine != null && this.Engine.CurrentView != null)
+                return this.Engine.CurrentView;
+
+            if (this.Composition.ActiveView != null)
+                return this.Composition.ActiveView;
+
+            return this.Composition.RootView;
+        }
+
         private View ResolvePlacementView(Idea Container, CompositionJsonOperation Operation, bool AllowAuto, out string Reason)
         {
             Reason = null;
@@ -1820,6 +3046,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (!String.IsNullOrEmpty(ViewId) || !String.IsNullOrEmpty(ViewTechName))
             {
                 var ExplicitView = FindView(ViewId, ViewTechName);
+                if (ExplicitView == null && IsActiveViewSentinel(ViewTechName))
+                {
+                    ExplicitView = GetPreferredActiveView();
+                    if (ExplicitView != null)
+                        this.Report.Log(FormatOperationPrefix() + "JSON import view fallback: requested='" +
+                                        ViewTechName.ToStringAlways() + "'; using active/root view '" +
+                                        ExplicitView.TechName.ToStringAlways() + "'.");
+                }
+
                 if (ExplicitView == null)
                     Reason = "Cannot resolve requested placement view '" + Describe(ViewId, ViewTechName) + "'.";
                 return ExplicitView;
@@ -1828,15 +3063,35 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (!AllowAuto)
                 return null;
 
+            if (Container == this.Composition)
+            {
+                var ActiveView = GetPreferredActiveView();
+                if (ActiveView != null)
+                {
+                    this.Report.Log(FormatOperationPrefix() + "JSON import view fallback: operation has no view; using active/root view '" +
+                                    ActiveView.TechName.ToStringAlways() + "'.");
+                    return ActiveView;
+                }
+            }
+
             if (Container != null)
             {
                 var ContainerView = Container.CompositeActiveView ?? Container.CompositeViews.FirstOrDefault();
                 if (ContainerView != null)
+                {
+                    this.Report.Log(FormatOperationPrefix() + "JSON import view fallback: operation has no view; using container view '" +
+                                    ContainerView.TechName.ToStringAlways() + "'.");
                     return ContainerView;
+                }
             }
 
-            if (this.Engine.CurrentView != null)
-                return this.Engine.CurrentView;
+            var FallbackView = GetPreferredActiveView();
+            if (FallbackView != null)
+            {
+                this.Report.Log(FormatOperationPrefix() + "JSON import view fallback: operation has no view; using active/root view '" +
+                                FallbackView.TechName.ToStringAlways() + "'.");
+                return FallbackView;
+            }
 
             Reason = "Cannot place visual because no explicit view, container composite view, or active view is available.";
             return null;
@@ -2602,7 +3857,23 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private Idea ResolveContainer(string ContainerId, string ContainerTechName, Domain ExpectedDomain)
         {
-            var Container = FindIdea(ContainerId, ContainerTechName);
+            Idea Container = null;
+            if (IsActiveRootContainerSentinel(ContainerTechName))
+            {
+                if (this.UseActiveCompositionAsContainer)
+                {
+                    this.Report.Log("JSON import container fallback: requested='" +
+                                    RequestedContainerDescription(ContainerId, ContainerTechName) +
+                                    "'; using active composition '" +
+                                    this.Composition.TechName.ToStringAlways() + "'.");
+                    Container = this.Composition;
+                }
+                else
+                    return null;
+            }
+
+            if (Container == null)
+                Container = FindIdea(ContainerId, ContainerTechName);
             if (Container == null && String.IsNullOrEmpty(ContainerId) && String.IsNullOrEmpty(ContainerTechName))
                 Container = this.Composition;
 
@@ -2637,14 +3908,66 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (String.IsNullOrWhiteSpace(ContainerTechName))
                 return true;
 
-            var Normalized = ContainerTechName.Trim().ToLowerInvariant();
+            if (IsActiveRootContainerSentinel(ContainerTechName))
+                return true;
+
+            var Normalized = NormalizeReferenceToken(ContainerTechName);
             return Normalized.StartsWith("test__", StringComparison.OrdinalIgnoreCase) ||
-                   Normalized.StartsWith("replace-with", StringComparison.OrdinalIgnoreCase) ||
-                   Normalized.Contains("root-composition") ||
-                   Normalized.Contains("active-composition") ||
-                   Normalized.Contains("composition-root") ||
+                   Normalized.StartsWith("test_", StringComparison.OrdinalIgnoreCase) ||
+                   Normalized.StartsWith("replace_with", StringComparison.OrdinalIgnoreCase) ||
+                   Normalized.Contains("root_composition") ||
+                   Normalized.Contains("active_composition") ||
+                   Normalized.Contains("composition_root") ||
                    Normalized == "composition" ||
                    Normalized == "composition1";
+        }
+
+        private static bool IsActiveRootContainerSentinel(string ContainerTechName)
+        {
+            var Normalized = NormalizeReferenceToken(ContainerTechName);
+            var Compact = Normalized.Replace("_", "");
+            return Normalized == "active_composition_root" ||
+                   Normalized == "__active_composition_root__" ||
+                   Normalized == "current_composition" ||
+                   Normalized == "active_composition" ||
+                   Normalized == "composition_root" ||
+                   Normalized == "root_composition" ||
+                   Compact == "activecompositionroot" ||
+                   Compact == "currentcomposition" ||
+                   Compact == "activecomposition" ||
+                   Compact == "compositionroot" ||
+                   Compact == "rootcomposition";
+        }
+
+        private static bool IsActiveViewSentinel(string ViewTechName)
+        {
+            var Normalized = NormalizeReferenceToken(ViewTechName);
+            var Compact = Normalized.Replace("_", "");
+            return Normalized == "active_view" ||
+                   Normalized == "main_view" ||
+                   Normalized == "active_composition_root_view" ||
+                   Normalized == "composition_root_view" ||
+                   Normalized == "root_composition_view" ||
+                   Compact == "activeview" ||
+                   Compact == "mainview" ||
+                   Compact == "activecompositionrootview" ||
+                   Compact == "compositionrootview" ||
+                   Compact == "rootcompositionview";
+        }
+
+        private static string NormalizeReferenceToken(string Text)
+        {
+            if (String.IsNullOrWhiteSpace(Text))
+                return "";
+
+            var Characters = Text.Trim().ToLowerInvariant()
+                                 .Select(Character => Char.IsLetterOrDigit(Character) ? Character : '_')
+                                 .ToArray();
+            var Result = new string(Characters);
+            while (Result.Contains("__"))
+                Result = Result.Replace("__", "_");
+
+            return Result.Trim('_');
         }
 
         private static bool IsUsableGuid(string Id)
@@ -2670,10 +3993,94 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (Pair.Value < 2)
                     continue;
 
-                this.Report.Note(Pair.Value.ToString(CultureInfo.InvariantCulture) +
-                                 " operations skipped because container '" + Pair.Key +
-                                 "' was not found. Create/open the matching test composition or enable importOptions.useActiveCompositionAsContainer for root-level fixture imports.");
+                var Message = Pair.Value.ToString(CultureInfo.InvariantCulture) +
+                              " operations skipped because container '" + Pair.Key + "' was not found.";
+
+                if (!this.UseActiveCompositionAsContainer)
+                    Message += " Enable importOptions.useActiveCompositionAsContainer for root-level fixture/GPT imports.";
+                else
+                    if (IsActiveRootContainerSentinel(Pair.Key))
+                        Message += " useActiveCompositionAsContainer is already true, so this indicates unsupported sentinel handling or unsafe fallback.";
+                    else
+                        Message += " Container fallback was enabled, but requested container '" + Pair.Key +
+                                   "' was not considered a safe root placeholder.";
+
+                this.Report.Note(Message);
             }
+        }
+
+        private void EmitAllCreateSkippedNote(CompositionJsonDocument Document)
+        {
+            if (Document == null || Document.Operations == null)
+                return;
+
+            var CreateCount = Document.Operations.Count(Operation => StringEquals(Operation.Op, "create"));
+            if (CreateCount < 1 || this.Report.Created > 0 || this.Report.Skipped < CreateCount)
+                return;
+
+            var MostCommon = this.MissingContainerSkipCounts.OrderByDescending(Pair => Pair.Value).FirstOrDefault();
+            if (!String.IsNullOrEmpty(MostCommon.Key))
+            {
+                var Message = "All " + CreateCount.ToString(CultureInfo.InvariantCulture) +
+                              " create operations were skipped. Most common reason: container '" +
+                              MostCommon.Key + "' was not resolved.";
+                if (this.UseActiveCompositionAsContainer && IsActiveRootContainerSentinel(MostCommon.Key))
+                    Message += " useActiveCompositionAsContainer is already true, so this indicates unsupported sentinel handling or unsafe fallback.";
+                this.Report.Note(Message);
+            }
+            else
+                this.Report.Note("All " + CreateCount.ToString(CultureInfo.InvariantCulture) +
+                                 " create operations were skipped. See skipped operation details in the log.");
+        }
+
+        private void EmitFullStateCreateModeNotes(CompositionJsonDocument Document)
+        {
+            if (this.FullStateConceptCreatesDisabled > 0)
+                this.Report.Note(this.FullStateConceptCreatesDisabled.ToString(CultureInfo.InvariantCulture) +
+                                 " top-level ideas were skipped because they were missing in the target composition and full-state create mode was disabled.");
+
+            if (this.FullStateRelationshipCreatesDisabled > 0)
+                this.Report.Note(this.FullStateRelationshipCreatesDisabled.ToString(CultureInfo.InvariantCulture) +
+                                 " top-level relationships were skipped because they were missing in the target composition and full-state create mode was disabled.");
+
+            if (this.FullStateDependentVisualSkips > 0)
+                this.Report.Note(this.FullStateDependentVisualSkips.ToString(CultureInfo.InvariantCulture) +
+                                 " visuals were skipped because their represented idea/relationship was not created or matched.");
+
+            if (Document == null || this.TreatMissingFullStateItemsAsCreates)
+                return;
+
+            var FullStateItems = (Document.Ideas == null ? 0 : Document.Ideas.Count) +
+                                 (Document.Relationships == null ? 0 : Document.Relationships.Count);
+            if (FullStateItems < 1)
+                return;
+
+            if (this.Report.Created > 0)
+                return;
+
+            if (this.FullStateConceptCreatesDisabled + this.FullStateRelationshipCreatesDisabled < 1)
+                return;
+
+            this.Report.Note("This looks like a full-state Composition JSON document. The target composition does not contain the referenced idea/relationship IDs. Re-export as patch operations, mark items isNew:true, or enable importOptions.treatMissingFullStateItemsAsCreates.");
+        }
+
+        private string GetContainerResolutionFailureMessage(string Entity, string Name, string ContainerId, string ContainerTechName)
+        {
+            var Requested = RequestedContainerDescription(ContainerId, ContainerTechName);
+            if (IsActiveRootContainerSentinel(ContainerTechName) && !this.UseActiveCompositionAsContainer)
+                return "Cannot create " + Entity + " '" + Name.ToStringAlways() +
+                       "': container '" + Requested +
+                       "' is an active-root sentinel, but importOptions.useActiveCompositionAsContainer is false.";
+
+            if (this.UseActiveCompositionAsContainer)
+                return "Cannot create " + Entity + " '" + Name.ToStringAlways() +
+                       "' because its container '" + Requested +
+                       "' was not found or is not safe. Container fallback was enabled, but requested container '" +
+                       Requested + "' was not considered a safe root placeholder.";
+
+            return "Cannot create " + Entity + " '" + Name.ToStringAlways() +
+                   "' because its container '" + Requested +
+                   "' was not found or is not safe. Enable importOptions.useActiveCompositionAsContainer for root-level fixture/GPT imports.";
         }
 
         private static string RequestedContainerDescription(string ContainerId, string ContainerTechName)
@@ -2778,6 +4185,37 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return Definitions.FirstOrDefault(Definition => StringEquals(Definition.Name, Name));
 
             return null;
+        }
+
+        private string GetDefinitionSuggestions<TDefinition>(string RequestedTechName)
+            where TDefinition : IdeaDefinition
+        {
+            var Definitions = GetAllDefinitions(this.Composition.CompositeContentDomain).OfType<TDefinition>().ToList();
+            if (Definitions.Count < 1)
+                return "<none available>";
+
+            if (String.IsNullOrWhiteSpace(RequestedTechName))
+                return String.Join(", ", Definitions.Select(Definition => Definition.TechName).Take(12).ToArray());
+
+            var NormalizedRequest = NormalizeReferenceToken(RequestedTechName);
+            var Suggestions = Definitions
+                .Where(Definition =>
+                {
+                    var NormalizedTechName = NormalizeReferenceToken(Definition.TechName);
+                    var NormalizedName = NormalizeReferenceToken(Definition.Name);
+                    return NormalizedTechName.Contains(NormalizedRequest) ||
+                           NormalizedRequest.Contains(NormalizedTechName) ||
+                           NormalizedName.Contains(NormalizedRequest) ||
+                           NormalizedRequest.Contains(NormalizedName);
+                })
+                .Select(Definition => Definition.TechName)
+                .Take(8)
+                .ToList();
+
+            if (Suggestions.Count < 1)
+                Suggestions = Definitions.Select(Definition => Definition.TechName).Take(12).ToList();
+
+            return String.Join(", ", Suggestions.ToArray());
         }
 
         private IEnumerable<IdeaDefinition> GetAllDefinitions(IdeaDefinition Root)
@@ -2949,6 +4387,156 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Result;
         }
 
+        private List<CompositionJsonDetail> MergeOperationDetails(CompositionJsonOperation Operation)
+        {
+            var Result = new List<CompositionJsonDetail>();
+            if (Operation == null)
+                return Result;
+
+            var Seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (Operation.Details != null)
+                foreach (var Detail in Operation.Details)
+                    AddMergedDetail(Result, Seen, Detail);
+
+            foreach (var Detail in GetSetDetails(Operation.Set, "details"))
+                AddMergedDetail(Result, Seen, Detail);
+            return Result;
+        }
+
+        private void AddMergedDetail(IList<CompositionJsonDetail> Result, ISet<string> Seen, CompositionJsonDetail Detail)
+        {
+            if (Detail == null)
+                return;
+
+            var Key = DetailMergeKey(Detail);
+            if (!String.IsNullOrEmpty(Key) && Seen.Contains(Key))
+                return;
+
+            if (!String.IsNullOrEmpty(Key))
+                Seen.Add(Key);
+            Result.Add(Detail);
+        }
+
+        private string DetailMergeKey(CompositionJsonDetail Detail)
+        {
+            if (Detail == null)
+                return "";
+
+            return Detail.DesignatorId.NullDefault(Detail.DesignatorTechName)
+                         .NullDefault(Detail.DesignatorName)
+                         .NullDefault(Detail.Kind)
+                         .ToStringAlways();
+        }
+
+        private List<CompositionJsonMarker> MergeOperationMarkers(CompositionJsonOperation Operation)
+        {
+            var Result = new List<CompositionJsonMarker>();
+            if (Operation == null)
+                return Result;
+
+            if (Operation.Markers != null)
+                Result.AddRange(Operation.Markers);
+
+            Result.AddRange(GetSetMarkers(Operation.Set, "markers"));
+            return Result;
+        }
+
+        private List<CompositionJsonDetail> GetSetDetails(IDictionary<string, object> Set, string Key)
+        {
+            var Result = new List<CompositionJsonDetail>();
+            foreach (var Dictionary in GetDictionaryList(Set, Key))
+                Result.Add(ReadDetailFromDictionary(Dictionary));
+
+            return Result;
+        }
+
+        private List<CompositionJsonMarker> GetSetMarkers(IDictionary<string, object> Set, string Key)
+        {
+            var Result = new List<CompositionJsonMarker>();
+            foreach (var Dictionary in GetDictionaryList(Set, Key))
+                Result.Add(ReadMarkerFromDictionary(Dictionary));
+
+            return Result;
+        }
+
+        private IEnumerable<IDictionary<string, object>> GetDictionaryList(IDictionary<string, object> Set, string Key)
+        {
+            if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
+                yield break;
+
+            var Single = Set[Key] as IDictionary<string, object>;
+            if (Single != null)
+            {
+                yield return Single;
+                yield break;
+            }
+
+            var Items = Set[Key] as System.Collections.IEnumerable;
+            if (Items == null || Set[Key] is string)
+                yield break;
+
+            foreach (var Item in Items)
+            {
+                var Dictionary = Item as IDictionary<string, object>;
+                if (Dictionary != null)
+                    yield return Dictionary;
+            }
+        }
+
+        private CompositionJsonDetail ReadDetailFromDictionary(IDictionary<string, object> Source)
+        {
+            var Result = new CompositionJsonDetail();
+            Result.Delete = CompositionJsonSerializer.GetBool(Source, "delete", false);
+            Result.Kind = CompositionJsonSerializer.GetString(Source, "kind");
+            Result.DesignatorId = CompositionJsonSerializer.GetString(Source, "designatorId");
+            Result.DesignatorTechName = CompositionJsonSerializer.GetString(Source, "designatorTechName")
+                                         .NullDefault(CompositionJsonSerializer.GetString(Source, "detailTechName"))
+                                         .NullDefault(CompositionJsonSerializer.GetString(Source, "techName"));
+            Result.DesignatorName = CompositionJsonSerializer.GetString(Source, "designatorName")
+                                     .NullDefault(CompositionJsonSerializer.GetString(Source, "name"));
+            Result.Text = CompositionJsonSerializer.GetString(Source, "text")
+                          .NullDefault(CompositionJsonSerializer.GetString(Source, "content"))
+                          .NullDefault(CompositionJsonSerializer.GetString(Source, "value"));
+            Result.TargetAddress = CompositionJsonSerializer.GetString(Source, "targetAddress");
+            Result.TargetPropertyTechName = CompositionJsonSerializer.GetString(Source, "targetPropertyTechName");
+            Result.Source = CompositionJsonSerializer.GetString(Source, "source");
+            Result.MimeType = CompositionJsonSerializer.GetString(Source, "mimeType");
+
+            foreach (var Field in GetDictionaryList(Source, "fields"))
+                Result.Fields.Add(ReadFieldFromDictionary(Field));
+
+            foreach (var Record in GetDictionaryList(Source, "records"))
+                Result.Records.Add(Record.ToDictionary(Pair => Pair.Key, Pair => Pair.Value));
+
+            foreach (var Record in GetDictionaryList(Source, "rows"))
+                Result.Records.Add(Record.ToDictionary(Pair => Pair.Key, Pair => Pair.Value));
+
+            return Result;
+        }
+
+        private CompositionJsonField ReadFieldFromDictionary(IDictionary<string, object> Source)
+        {
+            var Result = new CompositionJsonField();
+            Result.Id = CompositionJsonSerializer.GetString(Source, "id");
+            Result.Name = CompositionJsonSerializer.GetString(Source, "name");
+            Result.TechName = CompositionJsonSerializer.GetString(Source, "techName");
+            Result.DataType = CompositionJsonSerializer.GetString(Source, "dataType");
+            return Result;
+        }
+
+        private CompositionJsonMarker ReadMarkerFromDictionary(IDictionary<string, object> Source)
+        {
+            var Result = new CompositionJsonMarker();
+            Result.Delete = CompositionJsonSerializer.GetBool(Source, "delete", false);
+            Result.DefinitionId = CompositionJsonSerializer.GetString(Source, "definitionId");
+            Result.DefinitionTechName = CompositionJsonSerializer.GetString(Source, "definitionTechName");
+            Result.DefinitionName = CompositionJsonSerializer.GetString(Source, "definitionName");
+            Result.DescriptorName = CompositionJsonSerializer.GetString(Source, "descriptorName");
+            Result.DescriptorTechName = CompositionJsonSerializer.GetString(Source, "descriptorTechName");
+            Result.DescriptorSummary = CompositionJsonSerializer.GetString(Source, "descriptorSummary");
+            return Result;
+        }
+
         private CompositionJsonRelationshipLink ReadRelationshipLinkFromDictionary(IDictionary<string, object> Source)
         {
             var Link = new CompositionJsonRelationshipLink();
@@ -2970,6 +4558,20 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return null;
 
             return Convert.ToString(Set[Key], CultureInfo.InvariantCulture);
+        }
+
+        private void LogUnsupportedSetFields(IDictionary<string, object> Set, string Context, IEnumerable<string> SupportedKeys)
+        {
+            if (Set == null || Set.Count < 1)
+                return;
+
+            var Supported = new HashSet<string>(SupportedKeys ?? new string[0], StringComparer.OrdinalIgnoreCase);
+            var Unsupported = Set.Keys.Where(Key => !Supported.Contains(Key)).OrderBy(Key => Key).ToList();
+            if (Unsupported.Count < 1)
+                return;
+
+            this.Report.Note(FormatOperationPrefix() + "unsupported " + Context +
+                             " set fields ignored: " + String.Join(", ", Unsupported.ToArray()) + ".");
         }
 
         private void CountUpdated(bool Changed)
@@ -3068,6 +4670,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (!String.IsNullOrEmpty(Operation.DefinitionTechName))
                 Parts.Add("definition=" + Operation.DefinitionTechName);
 
+            var FallbackDefinition = Operation.FallbackDefinitionTechName.NullDefault(GetSetString(Operation.Set, "fallbackDefinitionTechName"));
+            if (!String.IsNullOrEmpty(FallbackDefinition))
+                Parts.Add("fallbackDefinition=" + FallbackDefinition);
+
+            var StrictDefinition = Operation.StrictDefinition ?? GetSetBool(Operation.Set, "strictDefinition");
+            if (StrictDefinition != null)
+                Parts.Add("strictDefinition=" + (StrictDefinition.Value ? "true" : "false"));
+
             if (!String.IsNullOrEmpty(Operation.ContainerId))
                 Parts.Add("containerId=" + Operation.ContainerId);
 
@@ -3124,6 +4734,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Target.GetType().Name + " name='" + Target.Name.ToStringAlways() +
                    "' techName='" + Target.TechName.ToStringAlways() +
                    "' id=" + Target.GlobalId.ToString("D");
+        }
+
+        private string DescribeVersion(FormalElement Target)
+        {
+            if (Target == null || Target.Version == null)
+                return "<none>";
+
+            return Target.Version.VersionNumber.ToStringAlways("<none>") +
+                   " sequence " + Target.Version.VersionSequence.ToString(CultureInfo.InvariantCulture) +
+                   " modified " + Target.Version.LastModification.ToString("o", CultureInfo.InvariantCulture);
         }
 
         private string Describe(string Id, string TechName)

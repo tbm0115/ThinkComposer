@@ -86,6 +86,25 @@ Dialogs separate `Source warnings` from `Import warnings`. Source warnings are p
 
 Full-state import updates matching objects by `id` first. If `id` is absent, it matches by `techName`. Omitted objects are never deleted.
 
+By default, full-state `ideas[]`, `relationships[]`, and `views[]` are interpreted as merge/update data for objects that already exist in the active `.tcom`. This prevents an exported snapshot from accidentally recreating another composition inside the current one.
+
+For GPT-generated full-state-style documents intended to populate a blank composition, opt in explicitly:
+
+```json
+{
+  "importOptions": {
+    "useActiveCompositionAsContainer": true,
+    "treatMissingFullStateItemsAsCreates": true
+  }
+}
+```
+
+With this option, missing top-level concepts and relationships can be created when they include enough safe create data: definition, name or techName, container, and valid relationship endpoints. Matching existing objects are still updated/upserted rather than duplicated. A single full-state item can also opt in with `isNew: true`.
+
+Visuals in `views[].visuals[]` that refer to newly created or planned ideas are treated as placement requests. The importer uses the visual `x`, `y`, `width`, and `height` when supplied; otherwise it falls back to normal auto-placement. If a referenced idea/relationship was skipped, dependent visual skips are grouped in the log instead of flooding the dialog.
+
+Patch-style `operations` remain preferred for GPT-authored creation because they make intent, ordering, and safety easier to inspect.
+
 ## Patch Operations Example
 
 ```json
@@ -177,6 +196,87 @@ Relationship create operations are upserts. If a `create relationship` operation
 
 Linkless relationships are skipped by default. This prevents invalid native relationship objects that can later break view or context-menu code expecting origin/target roles.
 
+### Relationship Definition Compatibility
+
+Relationship definitions may restrict which concept definitions can be linked through each role. A relationship patch can resolve its container, definition, endpoint ideas, and role names and still be skipped if the endpoint concept definitions are not valid for the requested relationship definition.
+
+For example, domain-specific relationship definitions such as `Subject_Verb`, `MUST_be`, or `Targets_Device_Component` may require endpoint concepts with particular definitions. A generated link like `Use-Case -> Use-Case` can be invalid for `Subject_Verb` even though both concepts exist and the role names resolve.
+
+When native validation rejects a pair, the importer logs a compatibility diagnostic with:
+
+- relationship name/techName and requested definition
+- resolved origin and target endpoint ids/techNames
+- each endpoint concept definition
+- resolved origin and target role names/types
+- allowed role-side endpoint definitions when the domain exposes them
+- the native `CanLink` rejection message
+
+The preview/final summary also includes `Relationships skipped by compatibility`, and the log groups those skips by relationship definition.
+
+For domain-accurate imports, fix the JSON so every relationship definition connects compatible endpoint concept definitions. Recommended workflow:
+
+1. Import/update the Domain JSON or embedded domain first.
+2. Export or inspect the Domain JSON relationship definitions and role constraints.
+3. Generate the `.tcom` patch using relationship definitions that accept the endpoint concept definitions.
+4. Use fallback only for draft graph preservation, not final domain-accurate semantics.
+
+### Version and Domain Compatibility Metadata
+
+Composition JSON exports include optional `targetContext` metadata for the composition and its embedded domain. GPT-generated patches may also include a `requires` block:
+
+```json
+{
+  "requires": {
+    "domain": {
+      "techName": "MTConnect",
+      "versionSequence": 390,
+      "compatibilitySignature": "..."
+    },
+    "composition": {
+      "techName": "MTConnect_Machine_Monitoring_Utilization_Productivity_Use_Case",
+      "versionSequence": 4
+    }
+  }
+}
+```
+
+Import compares this metadata to the active `.tcom` according to these options:
+
+- `domainCompatibilityPolicy`: `ignore`, `warn` (default), `requireTechName`, `requireId`, `requireVersion`, or `requireSignature`.
+- `compositionVersionPolicy`: `ignore`, `warn` (default), `requireTechName`, `requireId`, or `requireVersion`.
+- `strictRelationshipCompatibility`: preflight relationship creates against native relationship-definition endpoint compatibility.
+- `abortOnRelationshipCompatibilityFailure`: with strict relationship compatibility, block the import before apply if any relationship would be skipped by compatibility.
+- `strictDetailsCompatibility` and `abortOnDetailCompatibilityFailure`: block strict imports when details cannot be applied to native detail designators.
+
+Version and signature checks are stale-contract guards. They do not replace native semantic validation; relationship endpoints still must satisfy the active domain's relationship definitions. For strict domain-correct GPT patches, use:
+
+```json
+{
+  "importOptions": {
+    "domainCompatibilityPolicy": "requireTechName",
+    "compositionVersionPolicy": "warn",
+    "strictRelationshipCompatibility": true,
+    "abortOnRelationshipCompatibilityFailure": true
+  }
+}
+```
+
+When strict relationship compatibility blocks an import, no command variation is opened and no concepts or relationships are applied. The lower-left log includes a copyable block beginning with `BEGIN THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT`; use that report to regenerate domain-valid relationship definitions, endpoint concept definitions, or roles.
+
+The MTConnect machine-monitoring sample is a useful example: the patch can create concepts mechanically, but some relationships using definitions such as `Subject_Verb`, `MUST_be`, and `Targets_Device_Component` are rejected by native endpoint compatibility. Strict mode should block that partial import before apply so the JSON can be regenerated from the Domain JSON compatibility metadata.
+
+Draft imports can opt into a generic fallback:
+
+```json
+{
+  "importOptions": {
+    "relationshipDefinitionFallbackTechName": "Relationship"
+  }
+}
+```
+
+If a relationship create fails endpoint compatibility and fallback is configured, the importer retries the endpoint pair with the fallback definition. This is disabled by default. A single operation can override with `"fallbackDefinitionTechName": "Relationship"` or block fallback with `"strictDefinition": true`. Fallback is only attempted after the requested relationship definition exists and the endpoint/role references resolve; it is not used for missing definitions or missing endpoints.
+
 ## Container Matching
 
 Create operations normally resolve `containerId` first, then `containerTechName`. If both are omitted, the importer uses the active root composition as the container. If a named container is not found, the create operation is skipped so imports do not accidentally place items in the wrong nested concept.
@@ -194,6 +294,16 @@ Regression fixtures and GPT-generated root-level samples can opt into:
 When this option is true, root-level create operations with missing, placeholder-like, or unresolved test-composition container references such as `Test__Flowchart` can fall back to the active composition root. The importer logs the fallback:
 
 `JSON import container fallback: requested='Test__Flowchart' not found; using active composition 'Composition1'.`
+
+The canonical GPT sentinel for this workflow is:
+
+```json
+{
+  "containerTechName": "Active_Composition_Root"
+}
+```
+
+Use it with `importOptions.useActiveCompositionAsContainer: true` when a patch is intentionally authored for whichever `.tcom` is currently active. Accepted active-root placeholder variants include `ACTIVE_COMPOSITION_ROOT`, `activeCompositionRoot`, `active-composition-root`, `active_composition_root`, `__ACTIVE_COMPOSITION_ROOT__`, `Current_Composition`, `CurrentComposition`, `Active_Composition`, `Composition_Root`, and `Root_Composition`. If one of these sentinels is used while the option is false, the operation is skipped with a precise message instead of being treated as a normal missing techName.
 
 This option is intended for fixtures and patches targeting the active root composition. It is not a nested-container repair tool; if a patch names a real existing container, that container is used, and nested imports should still specify the intended nested concept container explicitly. If many operations skip for the same missing container, the dialog/log adds a note explaining which container was missing and how to use the fallback.
 
@@ -227,7 +337,7 @@ Relationship placement can omit coordinates. When endpoints are visible in the t
 }
 ```
 
-Create operations can include the same `viewId`, `viewTechName`, `x`, `y`, `width`, and `height` fields. If no coordinates are supplied and `importOptions.autoPlaceNewItems` is omitted or true, the importer chooses the created item's container view, then the active view, and places new concepts in a deterministic grid near the current viewport or main content cluster. Extreme outlier symbols are ignored when choosing the default layout origin, so imported items should not be pushed to coordinates such as `x=9000, y=5000` unless the patch explicitly requests those coordinates. Relationships are connected when their linked endpoint concepts are visible in the chosen view.
+Create operations can include the same `viewId`, `viewTechName`, `x`, `y`, `width`, and `height` fields. If no view is supplied for a root-level create/place operation, the importer uses the active view when safe, then the composition root view. For nested containers, it prefers the target container's composite view. `Active_View`, `Main_View`, and `Active_Composition_Root_View` are accepted view sentinels when the exact exported view techName is unknown. If no coordinates are supplied and `importOptions.autoPlaceNewItems` is omitted or true, the importer places new concepts in a deterministic grid near the current viewport or main content cluster. Extreme outlier symbols are ignored when choosing the default layout origin, so imported items should not be pushed to coordinates such as `x=9000, y=5000` unless the patch explicitly requests those coordinates. Relationships are connected when their linked endpoint concepts are visible in the chosen view.
 
 If a relationship target view is missing one or both endpoint concept symbols and auto-placement is enabled, the importer attempts to place those endpoint concepts in that view before placing the relationship. If endpoints still cannot be resolved or placed, the relationship connector is skipped with a warning listing the missing endpoints.
 
@@ -241,6 +351,20 @@ Concept visuals created or newly placed during import are auto-fitted to their v
 
 Relationship visuals created, placed, or repaired during import are auto-routed by default after concept auto-fit completes. This uses the same `LinkObstacleRoutingService` as `Edit -> Appearance -> Route Links with Obstacle Avoidance`, including hidden-central simple relationship routing and dogleg fallback. Existing unrelated links in the view are not routed. Use `"autoRoute": false` on an operation to preserve that operation's current connector geometry, or `"autoRoute": true` to route an existing visible relationship touched by an update/place operation.
 
+Details can be supplied at `operation.details` or `operation.set.details`. The importer merges both forms deterministically, with operation-level details taking precedence for duplicate designators. GPT-authored details can use `name`/`techName` or native `designatorName`/`designatorTechName`, and table rows can be supplied as `rows` or `records`.
+
+Native details require matching detail designators on the target idea definition. If the designator is missing or the detail shape is not implemented, the idea itself is still created/updated and the detail is reported separately. By default unsupported details are skipped:
+
+```json
+{
+  "importOptions": {
+    "detailFallbackMode": "skip"
+  }
+}
+```
+
+For draft imports where preserving generated detail text matters more than native detail fidelity, set `detailFallbackMode` to `appendToTechSpec` or `appendToDescription`. The importer appends a clearly delimited text section containing the detail name, techName, kind, reason, text, and table rows. Prefer putting critical generated content directly in `summary`, `description`, or `techSpec` when the target domain does not define matching detail designators.
+
 Layout options:
 
 - `gridNearViewport` is the default. It places the batch near the visible center when the view is open, otherwise near the normal content cluster or `100,100` for an empty/outlier-only view.
@@ -250,6 +374,13 @@ Layout options:
 - `autoFitPlacedConcepts` defaults to true. It fits newly created or newly placed concept symbols to text during import without resizing every existing concept in the view.
 - `autoRoutePlacedLinks` defaults to true. It routes newly created, newly placed, or repaired relationship visuals/connectors during import without routing every existing connector in the view.
 - `useActiveCompositionAsContainer` defaults to false. It is an opt-in convenience for root-level fixture imports into a fresh active composition.
+- `treatMissingFullStateItemsAsCreates` defaults to false. It is an opt-in for full-state-style GPT documents that should create missing top-level `ideas[]` and `relationships[]` in the active composition. Patch operations remain preferred.
+- `relationshipDefinitionFallbackTechName` defaults to disabled. It can preserve draft graph structure by retrying compatibility-failed relationship creates with a generic relationship definition.
+- `detailFallbackMode` defaults to `skip`. `appendToTechSpec` and `appendToDescription` preserve unsupported details as delimited text on the idea.
+- `domainCompatibilityPolicy` defaults to `warn`. Use `requireTechName`, `requireId`, `requireVersion`, or `requireSignature` when a patch must target a specific embedded domain contract.
+- `compositionVersionPolicy` defaults to `warn`. Use a require policy only when a patch must target a specific composition identity or version.
+- `strictRelationshipCompatibility` plus `abortOnRelationshipCompatibilityFailure` blocks domain-invalid relationship creates before apply.
+- `strictDetailsCompatibility` plus `abortOnDetailCompatibilityFailure` blocks imports when GPT-authored details cannot be applied to native detail designators.
 - `preventSelfRecursiveCompositeViews` defaults to true and blocks self-recursive owner-in-own-view placements.
 - `repairRecursiveVisuals` defaults to true and removes previously imported self-recursive visuals during JSON import/re-import.
 
@@ -258,10 +389,10 @@ Manual Appearance layout commands are currently separate from JSON import layout
 GPT prompt example:
 
 ```text
-Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Also include viewTechName plus x/y/width/height for important new concepts, and add place operations for relationships so the new model items are visible in the intended view. Leave importOptions.autoFitPlacedConcepts and importOptions.autoRoutePlacedLinks true so new concept labels fit their text and new links route around obstacles; use operation autoFit:false or autoRoute:false only when I provide deliberate sizing or connector geometry. Do not delete anything unless I explicitly request it.
+Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. Include x/y/width/height for important new concepts when deliberate placement matters, and add place operations for relationships so the new model items are visible in the intended view. Leave importOptions.autoFitPlacedConcepts and importOptions.autoRoutePlacedLinks true so new concept labels fit their text and new links route around obstacles; use operation autoFit:false or autoRoute:false only when I provide deliberate sizing or connector geometry. Do not delete anything unless I explicitly request it.
 ```
 
-Additional sample files are available at `samples/json-interchange-patch.sample.json` and `samples/json-interchange-regression.sample.json`.
+Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, and `samples/composition-full-state-create.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`.
 
 ## Domain Interchange
 
@@ -295,10 +426,25 @@ Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` 
 16. Verify source warnings and import warnings are shown separately and object-valued warnings are readable.
 17. Verify no `Put-visual must be applied within a Command` error appears.
 18. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
+19. Import `samples/composition-active-root-fallback.sample.json` into a fresh blank composition and confirm the preview/apply summary creates two concepts and one relationship with zero skipped operations.
+20. For generated MTConnect patches such as `machine_monitoring_utilization_productivity_composition.json`, import/update the required MTConnect Domain JSON first, then import the composition patch. Expected result after active-root fallback is fixed: the preview plans 20 concept creates and 34 relationship creates, missing-container skips are zero, auto-fit and auto-route run for newly placed items, and save/reopen preserves the created ideas and relationships.
+21. Import `samples/composition-strict-domain-compatibility.sample.json` into an All-Purpose composition and confirm strict relationship compatibility passes with zero compatibility skips. Change `requires.domain.techName` to a non-active domain and confirm the preview blocks before apply.
+22. Add strict options to a known partially compatible generated patch. Expected result: preview reports compatibility failures and apply is blocked before creating concepts.
+23. Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition. Expected result: two concepts created, one relationship created, visuals placed, skipped zero.
+24. Import a full-state-style generated file without `treatMissingFullStateItemsAsCreates`. Expected result: the dialog/log notes that missing full-state ids were treated as updates and explains how to enable full-state-create mode.
 
 ## Troubleshooting
 
 Detailed import diagnostics are in the lower-left application log window. The modal confirmation and completion dialogs only summarize planned or applied counts.
+
+Before preview, the importer logs a preflight block with active composition/domain/view context, import options, required concept and relationship definitions, referenced containers/views/endpoints, planned ids/techNames, and unresolved references. Common skip causes are:
+
+- Missing container: use an exact container id/techName, or use `Active_Composition_Root` with `useActiveCompositionAsContainer=true` for root-level GPT patches.
+- Missing concept definition or relationship definition: import/update the required Domain JSON first, or use a definition techName that exists in the active embedded domain.
+- Unresolved relationship endpoint: create the endpoint earlier in the patch, use the correct endpoint id/techName, or repair the active composition before importing.
+- Unresolved role: use `roleType` of `Origin`/`Target` or a roleDefinitionTechName present on the selected relationship definition.
+- Relationship compatibility failure: the endpoint concepts exist, but their concept definitions are not valid for the requested relationship definition/roles. Fix the relationship definition/endpoints for domain-accurate imports, or opt into `relationshipDefinitionFallbackTechName` for drafts.
+- Unsupported detail shape: the concept/relationship is still created when possible; the detail is skipped with name/techName/kind diagnostics, or appended to TechSpec/description when `detailFallbackMode` requests it.
 
 `Put-visual must be applied within a Command` means WPF visual refresh or placement was attempted while no ThinkComposer edit command variation was active. JSON import refreshes affected views inside the single `Import JSON` command variation so view updates remain undoable and command-safe. If this error appears again, the log should show the operation being applied and whether rollback completed.
 

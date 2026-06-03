@@ -51,6 +51,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Document.FormatVersion = GetInt(Root, "formatVersion", 0);
             Document.ExportedAtUtc = GetString(Root, "exportedAtUtc");
             Document.Application = GetString(Root, "application");
+            Document.TargetContext = ReadTargetContext(GetDictionary(Root, "targetContext"));
+            Document.Requires = ReadTargetContext(GetDictionary(Root, "requires"));
             Document.Composition = ReadComposition(GetDictionary(Root, "composition"));
             Document.ImportOptions = ReadImportOptions(GetDictionary(Root, "importOptions"));
             Document.Ideas = ReadList(Root, "ideas", ReadIdea);
@@ -81,6 +83,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Add(Obj, "formatVersion", Document.FormatVersion);
             AddIf(Obj, "exportedAtUtc", Document.ExportedAtUtc);
             Add(Obj, "application", Document.Application);
+            AddIf(Obj, "targetContext", ToGraph(Document.TargetContext));
+            AddIf(Obj, "requires", ToGraph(Document.Requires));
             AddIf(Obj, "composition", ToGraph(Document.Composition));
             AddIf(Obj, "importOptions", ToGraph(Document.ImportOptions));
             Add(Obj, "ideas", ToList(Document.Ideas, ToGraph));
@@ -101,9 +105,45 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "autoFitPlacedConcepts", ImportOptions.AutoFitPlacedConcepts);
             AddIf(Obj, "autoRoutePlacedLinks", ImportOptions.AutoRoutePlacedLinks);
             AddIf(Obj, "useActiveCompositionAsContainer", ImportOptions.UseActiveCompositionAsContainer);
+            AddIf(Obj, "treatMissingFullStateItemsAsCreates", ImportOptions.TreatMissingFullStateItemsAsCreates);
+            AddIf(Obj, "relationshipDefinitionFallbackTechName", ImportOptions.RelationshipDefinitionFallbackTechName);
+            AddIf(Obj, "detailFallbackMode", ImportOptions.DetailFallbackMode);
+            AddIf(Obj, "domainCompatibilityPolicy", ImportOptions.DomainCompatibilityPolicy);
+            AddIf(Obj, "compositionVersionPolicy", ImportOptions.CompositionVersionPolicy);
+            AddIf(Obj, "strictRelationshipCompatibility", ImportOptions.StrictRelationshipCompatibility);
+            AddIf(Obj, "abortOnRelationshipCompatibilityFailure", ImportOptions.AbortOnRelationshipCompatibilityFailure);
+            AddIf(Obj, "strictDetailsCompatibility", ImportOptions.StrictDetailsCompatibility);
+            AddIf(Obj, "abortOnDetailCompatibilityFailure", ImportOptions.AbortOnDetailCompatibilityFailure);
             AddIf(Obj, "layoutMode", ImportOptions.LayoutMode);
             AddIf(Obj, "preventSelfRecursiveCompositeViews", ImportOptions.PreventSelfRecursiveCompositeViews);
             AddIf(Obj, "repairRecursiveVisuals", ImportOptions.RepairRecursiveVisuals);
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonTargetContext Context)
+        {
+            if (Context == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "composition", ToGraph(Context.Composition));
+            AddIf(Obj, "domain", ToGraph(Context.Domain));
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonContextElement Element)
+        {
+            if (Element == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "id", Element.Id);
+            AddIf(Obj, "name", Element.Name);
+            AddIf(Obj, "techName", Element.TechName);
+            AddIf(Obj, "versionNumber", Element.VersionNumber);
+            AddIf(Obj, "versionSequence", Element.VersionSequence);
+            AddIf(Obj, "lastModification", Element.LastModification);
+            AddIf(Obj, "compatibilitySignature", Element.CompatibilitySignature);
             return Obj;
         }
 
@@ -137,6 +177,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "techName", Domain.TechName);
             AddIf(Obj, "summary", Domain.Summary);
             AddIf(Obj, "techSpec", Domain.TechSpec);
+            AddIf(Obj, "compatibilitySignature", Domain.CompatibilitySignature);
             Add(Obj, "definitions", ToList(Domain.Definitions, ToGraph));
             return Obj;
         }
@@ -311,6 +352,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "id", Operation.Id);
             AddIf(Obj, "techName", Operation.TechName);
             AddIf(Obj, "definitionTechName", Operation.DefinitionTechName);
+            AddIf(Obj, "fallbackDefinitionTechName", Operation.FallbackDefinitionTechName);
+            AddIf(Obj, "strictDefinition", Operation.StrictDefinition);
             AddIf(Obj, "containerId", Operation.ContainerId);
             AddIf(Obj, "containerTechName", Operation.ContainerTechName);
             AddIf(Obj, "viewId", Operation.ViewId);
@@ -327,6 +370,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Add(Obj, "targetIdeaIds", Operation.TargetIdeaIds ?? new List<string>());
             Add(Obj, "targetIdeaTechNames", Operation.TargetIdeaTechNames ?? new List<string>());
             Add(Obj, "links", ToList(Operation.Links, ToGraph));
+            Add(Obj, "details", ToList(Operation.Details, ToGraph));
+            Add(Obj, "markers", ToList(Operation.Markers, ToGraph));
             Add(Obj, "set", ToOrderedDictionary(Operation.Set));
             return Obj;
         }
@@ -341,9 +386,47 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.AutoFitPlacedConcepts = GetNullableBool(Source, "autoFitPlacedConcepts");
             Result.AutoRoutePlacedLinks = GetNullableBool(Source, "autoRoutePlacedLinks");
             Result.UseActiveCompositionAsContainer = GetNullableBool(Source, "useActiveCompositionAsContainer");
+            Result.TreatMissingFullStateItemsAsCreates = GetNullableBool(Source, "treatMissingFullStateItemsAsCreates");
+            Result.RelationshipDefinitionFallbackTechName = GetString(Source, "relationshipDefinitionFallbackTechName");
+            Result.DetailFallbackMode = GetString(Source, "detailFallbackMode");
+            Result.DomainCompatibilityPolicy = GetString(Source, "domainCompatibilityPolicy");
+            Result.CompositionVersionPolicy = GetString(Source, "compositionVersionPolicy");
+            Result.StrictRelationshipCompatibility = GetNullableBool(Source, "strictRelationshipCompatibility");
+            Result.AbortOnRelationshipCompatibilityFailure = GetNullableBool(Source, "abortOnRelationshipCompatibilityFailure");
+            Result.StrictDetailsCompatibility = GetNullableBool(Source, "strictDetailsCompatibility");
+            Result.AbortOnDetailCompatibilityFailure = GetNullableBool(Source, "abortOnDetailCompatibilityFailure");
             Result.LayoutMode = GetString(Source, "layoutMode");
             Result.PreventSelfRecursiveCompositeViews = GetNullableBool(Source, "preventSelfRecursiveCompositeViews");
             Result.RepairRecursiveVisuals = GetNullableBool(Source, "repairRecursiveVisuals");
+            return Result;
+        }
+
+        private static CompositionJsonTargetContext ReadTargetContext(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonTargetContext();
+            Result.Composition = ReadContextElement(GetDictionary(Source, "composition"));
+            Result.Domain = ReadContextElement(GetDictionary(Source, "domain"));
+            return Result;
+        }
+
+        private static CompositionJsonContextElement ReadContextElement(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonContextElement();
+            Result.Id = GetString(Source, "id");
+            Result.Name = GetString(Source, "name");
+            Result.TechName = GetString(Source, "techName");
+            Result.VersionNumber = GetString(Source, "versionNumber");
+            int VersionSequence;
+            if (TryGetInt(Source, "versionSequence", out VersionSequence))
+                Result.VersionSequence = VersionSequence;
+            Result.LastModification = GetString(Source, "lastModification");
+            Result.CompatibilitySignature = GetString(Source, "compatibilitySignature");
             return Result;
         }
 
@@ -377,6 +460,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
             Result.TechSpec = GetString(Source, "techSpec");
+            Result.CompatibilitySignature = GetString(Source, "compatibilitySignature");
             Result.Definitions = ReadList(Source, "definitions", ReadDefinition);
             return Result;
         }
@@ -416,7 +500,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             var Result = new CompositionJsonIdea();
             Result.Id = GetString(Source, "id");
-            Result.Kind = GetString(Source, "kind") ?? "Concept";
+            Result.Kind = GetString(Source, "kind") ?? GetString(Source, "entity") ?? "Concept";
             Result.IsNew = GetBool(Source, "isNew", false) || GetBool(Source, "new", false);
             Result.Delete = GetBool(Source, "delete", false);
             Result.DefinitionId = GetString(Source, "definitionId");
@@ -439,7 +523,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             var Result = new CompositionJsonRelationship();
             Result.Id = GetString(Source, "id");
-            Result.Kind = GetString(Source, "kind") ?? "Relationship";
+            Result.Kind = GetString(Source, "kind") ?? GetString(Source, "entity") ?? "Relationship";
             Result.IsNew = GetBool(Source, "isNew", false) || GetBool(Source, "new", false);
             Result.Delete = GetBool(Source, "delete", false);
             Result.DefinitionId = GetString(Source, "definitionId");
@@ -554,6 +638,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Id = GetString(Source, "id");
             Result.TechName = GetString(Source, "techName");
             Result.DefinitionTechName = GetString(Source, "definitionTechName");
+            Result.FallbackDefinitionTechName = GetString(Source, "fallbackDefinitionTechName");
+            Result.StrictDefinition = GetNullableBool(Source, "strictDefinition");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
             Result.ViewId = GetString(Source, "viewId");
@@ -570,6 +656,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");
             Result.TargetIdeaTechNames = ReadStringList(Source, "targetIdeaTechNames");
             Result.Links = ReadList(Source, "links", ReadRelationshipLink);
+            Result.Details = ReadList(Source, "details", ReadDetail);
+            Result.Markers = ReadList(Source, "markers", ReadMarker);
             Result.Set = GetObjectDictionary(Source, "set");
             return Result;
         }

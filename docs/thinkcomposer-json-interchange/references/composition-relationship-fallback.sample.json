@@ -1,0 +1,83 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "relationshipDefinitionFallbackTechName": "Relationship",
+    "detailFallbackMode": "appendToTechSpec",
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for explicit relationship definition fallback. It is intended for domains that contain Concept, Relationship, and a stricter Subject_Verb relationship definition.",
+    "Expected result in such a domain: two concepts are created; the Subject_Verb relationship may fail endpoint compatibility and retry as Relationship unless strictDefinition is true.",
+    "If Subject_Verb is not present in the active domain, the relationship is skipped as a missing definition because fallback only applies after the requested definition exists and rejects compatible-looking endpoints."
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "98000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 260,
+      "set": {
+        "name": "Fallback Draft Source",
+        "techName": "Fallback_Draft_Source",
+        "summary": "Draft source concept for relationship fallback testing."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "98000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 440,
+      "y": 260,
+      "set": {
+        "name": "Fallback Draft Target",
+        "techName": "Fallback_Draft_Target",
+        "summary": "Draft target concept for relationship fallback testing."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "98000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Subject_Verb",
+      "fallbackDefinitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "autoRoute": true,
+      "set": {
+        "name": "Draft Fallback Link",
+        "techName": "Draft_Fallback_Link",
+        "summary": "Requests a strict domain-specific relationship first, then falls back to Relationship for draft graph preservation if endpoint compatibility fails.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Fallback_Draft_Source"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Fallback_Draft_Target"
+          }
+        ],
+        "details": [
+          {
+            "kind": "Text",
+            "name": "Fallback Note",
+            "techName": "Fallback_Note",
+            "text": "This detail demonstrates detailFallbackMode=appendToTechSpec when no matching native detail designator exists."
+          }
+        ]
+      }
+    }
+  ]
+}

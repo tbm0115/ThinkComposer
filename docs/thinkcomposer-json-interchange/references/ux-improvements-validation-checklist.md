@@ -104,16 +104,34 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 ## Composition JSON Fixture Imports
 
 - [ ] Create a fresh composition such as `Composition1`.
+- [ ] Import `samples/composition-active-root-fallback.sample.json`.
+- [ ] Confirm the preview/apply summary creates 2 concepts and 1 relationship, with `Skipped: 0`.
+- [ ] Confirm the log includes `JSON import container fallback: requested='Active_Composition_Root'` and an active/root view fallback because the sample omits `viewTechName`.
 - [ ] Import each layout fixture sample that declares `importOptions.useActiveCompositionAsContainer=true`.
 - [ ] Confirm create counts are greater than zero and root-level fixture containers fall back to the active composition.
 - [ ] Confirm the log includes `JSON import container fallback` for samples whose `containerTechName` names a missing `Test__...` composition.
 - [ ] Run the matching Appearance layout command for each imported fixture.
 - [ ] Confirm samples without the fallback still explain which `containerId`/`containerTechName` values must be replaced before import.
+- [ ] For `machine_monitoring_utilization_productivity_composition.json`, import/update the companion MTConnect Domain JSON first, then import the composition patch.
+- [ ] Confirm the generated MTConnect patch previews 20 concept creates and 34 relationship creates, with no missing-container skips for `Active_Composition_Root`.
+- [ ] Confirm any remaining skips are specific definition, endpoint, role, view, or detail issues rather than container fallback failures.
+- [ ] Confirm relationship compatibility skips include endpoint concept definitions, resolved roles, allowed endpoint definitions when available, and a grouped summary by relationship definition.
+- [ ] Confirm relationship compatibility failures emit a copyable `BEGIN THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT` block in the lower-left log.
+- [ ] Import `samples/composition-strict-domain-compatibility.sample.json` into an All-Purpose composition and confirm strict relationship preflight passes with zero compatibility skips.
+- [ ] Change the strict sample's `requires.domain.techName` or use a mismatched active domain and confirm `domainCompatibilityPolicy=requireTechName` blocks before apply.
+- [ ] Add strict options to the current machine-monitoring generated patch and confirm `strictRelationshipCompatibility=true` plus `abortOnRelationshipCompatibilityFailure=true` blocks before concepts/relationships are created when compatibility failures exist.
+- [ ] Import a latest-Skill-generated full-state-style composition JSON without `treatMissingFullStateItemsAsCreates` and confirm the dialog/log explains that missing top-level ideas/relationships were treated as updates, not creates.
+- [ ] Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition and confirm concepts created=2, relationships created=1, visuals placed > 0, skipped=0.
+- [ ] Add `treatMissingFullStateItemsAsCreates=true` to the generated full-state machine-monitoring JSON and confirm concepts are created instead of skipped; relationships either create or report relationship compatibility failures.
+- [ ] Import `samples/composition-relationship-fallback.sample.json` in a domain that has the requested strict relationship definition and generic `Relationship` fallback, or read its warning notes when the strict definition is unavailable.
+- [ ] Confirm `relationshipDefinitionFallbackTechName` is never used silently: fallback is logged, and `strictDefinition: true` prevents fallback.
+- [ ] Import a patch with `set.details` using a missing native detail designator and `detailFallbackMode=appendToTechSpec`; confirm the idea is still created and the detail text/rows are appended to TechSpec with a clear delimiter.
 
 ## Domain JSON Interchange
 
 - [ ] Open or create a `.tdom`.
 - [ ] Run `Domain -> Export Domain JSON...`.
+- [ ] Confirm exported Domain JSON includes `domain.compatibilitySignature` and a `relationshipCompatibility` section when relationship definitions are present.
 - [ ] Run `Domain -> Import/Update Domain JSON...` with `samples/domain-json-interchange-patch.sample.json`.
 - [ ] Confirm the preview lists planned creates/updates and dangerous skipped deletes.
 - [ ] Confirm domain summary/TechSpec updates, and new definitions/tables/fields/templates are created when dependencies exist.

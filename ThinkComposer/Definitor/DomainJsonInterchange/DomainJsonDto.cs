@@ -31,6 +31,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             this.RelationshipDefinitions = new List<DomainJsonElement>();
             this.ConceptDefinitionOutputTemplates = new List<DomainJsonElement>();
             this.RelationshipDefinitionOutputTemplates = new List<DomainJsonElement>();
+            this.RelationshipCompatibility = new List<DomainJsonRelationshipCompatibility>();
             this.Operations = new List<DomainJsonOperation>();
             this.Warnings = new List<string>();
         }
@@ -53,6 +54,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         public List<DomainJsonElement> RelationshipDefinitions { get; set; }
         public List<DomainJsonElement> ConceptDefinitionOutputTemplates { get; set; }
         public List<DomainJsonElement> RelationshipDefinitionOutputTemplates { get; set; }
+        public List<DomainJsonRelationshipCompatibility> RelationshipCompatibility { get; set; }
         public List<DomainJsonOperation> Operations { get; set; }
         public List<string> Warnings { get; set; }
     }
@@ -76,6 +78,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         public string Summary { get; set; }
         public string Description { get; set; }
         public string TechSpec { get; set; }
+        public string CompatibilitySignature { get; set; }
         public string OwnerId { get; set; }
         public string OwnerTechName { get; set; }
         public string OwnerScope { get; set; }
@@ -104,6 +107,32 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         public List<DomainJsonElement> RoleDefinitions { get; set; }
         public List<DomainJsonElement> OutputTemplates { get; set; }
         public Dictionary<string, object> Set { get; set; }
+    }
+
+    public class DomainJsonRelationshipCompatibility
+    {
+        public DomainJsonRelationshipCompatibility()
+        {
+            this.AllowedOriginConceptDefinitionTechNames = new List<string>();
+            this.AllowedTargetConceptDefinitionTechNames = new List<string>();
+            this.AllowedOriginVariantTechNames = new List<string>();
+            this.AllowedTargetVariantTechNames = new List<string>();
+        }
+
+        public string RelationshipDefinitionId { get; set; }
+        public string RelationshipDefinitionTechName { get; set; }
+        public string RelationshipDefinitionName { get; set; }
+        public string OriginRoleTechName { get; set; }
+        public string OriginRoleName { get; set; }
+        public string TargetRoleTechName { get; set; }
+        public string TargetRoleName { get; set; }
+        public List<string> AllowedOriginConceptDefinitionTechNames { get; set; }
+        public List<string> AllowedTargetConceptDefinitionTechNames { get; set; }
+        public List<string> AllowedOriginVariantTechNames { get; set; }
+        public List<string> AllowedTargetVariantTechNames { get; set; }
+        public bool? IsDirectional { get; set; }
+        public bool? IsSimple { get; set; }
+        public bool? HideCentralSymbolWhenSimple { get; set; }
     }
 
     public class DomainJsonOperation

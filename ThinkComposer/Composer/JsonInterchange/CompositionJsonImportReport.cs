@@ -29,11 +29,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         public int PlannedUpdated { get; set; }
         public int PlannedCreated { get; set; }
+        public int PlannedConceptsCreated { get; set; }
+        public int PlannedRelationshipsCreated { get; set; }
         public int PlannedDeleted { get; set; }
         public int PlannedSkipped { get; set; }
 
         public int AppliedUpdated { get; set; }
         public int AppliedCreated { get; set; }
+        public int AppliedConceptsCreated { get; set; }
+        public int AppliedRelationshipsCreated { get; set; }
         public int AppliedDeleted { get; set; }
         public int AppliedSkipped { get; set; }
 
@@ -57,6 +61,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int AppliedAutoRouteLinks { get; set; }
         public int SkippedAutoRouteLinks { get; set; }
         public int DoglegRoutedLinks { get; set; }
+        public int RelationshipCompatibilitySkipped { get; set; }
+        public int DetailsSkipped { get; set; }
+        public bool CompatibilityBlocked { get; set; }
+        public string CompatibilityBlockReason { get; set; }
 
         public int CurrentOperationIndex { get; set; }
         public int CurrentOperationTotal { get; set; }
@@ -197,6 +205,24 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Created++;
         }
 
+        public void CountCreatedConcept()
+        {
+            this.CountCreated();
+            if (this.IsPreview)
+                this.PlannedConceptsCreated++;
+            else
+                this.AppliedConceptsCreated++;
+        }
+
+        public void CountCreatedRelationship()
+        {
+            this.CountCreated();
+            if (this.IsPreview)
+                this.PlannedRelationshipsCreated++;
+            else
+                this.AppliedRelationshipsCreated++;
+        }
+
         public void CountDeleted()
         {
             this.Deleted++;
@@ -270,6 +296,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.DoglegRoutedLinks++;
         }
 
+        public void CountRelationshipCompatibilitySkipped()
+        {
+            this.RelationshipCompatibilitySkipped++;
+        }
+
+        public void CountDetailSkipped()
+        {
+            this.DetailsSkipped++;
+        }
+
         public void AddAffectedView(string viewName)
         {
             if (String.IsNullOrEmpty(viewName) || this.AffectedViewNames.Contains(viewName))
@@ -285,6 +321,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             this.PlannedUpdated = preview.PlannedUpdated;
             this.PlannedCreated = preview.PlannedCreated;
+            this.PlannedConceptsCreated = preview.PlannedConceptsCreated;
+            this.PlannedRelationshipsCreated = preview.PlannedRelationshipsCreated;
             this.PlannedDeleted = preview.PlannedDeleted;
             this.PlannedSkipped = preview.PlannedSkipped;
             this.PlannedVisualsPlaced = preview.PlannedVisualsPlaced;
@@ -293,15 +331,31 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.PlannedRepairedRecursiveVisuals = preview.PlannedRepairedRecursiveVisuals;
             this.PlannedAutoFitConcepts = preview.PlannedAutoFitConcepts;
             this.PlannedAutoRouteLinks = preview.PlannedAutoRouteLinks;
+            this.RelationshipCompatibilitySkipped = preview.RelationshipCompatibilitySkipped;
+            this.DetailsSkipped = preview.DetailsSkipped;
+            this.CompatibilityBlocked = preview.CompatibilityBlocked;
+            this.CompatibilityBlockReason = preview.CompatibilityBlockReason;
         }
 
         public string ToSummaryString(bool IncludeWarnings)
         {
             var Text = new StringBuilder();
+            if (this.CompatibilityBlocked)
+            {
+                Text.AppendLine("Import blocked by compatibility policy.");
+                if (!String.IsNullOrWhiteSpace(this.CompatibilityBlockReason))
+                    Text.AppendLine(this.CompatibilityBlockReason);
+                Text.AppendLine();
+            }
+
             Text.AppendLine("Updated: " + this.Updated);
             Text.AppendLine("Created: " + this.Created);
+            Text.AppendLine("Concepts created: " + (this.IsPreview ? this.PlannedConceptsCreated : this.AppliedConceptsCreated));
+            Text.AppendLine("Relationships created: " + (this.IsPreview ? this.PlannedRelationshipsCreated : this.AppliedRelationshipsCreated));
             Text.AppendLine("Deleted: " + this.Deleted);
             Text.AppendLine("Skipped: " + this.Skipped);
+            Text.AppendLine("Relationships skipped by compatibility: " + this.RelationshipCompatibilitySkipped);
+            Text.AppendLine("Details skipped: " + this.DetailsSkipped);
             Text.AppendLine("Relationships repaired: " + (this.IsPreview ? this.PlannedRepairedRelationships : this.AppliedRepairedRelationships));
             Text.AppendLine("Recursive visuals repaired: " + (this.IsPreview ? this.PlannedRepairedRecursiveVisuals : this.AppliedRepairedRecursiveVisuals));
             Text.AppendLine("Visuals placed: " + (this.IsPreview ? this.PlannedVisualsPlaced : this.AppliedVisualsPlaced));
@@ -341,6 +395,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             return "planned updated=" + this.PlannedUpdated +
                    ", created=" + this.PlannedCreated +
+                   ", concepts created=" + this.PlannedConceptsCreated +
+                   ", relationships created=" + this.PlannedRelationshipsCreated +
                    ", deleted=" + this.PlannedDeleted +
                    ", skipped=" + this.PlannedSkipped +
                    ", repaired relationships=" + this.PlannedRepairedRelationships +
@@ -351,6 +407,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", auto-route links=" + this.PlannedAutoRouteLinks +
                    "; applied updated=" + this.AppliedUpdated +
                    ", created=" + this.AppliedCreated +
+                   ", concepts created=" + this.AppliedConceptsCreated +
+                   ", relationships created=" + this.AppliedRelationshipsCreated +
                    ", deleted=" + this.AppliedDeleted +
                    ", skipped=" + this.AppliedSkipped +
                    ", repaired relationships=" + this.AppliedRepairedRelationships +
@@ -362,6 +420,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", auto-route links=" + this.AppliedAutoRouteLinks +
                    ", auto-route skipped=" + this.SkippedAutoRouteLinks +
                    ", dogleg routed links=" + this.DoglegRoutedLinks +
+                   ", relationship compatibility skipped=" + this.RelationshipCompatibilitySkipped +
+                   ", details skipped=" + this.DetailsSkipped +
                    "; source warnings=" + this.SourceWarnings.Count +
                    ", import warnings=" + this.ImportWarnings.Count +
                    ", notes=" + this.Notes.Count +

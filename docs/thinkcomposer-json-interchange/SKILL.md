@@ -161,8 +161,29 @@ For output templates, preserve these fields exactly when present:
 - `ownerTechName`
 - `templateText`
 - `extendsBaseTemplate`
+- `set.targetFileName`
+- `set.targetFileExtension`
+- `set.templateRole` or explicit `%%:TemplateRole=...` directive
 
 If the user's goal is composition output generation, ensure the Domain JSON contains the required concept-definition and relationship-definition output templates for the selected external language, or usable Domain base templates. ThinkComposer prepares imported output templates during generation, so the user should not need to open every definition's Output-Templates tab after import/update.
+
+Output templates in JSON are text-only and are not executed during import/export, embedded-domain update, refresh, or validation. When generating Domain JSON for templates, prefer explicit role directives:
+
+- `%%:TemplateRole=DocumentRoot` for final deliverables.
+- `%%:TemplateRole=SubTemplate` plus `%%:SubTemplate=Name` for reusable injected fragments.
+- `%%:TemplateRole=Fragment` for fragments that should not emit standalone files.
+- `%%:TemplateRole=Diagnostic` for optional debug text.
+- `%%:TemplateRole=NotApplicable` or `%%:TemplateRole=Disabled` for templates that should not generate deliverables.
+
+Do not assume a template is active just because it exists in Domain JSON. Ask the user for `Generation Preview` or `Generate Files...` log output when debugging generation. The current build reports target item, selected language, owner scope, owner techName, source collection, template hash, inferred role, effective template, subtemplate registry entries, rendered output, and XML/JSON validation status.
+
+For XML/JSON generation, prefer safe filters/directives in template text:
+
+- `EscapeXmlAttribute`, `EscapeXmlText`, `DefaultIfEmpty`, `Coalesce`, `NormalizeTechName`, `DetailValue`, and `JsonString`.
+- `%%:outputPostProcess.trimLeadingWhitespace=true`
+- `%%:outputValidation=XmlWellFormed`
+
+Use MTConnect `Devices_Response_Document` only as a regression example; do not hardcode MTConnect-specific logic into generated JSON.
 
 ## Embedded domain update
 
@@ -235,6 +256,8 @@ These are deterministic v1 layout helpers, not full graph optimizers. Spider, Hi
 - Destructive domain cleanup/migrations.
 - Full rich/binary content export/import.
 - Automatic JSON import modes for Spider, Hierarchy, Flowchart, or System Map layouts.
+- Full embedded-domain/output-template diff UI.
+- Full DotLiquid static analysis, Mermaid validation, and injected-template scope isolation.
 
 ## Validation
 

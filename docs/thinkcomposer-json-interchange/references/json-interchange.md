@@ -409,6 +409,8 @@ Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` 
 
 When an embedded Domain update adds or changes output templates, ThinkComposer still treats template bodies as text during import. Composition output generation prepares the imported definition-level templates before rendering, so users should not need to open Concept/Relationship Definition Output-Templates tabs after the update.
 
+`Tools -> Output -> Generation Preview` and `Generate Files...` now log template resolution details for imported templates, including owner scope, owner techName, selected external language, template hash, inferred role, subtemplate registry entries, and XML/JSON validation results. Use `docs/output-template-generation.md` when troubleshooting whether output came from an imported embedded-domain template, a definition-level template, a base/fallback template, or older native template text.
+
 ## Manual Regression
 
 1. Open `MTConnect_Endless_Forge_and_LOTAR.tcom` or another composition with the same exported structure.

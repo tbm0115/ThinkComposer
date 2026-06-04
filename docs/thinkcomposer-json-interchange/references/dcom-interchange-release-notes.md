@@ -9,6 +9,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - `Domain -> Import/Update Domain JSON...` previews and applies safe additive domain merges.
 - `Composition -> Domain -> Update Embedded Domain...` safely updates an active `.tcom` composition's embedded domain snapshot from a native `.tdom` or Domain JSON file.
 - Composition output generation now prepares concept/relationship definition output templates automatically before rendering, including templates imported through Domain JSON.
+- `Tools -> Output -> Generation Preview` now supports the active composition/root scope when nothing is selected and shows rendered output, the effective template, and resolution metadata.
 
 ## Supported Workflows
 
@@ -26,6 +27,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Export `.tdom` domain metadata, definitions, tables, fields, roles, markers, external languages, and output templates as text-safe Domain JSON.
 - Import additive Domain JSON patches for metadata, TechSpec, definitions, tables/fields, external languages, and output templates.
 - Generate composition output without opening every involved definition's Output-Templates tab first.
+- Diagnose generated files with per-file output-template resolution logs, deterministic subtemplate registration logs, template role inference/directives, XML/JSON post-processing, and XML/JSON validation summaries.
 - Update an existing `.tcom` embedded domain snapshot without deleting legacy objects or replacing the domain wholesale.
 
 ## Validated Manual Scenarios
@@ -35,6 +37,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Domain save/reopen persistence after import.
 - Embedded Domain update from native `.tdom`.
 - Output-template external language alias resolution such as `Mermaid.js_Flowchart` to `Mermaid_JS_Flowchart`.
+- Output-template generation preview/generate diagnostics, including effective template preview, fragment/subtemplate suppression, subtemplate registry logs, and XML validation for XML-like output.
 - Source-warning vs import-warning dialog categorization.
 - Composition layout fixture import into a fresh blank composition using `useActiveCompositionAsContainer`.
 - Composition active-root fallback import using `samples/composition-active-root-fallback.sample.json`, expecting 2 concepts and 1 relationship created with zero missing-container skips.
@@ -70,3 +73,4 @@ The bundled `thinkcomposer-json-interchange` Skill is maintained with the schema
 - General full multi-bend connector routing and full graph crossing minimization remain backlog.
 - Spider, Hierarchy, Flowchart, and System Map are manual Appearance commands; JSON import currently integrates auto-placement, concept auto-fit, and link auto-route only.
 - Compatibility signatures detect stale domain contracts but are not security signatures and do not replace native relationship validation.
+- Full embedded-domain/output-template diff UI remains backlog; current diagnostics use template hashes, owner metadata, and preview logs.

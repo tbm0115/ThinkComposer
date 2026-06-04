@@ -14,6 +14,7 @@ using Instrumind.Common.EntityDefinition;
 using Instrumind.Common.Visualization;
 
 using Instrumind.ThinkComposer.MetaModel;
+using Instrumind.ThinkComposer.Composer.Generation;
 using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -93,7 +94,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (!this.IsPreview)
             {
                 this.TargetDomain.DeclareExtraCollections();
-                this.Report.Log("Domain JSON output template base collections refreshed; definition-level templates will be prepared during generation.");
+                this.Report.Log("Domain JSON output template base collections refreshed; output-template resolution caches are treated as dirty and will be rebuilt during next Preview/Generate Files run.");
             }
 
             this.Report.LegacyRetained = EstimateLegacyRetained();
@@ -558,6 +559,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") + " outputTemplate create: techName=" +
                                 Source.TechName + " ownerScope=" + OwnerScope + " owner=" + OwnerTechName +
                                 " language=" + Language.TechName + " languageMatch=" + LanguageMatch.MatchMethod);
+                this.Report.Log(OutputTemplateImportDetails("create", Source, null, Language, OwnerScope, OwnerTechName, LanguageMatch.MatchMethod));
                 if (!this.IsPreview)
                     TargetList.Add(new TextTemplate(Language, Source.TemplateText.NullDefault(""), Source.ExtendsBaseTemplate.GetValueOrDefault(true)));
                 this.Report.CountCreated("outputTemplate", this.IsPreview);
@@ -565,6 +567,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             var Changed = false;
+            var OldText = Existing.Text;
+            var OldExtendsBaseTemplate = Existing.ExtendsBaseTemplate;
             if (Source.TemplateText != null && Existing.Text != Source.TemplateText)
             {
                 if (!this.IsPreview)
@@ -580,7 +584,11 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             if (Changed)
+            {
+                this.Report.Log(OutputTemplateImportDetails("update", Source, Existing, Language, OwnerScope, OwnerTechName, LanguageMatch.MatchMethod,
+                                                            OldText, OldExtendsBaseTemplate));
                 this.Report.CountUpdated("outputTemplate", this.IsPreview);
+            }
         }
 
         private IList<TextTemplate> ResolveTemplateList(string OwnerScope, string OwnerTechName)
@@ -604,6 +612,43 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             return null;
+        }
+
+        private static string OutputTemplateImportDetails(string Action, DomainJsonElement Source, TextTemplate Existing,
+                                                          ExternalLanguageDeclaration Language, string OwnerScope,
+                                                          string OwnerTechName, string LanguageMatch,
+                                                          string OldText = null, bool? OldExtendsBaseTemplate = null)
+        {
+            var NewText = Source.TemplateText.NullDefault(Existing == null ? "" : Existing.Text);
+            var Directives = OutputTemplateDirectiveInfo.Parse(NewText);
+            var SetRole = GetSetString(Source.Set, "templateRole");
+            if (!SetRole.IsAbsent())
+            {
+                Directives.Role = OutputTemplateDirectiveInfo.ParseRole(SetRole);
+                Directives.HasExplicitRole = true;
+            }
+
+            var TargetExtension = GetSetString(Source.Set, "targetFileExtension").NullDefault(Directives.TargetFileExtension);
+            var TargetFileName = GetSetString(Source.Set, "targetFileName").NullDefault(Directives.TargetFileName);
+
+            var Builder = new System.Text.StringBuilder();
+            Builder.Append("Domain JSON " + Action + " outputTemplate details: ");
+            Builder.Append("techName=" + Source.TechName.ToStringAlways());
+            Builder.Append(" ownerScope=" + OwnerScope.ToStringAlways());
+            Builder.Append(" ownerTechName=" + OwnerTechName.ToStringAlways());
+            Builder.Append(" language=" + (Language == null ? Source.ExternalLanguageTechName.ToStringAlways() : Language.TechName.ToStringAlways()));
+            Builder.Append(" languageMatch=" + LanguageMatch.ToStringAlways());
+            Builder.Append(" sourceCollection=" + OwnerScope.ToStringAlways());
+            Builder.Append(" oldLength=" + OldText.NullDefault("").Length.ToString(CultureInfo.InvariantCulture));
+            Builder.Append(" newLength=" + NewText.NullDefault("").Length.ToString(CultureInfo.InvariantCulture));
+            Builder.Append(" oldHash=" + (OldText == null ? "<none>" : OutputTemplateDiagnostics.HashText(OldText).Substring(0, 16)));
+            Builder.Append(" newHash=" + OutputTemplateDiagnostics.HashText(NewText).Substring(0, 16));
+            Builder.Append(" oldExtendsBaseTemplate=" + (OldExtendsBaseTemplate == null ? "<none>" : OldExtendsBaseTemplate.Value.ToString(CultureInfo.InvariantCulture)));
+            Builder.Append(" extendsBaseTemplate=" + Source.ExtendsBaseTemplate.GetValueOrDefault(Existing == null ? true : Existing.ExtendsBaseTemplate).ToString(CultureInfo.InvariantCulture));
+            Builder.Append(" targetFileName=" + TargetFileName.ToStringAlways());
+            Builder.Append(" targetFileExtension=" + TargetExtension.ToStringAlways());
+            Builder.Append(" templateRole=" + Directives.Role);
+            return Builder.ToString();
         }
 
         private void ApplyOperations()

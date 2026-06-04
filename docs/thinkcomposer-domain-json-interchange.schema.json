@@ -579,6 +579,19 @@
             "targetFileExtension": {
               "type": "string"
             },
+            "templateRole": {
+              "type": "string",
+              "enum": [
+                "DocumentRoot",
+                "Fragment",
+                "SubTemplate",
+                "Diagnostic",
+                "Disabled",
+                "NotApplicable",
+                "Unknown"
+              ],
+              "description": "Optional role hint for generation diagnostics. The native TextTemplate model stores this as directives/metadata, not as executable behavior."
+            },
             "templateText": {
               "$ref": "#/$defs/editableText",
               "description": "Template body text. It is imported/exported as text and is never executed by the interchange layer."

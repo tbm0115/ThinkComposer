@@ -1237,12 +1237,10 @@ namespace Instrumind.ThinkComposer.Composer
 
             ExposedWorkCommand = new GenericCommand("Generation Preview");
             ExposedWorkCommand.Apply = (param => Generation.GenerationManager.ShowGenerationFilePreview(
-                                                    ((CompositionEngine)this.WorkspaceDirector.ActiveDocumentEngine).CurrentView
-                                                                                .SelectedRepresentations.First().RepresentedIdea));
+                                                    (CompositionEngine)this.WorkspaceDirector.ActiveDocumentEngine));
             ExposedWorkCommand.CanApply = ((param) => this.WorkspaceDirector.ActiveDocument != null
-                                           && ((CompositionEngine)this.WorkspaceDirector.ActiveDocumentEngine).CurrentView.SelectedRepresentations.Any()
                                            && ProductDirector.ValidateEditionPermission(AppExec.LIC_EDITION_PROFESSIONAL, "Generate Files", false, new DateTime(2013, 6, 22)));
-            Expositor = new WorkCommandExpositor("Generation Preview", "GenerationPreview", "Generates text, from the selected Idea, based on an Output-Template.", "fgen_prev.png",
+            Expositor = new WorkCommandExpositor("Generation Preview", "GenerationPreview", "Previews generated text for the active generation scope or selected Idea.", "fgen_prev.png",
                                                  EShellCommandCategory.Edition, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
             this.CommandExpositors.Add(ExposedWorkCommand.Name, Expositor);
 

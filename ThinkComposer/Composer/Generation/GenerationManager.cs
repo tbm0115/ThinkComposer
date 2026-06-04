@@ -115,7 +115,43 @@ namespace Instrumind.ThinkComposer.Composer.Generation
             return Result;
         }
 
+        public static void ShowGenerationFilePreview(CompositionEngine Engine)
+        {
+            if (Engine == null || Engine.TargetComposition == null)
+                return;
+
+            var SelectedIdeas = (Engine.CurrentView == null
+                                 ? new Idea[0]
+                                 : Engine.CurrentView.SelectedRepresentations
+                                       .Where(Representation => Representation != null && Representation.RepresentedIdea != null)
+                                       .Select(Representation => Representation.RepresentedIdea)
+                                       .Distinct()
+                                       .ToArray());
+
+            var ScopeNote = "";
+            Idea Source = null;
+            if (SelectedIdeas.Length == 0)
+            {
+                Source = Engine.TargetComposition;
+                ScopeNote = "Preview scope: no concept or relationship is selected; using the active composition root, matching Generate Files scope.";
+            }
+            else
+            {
+                Source = SelectedIdeas.First();
+                ScopeNote = SelectedIdeas.Length == 1
+                            ? "Preview scope: selected " + (Source is Relationship ? "relationship" : "concept") + "."
+                            : "Preview scope: multiple items are selected; previewing the first selected item '" + Source.TechName + "'.";
+            }
+
+            ShowGenerationFilePreview(Source, ScopeNote);
+        }
+
         public static void ShowGenerationFilePreview(Idea Source)
+        {
+            ShowGenerationFilePreview(Source, null);
+        }
+
+        private static void ShowGenerationFilePreview(Idea Source, string ScopeNote)
         {
             if (Source == null || Source.EditEngine == null)
                 return;
@@ -143,16 +179,33 @@ namespace Instrumind.ThinkComposer.Composer.Generation
                     Source.IdeaDefinitor.OwnerDomain.CurrentExternalLanguage = Language;
                 }
 
-                var Preparation = OutputTemplatePreparationService.PrepareSelection(Source.OwnerComposition, Language, new Idea[] { Source }, "Generation Preview");
+                var OwnerComposition = Source as Composition;
+                if (OwnerComposition == null)
+                    OwnerComposition = Source.OwnerComposition;
+
+                var Preparation = (Source is Composition
+                                  ? OutputTemplatePreparationService.PrepareComposition(OwnerComposition, Language, "Generation Preview")
+                                  : OutputTemplatePreparationService.PrepareSelection(OwnerComposition, Language, new Idea[] { Source }, "Generation Preview"));
                 if (GenerationManager.ShowPreparationIssues(Preparation, true))
                     return;
 
                 Preparation.LogToConsole();
                 Language = Preparation.Language;
-                var Preview = FileGenerator.GenerateFilePreview(Source, Language);
+                var Generator = new FileGenerator(OwnerComposition, Language,
+                                                  OwnerComposition.CompositeContentDomain.GenerationConfiguration, Preparation);
+                var Preview = Generator.GeneratePreview(Source);
+                var EffectiveTemplateText = (Source is Composition
+                                             ? Preparation.CompositionTemplateText
+                                             : (Preparation.PreparedDefinitionTemplateTexts.ContainsKey(Source.IdeaDefinitor)
+                                                ? Preparation.PreparedDefinitionTemplateTexts[Source.IdeaDefinitor]
+                                                : Source.IdeaDefinitor.GetGenerationFinalTemplate(Language)));
+                var Directives = OutputTemplateDirectiveInfo.Parse(EffectiveTemplateText);
+                var ResolutionText = ScopeNote.NullDefault("") + Environment.NewLine +
+                                     OutputTemplateDiagnostics.BuildPreviewMetadata(Source, Language, EffectiveTemplateText,
+                                                                                    Directives, Preview, Preparation);
 
                 DialogOptionsWindow GenDialog = null;
-                var Previewer = new FileGenerationPreviewer(Preview.FileName, Preview.GeneratedText);
+                var Previewer = new FileGenerationPreviewer(Preview.FileName, Preview.GeneratedText, EffectiveTemplateText, ResolutionText);
                 Display.OpenContentDialogWindow(ref GenDialog, "Generate from: " + Source.Name,
                                                 Previewer, 600, 700);
             }

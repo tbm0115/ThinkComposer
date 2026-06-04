@@ -111,6 +111,16 @@ namespace Instrumind.ThinkComposer.Composer.Generation
 
         public int MissingExternalLanguages { get; set; }
 
+        public int MissingRequiredSubtemplates { get; set; }
+
+        public int LintInfos { get; set; }
+
+        public int LintWarnings { get; set; }
+
+        public int LintErrors { get; set; }
+
+        public int LintBlocking { get; set; }
+
         public IList<OutputTemplatePreparationIssue> Issues { get; private set; }
 
         public IList<IdeaDefinition> PreparedDefinitions { get; private set; }
@@ -141,8 +151,13 @@ namespace Instrumind.ThinkComposer.Composer.Generation
                    "External languages resolved: " + this.ExternalLanguagesResolved + Environment.NewLine +
                    "Subtemplates discovered: " + this.SubtemplatesDiscovered + Environment.NewLine +
                    "Subtemplates registered: " + this.SubtemplatesRegistered + Environment.NewLine +
+                   "Missing required subtemplates: " + this.MissingRequiredSubtemplates + Environment.NewLine +
                    "Missing optional templates: " + this.MissingTemplates + Environment.NewLine +
                    "Missing external languages: " + this.MissingExternalLanguages + Environment.NewLine +
+                   "Lint infos: " + this.LintInfos + Environment.NewLine +
+                   "Lint warnings: " + this.LintWarnings + Environment.NewLine +
+                   "Lint errors: " + this.LintErrors + Environment.NewLine +
+                   "Lint blocking: " + this.LintBlocking + Environment.NewLine +
                    "Warnings: " + this.Warnings + Environment.NewLine +
                    "Errors: " + this.Errors;
         }
@@ -188,8 +203,11 @@ namespace Instrumind.ThinkComposer.Composer.Generation
             Console.WriteLine("  externalLanguagesResolved=" + this.ExternalLanguagesResolved);
             Console.WriteLine("  subtemplatesDiscovered=" + this.SubtemplatesDiscovered);
             Console.WriteLine("  subtemplatesRegistered=" + this.SubtemplatesRegistered);
+            Console.WriteLine("  missingRequiredSubtemplates=" + this.MissingRequiredSubtemplates);
             Console.WriteLine("  missingTemplates=" + this.MissingTemplates);
             Console.WriteLine("  missingExternalLanguages=" + this.MissingExternalLanguages);
+            Console.WriteLine("  lintInfos=" + this.LintInfos + ", lintWarnings=" + this.LintWarnings +
+                              ", lintErrors=" + this.LintErrors + ", lintBlocking=" + this.LintBlocking);
             Console.WriteLine("  warnings=" + this.Warnings + ", errors=" + this.Errors);
 
             foreach (var Issue in this.Issues)
@@ -324,6 +342,7 @@ namespace Instrumind.ThinkComposer.Composer.Generation
                 this.PrepareDefinition(Definition, Language);
 
             this.ValidateSubtemplateReferences();
+            this.RunLint();
 
             return this.Result;
         }
@@ -538,9 +557,32 @@ namespace Instrumind.ThinkComposer.Composer.Generation
 
             foreach (var Reference in this.ReferencedSubtemplates
                          .GroupBy(Item => Item.Item1 + "\t" + Item.Item2)
-                         .Select(Group => Group.First()))
+                .Select(Group => Group.First()))
                 if (!this.DeclaredSubtemplates.Contains(Reference.Item2))
+                {
+                    this.Result.MissingRequiredSubtemplates++;
                     this.Result.AddError("Missing required subtemplate: " + Reference.Item2, Reference.Item1);
+                }
+        }
+
+        private void RunLint()
+        {
+            var Lint = OutputTemplateLintService.Lint(this.Result);
+            this.Result.LintInfos = Lint.Infos;
+            this.Result.LintWarnings = Lint.Warnings;
+            this.Result.LintErrors = Lint.Errors;
+            this.Result.LintBlocking = Lint.Blocking;
+
+            Lint.LogToConsole();
+
+            foreach (var Issue in Lint.Issues)
+                if (Issue.Severity == OutputTemplateIssueSeverity.Info)
+                    Console.WriteLine("Output template lint info: " + Issue);
+                else
+                    if (Issue.Severity == OutputTemplateIssueSeverity.Warning)
+                        this.Result.AddWarning(Issue.Message, Issue.Owner);
+                    else
+                        this.Result.AddError(Issue.Message, Issue.Owner);
         }
 
         private static string Describe(FormalElement Source)

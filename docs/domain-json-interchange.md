@@ -101,6 +101,8 @@ The importer is intentionally conservative:
 
 After apply, Domain base output-template collections are refreshed for the available external languages. Definition-level template slots are prepared automatically when composition generation or `Tools -> Output -> Refresh Output Templates` runs, so users do not need to open every definition's Output-Templates tab after Domain JSON import.
 
+Output-template create/update logs include owner scope, owner techName, external language match method, source collection, old/new text length, old/new template hash, `extendsBaseTemplate`, role, and target filename/extension hints. Template bodies are not written to the log. Use `Tools -> Output -> Generation Preview` to inspect the effective template and rendered output before generating files.
+
 The preview dialog summarizes planned changes. Detailed parse, planning, apply, skip, conflict, and rollback diagnostics are written to the lower-left application log.
 
 ## Report Categories

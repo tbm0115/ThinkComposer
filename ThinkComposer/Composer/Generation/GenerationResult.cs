@@ -16,6 +16,7 @@ namespace Instrumind.ThinkComposer.Composer.Generation
             var TextAndParameters = ExtractTextAndParameters(SourceText);
 
             this.GeneratedText = TextAndParameters.Item1;
+            this.Parameters = TextAndParameters.Item2;
 
             if (PreferGeneratedFilename && TextAndParameters.Item2.ContainsKey(GenerationManager.GENKEY_VAR_FILENAME))
                 this.FileName = TextAndParameters.Item2[GenerationManager.GENKEY_VAR_FILENAME];
@@ -25,8 +26,20 @@ namespace Instrumind.ThinkComposer.Composer.Generation
 
         public string GeneratedText { get; private set; }
 
+        public IDictionary<string, string> Parameters { get; private set; }
+
+        public string DiagnosticsText { get; set; }
+
+        public string ValidationSummary { get; set; }
+
+        public void ReplaceGeneratedText(string GeneratedText)
+        {
+            this.GeneratedText = GeneratedText.NullDefault("");
+        }
+
         private Tuple<string, Dictionary<string, string>> ExtractTextAndParameters(string SourceText)
         {
+            SourceText = SourceText.NullDefault("");
             var Text = new StringBuilder(SourceText.Length);
             var Parameters = new Dictionary<string, string>();
 

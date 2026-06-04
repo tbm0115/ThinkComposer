@@ -18,7 +18,19 @@
                 <TextBlock x:Name="TxtFileName" Text="[...]" Background="White" Margin="3" />
             </DockPanel>
         </DockPanel>
-        <TextBox x:Name="TxbOutput" Margin="2" TextWrapping="NoWrap" IsReadOnly="True" FontFamily="Consolas"
-                 HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Visible" />
+        <TabControl Margin="2">
+            <TabItem Header="Rendered Output">
+                <TextBox x:Name="TxbOutput" TextWrapping="NoWrap" IsReadOnly="True" FontFamily="Consolas"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Visible" />
+            </TabItem>
+            <TabItem Header="Effective Template">
+                <TextBox x:Name="TxbEffectiveTemplate" TextWrapping="NoWrap" IsReadOnly="True" FontFamily="Consolas"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Visible" />
+            </TabItem>
+            <TabItem Header="Resolution">
+                <TextBox x:Name="TxbResolution" TextWrapping="Wrap" IsReadOnly="True" FontFamily="Consolas"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Visible" />
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </UserControl>

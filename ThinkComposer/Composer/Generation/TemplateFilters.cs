@@ -91,6 +91,56 @@ namespace Instrumind.ThinkComposer.Composer.Generation
             return Result;
         }
 
+        public static string EscapeXmlAttribute(object input)
+        {
+            return OutputTemplateSafeText.XmlAttribute(input);
+        }
+
+        public static string EscapeXmlText(object input)
+        {
+            return OutputTemplateSafeText.XmlText(input);
+        }
+
+        public static string XmlAttribute(object input)
+        {
+            return OutputTemplateSafeText.XmlAttribute(input);
+        }
+
+        public static string XmlText(object input)
+        {
+            return OutputTemplateSafeText.XmlText(input);
+        }
+
+        public static string JsonString(object input)
+        {
+            return OutputTemplateSafeText.JsonString(input);
+        }
+
+        public static string DefaultIfEmpty(object input, object fallback)
+        {
+            var Text = input.ToStringAlways();
+            return Text.IsAbsent() ? fallback.ToStringAlways() : Text;
+        }
+
+        public static string Coalesce(object input, object fallback)
+        {
+            return DefaultIfEmpty(input, fallback);
+        }
+
+        public static string NormalizeTechName(object input)
+        {
+            return OutputTemplateSafeText.NormalizeTechName(input);
+        }
+
+        public static string DetailValue(object input, string FieldName)
+        {
+            var Proxy = input as DropProxy;
+            if (Proxy != null)
+                input = Proxy.GetObject();
+
+            return OutputTemplateSafeText.DetailValue(input, FieldName);
+        }
+
         public static string ToUnformattedText(string input)
         {
             if (input != null && input.StartsWith(PREFIX_XAML_RICHTEXT))

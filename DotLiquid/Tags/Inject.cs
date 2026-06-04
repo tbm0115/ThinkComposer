@@ -155,5 +155,16 @@ namespace DotLiquid.Tags
             var Container = RegisteredSubTemplates[CurrentConsumerContextId];
             Container.AddOrReplace(Name, CompiledTemplate);
         }
+
+        public static void ClearRegisteredSubTemplates(string ConsumerContextId = null)
+        {
+            ConsumerContextId = ConsumerContextId ?? CurrentConsumerContextId;
+
+            if (ConsumerContextId == null)
+                ConsumerContextId = "";
+
+            if (RegisteredSubTemplates.ContainsKey(ConsumerContextId))
+                RegisteredSubTemplates.Remove(ConsumerContextId);
+        }
     }
 }

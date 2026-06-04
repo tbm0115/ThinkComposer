@@ -1,105 +1,192 @@
 # ThinkComposer Output Template Generation
 
-ThinkComposer output templates generate text files from a composition, concept, or relationship using the active external language. A Domain owns the composition-level template plus base templates for concepts and relationships. Individual Concept Definitions and Relationship Definitions can then provide local templates that extend or replace those base templates.
+ThinkComposer output templates generate text files from a composition, concept, or relationship using the active external language. A Domain owns composition-level templates plus base templates for concepts and relationships. Individual Concept Definitions and Relationship Definitions can extend or replace those base templates.
 
-## Automatic Preparation
+Output templates are text. Import/export, refresh, preview preparation, and embedded-domain update do not execute them. Rendering occurs only during `Tools -> Output -> Generation Preview` or `Tools -> Output -> Generate Files...`.
 
-Composition-level generation now prepares output templates before rendering. Users do not need to open every Concept Definition or Relationship Definition dialog, or visit each Output-Templates tab, just to make definition templates available.
+## Preview Scopes
 
-Preparation performs the same model-level materialization that the Output-Templates editor previously performed as a UI side effect:
+`Tools -> Output -> Generation Preview` now works for the active generation scope:
 
-- Ensures Domain output-template collections and external languages are initialized.
-- Resolves the selected external language against the active Domain.
-- Inspects Concept Definitions used by ideas in the active composition.
-- Inspects Relationship Definitions used by relationships in the active composition.
-- Creates missing per-language definition template slots without duplicating existing templates.
-- Resolves stale template language references by matching Domain external-language tech names.
-- Combines base and local template text for diagnostics without rendering it.
-- Discovers declared `%%:SubTemplate=` sections and validates `{% inject 'Name' with ... %}` references before rendering.
+- No selected idea: previews the active composition/root scope, matching what `Generate Files...` would start from.
+- One selected concept or relationship: previews that selected item.
+- Multiple selected items: previews the first selected item and records that choice in the preview metadata/log.
 
-Preparation is idempotent. Running generation or `Tools -> Output -> Refresh Output Templates` repeatedly should not create duplicate templates.
+The preview window has three tabs:
 
-## Root Cause
+- `Rendered Output`: renders to a temporary buffer and does not write a file.
+- `Effective Template`: shows the final template body selected for rendering, including inherited/base template text where applicable.
+- `Resolution`: shows the target item, target kind, id, selected external language, resolved owner scope, source collection, template role, hash, text length, subtemplate counts, lint counts, generated filename, and validation/post-processing notes.
 
-Before this fix, `TemplateEditor.CurrentTemplate` created a missing `TextTemplate` for the Domain's current external language when the Output-Templates tab was opened. Generation called `IdeaDefinition.GetGenerationFinalTemplate(...)` directly and skipped that editor-only materialization. As a result, composition generation could miss definition-level templates until the user manually opened each involved definition editor.
-
-The materialization helper now lives in `OutputTemplatePreparationService`, and the editor calls the shared helper instead of owning the behavior itself.
+This uses the same preparation and rendering path as `Generate Files...`, so preview diagnostics should explain the same template selection that file generation will use.
 
 ## Generation Flow
 
-`Generate Files...` now follows this flow:
+`Generate Files...` follows this flow:
 
-1. The generation configuration dialog saves the selected external language.
+1. The generation configuration dialog saves the selected external language and target directory.
 2. Output templates are prepared for the active composition.
-3. Blocking preparation errors abort generation with a clear dialog.
-4. Warnings are shown concisely and logged in detail.
-5. Prepared definition templates are compiled before the composition root is rendered so subtemplates are registered in time for composition-level injection.
-6. Templates render through the existing DotLiquid generation path.
+3. Template linting checks roles, subtemplates, obvious recursion, XML/JSON risks, and empty bodies.
+4. Blocking preparation/lint errors abort generation before files are written.
+5. The composition-scoped subtemplate registry is cleared and rebuilt deterministically.
+6. Document-root templates render through the existing DotLiquid generation path.
+7. Fragment/SubTemplate/Disabled/NotApplicable templates are suppressed as standalone deliverables by default.
+8. XML/JSON-like rendered files are post-processed and parsed for validation warnings.
+9. The lower-left log records per-file template resolution and a generation summary.
 
-The preparation service does not execute user templates. Rendering only occurs during the intended generation or preview flow.
+## Template Resolution Logging
 
-## Diagnostics
+Every generated file logs:
 
-The lower-left log records the generation command, composition, Domain, scope, selected external language, counts, and per-template warnings or errors.
+- file path
+- generation scope
+- source item name, techName, and id
+- external language
+- resolved template name and techName
+- template owner scope and owner techName
+- template source collection
+- template text length and hash
+- whether it is a subtemplate or document root
+- whether it extends a base template
+- output role
+- validation result, when validation ran
 
-Blocking errors include:
+This makes it clear whether output came from a composition-level template, a definition-level template, an embedded-domain template, a base/fallback template, or an older imported/native template.
 
-- Active composition or Domain cannot be resolved.
-- Selected external language cannot be resolved.
-- A required injected subtemplate is missing.
-- A template section declaration cannot be read.
-- A template fails compilation during the generation flow.
+## Template Roles
 
-Warnings include:
+ThinkComposer supports role metadata through directives in the template text:
 
-- A used definition has no final template text for the selected language.
-- A template references an external language that is not present in the active Domain.
-- A template has no external language reference.
+```text
+%%:TemplateRole=DocumentRoot
+%%:TemplateRole=Fragment
+%%:TemplateRole=SubTemplate
+%%:TemplateRole=Diagnostic
+%%:TemplateRole=NotApplicable
+%%:TemplateRole=Disabled
+```
 
-The refresh command uses the same preparation service and shows the same summary without generating output.
+Existing subtemplate declarations still work:
 
-## JSON Interchange
+```text
+%%:SubTemplate=DeviceTemplate
+```
 
-Domain JSON import/export continues to treat output templates as text only. Templates are not executed during export, import, embedded-domain update, or preparation.
+`%%:SubTemplate=Name` is treated as a `SubTemplate` role when the template body is only subtemplate sections. If a legacy template contains a root body plus subtemplate sections, it is inferred as a document root so old domains keep generating as before.
 
-Domain JSON should preserve:
+Default generation emits `DocumentRoot` templates. `Fragment`, `SubTemplate`, `Disabled`, and `NotApplicable` templates are not emitted as final files unless a future explicit debug/all-templates mode is added.
 
-- `externalLanguageTechName`
-- `ownerScope`
-- `ownerTechName`
-- `templateText`
-- `extendsBaseTemplate`
+## Subtemplate Discovery
 
-After Domain JSON import or embedded Domain update, composition generation prepares the imported templates automatically. If the generation goal depends on definition-level output, make sure the Domain JSON includes output templates for the required Concept Definitions and Relationship Definitions, or includes usable Domain base templates for the selected external language.
+Before rendering, ThinkComposer scans prepared templates for the selected external language and registers subtemplates in deterministic order:
+
+1. owner scope
+2. owner techName
+3. template techName/id when available
+
+The log lists entries like:
+
+```text
+Output template subtemplates registered: DeviceTemplate -> Device.Device_Devices_Response_Document hash=...
+```
+
+Duplicate subtemplates with identical bodies are warned and resolved deterministically. Duplicate subtemplates with conflicting bodies are blocking because silently choosing one could produce misleading output.
+
+Missing required `{% inject 'Name' with ... %}` subtemplates are blocking preparation errors.
+
+## Linting
+
+Template linting runs during preview, refresh, and generation preparation. It currently checks:
+
+- missing required subtemplates
+- duplicate subtemplate names
+- direct obvious recursive injection
+- empty template bodies
+- XML declarations preceded by whitespace
+- fragment/subtemplate templates that appear to contain full XML documents
+- XML attributes filled directly from expressions that may become blank
+- invalid template section parsing
+
+Lint severities are `Info`, `Warning`, `Error`, and `Blocking`. Blocking issues prevent generation; warnings are shown and logged.
+
+## Post-Processing And Validation
+
+Post-processing can be controlled with directives:
+
+```text
+%%:outputPostProcess.trimLeadingWhitespace=true
+%%:outputPostProcess.normalizeLineEndings=LF
+%%:outputPostProcess.writeUtf8NoBom=true
+%%:outputPostProcess.ensureTrailingNewline=true
+%%:outputValidation=XmlWellFormed
+```
+
+For XML-like languages or `.xml` outputs, ThinkComposer trims leading BOM/whitespace before the XML declaration and validates well-formed XML. For JSON-like languages or `.json` outputs, it parses rendered JSON. Validation failures are warnings by default; generation does not crash.
+
+## Safe Template Helpers
+
+The DotLiquid filter set includes safer helpers for common generated text:
+
+```liquid
+{{ Name | EscapeXmlAttribute }}
+{{ Summary | EscapeXmlText }}
+{{ TechName | NormalizeTechName }}
+{{ Value | DefaultIfEmpty: 'unknown' }}
+{{ Info | DetailValue: 'FieldTechName' }}
+{{ Value | JsonString }}
+```
+
+Use these helpers for XML attributes/elements, JSON string values, fallback text, normalized identifiers, and simple table-detail field lookup. They are domain-neutral and do not execute external code.
+
+## Domain JSON Interchange
+
+Domain JSON import/export preserves output templates as text only. It also logs template owner scope, language resolution, old/new text length, old/new hash, extends-base flag, role, and target filename/extension hints when templates are created or updated.
+
+After Domain JSON import or embedded-domain update, generation treats template resolution as dirty and rebuilds preparation/subtemplate state on the next preview or generation run. Users should not need to open every definition's Output-Templates tab after import/update.
 
 ## Troubleshooting
 
-If generation aborts, check the lower-left log for `Output template preparation` lines. Common causes are an unresolved external language, a misspelled subtemplate name in an `inject` tag, or a definition whose output template body is empty for the selected language.
+If generated output comes from an unexpected template, open `Generation Preview` and inspect the `Resolution` and `Effective Template` tabs. Confirm the owner scope, owner techName, language, template hash, and source collection.
 
-If a generated file is missing, confirm that the final template text for that idea is not empty. A definition can intentionally rely on the Domain base template, but if both base and local templates are empty then no file is generated for that idea.
+If old/fallback/native templates appear to be used, update the embedded Domain from the intended `.tdom` or Domain JSON source, then preview again and compare template hashes in the log.
 
-If Domain JSON imported a template but generation cannot find it, check that `ownerScope`, `ownerTechName`, and `externalLanguageTechName` resolved during import. The Domain JSON log reports skipped templates with owner and language details.
+If fragment files are being produced unexpectedly in an older domain, add explicit `%%:TemplateRole=SubTemplate` or `%%:TemplateRole=Fragment` directives.
+
+If XML output has blank critical attributes, use `DefaultIfEmpty`, `EscapeXmlAttribute`, or `DetailValue` rather than emitting raw expressions inside attributes.
+
+If a subtemplate is missing, check spelling and confirm the template belongs to the same selected external language.
+
+## Limitations
+
+- This is a deterministic v1 diagnostic/lint layer, not a full static analyzer for DotLiquid.
+- Mermaid and Markdown validation are not implemented.
+- Scope isolation for injected templates is not changed in this pass; recursion is guarded and obvious cycles are linted.
+- There is no full embedded-domain output-template diff UI yet. Use Domain JSON export and template hashes as a practical comparison path.
 
 ## Manual Validation
 
-Baseline:
+Preview scope:
 
-1. Open a composition using a Domain with concept/relationship output templates.
-2. Do not open individual Concept Definition or Relationship Definition dialogs.
-3. Run `Tools -> Output -> Generate Files...`.
-4. Expected: generation succeeds or reports only real missing templates/languages/subtemplates.
+1. Open a composition.
+2. Select no concept.
+3. Run `Tools -> Output -> Generation Preview`.
+4. Expected: preview uses the active composition/root scope.
 
-Save/reopen:
+Effective/rendered preview:
 
-1. Import Domain JSON containing output templates.
-2. Save the composition.
-3. Close and reopen it.
-4. Generate composition output.
-5. Expected: no definition Output-Templates tabs need to be opened.
+1. Select a concept or relationship.
+2. Run `Generation Preview`.
+3. Confirm rendered output, effective template, filename, owner scope, language, and validation notes are visible.
 
-MTConnect:
+Generate files:
 
-1. Open the MTConnect Machine Monitoring composition.
-2. Import/update the companion MTConnect Domain JSON.
-3. Generate an MTConnectDevices, SHACL, Mermaid, Text, or Use-Case Proposal output if available.
-4. Expected: definition-level templates are prepared automatically before rendering.
+1. Run `Tools -> Output -> Generate Files...`.
+2. Confirm per-file template resolution lines appear in the lower-left log.
+3. Confirm the generation summary reports files generated, fragments suppressed, and XML/JSON validation counts.
+
+MTConnect regression:
+
+1. Import/update the MTConnect Domain JSON patch.
+2. Import the matching composition patch.
+3. Generate `Devices_Response_Document`.
+4. Confirm root/subtemplate roles are explicit in diagnostics, XML validation runs for `.xml` output, and fragment/subtemplates are not emitted as standalone deliverables unless intentionally configured.

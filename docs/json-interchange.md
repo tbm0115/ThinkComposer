@@ -105,6 +105,45 @@ Visuals in `views[].visuals[]` that refer to newly created or planned ideas are 
 
 Patch-style `operations` remain preferred for GPT-authored creation because they make intent, ordering, and safety easier to inspect.
 
+## Large Import Visual Strategy
+
+Large generated models should not hand-place, auto-fit, and auto-route every concept and relationship by default. Use top-level `visualStrategy` to describe how much visual materialization is intended:
+
+```json
+{
+  "visualStrategy": {
+    "mode": "overviewAndModel",
+    "largeModelThresholds": {
+      "concepts": 300,
+      "relationships": 300,
+      "visuals": 600
+    },
+    "fullModelVisuals": false,
+    "overviewView": true,
+    "overviewViewTechName": "Overview_View",
+    "maxOverviewConcepts": 150,
+    "maxOverviewRelationships": 200,
+    "groupBy": [
+      "Contains_Components",
+      "Contains_Data_Item"
+    ],
+    "deferRouting": true,
+    "deferAutoFit": true,
+    "deferViewRefresh": true
+  }
+}
+```
+
+Supported strategy modes:
+
+- `modelOnly` creates semantic concepts, relationships, details, markers, and TechSpec while suppressing visual placement. This is the safest mode for output-template generation and very large model imports.
+- `overviewAndModel` creates the full semantic model and materializes only a capped overview when `fullModelVisuals=false`. The importer prefers `overviewViewTechName` if that view already exists, otherwise it safely falls back to the active/root view. Creating new views from JSON is still deferred.
+- `optimizedFullVisual` allows full visual placement but defaults `deferAutoFit`, `deferRouting`, and `deferViewRefresh` to true so expensive UI work can be run manually later.
+- `exactFullVisual` preserves the previous exact-placement behavior and is appropriate for small or explicitly requested diagrams.
+- `auto` chooses `overviewAndModel` when document counts meet the configured thresholds; otherwise it behaves like `exactFullVisual`.
+
+When strategy deferral is active, the preview/apply dialog reports `Visual strategy`, `Visuals suppressed by strategy`, `Auto-fit deferred by strategy`, `Auto-route deferred by strategy`, and whether view refresh was deferred. Deferral is intentional and should be treated as a note, not an import failure. Manual Appearance commands can still be run after import when the user is ready to create or refine diagrams.
+
 ## Patch Operations Example
 
 ```json
@@ -375,6 +414,7 @@ Layout options:
 - `autoRoutePlacedLinks` defaults to true. It routes newly created, newly placed, or repaired relationship visuals/connectors during import without routing every existing connector in the view.
 - `useActiveCompositionAsContainer` defaults to false. It is an opt-in convenience for root-level fixture imports into a fresh active composition.
 - `treatMissingFullStateItemsAsCreates` defaults to false. It is an opt-in for full-state-style GPT documents that should create missing top-level `ideas[]` and `relationships[]` in the active composition. Patch operations remain preferred.
+- `visualStrategy` is top-level metadata, not an `importOptions` field. Use it for large imports that should be model-only, overview-only, optimized/deferred, or exact full visual.
 - `relationshipDefinitionFallbackTechName` defaults to disabled. It can preserve draft graph structure by retrying compatibility-failed relationship creates with a generic relationship definition.
 - `detailFallbackMode` defaults to `skip`. `appendToTechSpec` and `appendToDescription` preserve unsupported details as delimited text on the idea.
 - `domainCompatibilityPolicy` defaults to `warn`. Use `requireTechName`, `requireId`, `requireVersion`, or `requireSignature` when a patch must target a specific embedded domain contract.
@@ -389,10 +429,10 @@ Manual Appearance layout commands are currently separate from JSON import layout
 GPT prompt example:
 
 ```text
-Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. Include x/y/width/height for important new concepts when deliberate placement matters, and add place operations for relationships so the new model items are visible in the intended view. Leave importOptions.autoFitPlacedConcepts and importOptions.autoRoutePlacedLinks true so new concept labels fit their text and new links route around obstacles; use operation autoFit:false or autoRoute:false only when I provide deliberate sizing or connector geometry. Do not delete anything unless I explicitly request it.
+Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. For small diagrams, include x/y/width/height only when deliberate placement matters and leave importOptions.autoFitPlacedConcepts/autoRoutePlacedLinks true. For large model imports, prefer top-level visualStrategy mode modelOnly or overviewAndModel with deferAutoFit, deferRouting, and deferViewRefresh true instead of hand-placing/routing every item. Do not delete anything unless I explicitly request it.
 ```
 
-Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, and `samples/composition-full-state-create.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`.
+Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, `samples/composition-full-state-create.sample.json`, and `samples/composition-large-visual-strategy.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`. The large visual strategy sample demonstrates a model import that suppresses or caps visual work so semantic data can import without forcing immediate full-diagram rendering.
 
 ## Domain Interchange
 

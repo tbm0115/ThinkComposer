@@ -132,6 +132,53 @@ When using full-state-create mode:
 - Expect native relationship compatibility validation to run after concepts are planned/created.
 - If full-state missing IDs are skipped, enable the option or regenerate as patch operations.
 
+## Large composition imports
+
+For large generated models, do not hand-place, size, auto-fit, or route every concept and relationship unless the user explicitly asks for an exact full diagram. Use top-level `visualStrategy` to describe visual intent.
+
+Recommended modes:
+
+- `modelOnly`: best for output-template generation, semantic model import, details, TechSpec, and later manual layout. Suppresses visual placement and defers auto-fit, auto-route, and view refresh.
+- `overviewAndModel`: create the full semantic model but only a capped overview diagram. Use when the user needs a small navigable map of a much larger model.
+- `optimizedFullVisual`: use when the user wants full visual materialization but can defer expensive auto-fit, route, and refresh work.
+- `exactFullVisual`: use only for small diagrams or when the user explicitly asks for exact placement/routing.
+
+Use this pattern for large or uncertain imports:
+
+```json
+{
+  "visualStrategy": {
+    "mode": "overviewAndModel",
+    "largeModelThresholds": {
+      "concepts": 300,
+      "relationships": 300,
+      "visuals": 600
+    },
+    "fullModelVisuals": false,
+    "overviewView": true,
+    "overviewViewTechName": "Overview_View",
+    "maxOverviewConcepts": 150,
+    "maxOverviewRelationships": 200,
+    "groupBy": [
+      "Contains_Components",
+      "Contains_Data_Item"
+    ],
+    "deferRouting": true,
+    "deferAutoFit": true,
+    "deferViewRefresh": true
+  }
+}
+```
+
+Rules:
+
+- For output-template generation workflows, prefer `modelOnly`.
+- For large device/domain inventories, prefer `overviewAndModel`.
+- Do not generate hundreds/thousands of `views[].visuals[]`, exact `x/y`, exact `width/height`, or per-relationship routes by default.
+- `overviewViewTechName` is a preference for an existing view. Current JSON import falls back to the active/root view; it does not create arbitrary new views yet.
+- `groupBy` records overview intent using relationship-definition techNames. Current import diagnostics preserve the intent; full grouped overview layout is not a full graph optimizer.
+- Strategy deferrals are expected notes, not failures. The user can run manual Appearance commands after import when ready.
+
 ## Domain patch defaults
 
 Use this top-level shape for most `.tdom` or embedded-domain update patches:
@@ -231,6 +278,7 @@ Composition JSON import supports:
 - `importOptions.abortOnRelationshipCompatibilityFailure`
 - `importOptions.strictDetailsCompatibility`
 - `importOptions.abortOnDetailCompatibilityFailure`
+- top-level `visualStrategy`
 - operation-level `autoFit`
 - operation-level `autoRoute`
 - operation-level `fallbackDefinitionTechName`

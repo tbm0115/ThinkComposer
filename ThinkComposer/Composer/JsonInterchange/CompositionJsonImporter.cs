@@ -58,6 +58,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool AbortOnRelationshipCompatibilityFailure = false;
         private bool StrictDetailsCompatibility = false;
         private bool AbortOnDetailCompatibilityFailure = false;
+        private VisualStrategyPlan VisualStrategy = VisualStrategyPlan.Default;
+        private int VisualStrategyConceptVisualReservations = 0;
+        private int VisualStrategyRelationshipVisualReservations = 0;
+        private bool VisualStrategyMissingOverviewViewLogged = false;
         private readonly List<string> RelationshipCompatibilityReportItems = new List<string>();
         private readonly Dictionary<string, int> MissingContainerSkipCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, int> RelationshipCompatibilitySkipCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -130,6 +134,58 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             IncompatibleEndpoints
         }
 
+        private class VisualStrategyPlan
+        {
+            public const string ModeExactFullVisual = "exactFullVisual";
+            public const string ModeOptimizedFullVisual = "optimizedFullVisual";
+            public const string ModeOverviewAndModel = "overviewAndModel";
+            public const string ModeModelOnly = "modelOnly";
+
+            public static readonly VisualStrategyPlan Default = new VisualStrategyPlan
+            {
+                IsDeclared = false,
+                Mode = ModeExactFullVisual,
+                ConceptsThreshold = 300,
+                RelationshipsThreshold = 300,
+                VisualsThreshold = 600,
+                FullModelVisuals = true,
+                OverviewView = false,
+                MaxOverviewConcepts = 150,
+                MaxOverviewRelationships = 200,
+                GroupBy = new List<string>()
+            };
+
+            public bool IsDeclared;
+            public string Mode;
+            public int ConceptsThreshold;
+            public int RelationshipsThreshold;
+            public int VisualsThreshold;
+            public bool FullModelVisuals;
+            public bool OverviewView;
+            public string OverviewViewTechName;
+            public int MaxOverviewConcepts;
+            public int MaxOverviewRelationships;
+            public List<string> GroupBy;
+            public bool DeferRouting;
+            public bool DeferAutoFit;
+            public bool DeferViewRefresh;
+
+            public bool SuppressesAllVisuals
+            {
+                get { return String.Equals(this.Mode, ModeModelOnly, StringComparison.OrdinalIgnoreCase); }
+            }
+
+            public bool UsesOverviewCap
+            {
+                get { return String.Equals(this.Mode, ModeOverviewAndModel, StringComparison.OrdinalIgnoreCase) && !this.FullModelVisuals; }
+            }
+
+            public bool IsActive
+            {
+                get { return this.IsDeclared || !String.Equals(this.Mode, ModeExactFullVisual, StringComparison.OrdinalIgnoreCase); }
+            }
+        }
+
         private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview)
         {
             this.Composition = Composition;
@@ -180,8 +236,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 Importer.ApplyDocument(Document);
 
-                Importer.Report.Log("JSON import refreshing affected views inside command variation.");
-                Importer.RefreshAffectedViews();
+                if (Importer.ShouldDeferViewRefreshByStrategy())
+                {
+                    Importer.Report.ViewRefreshDeferredByStrategy = true;
+                    Importer.Report.Note("Visual strategy deferred affected view refresh/reveal; save/reopen or manually open/refresh views when ready.");
+                    Importer.Report.Log("JSON import view refresh deferred by visualStrategy.deferViewRefresh=true.");
+                }
+                else
+                {
+                    Importer.Report.Log("JSON import refreshing affected views inside command variation.");
+                    Importer.RefreshAffectedViews();
+                }
 
                 if (Engine.IsVariating)
                     Engine.CompleteCommandVariation();
@@ -192,7 +257,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     Importer.Report.Log("JSON import document marked modified.");
                 }
 
-                Importer.ExposeAffectedViewsAfterImport();
+                if (!Importer.ShouldDeferViewRefreshByStrategy())
+                    Importer.ExposeAffectedViewsAfterImport();
                 Importer.Report.Log("JSON import apply completed: " + Importer.Report.ToDetailedCountsString() + ".");
             }
             catch (Exception Problem)
@@ -241,6 +307,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             return Importer.Report;
+        }
+
+        private bool ShouldDeferViewRefreshByStrategy()
+        {
+            return this.VisualStrategy != null && this.VisualStrategy.IsActive && this.VisualStrategy.DeferViewRefresh;
         }
 
         private static bool ImportRequiresCompatibilityGate(CompositionJsonDocument Document)
@@ -296,6 +367,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.AbortOnRelationshipCompatibilityFailure = Document.ImportOptions != null && Document.ImportOptions.AbortOnRelationshipCompatibilityFailure.IsTrue();
             this.StrictDetailsCompatibility = Document.ImportOptions != null && Document.ImportOptions.StrictDetailsCompatibility.IsTrue();
             this.AbortOnDetailCompatibilityFailure = Document.ImportOptions != null && Document.ImportOptions.AbortOnDetailCompatibilityFailure.IsTrue();
+            this.VisualStrategy = BuildVisualStrategy(Document);
+            this.Report.VisualStrategyMode = this.VisualStrategy.IsActive ? this.VisualStrategy.Mode : null;
             this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
                             ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
                             ", autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
@@ -312,6 +385,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             ", layoutMode=" + this.LayoutMode +
                             ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
                             ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
+            LogVisualStrategyOptions();
 
             EvaluateCompatibilityRequirements(Document);
             RunPreflight(Document);
@@ -366,6 +440,214 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             EmitFullStateCreateModeNotes(Document);
             EmitRelationshipCompatibilitySummary();
             EvaluateStrictImportBlock();
+        }
+
+        private VisualStrategyPlan BuildVisualStrategy(CompositionJsonDocument Document)
+        {
+            var Source = Document == null ? null : Document.VisualStrategy;
+            var Plan = new VisualStrategyPlan
+            {
+                IsDeclared = Source != null,
+                Mode = VisualStrategyPlan.ModeExactFullVisual,
+                ConceptsThreshold = 300,
+                RelationshipsThreshold = 300,
+                VisualsThreshold = 600,
+                FullModelVisuals = true,
+                OverviewView = false,
+                MaxOverviewConcepts = 150,
+                MaxOverviewRelationships = 200,
+                GroupBy = new List<string>(),
+                DeferRouting = false,
+                DeferAutoFit = false,
+                DeferViewRefresh = false
+            };
+
+            if (Source == null)
+                return Plan;
+
+            if (Source.LargeModelThresholds != null)
+            {
+                Plan.ConceptsThreshold = PositiveOrDefault(Source.LargeModelThresholds.Concepts, Plan.ConceptsThreshold);
+                Plan.RelationshipsThreshold = PositiveOrDefault(Source.LargeModelThresholds.Relationships, Plan.RelationshipsThreshold);
+                Plan.VisualsThreshold = PositiveOrDefault(Source.LargeModelThresholds.Visuals, Plan.VisualsThreshold);
+            }
+
+            Plan.MaxOverviewConcepts = PositiveOrDefault(Source.MaxOverviewConcepts, Plan.MaxOverviewConcepts);
+            Plan.MaxOverviewRelationships = PositiveOrDefault(Source.MaxOverviewRelationships, Plan.MaxOverviewRelationships);
+            Plan.OverviewViewTechName = Source.OverviewViewTechName;
+            Plan.GroupBy = Source.GroupBy == null ? new List<string>() : Source.GroupBy.Where(Value => !String.IsNullOrWhiteSpace(Value)).ToList();
+
+            var Mode = NormalizeVisualStrategyMode(Source.Mode);
+            if (StringEquals(Mode, "auto"))
+            {
+                var ConceptCount = CountDocumentConcepts(Document);
+                var RelationshipCount = CountDocumentRelationships(Document);
+                var VisualCount = CountDocumentVisualRequests(Document);
+                Mode = ConceptCount >= Plan.ConceptsThreshold ||
+                       RelationshipCount >= Plan.RelationshipsThreshold ||
+                       VisualCount >= Plan.VisualsThreshold
+                       ? VisualStrategyPlan.ModeOverviewAndModel
+                       : VisualStrategyPlan.ModeExactFullVisual;
+                this.Report.Log("JSON import visualStrategy auto mode selected '" + Mode +
+                                "' from counts concepts=" + ConceptCount.ToString(CultureInfo.InvariantCulture) +
+                                ", relationships=" + RelationshipCount.ToString(CultureInfo.InvariantCulture) +
+                                ", visualRequests=" + VisualCount.ToString(CultureInfo.InvariantCulture) + ".");
+            }
+
+            Plan.Mode = Mode;
+
+            if (StringEquals(Mode, VisualStrategyPlan.ModeModelOnly))
+            {
+                Plan.FullModelVisuals = false;
+                Plan.OverviewView = false;
+                Plan.DeferAutoFit = Source.DeferAutoFit ?? true;
+                Plan.DeferRouting = Source.DeferRouting ?? true;
+                Plan.DeferViewRefresh = Source.DeferViewRefresh ?? true;
+            }
+            else
+                if (StringEquals(Mode, VisualStrategyPlan.ModeOverviewAndModel))
+                {
+                    Plan.FullModelVisuals = Source.FullModelVisuals ?? false;
+                    Plan.OverviewView = Source.OverviewView ?? true;
+                    Plan.DeferAutoFit = Source.DeferAutoFit ?? true;
+                    Plan.DeferRouting = Source.DeferRouting ?? true;
+                    Plan.DeferViewRefresh = Source.DeferViewRefresh ?? true;
+                }
+                else
+                    if (StringEquals(Mode, VisualStrategyPlan.ModeOptimizedFullVisual))
+                    {
+                        Plan.FullModelVisuals = Source.FullModelVisuals ?? true;
+                        Plan.OverviewView = Source.OverviewView ?? false;
+                        Plan.DeferAutoFit = Source.DeferAutoFit ?? true;
+                        Plan.DeferRouting = Source.DeferRouting ?? true;
+                        Plan.DeferViewRefresh = Source.DeferViewRefresh ?? true;
+                    }
+                    else
+                    {
+                        Plan.FullModelVisuals = Source.FullModelVisuals ?? true;
+                        Plan.OverviewView = Source.OverviewView ?? false;
+                        Plan.DeferAutoFit = Source.DeferAutoFit ?? false;
+                        Plan.DeferRouting = Source.DeferRouting ?? false;
+                        Plan.DeferViewRefresh = Source.DeferViewRefresh ?? false;
+                    }
+
+            return Plan;
+        }
+
+        private int PositiveOrDefault(int? Value, int DefaultValue)
+        {
+            return Value != null && Value.Value > 0 ? Value.Value : DefaultValue;
+        }
+
+        private string NormalizeVisualStrategyMode(string Mode)
+        {
+            if (String.IsNullOrWhiteSpace(Mode))
+                return "auto";
+
+            var Normalized = Mode.Trim();
+            if (StringEquals(Normalized, "auto"))
+                return "auto";
+
+            if (StringEquals(Normalized, "modelOnly") ||
+                StringEquals(Normalized, "semanticModelOnly") ||
+                StringEquals(Normalized, "semantic-model-only") ||
+                StringEquals(Normalized, "model-only"))
+                return VisualStrategyPlan.ModeModelOnly;
+
+            if (StringEquals(Normalized, "overviewAndModel") ||
+                StringEquals(Normalized, "overview") ||
+                StringEquals(Normalized, "overview-model") ||
+                StringEquals(Normalized, "overviewModel"))
+                return VisualStrategyPlan.ModeOverviewAndModel;
+
+            if (StringEquals(Normalized, "optimizedFullVisual") ||
+                StringEquals(Normalized, "optimizedFullVisuals") ||
+                StringEquals(Normalized, "optimized-full-visual"))
+                return VisualStrategyPlan.ModeOptimizedFullVisual;
+
+            if (StringEquals(Normalized, "exactFullVisual") ||
+                StringEquals(Normalized, "exactFullVisuals") ||
+                StringEquals(Normalized, "fullVisual") ||
+                StringEquals(Normalized, "exact"))
+                return VisualStrategyPlan.ModeExactFullVisual;
+
+            this.Report.Warn("Unknown visualStrategy.mode '" + Mode + "'; using exactFullVisual.");
+            return VisualStrategyPlan.ModeExactFullVisual;
+        }
+
+        private void LogVisualStrategyOptions()
+        {
+            if (this.VisualStrategy == null || !this.VisualStrategy.IsActive)
+            {
+                this.Report.Log("JSON import visualStrategy: not supplied; using existing visual import behavior.");
+                return;
+            }
+
+            this.Report.Note("Visual strategy '" + this.VisualStrategy.Mode +
+                             "' is active; see log for visual materialization and deferral details.");
+            this.Report.Log("JSON import visualStrategy: mode=" + this.VisualStrategy.Mode +
+                            ", thresholds concepts=" + this.VisualStrategy.ConceptsThreshold.ToString(CultureInfo.InvariantCulture) +
+                            ", relationships=" + this.VisualStrategy.RelationshipsThreshold.ToString(CultureInfo.InvariantCulture) +
+                            ", visuals=" + this.VisualStrategy.VisualsThreshold.ToString(CultureInfo.InvariantCulture) +
+                            ", fullModelVisuals=" + (this.VisualStrategy.FullModelVisuals ? "true" : "false") +
+                            ", overviewView=" + (this.VisualStrategy.OverviewView ? "true" : "false") +
+                            ", overviewViewTechName=" + this.VisualStrategy.OverviewViewTechName.ToStringAlways("<none>") +
+                            ", maxOverviewConcepts=" + this.VisualStrategy.MaxOverviewConcepts.ToString(CultureInfo.InvariantCulture) +
+                            ", maxOverviewRelationships=" + this.VisualStrategy.MaxOverviewRelationships.ToString(CultureInfo.InvariantCulture) +
+                            ", deferAutoFit=" + (this.VisualStrategy.DeferAutoFit ? "true" : "false") +
+                            ", deferRouting=" + (this.VisualStrategy.DeferRouting ? "true" : "false") +
+                            ", deferViewRefresh=" + (this.VisualStrategy.DeferViewRefresh ? "true" : "false") +
+                            ", groupBy=" + FormatSet(this.VisualStrategy.GroupBy) + ".");
+        }
+
+        private int CountDocumentConcepts(CompositionJsonDocument Document)
+        {
+            var Count = Document == null || Document.Ideas == null
+                        ? 0
+                        : Document.Ideas.Count(Idea => Idea != null && !StringEquals(Idea.Kind, "Relationship"));
+            if (Document != null && Document.Operations != null)
+                Count += Document.Operations.Count(Operation => Operation != null &&
+                                                                StringEquals(Operation.Op, "create") &&
+                                                                StringEquals(Operation.Entity, "concept"));
+            return Count;
+        }
+
+        private int CountDocumentRelationships(CompositionJsonDocument Document)
+        {
+            var Count = Document == null || Document.Relationships == null
+                        ? 0
+                        : Document.Relationships.Count(Relationship => Relationship != null);
+            if (Document != null && Document.Operations != null)
+                Count += Document.Operations.Count(Operation => Operation != null &&
+                                                                StringEquals(Operation.Op, "create") &&
+                                                                StringEquals(Operation.Entity, "relationship"));
+            return Count;
+        }
+
+        private int CountDocumentVisualRequests(CompositionJsonDocument Document)
+        {
+            var Count = 0;
+            if (Document != null && Document.Views != null)
+                Count += Document.Views.Sum(View => View == null || View.Visuals == null ? 0 : View.Visuals.Count);
+
+            if (Document != null && Document.Operations != null)
+                Count += Document.Operations.Count(Operation => Operation != null &&
+                                                               (StringEquals(Operation.Op, "place") ||
+                                                                (StringEquals(Operation.Op, "create") && ShouldOperationRequestVisual(Operation))));
+
+            return Count;
+        }
+
+        private bool ShouldOperationRequestVisual(CompositionJsonOperation Operation)
+        {
+            if (Operation == null)
+                return false;
+
+            if (HasExplicitPlacement(Operation))
+                return true;
+
+            var AutoPlace = Operation.AutoPlace ?? GetSetBool(Operation.Set, "autoPlace");
+            return AutoPlace == null ? this.AutoPlaceNewItems : AutoPlace.Value;
         }
 
         private string NormalizeLayoutMode(string Mode)
@@ -712,6 +994,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             ", relationships=" + FullStateRelationships.Count.ToString(CultureInfo.InvariantCulture) +
                             ", views=" + FullStateViews.Count.ToString(CultureInfo.InvariantCulture) +
                             ", treatMissingFullStateItemsAsCreates=" + (this.TreatMissingFullStateItemsAsCreates ? "true" : "false"));
+            this.Report.Log("  document visual requests=" + CountDocumentVisualRequests(Document).ToString(CultureInfo.InvariantCulture) +
+                            ", visualStrategy=" + (this.VisualStrategy == null || !this.VisualStrategy.IsActive ? "<default>" : this.VisualStrategy.Mode) +
+                            ", suppressAllVisuals=" + (this.VisualStrategy != null && this.VisualStrategy.SuppressesAllVisuals ? "true" : "false") +
+                            ", overviewCap=" + (this.VisualStrategy != null && this.VisualStrategy.UsesOverviewCap ? "true" : "false"));
             this.Report.Log("  create concepts=" + CreateConcepts.ToString(CultureInfo.InvariantCulture));
             this.Report.Log("  create relationships=" + CreateRelationships.ToString(CultureInfo.InvariantCulture));
             this.Report.Log("  active-root fallbacks=" + ActiveRootFallbacks.ToString(CultureInfo.InvariantCulture));
@@ -2139,6 +2425,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Source.X == null && Source.Y == null && Source.Width == null && Source.Height == null)
                 return;
 
+            if (!ReserveVisualPlacementByStrategy(GetVisualEntityKind(Source), GetVisualTechName(Source), false, "full-state visual update"))
+                return;
+
             if (this.IsPreview)
             {
                 this.Report.CountUpdated();
@@ -2209,6 +2498,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void PlanMissingFullStateConceptVisual(View View, CompositionJsonVisual Source, PlannedConceptReference Planned, CompositionJsonOperation Operation)
         {
+            if (!ReserveVisualPlacementByStrategy("concept", Planned == null ? null : Planned.TechName, false, "full-state new concept visual"))
+                return;
+
             var Width = GetOperationDouble(Operation, "width") ?? GetConceptDefaultWidth(Planned.Definitor as ConceptDefinition);
             var Height = GetOperationDouble(Operation, "height") ?? GetConceptDefaultHeight(Planned.Definitor as ConceptDefinition);
             var Center = ResolvePlacementCenter(View, Operation, Width, Height, null);
@@ -2218,6 +2510,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void PlanMissingFullStateRelationshipVisual(View View, CompositionJsonVisual Source, PlannedRelationshipReference Planned, CompositionJsonOperation Operation)
         {
+            if (!ReserveVisualPlacementByStrategy("relationship", Planned == null ? null : Planned.TechName, false, "full-state new relationship visual"))
+                return;
+
             var Width = GetOperationDouble(Operation, "width") ?? GetRelationshipDefaultWidth(Planned.Definitor);
             var Height = GetOperationDouble(Operation, "height") ?? GetRelationshipDefaultHeight(Planned.Definitor);
             var Center = ResolveRelationshipPlacementCenter(null, View, Operation, Width, Height, null);
@@ -2234,6 +2529,99 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.Report.SkippedMessage(Message);
             else
                 this.Report.Log("JSON import skipped dependent visual: " + Message);
+        }
+
+        private string GetVisualEntityKind(CompositionJsonVisual Source)
+        {
+            var Idea = Source == null ? null : FindIdea(Source.IdeaId, Source.IdeaTechName);
+            if (Idea is Relationship)
+                return "relationship";
+
+            if (Idea is Concept)
+                return "concept";
+
+            if (this.IsPreview && Source != null && FindPlannedRelationship(Source.IdeaId, Source.IdeaTechName) != null)
+                return "relationship";
+
+            return "concept";
+        }
+
+        private string GetVisualTechName(CompositionJsonVisual Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Idea = FindIdea(Source.IdeaId, Source.IdeaTechName);
+            if (Idea != null)
+                return Idea.TechName;
+
+            var PlannedConcept = this.IsPreview ? FindPlannedConcept(Source.IdeaId, Source.IdeaTechName) : null;
+            if (PlannedConcept != null)
+                return PlannedConcept.TechName;
+
+            var PlannedRelationship = this.IsPreview ? FindPlannedRelationship(Source.IdeaId, Source.IdeaTechName) : null;
+            if (PlannedRelationship != null)
+                return PlannedRelationship.TechName;
+
+            return Source.IdeaTechName.NullDefault(Source.IdeaId);
+        }
+
+        private bool ReserveVisualPlacementByStrategy(string Entity, string TechName, bool IsExplicitPlaceOperation, string Reason)
+        {
+            if (this.VisualStrategy == null || !this.VisualStrategy.IsActive)
+                return true;
+
+            var EntityKey = StringEquals(Entity, "relationship") ? "relationship" : "concept";
+
+            if (this.VisualStrategy.SuppressesAllVisuals)
+            {
+                SuppressVisualPlacementByStrategy(EntityKey, TechName, Reason + "; mode=modelOnly");
+                return false;
+            }
+
+            if (!this.VisualStrategy.UsesOverviewCap)
+                return true;
+
+            if (StringEquals(EntityKey, "relationship"))
+            {
+                if (this.VisualStrategyRelationshipVisualReservations >= this.VisualStrategy.MaxOverviewRelationships)
+                {
+                    SuppressVisualPlacementByStrategy(EntityKey, TechName,
+                                                      Reason + "; overview relationship cap " +
+                                                      this.VisualStrategy.MaxOverviewRelationships.ToString(CultureInfo.InvariantCulture) +
+                                                      " reached");
+                    return false;
+                }
+
+                this.VisualStrategyRelationshipVisualReservations++;
+                return true;
+            }
+
+            if (this.VisualStrategyConceptVisualReservations >= this.VisualStrategy.MaxOverviewConcepts)
+            {
+                SuppressVisualPlacementByStrategy(EntityKey, TechName,
+                                                  Reason + "; overview concept cap " +
+                                                  this.VisualStrategy.MaxOverviewConcepts.ToString(CultureInfo.InvariantCulture) +
+                                                  " reached");
+                return false;
+            }
+
+            this.VisualStrategyConceptVisualReservations++;
+            return true;
+        }
+
+        private void SuppressVisualPlacementByStrategy(string Entity, string TechName, string Reason)
+        {
+            this.Report.CountVisualSkipped();
+            this.Report.VisualsSuppressedByStrategy++;
+
+            var Message = "Visual strategy suppressed " + Entity.ToStringAlways("visual") +
+                          " visual for '" + TechName.ToStringAlways("<unnamed>") +
+                          "': " + Reason.ToStringAlways() + ".";
+            if (this.Report.VisualsSuppressedByStrategy <= 8)
+                this.Report.Note(Message);
+            else
+                this.Report.Log("JSON import " + Message);
         }
 
         private void ApplyOperation(CompositionJsonOperation Operation)
@@ -2592,6 +2980,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
+            if (!ReserveVisualPlacementByStrategy("concept", Source == null ? null : Source.TechName, false, "new concept visual"))
+                return;
+
             var Definition = FindConceptDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
             var Container = Definition == null ? null : ResolveContainer(Source.ContainerId, Source.ContainerTechName, Definition.OwnerDomain);
             if (Container == null)
@@ -2618,6 +3009,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void PlanCreatedRelationshipVisual(CompositionJsonRelationship Source, CompositionJsonOperation Operation)
         {
             if (!ShouldPlaceCreatedItem(Operation))
+                return;
+
+            if (!ReserveVisualPlacementByStrategy("relationship", Source == null ? null : Source.TechName, false, "new relationship visual"))
                 return;
 
             var Definition = FindRelationshipDefinition(Source.DefinitionId, Source.DefinitionTechName, Source.DefinitionName);
@@ -2657,6 +3051,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
 
             if (!IsExplicitPlaceOperation && !ShouldPlaceCreatedItem(Operation))
+                return;
+
+            var Entity = Idea is Relationship ? "relationship" : "concept";
+            if (!ReserveVisualPlacementByStrategy(Entity, Idea.TechName, IsExplicitPlaceOperation,
+                                                  IsExplicitPlaceOperation ? "explicit place operation" : "created item visual"))
                 return;
 
             string Reason;
@@ -2925,6 +3324,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 if (this.AutoPlaceNewItems && Endpoint is Concept)
                 {
+                    if (!ReserveVisualPlacementByStrategy("concept", Endpoint.TechName, false, "relationship endpoint auto-placement"))
+                    {
+                        Missing.Add(Endpoint.TechName.ToStringAlways() + " (visualStrategy suppressed endpoint placement)");
+                        continue;
+                    }
+
                     string RecursiveWarning;
                     if (this.PreventSelfRecursiveCompositeViews &&
                         CompositeViewIntegrity.IsSelfRecursiveConceptPlacement((Concept)Endpoint, View, out RecursiveWarning))
@@ -3063,6 +3468,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (!AllowAuto)
                 return null;
 
+            var StrategyOverviewView = ResolveVisualStrategyOverviewView();
+            if (StrategyOverviewView != null)
+            {
+                this.Report.Log(FormatOperationPrefix() + "JSON import visualStrategy overview view selected: " +
+                                DescribeView(StrategyOverviewView) + ".");
+                return StrategyOverviewView;
+            }
+
             if (Container == this.Composition)
             {
                 var ActiveView = GetPreferredActiveView();
@@ -3094,6 +3507,29 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             Reason = "Cannot place visual because no explicit view, container composite view, or active view is available.";
+            return null;
+        }
+
+        private View ResolveVisualStrategyOverviewView()
+        {
+            if (this.VisualStrategy == null ||
+                !this.VisualStrategy.IsActive ||
+                !this.VisualStrategy.OverviewView ||
+                String.IsNullOrWhiteSpace(this.VisualStrategy.OverviewViewTechName))
+                return null;
+
+            var View = FindView(null, this.VisualStrategy.OverviewViewTechName);
+            if (View != null)
+                return View;
+
+            if (!this.VisualStrategyMissingOverviewViewLogged)
+            {
+                this.VisualStrategyMissingOverviewViewLogged = true;
+                this.Report.Note("Visual strategy requested overviewViewTechName '" +
+                                 this.VisualStrategy.OverviewViewTechName +
+                                 "', but creating views from JSON is not supported yet; using normal active/root view fallback.");
+            }
+
             return null;
         }
 
@@ -3313,6 +3749,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (!IsAutoFitExplicitlyEnabled(Operation))
                 return false;
 
+            if (ShouldDeferAutoFitByStrategy())
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName, null,
+                                      "visualStrategy.deferAutoFit=true", true);
+                this.Report.AutoFitDeferredByStrategy++;
+                return false;
+            }
+
             var Symbols = Concept == null
                           ? new List<VisualSymbol>()
                           : Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
@@ -3345,6 +3789,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void PlanAutoFitForConcept(string TechName, View View, CompositionJsonOperation Operation, bool CreatedNewVisual, string Reason)
         {
             var AutoFit = GetOperationAutoFit(Operation);
+            if (ShouldDeferAutoFitByStrategy())
+            {
+                SkipAutoFitForConcept(TechName, View, "visualStrategy.deferAutoFit=true", true);
+                this.Report.AutoFitDeferredByStrategy++;
+                return;
+            }
+
             if (AutoFit != null && !AutoFit.Value)
             {
                 SkipAutoFitForConcept(TechName, View, "operation autoFit=false", true);
@@ -3368,6 +3819,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private void AutoFitPlacedConceptIfNeeded(Concept Concept, VisualSymbol Symbol, CompositionJsonOperation Operation, bool CreatedNewVisual, string Reason)
         {
             var AutoFit = GetOperationAutoFit(Operation);
+            if (ShouldDeferAutoFitByStrategy())
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName,
+                                      Symbol == null ? null : Symbol.GetDisplayingView(),
+                                      "visualStrategy.deferAutoFit=true", true);
+                this.Report.AutoFitDeferredByStrategy++;
+                return;
+            }
+
             if (AutoFit != null && !AutoFit.Value)
             {
                 SkipAutoFitForConcept(Concept == null ? null : Concept.TechName,
@@ -3460,6 +3920,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return AutoFit != null && AutoFit.Value;
         }
 
+        private bool ShouldDeferAutoFitByStrategy()
+        {
+            return this.VisualStrategy != null && this.VisualStrategy.IsActive && this.VisualStrategy.DeferAutoFit;
+        }
+
         private void SkipAutoFitForConcept(string TechName, View View, string Reason, bool Count)
         {
             if (Count)
@@ -3521,6 +3986,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             " importOptions.autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
                             " reason=" + Reason.ToStringAlways() + ".");
 
+            if (ShouldDeferAutoRouteByStrategy())
+            {
+                SkipAutoRouteForRelationship(RelationshipTechName, View, "visualStrategy.deferRouting=true", true);
+                this.Report.AutoRouteDeferredByStrategy++;
+                return false;
+            }
+
             if (AutoRoute != null && !AutoRoute.Value)
             {
                 SkipAutoRouteForRelationship(RelationshipTechName, View, "operation autoRoute=false", true);
@@ -3578,6 +4050,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             " view=" + DescribeView(View) +
                             " reason=" + Reason.ToStringAlways() + ".");
             return true;
+        }
+
+        private bool ShouldDeferAutoRouteByStrategy()
+        {
+            return this.VisualStrategy != null && this.VisualStrategy.IsActive && this.VisualStrategy.DeferRouting;
         }
 
         private void ApplyQueuedAutoRoutes()

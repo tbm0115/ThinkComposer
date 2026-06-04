@@ -55,6 +55,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Document.Requires = ReadTargetContext(GetDictionary(Root, "requires"));
             Document.Composition = ReadComposition(GetDictionary(Root, "composition"));
             Document.ImportOptions = ReadImportOptions(GetDictionary(Root, "importOptions"));
+            Document.VisualStrategy = ReadVisualStrategy(GetDictionary(Root, "visualStrategy"));
             Document.Ideas = ReadList(Root, "ideas", ReadIdea);
             Document.Relationships = ReadList(Root, "relationships", ReadRelationship);
             Document.Views = ReadList(Root, "views", ReadView);
@@ -87,6 +88,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "requires", ToGraph(Document.Requires));
             AddIf(Obj, "composition", ToGraph(Document.Composition));
             AddIf(Obj, "importOptions", ToGraph(Document.ImportOptions));
+            AddIf(Obj, "visualStrategy", ToGraph(Document.VisualStrategy));
             Add(Obj, "ideas", ToList(Document.Ideas, ToGraph));
             Add(Obj, "relationships", ToList(Document.Relationships, ToGraph));
             Add(Obj, "views", ToList(Document.Views, ToGraph));
@@ -117,6 +119,38 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "layoutMode", ImportOptions.LayoutMode);
             AddIf(Obj, "preventSelfRecursiveCompositeViews", ImportOptions.PreventSelfRecursiveCompositeViews);
             AddIf(Obj, "repairRecursiveVisuals", ImportOptions.RepairRecursiveVisuals);
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonVisualStrategy Strategy)
+        {
+            if (Strategy == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "mode", Strategy.Mode);
+            AddIf(Obj, "largeModelThresholds", ToGraph(Strategy.LargeModelThresholds));
+            AddIf(Obj, "fullModelVisuals", Strategy.FullModelVisuals);
+            AddIf(Obj, "overviewView", Strategy.OverviewView);
+            AddIf(Obj, "overviewViewTechName", Strategy.OverviewViewTechName);
+            AddIf(Obj, "maxOverviewConcepts", Strategy.MaxOverviewConcepts);
+            AddIf(Obj, "maxOverviewRelationships", Strategy.MaxOverviewRelationships);
+            Add(Obj, "groupBy", Strategy.GroupBy ?? new List<string>());
+            AddIf(Obj, "deferRouting", Strategy.DeferRouting);
+            AddIf(Obj, "deferAutoFit", Strategy.DeferAutoFit);
+            AddIf(Obj, "deferViewRefresh", Strategy.DeferViewRefresh);
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonLargeModelThresholds Thresholds)
+        {
+            if (Thresholds == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "concepts", Thresholds.Concepts);
+            AddIf(Obj, "relationships", Thresholds.Relationships);
+            AddIf(Obj, "visuals", Thresholds.Visuals);
             return Obj;
         }
 
@@ -398,6 +432,38 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.LayoutMode = GetString(Source, "layoutMode");
             Result.PreventSelfRecursiveCompositeViews = GetNullableBool(Source, "preventSelfRecursiveCompositeViews");
             Result.RepairRecursiveVisuals = GetNullableBool(Source, "repairRecursiveVisuals");
+            return Result;
+        }
+
+        private static CompositionJsonVisualStrategy ReadVisualStrategy(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonVisualStrategy();
+            Result.Mode = GetString(Source, "mode");
+            Result.LargeModelThresholds = ReadLargeModelThresholds(GetDictionary(Source, "largeModelThresholds"));
+            Result.FullModelVisuals = GetNullableBool(Source, "fullModelVisuals");
+            Result.OverviewView = GetNullableBool(Source, "overviewView");
+            Result.OverviewViewTechName = GetString(Source, "overviewViewTechName");
+            Result.MaxOverviewConcepts = GetNullableInt(Source, "maxOverviewConcepts");
+            Result.MaxOverviewRelationships = GetNullableInt(Source, "maxOverviewRelationships");
+            Result.GroupBy = ReadStringList(Source, "groupBy");
+            Result.DeferRouting = GetNullableBool(Source, "deferRouting");
+            Result.DeferAutoFit = GetNullableBool(Source, "deferAutoFit");
+            Result.DeferViewRefresh = GetNullableBool(Source, "deferViewRefresh");
+            return Result;
+        }
+
+        private static CompositionJsonLargeModelThresholds ReadLargeModelThresholds(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonLargeModelThresholds();
+            Result.Concepts = GetNullableInt(Source, "concepts");
+            Result.Relationships = GetNullableInt(Source, "relationships");
+            Result.Visuals = GetNullableInt(Source, "visuals");
             return Result;
         }
 
@@ -1001,6 +1067,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             int Result;
             return TryGetInt(Source, Key, out Result) ? Result : DefaultValue;
+        }
+
+        public static int? GetNullableInt(IDictionary<string, object> Source, string Key)
+        {
+            int Result;
+            return TryGetInt(Source, Key, out Result) ? (int?)Result : null;
         }
 
         public static bool TryGetInt(IDictionary<string, object> Source, string Key, out int Result)

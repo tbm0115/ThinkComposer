@@ -61,6 +61,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int AppliedAutoRouteLinks { get; set; }
         public int SkippedAutoRouteLinks { get; set; }
         public int DoglegRoutedLinks { get; set; }
+        public string VisualStrategyMode { get; set; }
+        public int VisualsSuppressedByStrategy { get; set; }
+        public int AutoFitDeferredByStrategy { get; set; }
+        public int AutoRouteDeferredByStrategy { get; set; }
+        public bool ViewRefreshDeferredByStrategy { get; set; }
         public int RelationshipCompatibilitySkipped { get; set; }
         public int DetailsSkipped { get; set; }
         public bool CompatibilityBlocked { get; set; }
@@ -331,6 +336,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.PlannedRepairedRecursiveVisuals = preview.PlannedRepairedRecursiveVisuals;
             this.PlannedAutoFitConcepts = preview.PlannedAutoFitConcepts;
             this.PlannedAutoRouteLinks = preview.PlannedAutoRouteLinks;
+            this.VisualStrategyMode = preview.VisualStrategyMode;
+            this.VisualsSuppressedByStrategy = preview.VisualsSuppressedByStrategy;
+            this.AutoFitDeferredByStrategy = preview.AutoFitDeferredByStrategy;
+            this.AutoRouteDeferredByStrategy = preview.AutoRouteDeferredByStrategy;
+            this.ViewRefreshDeferredByStrategy = preview.ViewRefreshDeferredByStrategy;
             this.RelationshipCompatibilitySkipped = preview.RelationshipCompatibilitySkipped;
             this.DetailsSkipped = preview.DetailsSkipped;
             this.CompatibilityBlocked = preview.CompatibilityBlocked;
@@ -364,6 +374,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Text.AppendLine("Concepts not auto-fit: " + this.SkippedAutoFitConcepts);
             Text.AppendLine("Links routed: " + (this.IsPreview ? this.PlannedAutoRouteLinks : this.AppliedAutoRouteLinks));
             Text.AppendLine("Links not routed: " + this.SkippedAutoRouteLinks);
+            if (!String.IsNullOrEmpty(this.VisualStrategyMode))
+            {
+                Text.AppendLine("Visual strategy: " + this.VisualStrategyMode);
+                Text.AppendLine("Visuals suppressed by strategy: " + this.VisualsSuppressedByStrategy);
+                Text.AppendLine("Auto-fit deferred by strategy: " + this.AutoFitDeferredByStrategy);
+                Text.AppendLine("Auto-route deferred by strategy: " + this.AutoRouteDeferredByStrategy);
+                Text.AppendLine("View refresh deferred by strategy: " + (this.ViewRefreshDeferredByStrategy ? "yes" : "no"));
+            }
             Text.AppendLine("Source warnings: " + this.SourceWarnings.Count);
             Text.AppendLine("Import warnings: " + this.ImportWarnings.Count);
             Text.AppendLine("Notes: " + this.Notes.Count);
@@ -405,6 +423,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", visuals skipped=" + this.PlannedVisualsSkipped +
                    ", auto-fit concepts=" + this.PlannedAutoFitConcepts +
                    ", auto-route links=" + this.PlannedAutoRouteLinks +
+                   ", visual strategy=" + (String.IsNullOrEmpty(this.VisualStrategyMode) ? "<none>" : this.VisualStrategyMode) +
+                   ", visuals suppressed by strategy=" + this.VisualsSuppressedByStrategy +
+                   ", auto-fit deferred by strategy=" + this.AutoFitDeferredByStrategy +
+                   ", auto-route deferred by strategy=" + this.AutoRouteDeferredByStrategy +
+                   ", view refresh deferred by strategy=" + (this.ViewRefreshDeferredByStrategy ? "true" : "false") +
                    "; applied updated=" + this.AppliedUpdated +
                    ", created=" + this.AppliedCreated +
                    ", concepts created=" + this.AppliedConceptsCreated +

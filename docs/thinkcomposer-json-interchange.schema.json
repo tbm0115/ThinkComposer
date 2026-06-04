@@ -42,6 +42,10 @@
     "importOptions": {
       "$ref": "#/$defs/importOptions"
     },
+    "visualStrategy": {
+      "$ref": "#/$defs/visualStrategy",
+      "description": "Optional large-import visual materialization strategy. Use this when generated JSON should create the semantic model without forcing ThinkComposer to create, refresh, auto-fit, or route every visual immediately."
+    },
     "ideas": {
       "type": "array",
       "description": "Concept nodes. Relationships are stored separately in the relationships array.",
@@ -239,6 +243,92 @@
         "repairRecursiveVisuals": {
           "type": "boolean",
           "description": "When true or omitted, import scans for previously imported self-recursive visual representations and removes only the invalid visuals, preserving concepts and relationships."
+        }
+      }
+    },
+    "visualStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "modelOnly",
+            "semanticModelOnly",
+            "overviewAndModel",
+            "optimizedFullVisual",
+            "exactFullVisual"
+          ],
+          "description": "Controls visual materialization. modelOnly creates semantic ideas/relationships/details/TechSpec and suppresses visuals. overviewAndModel creates the full model plus a capped overview. optimizedFullVisual allows visuals but defaults expensive auto-fit/route/refresh work to deferred. exactFullVisual preserves legacy exact placement behavior."
+        },
+        "largeModelThresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "concepts": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 300
+            },
+            "relationships": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 300
+            },
+            "visuals": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 600
+            }
+          },
+          "description": "Thresholds used by mode=auto to choose overviewAndModel for large generated documents."
+        },
+        "fullModelVisuals": {
+          "type": "boolean",
+          "default": false,
+          "description": "For overviewAndModel, false caps visual materialization to overview limits; true allows full visual materialization while still honoring defer flags."
+        },
+        "overviewView": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, overview visual placement prefers overviewViewTechName if that view already exists, otherwise the importer falls back to the active/root view. JSON view creation is still deferred."
+        },
+        "overviewViewTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Preferred existing overview view techName, such as Overview_View. If not found, active/root view fallback is used."
+        },
+        "maxOverviewConcepts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 150,
+          "description": "Maximum concept visuals to materialize in overviewAndModel when fullModelVisuals=false."
+        },
+        "maxOverviewRelationships": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 200,
+          "description": "Maximum relationship visuals to materialize in overviewAndModel when fullModelVisuals=false."
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": [],
+          "description": "Relationship definition techNames that describe overview grouping intent. Current importer records this intent for diagnostics; full grouping layouts remain manual/command-driven."
+        },
+        "deferRouting": {
+          "type": "boolean",
+          "description": "When true, import does not queue auto-route work even if importOptions.autoRoutePlacedLinks or operation autoRoute would normally route created links."
+        },
+        "deferAutoFit": {
+          "type": "boolean",
+          "description": "When true, import does not run concept auto-fit during apply even if auto-fit options are enabled."
+        },
+        "deferViewRefresh": {
+          "type": "boolean",
+          "description": "When true, import skips immediate affected-view ShowAll/FitContentIntoView/reveal work after apply. This is important for very large model imports."
         }
       }
     },

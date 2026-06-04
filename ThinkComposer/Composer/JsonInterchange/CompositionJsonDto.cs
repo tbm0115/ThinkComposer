@@ -33,6 +33,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public CompositionJsonTargetContext Requires { get; set; }
         public CompositionJsonComposition Composition { get; set; }
         public CompositionJsonImportOptions ImportOptions { get; set; }
+        public CompositionJsonVisualStrategy VisualStrategy { get; set; }
         public List<CompositionJsonIdea> Ideas { get; set; }
         public List<CompositionJsonRelationship> Relationships { get; set; }
         public List<CompositionJsonView> Views { get; set; }
@@ -58,6 +59,34 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string LayoutMode { get; set; }
         public bool? PreventSelfRecursiveCompositeViews { get; set; }
         public bool? RepairRecursiveVisuals { get; set; }
+    }
+
+    public class CompositionJsonVisualStrategy
+    {
+        public CompositionJsonVisualStrategy()
+        {
+            this.LargeModelThresholds = new CompositionJsonLargeModelThresholds();
+            this.GroupBy = new List<string>();
+        }
+
+        public string Mode { get; set; }
+        public CompositionJsonLargeModelThresholds LargeModelThresholds { get; set; }
+        public bool? FullModelVisuals { get; set; }
+        public bool? OverviewView { get; set; }
+        public string OverviewViewTechName { get; set; }
+        public int? MaxOverviewConcepts { get; set; }
+        public int? MaxOverviewRelationships { get; set; }
+        public List<string> GroupBy { get; set; }
+        public bool? DeferRouting { get; set; }
+        public bool? DeferAutoFit { get; set; }
+        public bool? DeferViewRefresh { get; set; }
+    }
+
+    public class CompositionJsonLargeModelThresholds
+    {
+        public int? Concepts { get; set; }
+        public int? Relationships { get; set; }
+        public int? Visuals { get; set; }
     }
 
     public class CompositionJsonTargetContext

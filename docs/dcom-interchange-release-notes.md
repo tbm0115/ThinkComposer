@@ -19,6 +19,8 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Import GPT-generated full-state-style `.tcom` documents into blank compositions only when explicitly allowed with `importOptions.treatMissingFullStateItemsAsCreates=true` or per-item `isNew:true`.
 - Treat full-state `views[].visuals[]` for newly created ideas/relationships as safe placement requests, while grouping dependent visual skips when owners were not created.
 - Use top-level `visualStrategy` for large generated imports so GPTs can request semantic/model-only import, overview-plus-model import, optimized/deferred full visuals, or exact full visuals. Strategy deferral can suppress visual materialization, auto-fit, auto-route, and immediate view refresh to avoid out-of-memory behavior on very large models.
+- Correct imported visible relationship central symbols before routing with endpoint-corridor candidate scoring. Generated diagrams can use `relationshipVisualPlacementMode=auto` or `endpointCorridor` so connectors do not route through distant global relationship-label rows.
+- Express source intent through generic, explicit primitives such as top-level `groups[]`, concept `visual.role`, relationship `layoutRole`, `visual.display`, `includeInArrangement`, `includeInRouting`, and per-relationship `relationshipCenterPlacement`. The importer remains intent-agnostic and does not infer behavior from source formats, domains, concept names, or relationship names.
 - Diagnose relationship definition compatibility skips with endpoint definitions, role names, native `CanLink` reasons, and grouped skip counts by relationship definition.
 - Export domain/composition compatibility metadata, including a deterministic embedded-domain compatibility signature, and use optional `requires` blocks plus import policies to catch stale or mismatched GPT patches.
 - Run strict relationship/detail compatibility preflight and block apply before opening a command variation when strict abort options are enabled.
@@ -47,6 +49,8 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Full-state-style generated composition documents now produce a clear note when missing top-level IDs are update-only because full-state-create mode is disabled; enabling the option allows concepts to create before relationship compatibility is evaluated.
 - Strict mode on machine-monitoring-style generated patches should block partial imports before apply when domain relationship compatibility failures are detected; non-strict mode still imports compatible concepts/relationships and skips invalid relationships with diagnostics.
 - Large generated composition imports should include `visualStrategy.mode=modelOnly` for output-template/model generation, `overviewAndModel` for a small navigable overview plus full semantic model, or `optimizedFullVisual` when visual creation is required but auto-fit/auto-route/view refresh should be deferred.
+- Generated visual imports should avoid exact relationship-bubble coordinates unless they are hand-curated. Prefer `importOptions.relationshipVisualPlacementMode=endpointCorridor` or `visualStrategy.relationshipVisualPlacement=endpointCorridor`.
+- Intent-agnostic visual-control samples demonstrate explicit Group Region creation, hidden membership edges, summary/deferred concepts, and visible dependency edges without source-specific importer behavior.
 - Existing Appearance layout commands remain manual v1 commands and are separate from JSON import layout modes.
 
 ## Warning Model
@@ -75,5 +79,6 @@ The bundled `thinkcomposer-json-interchange` Skill is maintained with the schema
 - General full multi-bend connector routing and full graph crossing minimization remain backlog.
 - Spider, Hierarchy, Flowchart, and System Map are manual Appearance commands; JSON import currently integrates auto-placement, concept auto-fit, and link auto-route only.
 - `visualStrategy.overviewViewTechName` prefers an existing view but does not create new views yet; full overview grouping by `groupBy` is logged as intent and remains a future layout/materialization enhancement.
+- Relationship center cleanup uses local endpoint-corridor candidate scoring and overlap penalties. It is not a full edge-label optimizer, edge bundler, or crossing-minimizing graph drawing engine.
 - Compatibility signatures detect stale domain contracts but are not security signatures and do not replace native relationship validation.
 - Full embedded-domain/output-template diff UI remains backlog; current diagnostics use template hashes, owner metadata, and preview logs.

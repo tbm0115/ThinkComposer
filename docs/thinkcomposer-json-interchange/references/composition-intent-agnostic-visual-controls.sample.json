@@ -1,0 +1,156 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "relationshipVisualPlacementMode": "auto",
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for intent-agnostic Composition JSON visual controls. Import into any fresh composition that has the generic Concept and Relationship definitions.",
+    "Expected result: summary and normal concepts are visible, the deferred concept is created semantically without visual placement, the visible dependency edge uses endpoint-corridor center placement, and the diagnostic edge is excluded from routing only because JSON metadata says so."
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d200000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 160,
+      "width": 200,
+      "height": 64,
+      "set": {
+        "name": "Source Node",
+        "techName": "Intent_Agnostic_Source_Node",
+        "summary": "Normal visible source concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d200000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 430,
+      "y": 160,
+      "width": 200,
+      "height": 64,
+      "set": {
+        "name": "Target Node",
+        "techName": "Intent_Agnostic_Target_Node",
+        "summary": "Normal visible target concept."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d200000-0000-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 280,
+      "y": 360,
+      "width": 260,
+      "height": 64,
+      "visual": {
+        "role": "Summary",
+        "includeInOverview": true,
+        "includeInFullView": false,
+        "includeInArrangement": true,
+        "includeInRouting": true
+      },
+      "set": {
+        "name": "Collapsed Items Summary",
+        "techName": "Intent_Agnostic_Collapsed_Items_Summary",
+        "summary": "Summary concept explicitly marked by visual.role=Summary."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d200000-0000-4000-8000-000000000004",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "visual": {
+        "role": "Deferred",
+        "includeInView": false,
+        "includeInArrangement": false,
+        "includeInRouting": false
+      },
+      "set": {
+        "name": "Deferred Detail Node",
+        "techName": "Intent_Agnostic_Deferred_Detail_Node",
+        "summary": "Semantic concept created without a visual because includeInView=false."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9d200000-0000-4000-8000-000000000101",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "layoutRole": "Dependency",
+      "x": 120,
+      "y": 40,
+      "autoRoute": true,
+      "visual": {
+        "display": "visible",
+        "includeInArrangement": true,
+        "includeInRouting": true,
+        "relationshipCenterPlacement": "endpointCorridor"
+      },
+      "set": {
+        "name": "Source To Target",
+        "techName": "Intent_Agnostic_Source_To_Target",
+        "summary": "Visible dependency edge; imported center starts high but explicit endpointCorridor metadata recomputes it near endpoints.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Intent_Agnostic_Source_Node"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Intent_Agnostic_Target_Node"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9d200000-0000-4000-8000-000000000102",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "layoutRole": "Diagnostic",
+      "autoRoute": true,
+      "visual": {
+        "display": "diagnostic",
+        "includeInArrangement": false,
+        "includeInRouting": false,
+        "relationshipCenterPlacement": "endpointCorridor"
+      },
+      "set": {
+        "name": "Summary Diagnostic Note",
+        "techName": "Intent_Agnostic_Summary_Diagnostic_Note",
+        "summary": "Diagnostic edge excluded from arrangement/routing because explicit JSON metadata says so.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Intent_Agnostic_Collapsed_Items_Summary"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Intent_Agnostic_Target_Node"
+          }
+        ]
+      }
+    }
+  ]
+}

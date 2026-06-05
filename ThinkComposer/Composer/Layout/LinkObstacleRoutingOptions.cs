@@ -25,6 +25,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             this.RouteSelectedConnectorsOnly = true;
             this.IncludeComplementsAsObstacles = false;
             this.IncludeRelationshipCentralSymbolsAsObstacles = false;
+            this.CorrectRelationshipCentersBeforeRouting = true;
+            this.RelationshipVisualPlacementOptions = new RelationshipVisualPlacementOptions();
         }
 
         public double ObstaclePadding { get; set; }
@@ -42,5 +44,9 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         public bool IncludeComplementsAsObstacles { get; set; }
 
         public bool IncludeRelationshipCentralSymbolsAsObstacles { get; set; }
+
+        public bool CorrectRelationshipCentersBeforeRouting { get; set; }
+
+        public RelationshipVisualPlacementOptions RelationshipVisualPlacementOptions { get; set; }
     }
 }

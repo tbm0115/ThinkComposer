@@ -163,6 +163,7 @@ Use this pattern for large or uncertain imports:
       "Contains_Components",
       "Contains_Data_Item"
     ],
+    "relationshipVisualPlacement": "endpointCorridor",
     "deferRouting": true,
     "deferAutoFit": true,
     "deferViewRefresh": true
@@ -173,11 +174,113 @@ Use this pattern for large or uncertain imports:
 Rules:
 
 - For output-template generation workflows, prefer `modelOnly`.
-- For large device/domain inventories, prefer `overviewAndModel`.
+- For large inventories, prefer `overviewAndModel`.
 - Do not generate hundreds/thousands of `views[].visuals[]`, exact `x/y`, exact `width/height`, or per-relationship routes by default.
 - `overviewViewTechName` is a preference for an existing view. Current JSON import falls back to the active/root view; it does not create arbitrary new views yet.
 - `groupBy` records overview intent using relationship-definition techNames. Current import diagnostics preserve the intent; full grouped overview layout is not a full graph optimizer.
 - Strategy deferrals are expected notes, not failures. The user can run manual Appearance commands after import when ready.
+
+## Relationship center placement and routing
+
+ThinkComposer relationships may have visible central symbols. Generated JSON should not place these relationship bubbles in a global label row, because connectors route through the visible central symbol and can create long sweeping lines.
+
+Rules:
+
+- For generated flow, architecture, and system diagrams, place concepts deliberately and let the importer place relationship centers.
+- Prefer `importOptions.relationshipVisualPlacementMode: "endpointCorridor"` for generated diagrams, or `visualStrategy.relationshipVisualPlacement: "endpointCorridor"` when using large-import visual strategy.
+- `auto` is the default and preserves relationship centers that are already near their endpoint corridor while recomputing suspicious far-away centers.
+- Use `explicit` only when the relationship visual coordinates are hand-curated and intentionally close to the relationship endpoints.
+- For medium/large diagrams, also consider `autoRoutePlacedLinks: false` or `visualStrategy.deferRouting: true`; users can run Edit -> Appearance -> Route Links with Obstacle Avoidance after import.
+- If full-state JSON includes relationship visuals, omit exact relationship visual `x/y` unless exact placement is required, or make sure every relationship center is near the midpoint/corridor between its source and target concepts.
+
+## Intent-agnostic visual/layout primitives
+
+ThinkComposer import code is intentionally source-neutral. This Skill, not the application importer, is responsible for translating source intent into ThinkComposer primitives.
+
+Do not rely on ThinkComposer to guess that a source-format group, device, subsystem, membership edge, or relationship name implies special behavior. If source intent matters, emit explicit JSON metadata:
+
+- If a source grouping should become a Group Region, emit top-level `groups[]` with `createGroupRegion:true` and member ids/techNames.
+- If a relationship is membership/grouping and should not shape the diagram, emit `layoutRole:"Membership"` plus `visual.display:"hidden"` and `includeInArrangement:false`.
+- If a large model should be semantic-only, emit `visualStrategy.mode:"modelOnly"` and suppress visual work.
+- If a relationship label/center should be recomputed near its endpoints, emit `visual.relationshipCenterPlacement:"endpointCorridor"` or import-wide `relationshipVisualPlacementMode:"endpointCorridor"`.
+- If a concept should be an overview placeholder, emit `visual.role:"Summary"` or `visual.role:"GroupHeader"` explicitly.
+
+Source-neutral examples:
+
+Model-only semantic import:
+
+```json
+{
+  "visualStrategy": {
+    "mode": "modelOnly"
+  },
+  "importOptions": {
+    "autoFitPlacedConcepts": false,
+    "autoRoutePlacedLinks": false
+  }
+}
+```
+
+Group region with hidden membership edge:
+
+```json
+{
+  "groups": [
+    {
+      "name": "Subsystem A",
+      "techName": "Subsystem_A_Group",
+      "memberTechNames": ["A1", "A2", "A3"],
+      "createGroupRegion": true
+    }
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "relationship",
+      "layoutRole": "Membership",
+      "visual": {
+        "display": "hidden",
+        "includeInArrangement": false,
+        "includeInRouting": false
+      }
+    }
+  ]
+}
+```
+
+Visible dependency edge:
+
+```json
+{
+  "op": "create",
+  "entity": "relationship",
+  "layoutRole": "Dependency",
+  "visual": {
+    "display": "visible",
+    "relationshipCenterPlacement": "endpointCorridor",
+    "includeInArrangement": true,
+    "includeInRouting": true
+  }
+}
+```
+
+Summary/overview concept:
+
+```json
+{
+  "op": "create",
+  "entity": "concept",
+  "set": {
+    "name": "Related Items (112)",
+    "techName": "Related_Items_Summary"
+  },
+  "visual": {
+    "role": "Summary",
+    "includeInOverview": true,
+    "includeInFullView": false
+  }
+}
+```
 
 ## Domain patch defaults
 
@@ -278,6 +381,11 @@ Composition JSON import supports:
 - `importOptions.abortOnRelationshipCompatibilityFailure`
 - `importOptions.strictDetailsCompatibility`
 - `importOptions.abortOnDetailCompatibilityFailure`
+- `importOptions.relationshipVisualPlacementMode`
+- `importOptions.recomputeSuspiciousRelationshipVisuals`
+- `importOptions.maxRelationshipCenterDisplacement`
+- `importOptions.relationshipCenterObstaclePadding`
+- `importOptions.relationshipCenterOverlapPadding`
 - top-level `visualStrategy`
 - operation-level `autoFit`
 - operation-level `autoRoute`

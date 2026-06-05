@@ -129,7 +129,8 @@ Large generated models should not hand-place, auto-fit, and auto-route every con
     ],
     "deferRouting": true,
     "deferAutoFit": true,
-    "deferViewRefresh": true
+    "deferViewRefresh": true,
+    "relationshipVisualPlacement": "endpointCorridor"
   }
 }
 ```
@@ -143,6 +144,84 @@ Supported strategy modes:
 - `auto` chooses `overviewAndModel` when document counts meet the configured thresholds; otherwise it behaves like `exactFullVisual`.
 
 When strategy deferral is active, the preview/apply dialog reports `Visual strategy`, `Visuals suppressed by strategy`, `Auto-fit deferred by strategy`, `Auto-route deferred by strategy`, and whether view refresh was deferred. Deferral is intentional and should be treated as a note, not an import failure. Manual Appearance commands can still be run after import when the user is ready to create or refine diagrams.
+
+## Relationship Center Placement And Routing
+
+ThinkComposer relationships can have visible central symbols, so a visible relationship often routes as `source concept -> relationship center -> target concept`. If generated JSON places all relationship centers in a global row or label band, connector lines are pulled through those distant centers and can sweep across the diagram.
+
+For generated diagrams, prefer concept placement plus endpoint-corridor relationship placement:
+
+```json
+{
+  "importOptions": {
+    "relationshipVisualPlacementMode": "endpointCorridor",
+    "recomputeSuspiciousRelationshipVisuals": true,
+    "maxRelationshipCenterDisplacement": 250,
+    "relationshipCenterObstaclePadding": 16,
+    "relationshipCenterOverlapPadding": 8
+  }
+}
+```
+
+Modes:
+
+- `auto` preserves relationship centers already near their endpoint corridor and recomputes suspicious centers, such as imported labels far from their source/target concepts.
+- `endpointCorridor` recomputes visible relationship centers near the midpoint of their visible origin/target concepts, rejects candidates that overlap concepts, scores relationship-bubble overlaps, and runs before auto-route.
+- `midpoint` uses the endpoint midpoint as the primary placement intent.
+- `explicit` preserves supplied relationship visual coordinates. Use this only for hand-curated diagrams.
+- `hideGeneric` is reserved for safe future hiding/minimizing of generic relationship centers; v1 keeps visible centers and places them near endpoints.
+- `defer` skips relationship visual placement correction.
+
+`visualStrategy.relationshipVisualPlacement` provides the same intent at the large-import strategy level, while `importOptions.relationshipVisualPlacementMode` overrides it. For large or uncertain imports, do not emit exact relationship visual `x/y` coordinates unless they are intentionally curated and close to the endpoint corridor.
+
+Regression sample: `samples/composition-relationship-center-placement.sample.json` intentionally imports relationship centers in a top/global label band. With `relationshipVisualPlacementMode: "auto"`, the final import summary should report suspicious centers and recomputed relationship centers before routing.
+
+## Intent-Agnostic Import Primitives
+
+ThinkComposer JSON import is intentionally source-neutral. The importer does not infer that a source-format subgraph is a Group Region, that a relationship named "contains" is membership, that a particular domain should be model-only, or that a concept name implies layout behavior. Those choices belong in the Skill or JSON generator.
+
+Use explicit metadata when the source intent matters:
+
+```json
+{
+  "groups": [
+    {
+      "name": "Subsystem A",
+      "techName": "Subsystem_A_Group",
+      "memberTechNames": ["A1", "A2", "A3"],
+      "headerConceptTechName": "Subsystem_A",
+      "createGroupRegion": true,
+      "padding": 80,
+      "sendToBack": true
+    }
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "layoutRole": "Membership",
+      "visual": {
+        "display": "hidden",
+        "includeInArrangement": false,
+        "includeInRouting": false
+      }
+    }
+  ]
+}
+```
+
+Generic concept visual roles are `Normal`, `GroupHeader`, `GroupRegionAnchor`, `Summary`, `Annotation`, `Diagnostic`, `Hidden`, and `Deferred`. `Hidden`/`Deferred` or `includeInView:false` creates semantic concepts while suppressing visual placement for this import.
+
+Generic relationship layout roles are `Normal`, `Membership`, `Dependency`, `DataFlow`, `ControlFlow`, `SequenceFlow`, `Feedback`, `CrossLink`, `Annotation`, `Diagnostic`, and `Unknown`. Relationship visual display values are `visible`, `hidden`, `deferred`, `labelOnly`, and `diagnostic`. Per-relationship `visual.relationshipCenterPlacement` can override the import-wide center placement mode with `explicit`, `midpoint`, `endpointCorridor`, `auto`, `hideGeneric`, or `defer`.
+
+`groups[]` creates or updates a visible Group Region complement only when `createGroupRegion:true` is supplied. The importer uses the listed visible member concepts and optional header concept; it does not infer groups from source names, relationship names, or domains.
+
+Regression samples:
+
+- `samples/composition-intent-agnostic-groups.sample.json` demonstrates explicit `groups[]`, a hidden membership relationship, and a visible dependency relationship.
+- `samples/composition-intent-agnostic-visual-controls.sample.json` demonstrates summary/deferred concepts, diagnostic relationship metadata, and endpoint-corridor relationship-center placement.
 
 ## Patch Operations Example
 
@@ -415,6 +494,7 @@ Layout options:
 - `useActiveCompositionAsContainer` defaults to false. It is an opt-in convenience for root-level fixture imports into a fresh active composition.
 - `treatMissingFullStateItemsAsCreates` defaults to false. It is an opt-in for full-state-style GPT documents that should create missing top-level `ideas[]` and `relationships[]` in the active composition. Patch operations remain preferred.
 - `visualStrategy` is top-level metadata, not an `importOptions` field. Use it for large imports that should be model-only, overview-only, optimized/deferred, or exact full visual.
+- `relationshipVisualPlacementMode` defaults to `auto`. Use `endpointCorridor` for generated diagrams where relationship centers should be recomputed near the concepts they connect; use `explicit` only for curated coordinates.
 - `relationshipDefinitionFallbackTechName` defaults to disabled. It can preserve draft graph structure by retrying compatibility-failed relationship creates with a generic relationship definition.
 - `detailFallbackMode` defaults to `skip`. `appendToTechSpec` and `appendToDescription` preserve unsupported details as delimited text on the idea.
 - `domainCompatibilityPolicy` defaults to `warn`. Use `requireTechName`, `requireId`, `requireVersion`, or `requireSignature` when a patch must target a specific embedded domain contract.
@@ -432,7 +512,7 @@ GPT prompt example:
 Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. For small diagrams, include x/y/width/height only when deliberate placement matters and leave importOptions.autoFitPlacedConcepts/autoRoutePlacedLinks true. For large model imports, prefer top-level visualStrategy mode modelOnly or overviewAndModel with deferAutoFit, deferRouting, and deferViewRefresh true instead of hand-placing/routing every item. Do not delete anything unless I explicitly request it.
 ```
 
-Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, `samples/composition-full-state-create.sample.json`, and `samples/composition-large-visual-strategy.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`. The large visual strategy sample demonstrates a model import that suppresses or caps visual work so semantic data can import without forcing immediate full-diagram rendering.
+Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, `samples/composition-full-state-create.sample.json`, `samples/composition-large-visual-strategy.sample.json`, `samples/composition-relationship-center-placement.sample.json`, `samples/composition-intent-agnostic-groups.sample.json`, and `samples/composition-intent-agnostic-visual-controls.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`. The large visual strategy sample demonstrates a model import that suppresses or caps visual work so semantic data can import without forcing immediate full-diagram rendering. The intent-agnostic samples demonstrate explicit generic visual/group controls without source-specific importer behavior.
 
 ## Domain Interchange
 

@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using Instrumind.ThinkComposer.Composer.Layout;
+
 namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 {
     public class CompositionJsonImportReport
@@ -61,6 +63,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public int AppliedAutoRouteLinks { get; set; }
         public int SkippedAutoRouteLinks { get; set; }
         public int DoglegRoutedLinks { get; set; }
+        public int RelationshipCentersInspected { get; set; }
+        public int RelationshipCentersRecomputed { get; set; }
+        public int RelationshipCentersPreserved { get; set; }
+        public int SuspiciousRelationshipCenters { get; set; }
+        public int RelationshipCentersSkipped { get; set; }
+        public int GroupsPlanned { get; set; }
+        public int GroupsCreated { get; set; }
+        public int GroupsUpdated { get; set; }
+        public int VisualsSuppressedByExplicitControl { get; set; }
+        public int RelationshipsHiddenOrDeferredByExplicitControl { get; set; }
+        public int ArrangementExclusionsByExplicitControl { get; set; }
+        public int RoutingExclusionsByExplicitControl { get; set; }
         public string VisualStrategyMode { get; set; }
         public int VisualsSuppressedByStrategy { get; set; }
         public int AutoFitDeferredByStrategy { get; set; }
@@ -136,7 +150,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool HasImportWarnings { get { return this.ImportWarnings.Count > 0; } }
         public bool HasErrors { get { return this.Errors.Count > 0; } }
         public bool HasRiskyChanges { get { return this.Created > 0 || this.Deleted > 0 || this.Updated > 25; } }
-        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0 || this.AppliedAutoFitConcepts > 0 || this.AppliedAutoRouteLinks > 0; } }
+        public bool HasAppliedChanges { get { return this.AppliedUpdated > 0 || this.AppliedCreated > 0 || this.AppliedDeleted > 0 || this.AppliedVisualsPlaced > 0 || this.AppliedRepairedRelationships > 0 || this.AppliedRepairedRecursiveVisuals > 0 || this.AppliedAutoFitConcepts > 0 || this.AppliedAutoRouteLinks > 0 || this.RelationshipCentersRecomputed > 0 || this.GroupsCreated > 0 || this.GroupsUpdated > 0; } }
 
         public void Log(string message)
         {
@@ -301,6 +315,53 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.DoglegRoutedLinks++;
         }
 
+        public void AddRelationshipCenterPlacement(RelationshipVisualPlacementResult Result)
+        {
+            if (Result == null)
+                return;
+
+            this.RelationshipCentersInspected += Result.RelationshipCentersInspected;
+            this.RelationshipCentersRecomputed += Result.RelationshipCentersRecomputed;
+            this.RelationshipCentersPreserved += Result.RelationshipCentersPreserved;
+            this.SuspiciousRelationshipCenters += Result.SuspiciousRelationshipCenters;
+            this.RelationshipCentersSkipped += Result.RelationshipCentersSkipped;
+        }
+
+        public void CountGroupPlanned()
+        {
+            this.GroupsPlanned++;
+        }
+
+        public void CountGroupCreated()
+        {
+            this.GroupsCreated++;
+        }
+
+        public void CountGroupUpdated()
+        {
+            this.GroupsUpdated++;
+        }
+
+        public void CountVisualSuppressedByExplicitControl()
+        {
+            this.VisualsSuppressedByExplicitControl++;
+        }
+
+        public void CountRelationshipHiddenOrDeferredByExplicitControl()
+        {
+            this.RelationshipsHiddenOrDeferredByExplicitControl++;
+        }
+
+        public void CountArrangementExclusionByExplicitControl()
+        {
+            this.ArrangementExclusionsByExplicitControl++;
+        }
+
+        public void CountRoutingExclusionByExplicitControl()
+        {
+            this.RoutingExclusionsByExplicitControl++;
+        }
+
         public void CountRelationshipCompatibilitySkipped()
         {
             this.RelationshipCompatibilitySkipped++;
@@ -336,6 +397,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.PlannedRepairedRecursiveVisuals = preview.PlannedRepairedRecursiveVisuals;
             this.PlannedAutoFitConcepts = preview.PlannedAutoFitConcepts;
             this.PlannedAutoRouteLinks = preview.PlannedAutoRouteLinks;
+            this.RelationshipCentersInspected = preview.RelationshipCentersInspected;
+            this.RelationshipCentersRecomputed = preview.RelationshipCentersRecomputed;
+            this.RelationshipCentersPreserved = preview.RelationshipCentersPreserved;
+            this.SuspiciousRelationshipCenters = preview.SuspiciousRelationshipCenters;
+            this.RelationshipCentersSkipped = preview.RelationshipCentersSkipped;
+            this.GroupsPlanned = preview.GroupsPlanned;
+            this.VisualsSuppressedByExplicitControl = preview.VisualsSuppressedByExplicitControl;
+            this.RelationshipsHiddenOrDeferredByExplicitControl = preview.RelationshipsHiddenOrDeferredByExplicitControl;
+            this.ArrangementExclusionsByExplicitControl = preview.ArrangementExclusionsByExplicitControl;
+            this.RoutingExclusionsByExplicitControl = preview.RoutingExclusionsByExplicitControl;
             this.VisualStrategyMode = preview.VisualStrategyMode;
             this.VisualsSuppressedByStrategy = preview.VisualsSuppressedByStrategy;
             this.AutoFitDeferredByStrategy = preview.AutoFitDeferredByStrategy;
@@ -374,6 +445,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Text.AppendLine("Concepts not auto-fit: " + this.SkippedAutoFitConcepts);
             Text.AppendLine("Links routed: " + (this.IsPreview ? this.PlannedAutoRouteLinks : this.AppliedAutoRouteLinks));
             Text.AppendLine("Links not routed: " + this.SkippedAutoRouteLinks);
+            Text.AppendLine("Relationship centers inspected: " + this.RelationshipCentersInspected);
+            Text.AppendLine("Relationship centers recomputed: " + this.RelationshipCentersRecomputed);
+            Text.AppendLine("Suspicious relationship centers: " + this.SuspiciousRelationshipCenters);
+            Text.AppendLine("Groups planned/created/updated: " + this.GroupsPlanned + "/" + this.GroupsCreated + "/" + this.GroupsUpdated);
+            Text.AppendLine("Visuals suppressed by explicit controls: " + this.VisualsSuppressedByExplicitControl);
+            Text.AppendLine("Relationships hidden/deferred by explicit controls: " + this.RelationshipsHiddenOrDeferredByExplicitControl);
+            Text.AppendLine("Routing exclusions by explicit controls: " + this.RoutingExclusionsByExplicitControl);
             if (!String.IsNullOrEmpty(this.VisualStrategyMode))
             {
                 Text.AppendLine("Visual strategy: " + this.VisualStrategyMode);
@@ -423,6 +501,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", visuals skipped=" + this.PlannedVisualsSkipped +
                    ", auto-fit concepts=" + this.PlannedAutoFitConcepts +
                    ", auto-route links=" + this.PlannedAutoRouteLinks +
+                   ", relationship centers inspected=" + this.RelationshipCentersInspected +
+                   ", relationship centers recomputed=" + this.RelationshipCentersRecomputed +
+                   ", suspicious relationship centers=" + this.SuspiciousRelationshipCenters +
+                   ", groups planned=" + this.GroupsPlanned +
+                   ", visual controls suppressed=" + this.VisualsSuppressedByExplicitControl +
+                   ", relationship controls hidden/deferred=" + this.RelationshipsHiddenOrDeferredByExplicitControl +
+                   ", routing controls excluded=" + this.RoutingExclusionsByExplicitControl +
                    ", visual strategy=" + (String.IsNullOrEmpty(this.VisualStrategyMode) ? "<none>" : this.VisualStrategyMode) +
                    ", visuals suppressed by strategy=" + this.VisualsSuppressedByStrategy +
                    ", auto-fit deferred by strategy=" + this.AutoFitDeferredByStrategy +
@@ -443,6 +528,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    ", auto-route links=" + this.AppliedAutoRouteLinks +
                    ", auto-route skipped=" + this.SkippedAutoRouteLinks +
                    ", dogleg routed links=" + this.DoglegRoutedLinks +
+                   ", relationship centers inspected=" + this.RelationshipCentersInspected +
+                   ", relationship centers recomputed=" + this.RelationshipCentersRecomputed +
+                   ", relationship centers preserved=" + this.RelationshipCentersPreserved +
+                   ", relationship centers skipped=" + this.RelationshipCentersSkipped +
+                   ", suspicious relationship centers=" + this.SuspiciousRelationshipCenters +
+                   ", groups created=" + this.GroupsCreated +
+                   ", groups updated=" + this.GroupsUpdated +
+                   ", visual controls suppressed=" + this.VisualsSuppressedByExplicitControl +
+                   ", relationship controls hidden/deferred=" + this.RelationshipsHiddenOrDeferredByExplicitControl +
+                   ", routing controls excluded=" + this.RoutingExclusionsByExplicitControl +
                    ", relationship compatibility skipped=" + this.RelationshipCompatibilitySkipped +
                    ", details skipped=" + this.DetailsSkipped +
                    "; source warnings=" + this.SourceWarnings.Count +

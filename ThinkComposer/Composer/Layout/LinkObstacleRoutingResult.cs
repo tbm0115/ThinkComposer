@@ -38,11 +38,19 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
         public int Skipped { get; set; }
 
+        public RelationshipVisualPlacementResult RelationshipCenterPlacementResult { get; set; }
+
         public IList<string> Warnings { get; private set; }
 
         public bool HasMutations
         {
-            get { return this.Routed > 0 || this.Straightened > 0 || this.DoglegRouted > 0; }
+            get
+            {
+                return this.Routed > 0 ||
+                       this.Straightened > 0 ||
+                       this.DoglegRouted > 0 ||
+                       (this.RelationshipCenterPlacementResult != null && this.RelationshipCenterPlacementResult.HasMutations);
+            }
         }
 
         public void AddWarning(string Warning)

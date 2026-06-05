@@ -75,6 +75,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 return;
 
             var Options = new LinkObstacleRoutingOptions();
+            Options.IncludeRelationshipCentralSymbolsAsObstacles = true;
+            Options.CorrectRelationshipCentersBeforeRouting = true;
             var SelectedConnectors = Context.SelectedRouteableConnectors;
             if (SelectedConnectors.Count < 1)
             {
@@ -108,6 +110,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 Display.DialogMessage("Route Links with Obstacle Avoidance",
                                       "Connector routes inspected: " + Result.ConnectorRoutesInspected + "\n" +
                                       "Relationship routes inspected: " + Result.RelationshipRoutesInspected + "\n" +
+                                      FormatRelationshipCenterPlacementForDialog(Result.RelationshipCenterPlacementResult) +
                                       "Routed links: " + Result.Routed + "\n" +
                                       "Dogleg routed links: " + Result.DoglegRouted + "\n" +
                                       "Straightened links: " + Result.Straightened + "\n" +
@@ -352,6 +355,16 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         public static bool IsFutureAppearanceToolEnabled(CompositionEngine Engine)
         {
             return false;
+        }
+
+        private static string FormatRelationshipCenterPlacementForDialog(RelationshipVisualPlacementResult Result)
+        {
+            if (Result == null)
+                return "";
+
+            return "Relationship centers inspected: " + Result.RelationshipCentersInspected + "\n" +
+                   "Relationship centers recomputed: " + Result.RelationshipCentersRecomputed + "\n" +
+                   "Suspicious relationship centers: " + Result.SuspiciousRelationshipCenters + "\n";
         }
 
         public static void ShowFutureAppearanceToolMessage(string CommandName)

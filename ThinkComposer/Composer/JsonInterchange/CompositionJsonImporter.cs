@@ -58,6 +58,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool AbortOnRelationshipCompatibilityFailure = false;
         private bool StrictDetailsCompatibility = false;
         private bool AbortOnDetailCompatibilityFailure = false;
+        private RelationshipVisualPlacementOptions RelationshipVisualPlacementOptions = new RelationshipVisualPlacementOptions();
         private VisualStrategyPlan VisualStrategy = VisualStrategyPlan.Default;
         private int VisualStrategyConceptVisualReservations = 0;
         private int VisualStrategyRelationshipVisualReservations = 0;
@@ -76,6 +77,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly Dictionary<string, PlannedConceptReference> PlannedConceptsByTechName = new Dictionary<string, PlannedConceptReference>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, PlannedRelationshipReference> PlannedRelationshipsById = new Dictionary<string, PlannedRelationshipReference>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, PlannedRelationshipReference> PlannedRelationshipsByTechName = new Dictionary<string, PlannedRelationshipReference>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> RelationshipCenterPlacementModesByTechName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, CompositionJsonVisualControl> VisualControlsByIdeaTechName = new Dictionary<string, CompositionJsonVisualControl>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, CompositionJsonVisualControl> VisualControlsByIdeaId = new Dictionary<string, CompositionJsonVisualControl>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> LayoutRolesByRelationshipTechName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         private class PlannedConceptReference
         {
@@ -152,7 +157,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 OverviewView = false,
                 MaxOverviewConcepts = 150,
                 MaxOverviewRelationships = 200,
-                GroupBy = new List<string>()
+                GroupBy = new List<string>(),
+                RelationshipVisualPlacement = RelationshipVisualPlacementOptions.ModeAuto
             };
 
             public bool IsDeclared;
@@ -169,6 +175,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             public bool DeferRouting;
             public bool DeferAutoFit;
             public bool DeferViewRefresh;
+            public string RelationshipVisualPlacement;
 
             public bool SuppressesAllVisuals
             {
@@ -368,6 +375,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.StrictDetailsCompatibility = Document.ImportOptions != null && Document.ImportOptions.StrictDetailsCompatibility.IsTrue();
             this.AbortOnDetailCompatibilityFailure = Document.ImportOptions != null && Document.ImportOptions.AbortOnDetailCompatibilityFailure.IsTrue();
             this.VisualStrategy = BuildVisualStrategy(Document);
+            this.RelationshipVisualPlacementOptions = BuildRelationshipVisualPlacementOptions(Document);
             this.Report.VisualStrategyMode = this.VisualStrategy.IsActive ? this.VisualStrategy.Mode : null;
             this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
                             ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
@@ -382,6 +390,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             ", abortOnRelationshipCompatibilityFailure=" + (this.AbortOnRelationshipCompatibilityFailure ? "true" : "false") +
                             ", strictDetailsCompatibility=" + (this.StrictDetailsCompatibility ? "true" : "false") +
                             ", abortOnDetailCompatibilityFailure=" + (this.AbortOnDetailCompatibilityFailure ? "true" : "false") +
+                            ", relationshipVisualPlacementMode=" + this.RelationshipVisualPlacementOptions.PlacementMode +
+                            ", recomputeSuspiciousRelationshipVisuals=" + (this.RelationshipVisualPlacementOptions.RecomputeSuspiciousRelationshipVisuals ? "true" : "false") +
+                            ", hideGenericRelationshipCenters=" + (this.RelationshipVisualPlacementOptions.HideGenericRelationshipCenters ? "true" : "false") +
+                            ", maxRelationshipCenterDisplacement=" + this.RelationshipVisualPlacementOptions.MaxRelationshipCenterDisplacement.ToString(CultureInfo.InvariantCulture) +
                             ", layoutMode=" + this.LayoutMode +
                             ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
                             ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
@@ -429,8 +441,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 }
             }
 
+            if (Document.Groups != null && Document.Groups.Count > 0)
+                ApplyGroups(Document.Groups);
+
             if (this.RepairRecursiveVisuals && !this.IsPreview)
                 RepairRecursiveVisualsAfterImport();
+
+            if (!this.IsPreview)
+                ApplyRelationshipCenterPlacementBeforeRouting();
 
             if (!this.IsPreview)
                 ApplyQueuedAutoRoutes();
@@ -459,7 +477,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 GroupBy = new List<string>(),
                 DeferRouting = false,
                 DeferAutoFit = false,
-                DeferViewRefresh = false
+                DeferViewRefresh = false,
+                RelationshipVisualPlacement = RelationshipVisualPlacementOptions.ModeAuto
             };
 
             if (Source == null)
@@ -476,6 +495,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Plan.MaxOverviewRelationships = PositiveOrDefault(Source.MaxOverviewRelationships, Plan.MaxOverviewRelationships);
             Plan.OverviewViewTechName = Source.OverviewViewTechName;
             Plan.GroupBy = Source.GroupBy == null ? new List<string>() : Source.GroupBy.Where(Value => !String.IsNullOrWhiteSpace(Value)).ToList();
+            Plan.RelationshipVisualPlacement = NormalizeRelationshipVisualPlacementMode(Source.RelationshipVisualPlacement);
 
             var Mode = NormalizeVisualStrategyMode(Source.Mode);
             if (StringEquals(Mode, "auto"))
@@ -534,6 +554,40 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Plan;
         }
 
+        private RelationshipVisualPlacementOptions BuildRelationshipVisualPlacementOptions(CompositionJsonDocument Document)
+        {
+            var Options = new RelationshipVisualPlacementOptions();
+            var ImportOptions = Document == null ? null : Document.ImportOptions;
+
+            Options.PlacementMode = NormalizeRelationshipVisualPlacementMode(this.VisualStrategy == null
+                                                                             ? null
+                                                                             : this.VisualStrategy.RelationshipVisualPlacement);
+
+            if (ImportOptions != null)
+            {
+                if (!String.IsNullOrWhiteSpace(ImportOptions.RelationshipVisualPlacementMode))
+                    Options.PlacementMode = NormalizeRelationshipVisualPlacementMode(ImportOptions.RelationshipVisualPlacementMode);
+
+                if (ImportOptions.RecomputeSuspiciousRelationshipVisuals != null)
+                    Options.RecomputeSuspiciousRelationshipVisuals = ImportOptions.RecomputeSuspiciousRelationshipVisuals.Value;
+
+                if (ImportOptions.HideGenericRelationshipCenters != null)
+                    Options.HideGenericRelationshipCenters = ImportOptions.HideGenericRelationshipCenters.Value;
+
+                if (ImportOptions.MaxRelationshipCenterDisplacement != null && ImportOptions.MaxRelationshipCenterDisplacement.Value > 0)
+                    Options.MaxRelationshipCenterDisplacement = ImportOptions.MaxRelationshipCenterDisplacement.Value;
+
+                if (ImportOptions.RelationshipCenterObstaclePadding != null && ImportOptions.RelationshipCenterObstaclePadding.Value >= 0)
+                    Options.RelationshipCenterObstaclePadding = ImportOptions.RelationshipCenterObstaclePadding.Value;
+
+                if (ImportOptions.RelationshipCenterOverlapPadding != null && ImportOptions.RelationshipCenterOverlapPadding.Value >= 0)
+                    Options.RelationshipCenterOverlapPadding = ImportOptions.RelationshipCenterOverlapPadding.Value;
+            }
+
+            Options.RelationshipPlacementModesByTechName = this.RelationshipCenterPlacementModesByTechName;
+            return Options;
+        }
+
         private int PositiveOrDefault(int? Value, int DefaultValue)
         {
             return Value != null && Value.Value > 0 ? Value.Value : DefaultValue;
@@ -575,6 +629,28 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return VisualStrategyPlan.ModeExactFullVisual;
         }
 
+        private string NormalizeRelationshipVisualPlacementMode(string Mode)
+        {
+            if (String.IsNullOrWhiteSpace(Mode))
+                return RelationshipVisualPlacementOptions.ModeAuto;
+
+            var Normalized = Mode.Trim();
+            if (StringEquals(Normalized, RelationshipVisualPlacementOptions.ModeExplicit))
+                return RelationshipVisualPlacementOptions.ModeExplicit;
+            if (StringEquals(Normalized, RelationshipVisualPlacementOptions.ModeMidpoint))
+                return RelationshipVisualPlacementOptions.ModeMidpoint;
+            if (StringEquals(Normalized, RelationshipVisualPlacementOptions.ModeEndpointCorridor) ||
+                StringEquals(Normalized, "endpoint-corridor"))
+                return RelationshipVisualPlacementOptions.ModeEndpointCorridor;
+            if (StringEquals(Normalized, RelationshipVisualPlacementOptions.ModeHideGeneric) ||
+                StringEquals(Normalized, "hide-generic"))
+                return RelationshipVisualPlacementOptions.ModeHideGeneric;
+            if (StringEquals(Normalized, RelationshipVisualPlacementOptions.ModeDefer))
+                return RelationshipVisualPlacementOptions.ModeDefer;
+
+            return RelationshipVisualPlacementOptions.ModeAuto;
+        }
+
         private void LogVisualStrategyOptions()
         {
             if (this.VisualStrategy == null || !this.VisualStrategy.IsActive)
@@ -597,6 +673,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             ", deferAutoFit=" + (this.VisualStrategy.DeferAutoFit ? "true" : "false") +
                             ", deferRouting=" + (this.VisualStrategy.DeferRouting ? "true" : "false") +
                             ", deferViewRefresh=" + (this.VisualStrategy.DeferViewRefresh ? "true" : "false") +
+                            ", relationshipVisualPlacement=" + this.VisualStrategy.RelationshipVisualPlacement +
                             ", groupBy=" + FormatSet(this.VisualStrategy.GroupBy) + ".");
         }
 
@@ -1130,6 +1207,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyConcept(CompositionJsonIdea Source)
         {
+            RegisterVisualControl("concept", Source.Id, Source.TechName, null, Source.Visual);
             var Existing = FindConcept(Source.Id, Source.TechName);
 
             if (Source.Delete)
@@ -1164,6 +1242,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyRelationship(CompositionJsonRelationship Source)
         {
+            RegisterVisualControl("relationship", Source.Id, Source.TechName, Source.LayoutRole, Source.Visual);
             var Existing = FindRelationship(Source.Id, Source.TechName);
 
             if (Source.Delete)
@@ -2493,6 +2572,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Operation.Width = Source == null ? null : Source.Width;
             Operation.Height = Source == null ? null : Source.Height;
             Operation.AutoPlace = true;
+            Operation.Visual = Source == null ? null : Source.Visual;
             return Operation;
         }
 
@@ -2740,7 +2820,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 LogUnsupportedSetFields(Operation.Set, "concept create", new[]
                 {
                     "name", "techName", "summary", "techSpec", "definitionTechName", "containerId", "containerTechName",
-                    "viewId", "viewTechName", "x", "y", "width", "height", "autoPlace", "autoFit", "details", "markers"
+                    "viewId", "viewTechName", "x", "y", "width", "height", "autoPlace", "autoFit", "details", "markers", "visual"
                 });
 
                 var SourceTechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
@@ -2770,8 +2850,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
                 Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
                 Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
+                Source.Visual = GetOperationVisualControl(Operation);
                 Source.Details = MergeOperationDetails(Operation);
                 Source.Markers = MergeOperationMarkers(Operation);
+                RegisterVisualControl("concept", Source.Id, Source.TechName, null, Source.Visual);
                 var BeforeCreated = this.Report.Created;
                 var Created = CreateConcept(Source);
                 if (this.IsPreview && this.Report.Created > BeforeCreated)
@@ -2793,7 +2875,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     "name", "techName", "summary", "techSpec", "definitionTechName", "containerId", "containerTechName",
                     "viewId", "viewTechName", "x", "y", "width", "height", "autoPlace", "autoRoute", "details", "markers",
                     "links", "originIdeaIds", "originIdeaTechNames", "targetIdeaIds", "targetIdeaTechNames",
-                    "fallbackDefinitionTechName", "strictDefinition"
+                    "fallbackDefinitionTechName", "strictDefinition", "layoutRole", "visual"
                 });
 
                 var SourceTechName = GetSetString(Operation.Set, "techName").NullDefault(Operation.TechName);
@@ -2809,8 +2891,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.StrictDefinition = Operation.StrictDefinition ?? GetSetBool(Operation.Set, "strictDefinition");
                 Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
                 Source.ContainerTechName = Operation.ContainerTechName.NullDefault(GetSetString(Operation.Set, "containerTechName"));
+                Source.LayoutRole = Operation.LayoutRole.NullDefault(GetSetString(Operation.Set, "layoutRole"));
+                Source.Visual = GetOperationVisualControl(Operation);
                 Source.Details = MergeOperationDetails(Operation);
                 Source.Markers = MergeOperationMarkers(Operation);
+                RegisterVisualControl("relationship", Source.Id, Source.TechName, Source.LayoutRole, Source.Visual);
                 var LinkSourceName = PopulateRelationshipConnectivityFromOperation(Source, Operation);
 
                 var Existing = FindRelationship(Operation.Id, SourceTechName);
@@ -3054,6 +3139,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
 
             var Entity = Idea is Relationship ? "relationship" : "concept";
+            var VisualControl = GetVisualControlForIdea(Idea, Operation);
+            if (ShouldSuppressVisualByExplicitControl(Entity, Idea.TechName, VisualControl,
+                                                      IsExplicitPlaceOperation ? "explicit place operation" : "created item visual"))
+                return;
+
             if (!ReserveVisualPlacementByStrategy(Entity, Idea.TechName, IsExplicitPlaceOperation,
                                                   IsExplicitPlaceOperation ? "explicit place operation" : "created item visual"))
                 return;
@@ -3397,9 +3487,163 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Changed;
         }
 
+        private void RegisterVisualControl(string Entity, string Id, string TechName, string LayoutRole, CompositionJsonVisualControl Visual)
+        {
+            if (Visual != null)
+            {
+                if (!String.IsNullOrEmpty(Id))
+                    this.VisualControlsByIdeaId[Id] = Visual;
+                if (!String.IsNullOrEmpty(TechName))
+                    this.VisualControlsByIdeaTechName[TechName] = Visual;
+
+                if (Visual.IncludeInArrangement == false)
+                    this.Report.CountArrangementExclusionByExplicitControl();
+                if (Visual.IncludeInRouting == false)
+                    this.Report.CountRoutingExclusionByExplicitControl();
+                if (IsVisualSuppressed(Visual))
+                    this.Report.CountVisualSuppressedByExplicitControl();
+                if (StringEquals(Entity, "relationship") && IsRelationshipHiddenOrDeferred(Visual))
+                    this.Report.CountRelationshipHiddenOrDeferredByExplicitControl();
+
+                this.Report.Log(FormatOperationPrefix() + "JSON import visual control: entity=" + Entity.ToStringAlways() +
+                                " techName=" + TechName.ToStringAlways() +
+                                " role=" + Visual.Role.ToStringAlways("<none>") +
+                                " display=" + Visual.Display.ToStringAlways("<none>") +
+                                " includeInArrangement=" + FormatNullableBool(Visual.IncludeInArrangement) +
+                                " includeInRouting=" + FormatNullableBool(Visual.IncludeInRouting) +
+                                " includeInAutoFit=" + FormatNullableBool(Visual.IncludeInAutoFit) +
+                                " includeInOverview=" + FormatNullableBool(Visual.IncludeInOverview) +
+                                " includeInFullView=" + FormatNullableBool(Visual.IncludeInFullView) +
+                                " relationshipCenterPlacement=" + Visual.RelationshipCenterPlacement.ToStringAlways("<none>") +
+                                " reason=explicit JSON metadata.");
+
+                if (StringEquals(Entity, "relationship") &&
+                    !String.IsNullOrWhiteSpace(Visual.RelationshipCenterPlacement))
+                    RegisterRelationshipCenterPlacementMode(Id, TechName, Visual.RelationshipCenterPlacement);
+            }
+
+            if (StringEquals(Entity, "relationship") && !String.IsNullOrWhiteSpace(LayoutRole))
+            {
+                if (!String.IsNullOrEmpty(TechName))
+                    this.LayoutRolesByRelationshipTechName[TechName] = LayoutRole;
+                this.Report.Log(FormatOperationPrefix() + "JSON import layout role: relationship=" + TechName.ToStringAlways() +
+                                " layoutRole=" + LayoutRole +
+                                " reason=explicit JSON metadata.");
+            }
+        }
+
+        private void RegisterRelationshipCenterPlacementMode(string Id, string TechName, string Mode)
+        {
+            if (String.IsNullOrWhiteSpace(Mode))
+                return;
+
+            var Normalized = NormalizeRelationshipVisualPlacementMode(Mode);
+            if (!String.IsNullOrEmpty(TechName))
+                this.RelationshipCenterPlacementModesByTechName[TechName] = Normalized;
+            if (!String.IsNullOrEmpty(Id))
+                this.RelationshipCenterPlacementModesByTechName[Id] = Normalized;
+        }
+
+        private CompositionJsonVisualControl GetVisualControlForIdea(Idea Idea, CompositionJsonOperation Operation)
+        {
+            var Visual = GetOperationVisualControl(Operation);
+            if (Visual != null)
+                return Visual;
+
+            if (Idea == null)
+                return null;
+
+            CompositionJsonVisualControl Stored;
+            if (!String.IsNullOrEmpty(Idea.GlobalId.ToString("D")) &&
+                this.VisualControlsByIdeaId.TryGetValue(Idea.GlobalId.ToString("D"), out Stored))
+                return Stored;
+
+            if (!String.IsNullOrEmpty(Idea.TechName) &&
+                this.VisualControlsByIdeaTechName.TryGetValue(Idea.TechName, out Stored))
+                return Stored;
+
+            return null;
+        }
+
+        private CompositionJsonVisualControl GetOperationVisualControl(CompositionJsonOperation Operation)
+        {
+            if (Operation == null)
+                return null;
+
+            if (Operation.Visual != null)
+                return Operation.Visual;
+
+            var SetVisual = GetSetDictionary(Operation.Set, "visual");
+            return SetVisual == null ? null : ReadVisualControlFromSet(SetVisual);
+        }
+
+        private CompositionJsonVisualControl ReadVisualControlFromSet(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            return new CompositionJsonVisualControl
+            {
+                Role = GetSetString(Source, "role"),
+                Display = GetSetString(Source, "display"),
+                IncludeInView = GetSetBool(Source, "includeInView"),
+                IncludeInArrangement = GetSetBool(Source, "includeInArrangement"),
+                IncludeInRouting = GetSetBool(Source, "includeInRouting"),
+                IncludeInAutoFit = GetSetBool(Source, "includeInAutoFit"),
+                IncludeInOverview = GetSetBool(Source, "includeInOverview"),
+                IncludeInFullView = GetSetBool(Source, "includeInFullView"),
+                RelationshipCenterPlacement = GetSetString(Source, "relationshipCenterPlacement")
+            };
+        }
+
+        private bool IsVisualSuppressed(CompositionJsonVisualControl Visual)
+        {
+            if (Visual == null)
+                return false;
+
+            return Visual.IncludeInView == false ||
+                   StringEquals(Visual.Role, "Hidden") ||
+                   StringEquals(Visual.Role, "Deferred") ||
+                   StringEquals(Visual.Display, "hidden") ||
+                   StringEquals(Visual.Display, "deferred");
+        }
+
+        private bool IsRelationshipHiddenOrDeferred(CompositionJsonVisualControl Visual)
+        {
+            return Visual != null &&
+                   (StringEquals(Visual.Display, "hidden") ||
+                    StringEquals(Visual.Display, "deferred") ||
+                    StringEquals(Visual.Role, "Hidden") ||
+                    StringEquals(Visual.Role, "Deferred"));
+        }
+
+        private bool ShouldSuppressVisualByExplicitControl(string Entity, string TechName, CompositionJsonVisualControl Visual, string Reason)
+        {
+            if (Visual == null || !IsVisualSuppressed(Visual))
+                return false;
+
+            this.Report.Log(FormatOperationPrefix() + "JSON import visual control suppressed visual placement: entity=" +
+                            Entity.ToStringAlways() +
+                            " techName=" + TechName.ToStringAlways() +
+                            " role=" + Visual.Role.ToStringAlways("<none>") +
+                            " display=" + Visual.Display.ToStringAlways("<none>") +
+                            " includeInView=" + FormatNullableBool(Visual.IncludeInView) +
+                            " reason=" + Reason.ToStringAlways("explicit JSON metadata") + ".");
+            return true;
+        }
+
+        private string FormatNullableBool(bool? Value)
+        {
+            return Value == null ? "<default>" : (Value.Value ? "true" : "false");
+        }
+
         private bool ShouldPlaceCreatedItem(CompositionJsonOperation Operation)
         {
             if (Operation == null)
+                return false;
+
+            var Visual = GetOperationVisualControl(Operation);
+            if (ShouldSuppressVisualByExplicitControl(Operation.Entity, Operation.TechName.NullDefault(GetSetString(Operation.Set, "techName")), Visual, "create/place visual control"))
                 return false;
 
             if (HasExplicitPlacement(Operation))
@@ -3788,6 +4032,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void PlanAutoFitForConcept(string TechName, View View, CompositionJsonOperation Operation, bool CreatedNewVisual, string Reason)
         {
+            var VisualControl = GetOperationVisualControl(Operation);
+            if (VisualControl != null && VisualControl.IncludeInAutoFit == false)
+            {
+                SkipAutoFitForConcept(TechName, View, "visual.includeInAutoFit=false", true);
+                return;
+            }
+
             var AutoFit = GetOperationAutoFit(Operation);
             if (ShouldDeferAutoFitByStrategy())
             {
@@ -3818,6 +4069,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void AutoFitPlacedConceptIfNeeded(Concept Concept, VisualSymbol Symbol, CompositionJsonOperation Operation, bool CreatedNewVisual, string Reason)
         {
+            var VisualControl = GetVisualControlForIdea(Concept, Operation);
+            if (VisualControl != null && VisualControl.IncludeInAutoFit == false)
+            {
+                SkipAutoFitForConcept(Concept == null ? null : Concept.TechName,
+                                      Symbol == null ? null : Symbol.GetDisplayingView(),
+                                      "visual.includeInAutoFit=false", true);
+                return;
+            }
+
             var AutoFit = GetOperationAutoFit(Operation);
             if (ShouldDeferAutoFitByStrategy())
             {
@@ -3952,6 +4212,20 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool PlanOrQueueAutoRouteForRelationship(Relationship Relationship, CompositionJsonOperation Operation,
                                                          bool TouchedByImport, string Reason)
         {
+            var VisualControl = GetVisualControlForIdea(Relationship, Operation);
+            if (VisualControl != null &&
+                (VisualControl.IncludeInRouting == false || IsRelationshipHiddenOrDeferred(VisualControl)))
+            {
+                SkipAutoRouteForRelationship(Relationship == null ? null : Relationship.TechName,
+                                             null,
+                                             VisualControl.IncludeInRouting == false
+                                             ? "visual.includeInRouting=false"
+                                             : "relationship visual display is hidden/deferred",
+                                             true);
+                this.Report.CountRoutingExclusionByExplicitControl();
+                return false;
+            }
+
             var Representations = Relationship == null
                                   ? new List<RelationshipVisualRepresentation>()
                                   : Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
@@ -3978,6 +4252,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool PlanOrQueueAutoRoute(string RelationshipTechName, RelationshipVisualRepresentation Representation, View View,
                                           CompositionJsonOperation Operation, bool TouchedByImport, string Reason)
         {
+            var VisualControl = GetOperationVisualControl(Operation);
+            if (VisualControl != null &&
+                (VisualControl.IncludeInRouting == false || IsRelationshipHiddenOrDeferred(VisualControl)))
+            {
+                SkipAutoRouteForRelationship(RelationshipTechName, View,
+                                             VisualControl.IncludeInRouting == false
+                                             ? "visual.includeInRouting=false"
+                                             : "relationship visual display is hidden/deferred",
+                                             true);
+                this.Report.CountRoutingExclusionByExplicitControl();
+                return false;
+            }
+
             var AutoRoute = GetOperationAutoRoute(Operation);
             this.Report.Log(FormatOperationPrefix() + "auto-route check relationship techName=" + RelationshipTechName.ToStringAlways() +
                             " view=" + DescribeView(View) +
@@ -4057,6 +4344,224 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return this.VisualStrategy != null && this.VisualStrategy.IsActive && this.VisualStrategy.DeferRouting;
         }
 
+        private void ApplyGroups(IEnumerable<CompositionJsonGroup> Groups)
+        {
+            if (Groups == null)
+                return;
+
+            foreach (var Group in Groups.Where(Group => Group != null))
+                ApplyGroup(Group);
+        }
+
+        private void ApplyGroup(CompositionJsonGroup Group)
+        {
+            if (Group.CreateGroupRegion != true)
+            {
+                this.Report.Log("JSON import group skipped: techName=" + Group.TechName.ToStringAlways() +
+                                " createGroupRegion is not true.");
+                return;
+            }
+
+            if (this.IsPreview)
+            {
+                this.Report.CountGroupPlanned();
+                this.Report.Log("JSON import group planned: techName=" + Group.TechName.ToStringAlways() +
+                                " members=" + CountGroupMemberReferences(Group).ToString(CultureInfo.InvariantCulture) +
+                                " createGroupRegion=true.");
+                return;
+            }
+
+            var View = GetPreferredActiveView();
+            if (View == null)
+            {
+                Skip("Cannot create group region '" + Group.TechName.ToStringAlways(Group.Name) + "' because no active/root view is available.");
+                return;
+            }
+
+            var MemberSymbols = ResolveGroupMemberSymbols(Group, View);
+            if (MemberSymbols.Count < 1)
+            {
+                Skip("Cannot create group region '" + Group.TechName.ToStringAlways(Group.Name) +
+                     "' because no listed member concepts are visible in " + DescribeView(View) + ".");
+                return;
+            }
+
+            var HeaderSymbol = ResolveGroupHeaderSymbol(Group, View) ?? MemberSymbols.First();
+            var Bounds = MemberSymbols.Select(Symbol => Symbol.TotalArea)
+                                      .Aggregate((Current, Next) =>
+                                      {
+                                          Current.Union(Next);
+                                          return Current;
+                                      });
+            var Padding = Group.Padding == null || Group.Padding.Value < 0 ? 80.0 : Group.Padding.Value;
+            Bounds.Inflate(Padding, Padding);
+
+            var Existing = FindExistingGroupRegion(View, HeaderSymbol);
+            var Created = false;
+            if (Existing == null)
+            {
+                var Owner = Ownership.Create<View, VisualSymbol>(HeaderSymbol);
+                Existing = new VisualComplement(Domain.ComplementDefGroupRegion, Owner, GetRectCenter(Bounds), Bounds.Width);
+                HeaderSymbol.AddComplement(Existing);
+                View.PutComplement(Existing);
+                Created = true;
+            }
+
+            var OldBounds = Existing.TotalArea;
+            Existing.ResizeTo(Bounds.Width, Bounds.Height);
+            Existing.MoveTo(Bounds.Left + Bounds.Width / 2.0, Bounds.Top + Bounds.Height / 2.0, true);
+            View.PutComplement(Existing);
+
+            var ZBefore = Existing.ZOrder;
+            if (Group.SendToBack == null || Group.SendToBack.Value)
+                View.SendBackwards(Existing, true);
+            var ZAfter = Existing.ZOrder;
+
+            MarkAffectedView(View, Existing);
+            View.UpdateVersion();
+
+            if (Created)
+                this.Report.CountGroupCreated();
+            else
+                this.Report.CountGroupUpdated();
+
+            this.Report.Log("JSON import group region " + (Created ? "created" : "updated") +
+                            ": group=" + Group.TechName.ToStringAlways(Group.Name) +
+                            " view=" + DescribeView(View) +
+                            " members=" + MemberSymbols.Count.ToString(CultureInfo.InvariantCulture) +
+                            " oldBounds=" + FormatRect(OldBounds) +
+                            " newBounds=" + FormatRect(Existing.TotalArea) +
+                            " sendToBack=" + ((Group.SendToBack == null || Group.SendToBack.Value) ? "true" : "false") +
+                            " zOrderBefore=" + ZBefore.ToString(CultureInfo.InvariantCulture) +
+                            " zOrderAfter=" + ZAfter.ToString(CultureInfo.InvariantCulture) +
+                            " reason=explicit groups[] metadata.");
+        }
+
+        private int CountGroupMemberReferences(CompositionJsonGroup Group)
+        {
+            return (Group.MemberIds == null ? 0 : Group.MemberIds.Count) +
+                   (Group.MemberTechNames == null ? 0 : Group.MemberTechNames.Count);
+        }
+
+        private IList<VisualSymbol> ResolveGroupMemberSymbols(CompositionJsonGroup Group, View View)
+        {
+            var Symbols = new List<VisualSymbol>();
+            foreach (var Id in Group.MemberIds ?? new List<string>())
+                AddGroupMemberSymbol(Symbols, FindConcept(Id, null), View);
+
+            foreach (var TechName in Group.MemberTechNames ?? new List<string>())
+                AddGroupMemberSymbol(Symbols, FindConcept(null, TechName), View);
+
+            return Symbols.Distinct().ToList();
+        }
+
+        private void AddGroupMemberSymbol(IList<VisualSymbol> Symbols, Concept Concept, View View)
+        {
+            var Symbol = GetVisibleConceptSymbol(Concept, View);
+            if (Symbol != null && !Symbols.Contains(Symbol))
+                Symbols.Add(Symbol);
+        }
+
+        private VisualSymbol ResolveGroupHeaderSymbol(CompositionJsonGroup Group, View View)
+        {
+            var Header = FindConcept(Group.HeaderConceptId, Group.HeaderConceptTechName);
+            return GetVisibleConceptSymbol(Header, View);
+        }
+
+        private VisualSymbol GetVisibleConceptSymbol(Concept Concept, View View)
+        {
+            if (Concept == null || View == null)
+                return null;
+
+            return Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
+                          .Where(Representation => Representation.DisplayingView == View &&
+                                                   Representation.MainSymbol != null &&
+                                                   !Representation.MainSymbol.IsHidden &&
+                                                   Representation.MainSymbol.IsRelatedVisible)
+                          .Select(Representation => Representation.MainSymbol)
+                          .FirstOrDefault();
+        }
+
+        private VisualComplement FindExistingGroupRegion(View View, VisualSymbol HeaderSymbol)
+        {
+            if (View == null || HeaderSymbol == null)
+                return null;
+
+            return HeaderSymbol.AttachedComplements
+                               .FirstOrDefault(Complement => Complement != null &&
+                                                             Complement.IsComplementGroupRegion &&
+                                                             View.ViewChildren.Any(Child => Child != null && Child.Key == Complement));
+        }
+
+        private static Point GetRectCenter(Rect Rect)
+        {
+            return new Point(Rect.Left + Rect.Width / 2.0, Rect.Top + Rect.Height / 2.0);
+        }
+
+        private static string FormatRect(Rect Rect)
+        {
+            if (Rect.IsEmpty)
+                return "<empty>";
+
+            return "x=" + Rect.X.ToString("0.##", CultureInfo.InvariantCulture) +
+                   " y=" + Rect.Y.ToString("0.##", CultureInfo.InvariantCulture) +
+                   " width=" + Rect.Width.ToString("0.##", CultureInfo.InvariantCulture) +
+                   " height=" + Rect.Height.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private void ApplyRelationshipCenterPlacementBeforeRouting()
+        {
+            if (this.RelationshipVisualPlacementOptions == null)
+                return;
+
+            if (StringEquals(this.RelationshipVisualPlacementOptions.PlacementMode, RelationshipVisualPlacementOptions.ModeExplicit))
+            {
+                this.Report.Log("JSON import relationship center placement skipped because relationshipVisualPlacementMode=explicit.");
+                return;
+            }
+
+            if (StringEquals(this.RelationshipVisualPlacementOptions.PlacementMode, RelationshipVisualPlacementOptions.ModeDefer))
+            {
+                this.Report.Log("JSON import relationship center placement skipped because relationshipVisualPlacementMode=defer.");
+                return;
+            }
+
+            var Views = this.AffectedViews
+                            .Where(View => View != null)
+                            .Concat(this.PendingAutoRouteRelationships.Keys.Where(View => View != null))
+                            .Distinct()
+                            .ToList();
+            if (Views.Count < 1)
+                return;
+
+            this.Report.Log("JSON import relationship center placement applying before routing; views=" +
+                            Views.Count.ToString(CultureInfo.InvariantCulture) +
+                            ", mode=" + this.RelationshipVisualPlacementOptions.PlacementMode + ".");
+
+            foreach (var View in Views)
+            {
+                var Context = LayoutSelectionContext.FromViewSelection(this.Engine, View, Enumerable.Empty<VisualObject>());
+                var Result = RelationshipVisualPlacementService.PlaceVisibleRelationshipCenters(Context, this.RelationshipVisualPlacementOptions);
+                this.Report.AddRelationshipCenterPlacement(Result);
+
+                foreach (var Warning in Result.Warnings)
+                    this.Report.Warn("Relationship center placement warning: " + Warning);
+
+                if (Result.HasMutations)
+                {
+                    MarkAffectedView(View, null);
+                    View.UpdateVersion();
+                }
+
+                this.Report.Log("JSON import relationship center placement completed view=" + DescribeView(View) +
+                                "; inspected=" + Result.RelationshipCentersInspected.ToString(CultureInfo.InvariantCulture) +
+                                ", recomputed=" + Result.RelationshipCentersRecomputed.ToString(CultureInfo.InvariantCulture) +
+                                ", preserved=" + Result.RelationshipCentersPreserved.ToString(CultureInfo.InvariantCulture) +
+                                ", suspicious=" + Result.SuspiciousRelationshipCenters.ToString(CultureInfo.InvariantCulture) +
+                                ", skipped=" + Result.RelationshipCentersSkipped.ToString(CultureInfo.InvariantCulture) + ".");
+            }
+        }
+
         private void ApplyQueuedAutoRoutes()
         {
             if (this.PendingAutoRouteRelationships.Count < 1)
@@ -4094,6 +4599,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 var Context = LayoutSelectionContext.FromViewSelection(this.Engine, View, Selection);
                 var Options = new LinkObstacleRoutingOptions();
                 Options.RouteSelectedConnectorsOnly = true;
+                Options.CorrectRelationshipCentersBeforeRouting = false;
+                Options.IncludeRelationshipCentralSymbolsAsObstacles = true;
                 var Result = LinkObstacleRoutingService.RouteVisibleConnectors(Context, Options);
 
                 var Routed = Result.Routed + Result.Straightened + Result.DoglegRouted;
@@ -4810,6 +5317,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool? GetSetBool(IDictionary<string, object> Set, string Key)
         {
             return CompositionJsonSerializer.GetNullableBool(Set, Key);
+        }
+
+        private IDictionary<string, object> GetSetDictionary(IDictionary<string, object> Set, string Key)
+        {
+            if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
+                return null;
+
+            return Set[Key] as IDictionary<string, object>;
         }
 
         private List<string> GetSetStringList(IDictionary<string, object> Set, string Key)

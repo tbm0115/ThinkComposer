@@ -310,6 +310,13 @@ Patch semantics:
 
 Relationship connectivity can be supplied at the operation top level or inside `set`. Top-level values are preferred when both are present, but `set.originIdeaIds`, `set.originIdeaTechNames`, `set.targetIdeaIds`, `set.targetIdeaTechNames`, and `set.links` are accepted for GPT-authored patches. Link `roleType` values are normalized case-insensitively, so `Origin`, `Target`, `origin`, and `target` are accepted.
 
+Each entry in `links[]` can also preserve link-level labels/descriptors:
+
+- `roleVariantTechName` / `roleVariantName` selects an allowed link-role variant when the relationship role exposes one.
+- `descriptorName`, `descriptorTechName`, and `descriptorSummary` preserve the optional link descriptor shown on the connector between the relationship and that endpoint concept. These are different from the relationship's own `name`, `techName`, `summary`, and `techSpec`.
+
+On import, an existing matching relationship link is updated with explicit descriptor and role-variant metadata instead of creating a duplicate link.
+
 Relationship create operations are upserts. If a `create relationship` operation matches an existing relationship by `id` or `techName`, the importer updates editable fields and repairs missing role links instead of creating a duplicate. Re-importing the same patch should not duplicate relationships, links, visuals, or connectors.
 
 Linkless relationships are skipped by default. This prevents invalid native relationship objects that can later break view or context-menu code expecting origin/target roles.

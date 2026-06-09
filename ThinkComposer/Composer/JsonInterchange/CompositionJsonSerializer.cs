@@ -317,6 +317,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "roleDefinitionName", Link.RoleDefinitionName);
             AddIf(Obj, "roleVariantTechName", Link.RoleVariantTechName);
             AddIf(Obj, "roleVariantName", Link.RoleVariantName);
+            AddIf(Obj, "descriptorName", Link.DescriptorName);
+            AddIf(Obj, "descriptorTechName", Link.DescriptorTechName);
+            AddIf(Obj, "descriptorSummary", Link.DescriptorSummary);
             AddIf(Obj, "ideaId", Link.IdeaId);
             AddIf(Obj, "ideaTechName", Link.IdeaTechName);
             return Obj;
@@ -685,6 +688,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.RoleDefinitionName = GetString(Source, "roleDefinitionName");
             Result.RoleVariantTechName = GetString(Source, "roleVariantTechName");
             Result.RoleVariantName = GetString(Source, "roleVariantName");
+            Result.DescriptorName = GetString(Source, "descriptorName");
+            Result.DescriptorTechName = GetString(Source, "descriptorTechName");
+            Result.DescriptorSummary = GetString(Source, "descriptorSummary");
             Result.IdeaId = GetString(Source, "ideaId");
             Result.IdeaTechName = GetString(Source, "ideaTechName");
             return Result;

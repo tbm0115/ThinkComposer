@@ -990,6 +990,18 @@
         "roleVariantName": {
           "type": "string"
         },
+        "descriptorName": {
+          "type": "string",
+          "description": "Optional relationship link descriptor display name. This is the descriptor on the link between the relationship and this endpoint concept, not the relationship's own summary."
+        },
+        "descriptorTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Optional relationship link descriptor technical name."
+        },
+        "descriptorSummary": {
+          "$ref": "#/$defs/editableText",
+          "description": "Optional relationship link descriptor summary text."
+        },
         "ideaId": {
           "$ref": "#/$defs/guid"
         },

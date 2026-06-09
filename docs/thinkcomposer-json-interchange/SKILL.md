@@ -96,6 +96,7 @@ Rules:
 - `set.techSpec` is plain text; omission preserves existing TechSpec and explicit empty string clears it.
 - Relationship creates must include resolvable origin/target links. Linkless relationships are skipped by the importer.
 - Relationship links may appear at operation top level or inside `set`; top-level values are preferred.
+- Preserve link-level metadata when present: `roleVariantTechName`, `roleVariantName`, `descriptorName`, `descriptorTechName`, and `descriptorSummary`. These belong to the link/connector endpoint between a relationship and a concept, not to the relationship object itself.
 - Before generating relationships for a custom domain, inspect the Domain JSON relationship definitions when available. Do not assume a relationship definition can connect arbitrary concepts.
 - When a Domain JSON export is available, inspect `domain.compatibilitySignature`, `relationshipDefinitions[].roleDefinitions[]`, `associableIdeaDefinitionTechNames`, and `relationshipCompatibility[]` before choosing relationship definitions and roles.
 - For strict domain-correct imports, include a `requires.domain` block with at least domain `techName`, and include `id`, `versionSequence`, and `compatibilitySignature` when available from the user's export.

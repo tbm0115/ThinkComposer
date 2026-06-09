@@ -220,6 +220,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.RoleDefinitionName = Link.RoleDefinitor == null ? null : Link.RoleDefinitor.Name;
             Result.RoleVariantTechName = Link.RoleVariant == null ? null : Link.RoleVariant.TechName;
             Result.RoleVariantName = Link.RoleVariant == null ? null : Link.RoleVariant.Name;
+            Result.DescriptorName = Link.Descriptor == null ? null : Link.Descriptor.Name;
+            Result.DescriptorTechName = Link.Descriptor == null ? null : Link.Descriptor.TechName;
+            Result.DescriptorSummary = Link.Descriptor == null ? null : Link.Descriptor.Summary;
             Result.IdeaId = IdOf(Link.AssociatedIdea);
             Result.IdeaTechName = Link.AssociatedIdea == null ? null : Link.AssociatedIdea.TechName;
             return Result;

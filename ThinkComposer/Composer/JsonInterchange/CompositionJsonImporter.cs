@@ -100,11 +100,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             public string RoleTypeName;
             public string RoleDefinitionTechName;
+            public string RoleVariantTechName;
+            public string RoleVariantName;
+            public string DescriptorName;
+            public string DescriptorTechName;
+            public string DescriptorSummary;
             public string IdeaId;
             public string IdeaTechName;
             public Idea ResolvedIdea;
             public IdeaDefinition ResolvedIdeaDefinitor;
             public LinkRoleDefinition ResolvedRole;
+            public SimplePresentationElement ResolvedRoleVariant;
             public bool ResolvedFromPreviewPlan;
         }
 
@@ -128,6 +134,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             public int Added;
             public int Duplicate;
+            public int Updated;
             public int Unresolved;
         }
 
@@ -1537,10 +1544,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             this.Report.Log(FormatOperationPrefix() + "relationship links added=" + Result.Added.ToString(CultureInfo.InvariantCulture) +
                             ", duplicates=" + Result.Duplicate.ToString(CultureInfo.InvariantCulture) +
+                            ", metadataUpdated=" + Result.Updated.ToString(CultureInfo.InvariantCulture) +
                             ", unresolved=" + Result.Unresolved.ToString(CultureInfo.InvariantCulture) + ".");
             this.Report.Log(FormatOperationPrefix() + "relationship links after repair: " + DescribeRelationshipLinks(Relationship) + ".");
 
-            if (Result.Added > 0)
+            if (Result.Added > 0 || Result.Updated > 0)
             {
                 this.Report.CountRepairedRelationship();
                 this.Report.CountUpdated();
@@ -1573,9 +1581,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     continue;
                 }
 
-                if (Relationship.Links.Any(Link => Link.RoleDefinitor == Spec.ResolvedRole && Link.AssociatedIdea == Spec.ResolvedIdea))
+                var Existing = Relationship.Links.FirstOrDefault(Link => Link.RoleDefinitor == Spec.ResolvedRole && Link.AssociatedIdea == Spec.ResolvedIdea);
+                if (Existing != null)
                 {
                     Result.Duplicate++;
+                    if (ApplyRelationshipLinkMetadata(Existing, Spec))
+                        Result.Updated++;
                     continue;
                 }
 
@@ -1585,16 +1596,79 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     continue;
                 }
 
-                var Variant = Spec.ResolvedRole.AllowedVariants.FirstOrDefault();
+                var Variant = Spec.ResolvedRoleVariant.NullDefault(Spec.ResolvedRole.AllowedVariants.FirstOrDefault());
                 if (Variant == null && this.Composition.CompositeContentDomain != null)
                     Variant = this.Composition.CompositeContentDomain.LinkRoleVariants.FirstOrDefault();
 
                 var NewLink = new RoleBasedLink(Relationship, Spec.ResolvedIdea, Spec.ResolvedRole, Variant);
+                ApplyRelationshipLinkMetadata(NewLink, Spec);
                 Relationship.AddLink(NewLink);
                 Result.Added++;
             }
 
             return Result;
+        }
+
+        private bool ApplyRelationshipLinkMetadata(RoleBasedLink Link, RelationshipLinkImportSpec Spec)
+        {
+            if (Link == null || Spec == null)
+                return false;
+
+            var Changed = false;
+
+            if (Spec.ResolvedRoleVariant != null && Link.RoleVariant != Spec.ResolvedRoleVariant)
+            {
+                if (!this.IsPreview)
+                    Link.RoleVariant = Spec.ResolvedRoleVariant;
+                Changed = true;
+            }
+
+            var DescriptorProvided = !String.IsNullOrEmpty(Spec.DescriptorName) ||
+                                     !String.IsNullOrEmpty(Spec.DescriptorTechName) ||
+                                     !String.IsNullOrEmpty(Spec.DescriptorSummary);
+            if (DescriptorProvided)
+            {
+                var DesiredDescriptor = CreateRelationshipLinkDescriptor(Spec);
+                if (!SimplePresentationElementsEqual(Link.Descriptor, DesiredDescriptor))
+                {
+                    if (!this.IsPreview)
+                        Link.Descriptor = DesiredDescriptor;
+                    Changed = true;
+                }
+            }
+
+            if (Changed)
+                this.Report.Log(FormatOperationPrefix() + "relationship link metadata updated: relationship=" +
+                                (Link.OwnerRelationship == null ? "<none>" : Link.OwnerRelationship.TechName.ToStringAlways()) +
+                                " endpoint=" + (Link.AssociatedIdea == null ? "<none>" : Link.AssociatedIdea.TechName.ToStringAlways()) +
+                                " role=" + (Link.RoleDefinitor == null ? "<none>" : Link.RoleDefinitor.TechName.ToStringAlways()) +
+                                " roleVariant=" + (Spec.ResolvedRoleVariant == null ? "<unchanged/default>" : Spec.ResolvedRoleVariant.TechName.ToStringAlways(Spec.ResolvedRoleVariant.Name)) +
+                                " descriptor=" + Spec.DescriptorTechName.ToStringAlways(Spec.DescriptorName).ToStringAlways("<none>") + ".");
+
+            return Changed;
+        }
+
+        private static SimplePresentationElement CreateRelationshipLinkDescriptor(RelationshipLinkImportSpec Spec)
+        {
+            if (Spec == null)
+                return null;
+
+            var Name = Spec.DescriptorName.NullDefault(Spec.DescriptorTechName).NullDefault("");
+            var TechName = Spec.DescriptorTechName.NullDefault(Name.TextToIdentifier());
+            return new SimplePresentationElement(Name, TechName, Spec.DescriptorSummary.NullDefault(""));
+        }
+
+        private static bool SimplePresentationElementsEqual(SimplePresentationElement Current, SimplePresentationElement Desired)
+        {
+            if (Current == null && Desired == null)
+                return true;
+
+            if (Current == null || Desired == null)
+                return false;
+
+            return Current.Name == Desired.Name &&
+                   Current.TechName == Desired.TechName &&
+                   Current.Summary == Desired.Summary;
         }
 
         private RelationshipLinkImportPlan BuildRelationshipLinkPlan(RelationshipDefinition Definition, CompositionJsonRelationship Source, string SourceName)
@@ -1607,7 +1681,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Source.Links != null && Source.Links.Count > 0)
                 foreach (var Link in Source.Links)
-                    AddRelationshipLinkSpec(Plan, Link.RoleType, Link.RoleDefinitionTechName, Link.IdeaId, Link.IdeaTechName);
+                    AddRelationshipLinkSpec(Plan, Link.RoleType, Link.RoleDefinitionTechName,
+                                            Link.RoleVariantTechName, Link.RoleVariantName,
+                                            Link.DescriptorName, Link.DescriptorTechName, Link.DescriptorSummary,
+                                            Link.IdeaId, Link.IdeaTechName);
 
             AddRelationshipEndpointSpecs(Plan, "Origin", Source.OriginIdeaIds, Source.OriginIdeaTechNames);
             AddRelationshipEndpointSpecs(Plan, "Target", Source.TargetIdeaIds, Source.TargetIdeaTechNames);
@@ -1624,11 +1701,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 var IdeaId = IdeaIds != null && Index < IdeaIds.Count ? IdeaIds[Index] : null;
                 var IdeaTechName = IdeaTechNames != null && Index < IdeaTechNames.Count ? IdeaTechNames[Index] : null;
-                AddRelationshipLinkSpec(Plan, RoleTypeName, null, IdeaId, IdeaTechName);
+                AddRelationshipLinkSpec(Plan, RoleTypeName, null, null, null, null, null, null, IdeaId, IdeaTechName);
             }
         }
 
-        private void AddRelationshipLinkSpec(RelationshipLinkImportPlan Plan, string RoleTypeName, string RoleDefinitionTechName, string IdeaId, string IdeaTechName)
+        private void AddRelationshipLinkSpec(RelationshipLinkImportPlan Plan, string RoleTypeName, string RoleDefinitionTechName,
+                                             string RoleVariantTechName, string RoleVariantName,
+                                             string DescriptorName, string DescriptorTechName, string DescriptorSummary,
+                                             string IdeaId, string IdeaTechName)
         {
             if (String.IsNullOrEmpty(IdeaId) && String.IsNullOrEmpty(IdeaTechName))
                 return;
@@ -1637,6 +1717,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 RoleTypeName = RoleTypeName,
                 RoleDefinitionTechName = RoleDefinitionTechName,
+                RoleVariantTechName = RoleVariantTechName,
+                RoleVariantName = RoleVariantName,
+                DescriptorName = DescriptorName,
+                DescriptorTechName = DescriptorTechName,
+                DescriptorSummary = DescriptorSummary,
                 IdeaId = IdeaId,
                 IdeaTechName = IdeaTechName
             });
@@ -1670,6 +1755,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                 "', roleDefinitionTechName='" + Spec.RoleDefinitionTechName.ToStringAlways() +
                                 "', matched='" + Role.TechName.ToStringAlways() +
                                 "', type=" + Role.RoleType.GetFieldName() + ".");
+
+                Spec.ResolvedRoleVariant = ResolveLinkRoleVariant(Role, Spec, Plan);
 
                 var Idea = FindIdea(Spec.IdeaId, Spec.IdeaTechName);
                 if (Idea == null)
@@ -2081,7 +2168,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             return "total=" + Relationship.Links.Count.ToString(CultureInfo.InvariantCulture) +
                    ", origins=" + Relationship.Links.Count(Link => Link.RoleDefinitor != null && Link.RoleDefinitor.RoleType == ERoleType.Origin).ToString(CultureInfo.InvariantCulture) +
-                   ", targets=" + Relationship.Links.Count(Link => Link.RoleDefinitor != null && Link.RoleDefinitor.RoleType == ERoleType.Target).ToString(CultureInfo.InvariantCulture);
+                   ", targets=" + Relationship.Links.Count(Link => Link.RoleDefinitor != null && Link.RoleDefinitor.RoleType == ERoleType.Target).ToString(CultureInfo.InvariantCulture) +
+                   ", descriptors=" + Relationship.Links.Count(Link => Link.Descriptor != null).ToString(CultureInfo.InvariantCulture);
         }
 
         private void DeleteIdea(Idea Target, string Entity, string Id, string TechName)
@@ -3530,6 +3618,43 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                 " layoutRole=" + LayoutRole +
                                 " reason=explicit JSON metadata.");
             }
+        }
+
+        private SimplePresentationElement ResolveLinkRoleVariant(LinkRoleDefinition Role, RelationshipLinkImportSpec Spec, RelationshipLinkImportPlan Plan)
+        {
+            if (Role == null || Spec == null ||
+                (String.IsNullOrEmpty(Spec.RoleVariantTechName) && String.IsNullOrEmpty(Spec.RoleVariantName)))
+                return null;
+
+            var Variants = (Role.AllowedVariants == null
+                            ? new List<SimplePresentationElement>()
+                            : Role.AllowedVariants.ToList());
+            var Variant = Variants.FirstOrDefault(Item => Item != null &&
+                                                          !String.IsNullOrEmpty(Spec.RoleVariantTechName) &&
+                                                          StringEquals(Item.TechName, Spec.RoleVariantTechName));
+            if (Variant == null)
+                Variant = Variants.FirstOrDefault(Item => Item != null &&
+                                                         !String.IsNullOrEmpty(Spec.RoleVariantName) &&
+                                                         StringEquals(Item.Name, Spec.RoleVariantName));
+
+            if (Variant == null)
+            {
+                var Available = String.Join(", ", Variants.Where(Item => Item != null)
+                                                           .Select(Item => Item.TechName.ToStringAlways(Item.Name))
+                                                           .OrderBy(Text => Text)
+                                                           .Take(12)
+                                                           .ToArray());
+                Plan.Warnings.Add("Cannot resolve relationship link role variant '" +
+                                  Spec.RoleVariantTechName.ToStringAlways(Spec.RoleVariantName) +
+                                  "' for role '" + Role.TechName.ToStringAlways(Role.Name) +
+                                  "'. Using the role default. Valid variants: " + Available.ToStringAlways("<none>") + ".");
+                return null;
+            }
+
+            this.Report.Log(FormatOperationPrefix() + "relationship link role variant resolved: requested='" +
+                            Spec.RoleVariantTechName.ToStringAlways(Spec.RoleVariantName) +
+                            "', matched='" + Variant.TechName.ToStringAlways(Variant.Name) + "'.");
+            return Variant;
         }
 
         private void RegisterRelationshipCenterPlacementMode(string Id, string TechName, string Mode)
@@ -5539,6 +5664,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Link.RoleDefinitionName = CompositionJsonSerializer.GetString(Source, "roleDefinitionName");
             Link.RoleVariantTechName = CompositionJsonSerializer.GetString(Source, "roleVariantTechName");
             Link.RoleVariantName = CompositionJsonSerializer.GetString(Source, "roleVariantName");
+            Link.DescriptorName = CompositionJsonSerializer.GetString(Source, "descriptorName");
+            Link.DescriptorTechName = CompositionJsonSerializer.GetString(Source, "descriptorTechName");
+            Link.DescriptorSummary = CompositionJsonSerializer.GetString(Source, "descriptorSummary");
             Link.IdeaId = CompositionJsonSerializer.GetString(Source, "ideaId");
             Link.IdeaTechName = CompositionJsonSerializer.GetString(Source, "ideaTechName");
             return Link;

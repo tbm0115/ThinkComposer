@@ -13,7 +13,7 @@
   },
   "warnings": [
     "Sample for Composition JSON active-root fallback. Import into any fresh composition that has the generic Concept and Relationship definitions.",
-    "Expected result: Created 3, Skipped 0. The importer should map containerTechName Active_Composition_Root to the active composition and use the active/root view when no viewTechName is supplied."
+    "Expected result: Created 3, Skipped 0. The importer should map containerTechName Active_Composition_Root to the active composition, use the active/root view when no viewTechName is supplied, and preserve the origin/target link descriptors."
   ],
   "operations": [
     {
@@ -65,11 +65,17 @@
         "links": [
           {
             "roleType": "Origin",
-            "ideaTechName": "Active_Root_Fallback_Source"
+            "ideaTechName": "Active_Root_Fallback_Source",
+            "descriptorName": "Source endpoint",
+            "descriptorTechName": "Source_Endpoint",
+            "descriptorSummary": "Descriptor attached to the origin link between the relationship and source concept."
           },
           {
             "roleType": "Target",
-            "ideaTechName": "Active_Root_Fallback_Target"
+            "ideaTechName": "Active_Root_Fallback_Target",
+            "descriptorName": "Target endpoint",
+            "descriptorTechName": "Target_Endpoint",
+            "descriptorSummary": "Descriptor attached to the target link between the relationship and target concept."
           }
         ]
       }

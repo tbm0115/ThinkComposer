@@ -256,6 +256,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string RoleDefinitionName { get; set; }
         public string RoleVariantTechName { get; set; }
         public string RoleVariantName { get; set; }
+        public string DescriptorName { get; set; }
+        public string DescriptorTechName { get; set; }
+        public string DescriptorSummary { get; set; }
         public string IdeaId { get; set; }
         public string IdeaTechName { get; set; }
     }

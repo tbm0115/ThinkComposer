@@ -127,6 +127,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string ViewsPrefix { get; set; }
         public string RootViewId { get; set; }
@@ -146,6 +147,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string CompatibilitySignature { get; set; }
         public List<CompositionJsonDefinition> Definitions { get; set; }
@@ -158,6 +160,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
     }
 
@@ -190,6 +193,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
@@ -226,6 +230,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
@@ -315,6 +320,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string OwnerIdeaId { get; set; }
         public string OwnerIdeaTechName { get; set; }
         public List<CompositionJsonVisual> Visuals { get; set; }

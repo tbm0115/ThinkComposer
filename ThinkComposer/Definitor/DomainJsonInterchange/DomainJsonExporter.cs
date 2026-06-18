@@ -216,7 +216,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.Name = Source.Name;
             Result.TechName = Source.TechName;
             Result.Summary = Source.Summary;
-            Result.Description = Source.Description;
+            Result.Description = Display.XamlRichTextToPlainTextOrSelf(Source.Description);
             Result.TechSpec = Source.TechSpec;
             return Result;
         }

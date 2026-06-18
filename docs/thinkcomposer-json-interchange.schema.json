@@ -611,6 +611,10 @@
         "summary": {
           "$ref": "#/$defs/editableText"
         },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Rich/plain description text attached to the composition. Omission preserves the existing value; an explicit empty string clears it."
+        },
         "techSpec": {
           "$ref": "#/$defs/editableText",
           "description": "Technical specification text attached to the composition. It is imported as text only and never executed."
@@ -688,6 +692,10 @@
         "summary": {
           "$ref": "#/$defs/editableText"
         },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the embedded domain summary exported with the composition."
+        },
         "techSpec": {
           "$ref": "#/$defs/editableText",
           "description": "Technical specification text attached to the embedded domain summary. It is imported as text only and never executed."
@@ -729,6 +737,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the exported definition summary."
         },
         "techSpec": {
           "$ref": "#/$defs/editableText",
@@ -875,6 +887,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the concept or relationship. Omission preserves the existing value; an explicit empty string clears it."
         },
         "techSpec": {
           "$ref": "#/$defs/editableText",
@@ -1199,6 +1215,13 @@
         },
         "techName": {
           "$ref": "#/$defs/techName"
+        },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the view. Omission preserves the existing value; an explicit empty string clears it."
         },
         "ownerIdeaId": {
           "$ref": "#/$defs/guid"

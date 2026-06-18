@@ -1,0 +1,100 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "useActiveCompositionAsContainer": true,
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "detailFallbackMode": "appendToDescription"
+  },
+  "warnings": [
+    "Sample for Composition JSON description, TechSpec, and safe detail import regression coverage.",
+    "Expected result: two concepts and one relationship are created in the active composition; description and TechSpec text are applied; unsupported free-form details are appended to Description instead of skipping the idea."
+  ],
+  "operations": [
+    {
+      "op": "update",
+      "entity": "composition",
+      "set": {
+        "description": "Composition description updated by JSON import.\nLine breaks should be preserved.",
+        "techSpec": "compositionInteropTest: true\nsource: composition-description-details-regression.sample.json"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "66666666-6666-4666-8666-666666666661",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 140,
+      "set": {
+        "name": "Description Source",
+        "techName": "Description_Source",
+        "summary": "Concept with first-class description and TechSpec.",
+        "description": "Primary description from set.description.\nThis should round-trip as a first-class field.",
+        "techSpec": "conceptRole: source\nlineBreaks: preserved",
+        "details": [
+          {
+            "kind": "Text",
+            "name": "Fallback Narrative",
+            "techName": "Fallback_Narrative",
+            "text": "This free-form text detail has no required native designator and should append to Description when fallback mode is appendToDescription."
+          }
+        ]
+      },
+      "details": [
+        {
+          "kind": "Text",
+          "name": "Description Override",
+          "techName": "Description_Override",
+          "targetPropertyTechName": "Description",
+          "text": "Description applied through a Text detail targeting the known Description field.\nThis verifies operation.details can update known idea fields."
+        }
+      ]
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "66666666-6666-4666-8666-666666666662",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 420,
+      "y": 140,
+      "set": {
+        "name": "Description Target",
+        "techName": "Description_Target",
+        "summary": "Second concept for relationship description regression.",
+        "description": "Target concept description.",
+        "techSpec": "conceptRole: target"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "66666666-6666-4666-8666-666666666663",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "autoRoute": true,
+      "set": {
+        "name": "Description Relationship",
+        "techName": "Description_Relationship",
+        "summary": "Relationship with first-class description and TechSpec.",
+        "description": "Relationship description from JSON import.",
+        "techSpec": "relationshipRole: regression\nroute: auto",
+        "links": [
+          {
+            "roleType": "origin",
+            "ideaTechName": "Description_Source"
+          },
+          {
+            "roleType": "target",
+            "ideaTechName": "Description_Target"
+          }
+        ]
+      }
+    }
+  ]
+}

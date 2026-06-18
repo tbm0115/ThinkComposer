@@ -939,6 +939,94 @@ namespace Instrumind.Common.Visualization
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
         /// <summary>
+        /// Returns rich-text storage XAML for plain interchange text, preserving already-valid rich-text XAML.
+        /// </summary>
+        public static string PlainTextToXamlRichText(string Text)
+        {
+            if (Text == null)
+                return null;
+
+            if (Text == "")
+                return RichTextEditor.ABSENT_TEXT;
+
+            if (IsLikelyXamlRichText(Text) && TryLoadXamlRichText(Text) != null)
+                return Text;
+
+            var Document = new FlowDocument();
+            Document.Blocks.Clear();
+
+            var Lines = Text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            foreach (var Line in Lines)
+                Document.Blocks.Add(new Paragraph(new Run(Line.NullDefault(""))));
+
+            var Range = new TextRange(Document.ContentStart, Document.ContentEnd);
+            using (var Torrent = new MemoryStream())
+            {
+                Range.Save(Torrent, DataFormats.Xaml);
+                return Torrent.StreamToString();
+            }
+        }
+
+        // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+        /// <summary>
+        /// Returns plain interchange text for native rich-text storage, or the source text when it is already plain.
+        /// </summary>
+        public static string XamlRichTextToPlainTextOrSelf(string RichText)
+        {
+            if (RichText == null)
+                return null;
+
+            if (RichText == RichTextEditor.ABSENT_TEXT)
+                return "";
+
+            if (!IsLikelyXamlRichText(RichText))
+                return RichText;
+
+            var Document = TryLoadXamlRichText(RichText);
+            if (Document == null)
+                return RichText;
+
+            return Document.GetText().TrimEnd('\r', '\n');
+        }
+
+        private static FlowDocument TryLoadXamlRichText(string RichText)
+        {
+            if (RichText == null)
+                return null;
+
+            if (RichText == "" || RichText == RichTextEditor.ABSENT_TEXT)
+                return new FlowDocument();
+
+            if (String.IsNullOrWhiteSpace(RichText) || !IsLikelyXamlRichText(RichText))
+                return null;
+
+            try
+            {
+                var Result = new FlowDocument();
+                var Range = new TextRange(Result.ContentStart, Result.ContentEnd);
+                using (var Torrent = RichText.StringToStream())
+                    Range.Load(Torrent, DataFormats.Xaml);
+                return Result;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool IsLikelyXamlRichText(string Text)
+        {
+            if (String.IsNullOrWhiteSpace(Text))
+                return false;
+
+            var Trimmed = Text.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
+            return Trimmed.StartsWith("<Section", StringComparison.OrdinalIgnoreCase)
+                   || Trimmed.StartsWith("<FlowDocument", StringComparison.OrdinalIgnoreCase)
+                   || Trimmed.IndexOf("schemas.microsoft.com/winfx/2006/xaml/presentation", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+        /// <summary>
         /// Returns the supplied xaml-text converted to the specified data-format, or null if conversion was not possible.
         /// </summary>
         public static string XamlRichTextTo(string RichText, string RequestedFormat)

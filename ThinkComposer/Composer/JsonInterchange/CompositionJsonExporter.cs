@@ -85,6 +85,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = Composition.Name;
             Result.TechName = Composition.TechName;
             Result.Summary = Composition.Summary;
+            Result.Description = ExportDescription(Composition.Description);
             Result.TechSpec = Composition.TechSpec;
             Result.ViewsPrefix = Composition.ViewsPrefix;
             Result.RootViewId = IdOf(Composition.RootView);
@@ -99,6 +100,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Result.Domain.Name = Domain.Name;
                 Result.Domain.TechName = Domain.TechName;
                 Result.Domain.Summary = Domain.Summary;
+                Result.Domain.Description = ExportDescription(Domain.Description);
                 Result.Domain.TechSpec = Domain.TechSpec;
                 Result.Domain.CompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Domain);
             }
@@ -142,6 +144,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = Definition.Name;
             Result.TechName = Definition.TechName;
             Result.Summary = Definition.Summary;
+            Result.Description = ExportDescription(Definition.Description);
             Result.TechSpec = Definition.TechSpec;
             return Result;
         }
@@ -167,6 +170,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Name = Source.Name;
             Target.TechName = Source.TechName;
             Target.Summary = Source.Summary;
+            Target.Description = ExportDescription(Source.Description);
             Target.TechSpec = Source.TechSpec;
             FillDefinition(Target, Source.IdeaDefinitor);
             Target.ContainerId = IdOf(Source.OwnerContainer);
@@ -184,6 +188,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Name = Source.Name;
             Target.TechName = Source.TechName;
             Target.Summary = Source.Summary;
+            Target.Description = ExportDescription(Source.Description);
             Target.TechSpec = Source.TechSpec;
             Target.DefinitionId = IdOf(Source.IdeaDefinitor);
             Target.DefinitionTechName = Source.IdeaDefinitor == null ? null : Source.IdeaDefinitor.TechName;
@@ -393,6 +398,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = View.Name;
             Result.TechName = View.TechName;
             Result.Summary = View.Summary;
+            Result.Description = ExportDescription(View.Description);
             Result.OwnerIdeaId = IdOf(View.OwnerCompositeContainer);
             Result.OwnerIdeaTechName = View.OwnerCompositeContainer == null ? null : View.OwnerCompositeContainer.TechName;
             Result.Visuals = Composition.DeclaredIdeas
@@ -409,6 +415,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     Warnings.Add("View '" + View.TechName + "' contains a non-visual-object child that is not represented in JSON.");
 
             return Result;
+        }
+
+        private static string ExportDescription(string Description)
+        {
+            return Display.XamlRichTextToPlainTextOrSelf(Description);
         }
 
         private static CompositionJsonVisual ExportVisual(VisualRepresentation Representation)

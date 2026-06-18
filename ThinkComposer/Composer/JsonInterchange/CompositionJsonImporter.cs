@@ -415,6 +415,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (this.RepairRecursiveVisuals)
                 RepairRecursiveVisualsBeforeImport();
 
+            RepairInvalidVisualRepresentationsBeforeImport();
+
             if (Document.Warnings != null)
                 foreach (var Warning in Document.Warnings)
                     this.Report.SourceWarning(Warning.ToStringAlways());
@@ -453,6 +455,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (this.RepairRecursiveVisuals && !this.IsPreview)
                 RepairRecursiveVisualsAfterImport();
+
+            if (!this.IsPreview)
+                RepairInvalidVisualRepresentationsAfterImport();
 
             if (!this.IsPreview)
                 ApplyRelationshipCenterPlacementBeforeRouting();
@@ -1198,9 +1203,39 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.Report.Log("JSON import post-apply recursive visual repair scan found no repairs.");
         }
 
+        private void RepairInvalidVisualRepresentationsBeforeImport()
+        {
+            this.Report.Log("JSON import invalid visual representation repair scan started.");
+            var Repairs = CompositeViewIntegrity.RepairInvalidVisualRepresentations(this.Composition,
+                Message =>
+                {
+                    this.Report.Log("JSON import invalid visual repair: " + Message);
+                    this.Report.CountRepairedInvalidVisual();
+                },
+                this.IsPreview);
+
+            if (Repairs < 1)
+                this.Report.Log("JSON import invalid visual representation repair scan found no repairs.");
+        }
+
+        private void RepairInvalidVisualRepresentationsAfterImport()
+        {
+            this.Report.Log("JSON import post-apply invalid visual representation repair scan started.");
+            var Repairs = CompositeViewIntegrity.RepairInvalidVisualRepresentations(this.Composition,
+                Message =>
+                {
+                    this.Report.Log("JSON import post-apply invalid visual repair: " + Message);
+                    this.Report.CountRepairedInvalidVisual();
+                },
+                false);
+
+            if (Repairs < 1)
+                this.Report.Log("JSON import post-apply invalid visual representation repair scan found no repairs.");
+        }
+
         private void ApplyComposition(CompositionJsonComposition Source)
         {
-            var Changed = ApplyFormalSet(this.Composition, Source.Name, Source.TechName, Source.Summary, Source.TechSpec, Source.Version);
+            var Changed = ApplyFormalSet(this.Composition, Source.Name, Source.TechName, Source.Summary, Source.Description, Source.TechSpec, Source.Version);
 
             if (!String.IsNullOrEmpty(Source.ViewsPrefix) && this.Composition.ViewsPrefix != Source.ViewsPrefix)
             {
@@ -1225,7 +1260,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Existing != null)
             {
-                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.TechSpec, (CompositionJsonVersion)null);
+                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
                 CountUpdated(Changed);
                 ApplyMarkers(Existing, Source.Markers);
                 ApplyDetails(Existing, Source.Details);
@@ -1260,7 +1295,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Existing != null)
             {
-                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.TechSpec, (CompositionJsonVersion)null);
+                var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
                 CountUpdated(Changed);
                 var RepairResult = RepairRelationshipLinks(Existing, BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, "top-level"));
                 if (RepairResult.Added > 0)
@@ -1375,7 +1410,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Concept = new Concept(this.Composition, Definition, Source.Name, Source.TechName.NullDefault(Source.Name.TextToIdentifier()), Source.Summary.NullDefault(""));
             AssignImportedId(Concept, Source.Id);
-            ApplyFormalSet(Concept, null, null, null, Source.TechSpec, (CompositionJsonVersion)null);
+            ApplyFormalSet(Concept, null, null, null, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
 
             if (Definition.IsVersionable)
                 Concept.Version = new VersionCard();
@@ -1517,7 +1552,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Relationship = new Relationship(this.Composition, Definition, Name, Source.TechName.NullDefault(Name.TextToIdentifier()), Source.Summary.NullDefault(""));
             AssignImportedId(Relationship, Source.Id);
-            ApplyFormalSet(Relationship, null, null, null, Source.TechSpec, (CompositionJsonVersion)null);
+            ApplyFormalSet(Relationship, null, null, null, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
 
             if (Definition.IsVersionable)
                 Relationship.Version = new VersionCard();
@@ -2316,7 +2351,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             if (this.DetailFallbackMode == "appendToDescription")
-                Idea.Description = AppendDelimitedSection(Idea.Description, Text);
+                Idea.Description = AppendDelimitedDescription(Idea.Description, Text);
             else
                 Idea.TechSpec = AppendDelimitedSection(Idea.TechSpec, Text);
 
@@ -2368,6 +2403,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return Section.Trim();
 
             return ExistingText.TrimEnd() + Environment.NewLine + Environment.NewLine + Section.Trim();
+        }
+
+        private string AppendDelimitedDescription(string ExistingDescription, string Section)
+        {
+            var ExistingText = Display.XamlRichTextToPlainTextOrSelf(ExistingDescription);
+            return ImportDescription(AppendDelimitedSection(ExistingText, Section));
         }
 
         private void ApplyTextDetail(Idea Idea, CompositionJsonDetail Source)
@@ -2564,7 +2605,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             if (ApplyViewMetadata)
-                CountUpdated(ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, null, (CompositionJsonVersion)null));
+                CountUpdated(ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.Description, null, (CompositionJsonVersion)null));
             else
                 this.Report.Log("JSON import view fallback used only for visual placement; active view metadata was preserved.");
 
@@ -2915,7 +2956,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 LogUnsupportedSetFields(Operation.Set, "concept create", new[]
                 {
-                    "name", "techName", "summary", "techSpec", "definitionTechName", "containerId", "containerTechName",
+                    "name", "techName", "summary", "description", "techSpec", "definitionTechName", "containerId", "containerTechName",
                     "viewId", "viewTechName", "x", "y", "width", "height", "autoPlace", "autoFit", "details", "markers", "visual"
                 });
 
@@ -2942,6 +2983,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.TechName = SourceTechName;
                 Source.Name = GetSetString(Operation.Set, "name");
                 Source.Summary = GetSetString(Operation.Set, "summary");
+                Source.Description = GetSetString(Operation.Set, "description");
                 Source.TechSpec = GetSetString(Operation.Set, "techSpec");
                 Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
                 Source.ContainerId = Operation.ContainerId.NullDefault(GetSetString(Operation.Set, "containerId"));
@@ -2968,7 +3010,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 LogUnsupportedSetFields(Operation.Set, "relationship create", new[]
                 {
-                    "name", "techName", "summary", "techSpec", "definitionTechName", "containerId", "containerTechName",
+                    "name", "techName", "summary", "description", "techSpec", "definitionTechName", "containerId", "containerTechName",
                     "viewId", "viewTechName", "x", "y", "width", "height", "autoPlace", "autoRoute", "details", "markers",
                     "links", "originIdeaIds", "originIdeaTechNames", "targetIdeaIds", "targetIdeaTechNames",
                     "fallbackDefinitionTechName", "strictDefinition", "layoutRole", "visual"
@@ -2981,6 +3023,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Source.TechName = SourceTechName;
                 Source.Name = GetSetString(Operation.Set, "name");
                 Source.Summary = GetSetString(Operation.Set, "summary");
+                Source.Description = GetSetString(Operation.Set, "description");
                 Source.TechSpec = GetSetString(Operation.Set, "techSpec");
                 Source.DefinitionTechName = Operation.DefinitionTechName.NullDefault(GetSetString(Operation.Set, "definitionTechName"));
                 Source.FallbackDefinitionTechName = Operation.FallbackDefinitionTechName.NullDefault(GetSetString(Operation.Set, "fallbackDefinitionTechName"));
@@ -3277,7 +3320,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                                                                          bool? ShortcutRequest)
         {
             var Representations = Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
-                                      .Where(Representation => Representation.DisplayingView == View).ToList();
+                                      .Where(Representation => Representation.DisplayingView == View &&
+                                                               Representation.MainSymbol != null).ToList();
 
             var ById = FindVisualRepresentationById(Representations, Operation == null ? null : Operation.RepresentationId);
             if (ById != null)
@@ -3294,7 +3338,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                                                                                    bool? ShortcutRequest)
         {
             var Representations = Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
-                                         .Where(Representation => Representation.DisplayingView == View).ToList();
+                                         .Where(Representation => Representation.DisplayingView == View &&
+                                                                  Representation.MainSymbol != null).ToList();
 
             var ById = FindVisualRepresentationById(Representations, Operation == null ? null : Operation.RepresentationId);
             if (ById != null)
@@ -4908,19 +4953,30 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Name = GetSetString(Set, "name");
             var TechName = GetSetString(Set, "techName");
             var Summary = GetSetString(Set, "summary");
+            var Description = GetSetString(Set, "description");
             var TechSpec = GetSetString(Set, "techSpec");
             var VersionAnnotation = GetSetString(Set, "versionAnnotation");
             var VersionNumber = GetSetString(Set, "versionNumber");
 
-            return ApplyFormalSet(Target, Name, TechName, Summary, TechSpec, VersionAnnotation, VersionNumber);
+            return ApplyFormalSet(Target, Name, TechName, Summary, Description, TechSpec, VersionAnnotation, VersionNumber);
         }
 
         private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string TechSpec, CompositionJsonVersion Version)
         {
-            return ApplyFormalSet(Target, Name, TechName, Summary, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
+            return ApplyFormalSet(Target, Name, TechName, Summary, null, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
+        }
+
+        private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string Description, string TechSpec, CompositionJsonVersion Version)
+        {
+            return ApplyFormalSet(Target, Name, TechName, Summary, Description, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
         }
 
         private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string TechSpec, string VersionAnnotation, string VersionNumber = null)
+        {
+            return ApplyFormalSet(Target, Name, TechName, Summary, null, TechSpec, VersionAnnotation, VersionNumber);
+        }
+
+        private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string Description, string TechSpec, string VersionAnnotation, string VersionNumber = null)
         {
             var Changed = false;
 
@@ -4943,6 +4999,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (!this.IsPreview)
                     Target.Summary = Summary;
                 Changed = true;
+            }
+
+            if (Description != null)
+            {
+                var StorageDescription = ImportDescription(Description);
+                if (Target.Description != StorageDescription)
+                {
+                    if (!this.IsPreview)
+                        Target.Description = StorageDescription;
+
+                    this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") + " description for " + DescribeTarget(Target));
+                    Changed = true;
+                }
             }
 
             if (TechSpec != null && Target.TechSpec != TechSpec)
@@ -4982,6 +5051,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Changed;
         }
 
+        private static string ImportDescription(string Description)
+        {
+            return Display.PlainTextToXamlRichText(Description);
+        }
+
         private bool SetKnownIdeaField(Idea Idea, string PropertyTechName, string Value)
         {
             if (StringEquals(PropertyTechName, FormalElement.__Name.TechName))
@@ -5015,7 +5089,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (StringEquals(PropertyTechName, FormalElement.__Description.TechName))
             {
                 if (!this.IsPreview)
-                    Idea.Description = Value;
+                    Idea.Description = ImportDescription(Value);
                 return true;
             }
 

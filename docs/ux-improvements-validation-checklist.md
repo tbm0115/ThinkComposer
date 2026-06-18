@@ -93,13 +93,20 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Undo import and confirm concept widths and connector routes revert.
 - [ ] Save, reopen, and export PDF/report.
 
-## Composition JSON TechSpec
+## Composition JSON Description, TechSpec, And Details
 
-- [ ] Export a `.tcom` JSON file from a composition that has TechSpec on the composition, concepts, relationships, or definitions.
+- [ ] Export a `.tcom` JSON file from a composition that has Description and TechSpec on the composition, concepts, relationships, views, or definitions.
+- [ ] Confirm exported JSON includes `description` where values exist.
 - [ ] Confirm exported JSON includes `techSpec` where values exist.
 - [ ] Import `samples/json-interchange-regression.sample.json` after adapting tech names to the active composition.
+- [ ] Confirm `set.description` updates an existing object and logs the field-level update.
 - [ ] Confirm `set.techSpec` updates an existing concept and logs the field-level update.
-- [ ] Save, reopen, and confirm TechSpec persists.
+- [ ] Import `samples/composition-description-details-regression.sample.json` into a blank All-Purpose composition.
+- [ ] Confirm description and TechSpec line breaks persist for composition, concepts, and relationships.
+- [ ] Open an imported concept's Properties dialog and confirm the Description tab opens without a XAML parse error.
+- [ ] Confirm known-field Text details can update Description through `targetPropertyTechName=Description`.
+- [ ] Confirm unsupported free-form details append to Description when `detailFallbackMode=appendToDescription`.
+- [ ] Save, reopen, and confirm Description and TechSpec persist.
 
 ## Composition JSON Fixture Imports
 
@@ -122,6 +129,7 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Add strict options to the current machine-monitoring generated patch and confirm `strictRelationshipCompatibility=true` plus `abortOnRelationshipCompatibilityFailure=true` blocks before concepts/relationships are created when compatibility failures exist.
 - [ ] Import a latest-Skill-generated full-state-style composition JSON without `treatMissingFullStateItemsAsCreates` and confirm the dialog/log explains that missing top-level ideas/relationships were treated as updates, not creates.
 - [ ] Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition and confirm concepts created=2, relationships created=1, visuals placed > 0, skipped=0.
+- [ ] Import `samples/composition-description-details-regression.sample.json` into a blank All-Purpose composition and confirm first-class descriptions, TechSpec, and detail fallback behavior apply without skipping created ideas.
 - [ ] Import `samples/composition-shortcut-roundtrip.sample.json` into a blank All-Purpose composition and confirm one semantic concept appears twice in the same view, with the second visual marked as a Shortcut.
 - [ ] Export/re-import the shortcut sample and confirm `isShortcut:true` persists and no duplicate semantic concept is created.
 - [ ] Add `treatMissingFullStateItemsAsCreates=true` to the generated full-state machine-monitoring JSON and confirm concepts are created instead of skipped; relationships either create or report relationship compatibility failures.

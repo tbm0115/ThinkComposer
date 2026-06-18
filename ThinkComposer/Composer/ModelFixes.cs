@@ -130,6 +130,12 @@ namespace Instrumind.ThinkComposer.Composer
                 Target.ModelRevision++;
             }
 
+            var InvalidVisualRepairs = 0;
+            if (Target.OwnerComposition != null)
+                InvalidVisualRepairs = CompositeViewIntegrity.RepairInvalidVisualRepresentations(Target.OwnerComposition,
+                    Message => Console.WriteLine("Document structure repair: " + Message),
+                    false);
+
             // NOTE: Some test Compos has a ModelRevision with some extra numbers added.
 
             /* NEXT:
@@ -139,11 +145,13 @@ namespace Instrumind.ThinkComposer.Composer
                 Target.ModelRevision++;
             } */
 
-            if (InitialRevision >= Target.ModelRevision)
+            if (InitialRevision >= Target.ModelRevision && InvalidVisualRepairs < 1)
                 return false;
 
             Target.EditEngine.ExistenceStatus = EExistenceStatus.Modified;
-            Console.WriteLine("Document structure updated.");
+            Console.WriteLine(InvalidVisualRepairs > 0
+                              ? "Document structure updated. Invalid visual representations repaired: " + InvalidVisualRepairs.ToString()
+                              : "Document structure updated.");
 
             return true;
         }

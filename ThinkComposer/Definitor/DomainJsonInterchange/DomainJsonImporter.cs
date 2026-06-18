@@ -994,12 +994,18 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 Changed = true;
             }
 
-            if (Source.Description != null && Target.Description != Source.Description)
+            if (Source.Description != null)
             {
-                this.Report.LogFieldUpdate(Entity, "description", Describe(Target), MatchMethod, Target.Description, Source.Description, this.IsPreview);
-                if (!this.IsPreview)
-                    Target.Description = Source.Description;
-                Changed = true;
+                var StorageDescription = Display.PlainTextToXamlRichText(Source.Description);
+                if (Target.Description != StorageDescription)
+                {
+                    this.Report.LogFieldUpdate(Entity, "description", Describe(Target), MatchMethod,
+                                               Display.XamlRichTextToPlainTextOrSelf(Target.Description),
+                                               Source.Description, this.IsPreview);
+                    if (!this.IsPreview)
+                        Target.Description = StorageDescription;
+                    Changed = true;
+                }
             }
 
             return Changed;

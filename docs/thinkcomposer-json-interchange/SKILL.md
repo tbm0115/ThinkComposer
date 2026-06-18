@@ -93,6 +93,7 @@ Rules:
 - Use `update` for text/TechSpec edits, `create` for new model items, `place` for diagram visibility, and `delete` only when explicitly requested.
 - Match by stable `id` when available, otherwise by top-level `techName`.
 - Put editable fields inside `set`.
+- `set.description` is first-class plain text for composition, concepts, relationships, and views. ThinkComposer converts this text to/from native rich-text storage internally. Omission preserves existing Description and explicit empty string clears it.
 - `set.techSpec` is plain text; omission preserves existing TechSpec and explicit empty string clears it.
 - Relationship creates must include resolvable origin/target links. Linkless relationships are skipped by the importer.
 - Relationship links may appear at operation top level or inside `set`; top-level values are preferred.
@@ -105,7 +106,8 @@ Rules:
 - If the correct relationship definition is uncertain, use a generic relationship definition such as `Relationship` or `Reference` only when the user wants a draft graph, include an explicit `relationshipDefinitionFallbackTechName` for draft imports, or ask the user which definition to use. Do not use fallback silently.
 - Set `strictDefinition: true` on an operation when preserving the requested relationship definition is more important than importing a draft graph edge.
 - Use operation-level `autoFit` and `autoRoute` to override top-level import options.
-- Use `detailFallbackMode: "appendToTechSpec"` only when preserving generated detail text matters and native detail designators may be missing. Prefer `summary`, `description`, or `techSpec` for important generated text unless the target domain clearly supports matching details.
+- Use `details` only when the target domain exposes matching native detail designators, or when using a known-field Text detail with `targetPropertyTechName` such as `Description`, `Summary`, or `TechSpec`.
+- Use `detailFallbackMode: "appendToTechSpec"` or `"appendToDescription"` only when preserving generated detail text matters and native detail designators may be missing. Prefer first-class `summary`, `description`, or `techSpec` for important generated text unless the target domain clearly supports matching details.
 - Do not place a concept inside its own composite view.
 - For normal imports, resolve containers by exact `containerId` or `containerTechName`.
 - For root-level GPT patches that should import into whatever composition is active, set `importOptions.useActiveCompositionAsContainer: true` and use the canonical sentinel `containerTechName: "Active_Composition_Root"`.
@@ -396,6 +398,8 @@ When helping with import results, do not treat nonzero source warnings as failur
 
 Composition JSON import supports:
 
+- first-class `summary`, `description`, and `techSpec` text on composition/concepts/relationships/views where native objects expose those fields
+- safe `details` import for known-field Text details and matching native table/resource detail designators
 - `importOptions.autoPlaceNewItems`
 - `importOptions.layoutMode`
 - `importOptions.preventSelfRecursiveCompositeViews`

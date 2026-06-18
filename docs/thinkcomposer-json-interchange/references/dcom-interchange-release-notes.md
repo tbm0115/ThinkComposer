@@ -13,7 +13,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 
 ## Supported Workflows
 
-- Update `.tcom` composition, concept, relationship, and supported definition summary/TechSpec fields through `ThinkComposer.JsonInterchange`.
+- Update `.tcom` composition, concept, relationship, view, and supported definition summary/description/TechSpec fields through `ThinkComposer.JsonInterchange`.
 - Create and visually place composition concepts/relationships with auto-place, auto-fit, auto-route, recursive-composite protection, and root fixture fallback via `importOptions.useActiveCompositionAsContainer`.
 - Author GPT-generated root-level `.tcom` patches with the canonical `containerTechName: "Active_Composition_Root"` sentinel so creates can target the active composition safely after preview.
 - Import GPT-generated full-state-style `.tcom` documents into blank compositions only when explicitly allowed with `importOptions.treatMissingFullStateItemsAsCreates=true` or per-item `isNew:true`.
@@ -28,6 +28,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Emit copyable `BEGIN THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT` log blocks to help regenerate domain-valid composition patches.
 - Preserve draft graph structure explicitly with `importOptions.relationshipDefinitionFallbackTechName` when a generated relationship uses an over-specific definition and `strictDefinition` is not set.
 - Keep unsupported GPT-authored details from blocking concept/relationship creation, with optional `detailFallbackMode` to append detail text/rows to TechSpec or Description.
+- Round-trip Composition JSON descriptions alongside summaries and TechSpec; JSON descriptions are plain text and are converted to native rich-text storage internally. Safe Text details can target known fields such as Description, Summary, or TechSpec.
 - Export `.tdom` domain metadata, definitions, tables, fields, roles, markers, external languages, and output templates as text-safe Domain JSON.
 - Import additive Domain JSON patches for metadata, TechSpec, definitions, tables/fields, external languages, and output templates.
 - Generate composition output without opening every involved definition's Output-Templates tab first.
@@ -45,6 +46,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Source-warning vs import-warning dialog categorization.
 - Composition layout fixture import into a fresh blank composition using `useActiveCompositionAsContainer`.
 - Composition active-root fallback import using `samples/composition-active-root-fallback.sample.json`, expecting 2 concepts and 1 relationship created with zero missing-container skips.
+- Composition description/detail regression import using `samples/composition-description-details-regression.sample.json`, expecting first-class Description/TechSpec updates and unsupported detail fallback without skipping created ideas.
 - Generated MTConnect composition patch workflow after importing/updating the companion Domain JSON first: `machine_monitoring_utilization_productivity_composition.json` should plan root-level concept and relationship creates instead of skipping `Active_Composition_Root`.
 - Machine-monitoring composition imports that use incompatible domain-specific relationship definitions now report compatibility skips as domain validation issues, not container/endpoint importer failures.
 - Full-state-style generated composition documents now produce a clear note when missing top-level IDs are update-only because full-state-create mode is disabled; enabling the option allows concepts to create before relationship compatibility is evaluated.

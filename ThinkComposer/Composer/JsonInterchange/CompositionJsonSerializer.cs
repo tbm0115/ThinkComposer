@@ -200,6 +200,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Composition.Name);
             AddIf(Obj, "techName", Composition.TechName);
             AddIf(Obj, "summary", Composition.Summary);
+            AddIf(Obj, "description", Composition.Description);
             AddIf(Obj, "techSpec", Composition.TechSpec);
             AddIf(Obj, "viewsPrefix", Composition.ViewsPrefix);
             AddIf(Obj, "rootViewId", Composition.RootViewId);
@@ -219,6 +220,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Domain.Name);
             AddIf(Obj, "techName", Domain.TechName);
             AddIf(Obj, "summary", Domain.Summary);
+            AddIf(Obj, "description", Domain.Description);
             AddIf(Obj, "techSpec", Domain.TechSpec);
             AddIf(Obj, "compatibilitySignature", Domain.CompatibilitySignature);
             Add(Obj, "definitions", ToList(Domain.Definitions, ToGraph));
@@ -233,6 +235,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Definition.Name);
             AddIf(Obj, "techName", Definition.TechName);
             AddIf(Obj, "summary", Definition.Summary);
+            AddIf(Obj, "description", Definition.Description);
             AddIf(Obj, "techSpec", Definition.TechSpec);
             return Obj;
         }
@@ -266,6 +269,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Idea.Name);
             AddIf(Obj, "techName", Idea.TechName);
             AddIf(Obj, "summary", Idea.Summary);
+            AddIf(Obj, "description", Idea.Description);
             AddIf(Obj, "techSpec", Idea.TechSpec);
             AddIf(Obj, "containerId", Idea.ContainerId);
             AddIf(Obj, "containerTechName", Idea.ContainerTechName);
@@ -290,6 +294,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Relationship.Name);
             AddIf(Obj, "techName", Relationship.TechName);
             AddIf(Obj, "summary", Relationship.Summary);
+            AddIf(Obj, "description", Relationship.Description);
             AddIf(Obj, "techSpec", Relationship.TechSpec);
             AddIf(Obj, "containerId", Relationship.ContainerId);
             AddIf(Obj, "containerTechName", Relationship.ContainerTechName);
@@ -373,6 +378,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", View.Name);
             AddIf(Obj, "techName", View.TechName);
             AddIf(Obj, "summary", View.Summary);
+            AddIf(Obj, "description", View.Description);
             AddIf(Obj, "ownerIdeaId", View.OwnerIdeaId);
             AddIf(Obj, "ownerIdeaTechName", View.OwnerIdeaTechName);
             Add(Obj, "visuals", ToList(View.Visuals, ToGraph));
@@ -571,6 +577,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.ViewsPrefix = GetString(Source, "viewsPrefix");
             Result.RootViewId = GetString(Source, "rootViewId");
@@ -590,6 +597,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.CompatibilitySignature = GetString(Source, "compatibilitySignature");
             Result.Definitions = ReadList(Source, "definitions", ReadDefinition);
@@ -604,6 +612,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             return Result;
         }
@@ -640,6 +649,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
@@ -664,6 +674,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
@@ -718,15 +729,21 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Delete = GetBool(Source, "delete", false);
             Result.Kind = GetString(Source, "kind");
             Result.DesignatorId = GetString(Source, "designatorId");
-            Result.DesignatorTechName = GetString(Source, "designatorTechName");
-            Result.DesignatorName = GetString(Source, "designatorName");
-            Result.Text = GetString(Source, "text");
+            Result.DesignatorTechName = FirstPresent(GetString(Source, "designatorTechName"),
+                                                     GetString(Source, "detailTechName"),
+                                                     GetString(Source, "techName"));
+            Result.DesignatorName = FirstPresent(GetString(Source, "designatorName"),
+                                                 GetString(Source, "name"));
+            Result.Text = FirstPresent(GetString(Source, "text"),
+                                       GetString(Source, "content"),
+                                       GetString(Source, "value"));
             Result.TargetAddress = GetString(Source, "targetAddress");
             Result.TargetPropertyTechName = GetString(Source, "targetPropertyTechName");
             Result.Source = GetString(Source, "source");
             Result.MimeType = GetString(Source, "mimeType");
             Result.Fields = ReadList(Source, "fields", ReadField);
             Result.Records = ReadRecordList(Source, "records");
+            Result.Records.AddRange(ReadRecordList(Source, "rows"));
             return Result;
         }
 
@@ -747,6 +764,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.OwnerIdeaId = GetString(Source, "ownerIdeaId");
             Result.OwnerIdeaTechName = GetString(Source, "ownerIdeaTechName");
             Result.Visuals = ReadList(Source, "visuals", ReadVisual);
@@ -1172,6 +1190,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return null;
 
             return Convert.ToString(Source[Key], CultureInfo.InvariantCulture);
+        }
+
+        private static string FirstPresent(params string[] Values)
+        {
+            if (Values == null)
+                return null;
+
+            foreach (var Value in Values)
+                if (Value != null)
+                    return Value;
+
+            return null;
         }
 
         public static int GetInt(IDictionary<string, object> Source, string Key, int DefaultValue)

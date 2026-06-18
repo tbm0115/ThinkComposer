@@ -987,21 +987,45 @@ namespace Instrumind.ThinkComposer.Composer
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
         public void GoToShortcutTarget(VisualSymbol SourceShortcutSymbol)
         {
-            var TargetRepresentation = SourceShortcutSymbol.OwnerRepresentation.RepresentedIdea.VisualRepresentators.FirstOrDefault(vrep => !vrep.IsShortcut)
-                                          .NullDefault(SourceShortcutSymbol.OwnerRepresentation.RepresentedIdea.VisualRepresentators.FirstOrDefault());
+            var SourceRepresentation = (SourceShortcutSymbol == null ? null : SourceShortcutSymbol.OwnerRepresentation);
+            var SourceIdea = (SourceRepresentation == null ? null : SourceRepresentation.RepresentedIdea);
 
-            if (TargetRepresentation == null)
+            if (SourceIdea == null)
             {
-                Console.WriteLine("No shortcut target found.");
+                const string Message = "No shortcut source was found.";
+                Console.WriteLine(Message);
+                Display.DialogMessage("Go to Original", Message, EMessageType.Information);
                 return;
             }
 
-            this.StartCommandVariation("Go to Shortcut Target");
+            var TargetRepresentation = SourceIdea.VisualRepresentators
+                                          .FirstOrDefault(vrep => vrep != SourceRepresentation
+                                                                  && !vrep.IsShortcut
+                                                                  && vrep.DisplayingView != null
+                                                                  && vrep.MainSymbol != null)
+                                          .NullDefault(SourceIdea.VisualRepresentators
+                                                        .FirstOrDefault(vrep => vrep != SourceRepresentation
+                                                                                && vrep.DisplayingView != null
+                                                                                && vrep.MainSymbol != null));
+
+            if (TargetRepresentation == null)
+            {
+                var Message = "No original visual representation was found for Shortcut '" + SourceIdea.Name + "'.";
+                Console.WriteLine(Message);
+                Display.DialogMessage("Go to Original", Message, EMessageType.Information);
+                return;
+            }
+
+            this.StartCommandVariation("Go to Original");
 
             TargetRepresentation.RepresentedIdea.OwnerComposition.Engine.ShowView(TargetRepresentation.DisplayingView);
-            TargetRepresentation.DisplayingView.Presenter.BringIntoView(TargetRepresentation.MainSymbol.BaseArea);
             TargetRepresentation.DisplayingView.Presenter.PostCall(
-                vpres => vpres.OwnerView.Manipulator.PointObject(TargetRepresentation.MainSymbol));
+                vpres =>
+                {
+                    vpres.OwnerView.Manipulator.ApplySelection(TargetRepresentation.MainSymbol, false, false, true);
+                    vpres.OwnerView.Presenter.BringIntoView(TargetRepresentation.MainSymbol.BaseArea);
+                    vpres.OwnerView.Manipulator.PointObject(TargetRepresentation.MainSymbol, true);
+                });
 
             this.CompleteCommandVariation();
         }

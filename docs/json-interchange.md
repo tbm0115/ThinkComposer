@@ -176,6 +176,44 @@ Modes:
 
 Regression sample: `samples/composition-relationship-center-placement.sample.json` intentionally imports relationship centers in a top/global label band. With `relationshipVisualPlacementMode: "auto"`, the final import summary should report suspicious centers and recomputed relationship centers before routing.
 
+## Shortcut Visuals
+
+ThinkComposer Shortcuts are visual representations of an existing Idea. They are not duplicate concepts or relationships. Use a Shortcut when the same concept should appear in another place in a diagram while preserving one semantic identity.
+
+Composition JSON exports shortcut visuals with `isShortcut:true` on the visual representation:
+
+```json
+{
+  "ideaTechName": "Shared_Service",
+  "representationId": "00000000-0000-0000-0000-000000000102",
+  "isShortcut": true,
+  "x": 420,
+  "y": 160
+}
+```
+
+Patch-style placement can request the same behavior with `visual.isShortcut:true`:
+
+```json
+{
+  "op": "place",
+  "entity": "concept",
+  "techName": "Shared_Service",
+  "viewTechName": "Main_View",
+  "x": 420,
+  "y": 160,
+  "visual": {
+    "isShortcut": true
+  }
+}
+```
+
+When a concept intentionally has both a primary visual and a shortcut visual in the same view, include `representationId` from export when updating a specific visual. Otherwise the importer matches by idea and view first and creates a shortcut only when the requested shortcut representation is missing.
+
+The UI command **Replace with Shortcut...** is available on a non-shortcut concept symbol. It replaces only the selected visual with a shortcut to a user-selected existing concept and reassigns only visible current-view relationship links that touched that visual. It does not merge/delete the source concept or copy source-specific summary/details/TechSpec.
+
+On a shortcut symbol, use **Go to Original** to navigate to a primary/original visual representation of the same idea. The command prefers a non-shortcut visual, switches to that view, brings the symbol into view, and points/selects it.
+
 ## Intent-Agnostic Import Primitives
 
 ThinkComposer JSON import is intentionally source-neutral. The importer does not infer that a source-format subgraph is a Group Region, that a relationship named "contains" is membership, that a particular domain should be model-only, or that a concept name implies layout behavior. Those choices belong in the Skill or JSON generator.
@@ -502,6 +540,7 @@ Layout options:
 - `treatMissingFullStateItemsAsCreates` defaults to false. It is an opt-in for full-state-style GPT documents that should create missing top-level `ideas[]` and `relationships[]` in the active composition. Patch operations remain preferred.
 - `visualStrategy` is top-level metadata, not an `importOptions` field. Use it for large imports that should be model-only, overview-only, optimized/deferred, or exact full visual.
 - `relationshipVisualPlacementMode` defaults to `auto`. Use `endpointCorridor` for generated diagrams where relationship centers should be recomputed near the concepts they connect; use `explicit` only for curated coordinates.
+- `visual.isShortcut` on a `place` operation creates or updates a shortcut visual representation of an existing idea. A shortcut is visual identity, not a second semantic concept.
 - `relationshipDefinitionFallbackTechName` defaults to disabled. It can preserve draft graph structure by retrying compatibility-failed relationship creates with a generic relationship definition.
 - `detailFallbackMode` defaults to `skip`. `appendToTechSpec` and `appendToDescription` preserve unsupported details as delimited text on the idea.
 - `domainCompatibilityPolicy` defaults to `warn`. Use `requireTechName`, `requireId`, `requireVersion`, or `requireSignature` when a patch must target a specific embedded domain contract.
@@ -519,7 +558,7 @@ GPT prompt example:
 Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. For small diagrams, include x/y/width/height only when deliberate placement matters and leave importOptions.autoFitPlacedConcepts/autoRoutePlacedLinks true. For large model imports, prefer top-level visualStrategy mode modelOnly or overviewAndModel with deferAutoFit, deferRouting, and deferViewRefresh true instead of hand-placing/routing every item. Do not delete anything unless I explicitly request it.
 ```
 
-Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, `samples/composition-full-state-create.sample.json`, `samples/composition-large-visual-strategy.sample.json`, `samples/composition-relationship-center-placement.sample.json`, `samples/composition-intent-agnostic-groups.sample.json`, and `samples/composition-intent-agnostic-visual-controls.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`. The large visual strategy sample demonstrates a model import that suppresses or caps visual work so semantic data can import without forcing immediate full-diagram rendering. The intent-agnostic samples demonstrate explicit generic visual/group controls without source-specific importer behavior.
+Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, `samples/composition-full-state-create.sample.json`, `samples/composition-shortcut-roundtrip.sample.json`, `samples/composition-large-visual-strategy.sample.json`, `samples/composition-relationship-center-placement.sample.json`, `samples/composition-intent-agnostic-groups.sample.json`, and `samples/composition-intent-agnostic-visual-controls.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`. The shortcut round-trip sample demonstrates one semantic concept with a primary visual and a shortcut visual. The large visual strategy sample demonstrates a model import that suppresses or caps visual work so semantic data can import without forcing immediate full-diagram rendering. The intent-agnostic samples demonstrate explicit generic visual/group controls without source-specific importer behavior.
 
 ## Domain Interchange
 
@@ -564,6 +603,7 @@ When an embedded Domain update adds or changes output templates, ThinkComposer s
 22. Add strict options to a known partially compatible generated patch. Expected result: preview reports compatibility failures and apply is blocked before creating concepts.
 23. Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition. Expected result: two concepts created, one relationship created, visuals placed, skipped zero.
 24. Import a full-state-style generated file without `treatMissingFullStateItemsAsCreates`. Expected result: the dialog/log notes that missing full-state ids were treated as updates and explains how to enable full-state-create mode.
+25. Import `samples/composition-shortcut-roundtrip.sample.json`. Expected result: one shared semantic concept is visible twice in the same view, with the second representation marked as a Shortcut; export/re-import should preserve `isShortcut:true`.
 
 ## Troubleshooting
 
@@ -600,4 +640,4 @@ On import failure, ThinkComposer logs the exception message, full exception deta
 
 Images, attachments, styling, custom visual formatting, store-box references, and binary content are preserved in the `.tcom` file but exported as metadata or warnings only. Unsupported details are omitted from editable import behavior rather than failing export. Import does not delete by omission; deletions require explicit `delete: true` or an operation with `op: "delete"`.
 
-For details, text-like content is exported as editable text where possible. Table details are exported as arrays of field/value records when their field metadata can be represented safely. Resource links, internal links, and attachments are exported as metadata; large binary payloads are not inlined.
+For details, text-like content is exported as editable text where possible. Table details are exported as arrays of field/value records when their field metadata can be represented safely. Sparse or malformed table-detail cells are exported as empty strings with source warnings instead of aborting the whole composition export. Resource links, internal links, and attachments are exported as metadata; large binary payloads are not inlined.

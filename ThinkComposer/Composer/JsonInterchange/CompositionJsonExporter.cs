@@ -298,8 +298,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            Target.Fields = Table.Definition.FieldDefinitions
-                                 .OrderBy(Field => Field.StorageIndex)
+            var FieldDefinitions = Table.Definition.FieldDefinitions
+                                  .Where(Field => Field != null)
+                                  .OrderBy(Field => Field.StorageIndex)
+                                  .ToList();
+
+            Target.Fields = FieldDefinitions
                                  .Select(Field =>
                                  {
                                      var Result = new CompositionJsonField();
@@ -311,14 +315,42 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                                  }).ToList();
 
             Target.Records = new List<Dictionary<string, object>>();
-            foreach (var Record in Table.Records)
-            {
-                var RecordObject = new Dictionary<string, object>();
-                foreach (var Field in Table.Definition.FieldDefinitions.OrderBy(Field => Field.StorageIndex))
-                    RecordObject[Field.TechName] = Record.GetFieldValueForExport(Field, false, true, true);
+            var RecordIndex = 0;
+            if (Table.Records != null)
+                foreach (var Record in Table.Records)
+                {
+                    RecordIndex++;
+                    var RecordObject = new Dictionary<string, object>();
+                    foreach (var Field in FieldDefinitions)
+                    {
+                        var FieldKey = FieldExportKey(Field);
+                        try
+                        {
+                            RecordObject[FieldKey] = Record == null ? "" : Record.GetFieldValueForExport(Field, false, true, true);
+                        }
+                        catch (Exception Problem)
+                        {
+                            RecordObject[FieldKey] = "";
+                            Warnings.Add("Table detail '" + DetailSortKey(Table) +
+                                         "' record " + RecordIndex.ToString(CultureInfo.InvariantCulture) +
+                                         " field '" + FieldKey +
+                                         "' could not be exported and was emitted as an empty string. " +
+                                         Problem.GetType().Name + ": " + Problem.Message);
+                        }
+                    }
 
-                Target.Records.Add(RecordObject);
-            }
+                    Target.Records.Add(RecordObject);
+                }
+        }
+
+        private static string FieldExportKey(FieldDefinition Field)
+        {
+            if (Field == null)
+                return "field";
+
+            return Field.TechName.NullDefault(Field.Name)
+                                .NullDefault(IdOf(Field))
+                                .NullDefault("field");
         }
 
         private static void ExportLink(Link Link, CompositionJsonDetail Target, List<string> Warnings)

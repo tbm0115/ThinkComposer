@@ -400,6 +400,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "op", Operation.Op);
             AddIf(Obj, "entity", Operation.Entity);
             AddIf(Obj, "id", Operation.Id);
+            AddIf(Obj, "representationId", Operation.RepresentationId);
             AddIf(Obj, "techName", Operation.TechName);
             AddIf(Obj, "definitionTechName", Operation.DefinitionTechName);
             AddIf(Obj, "fallbackDefinitionTechName", Operation.FallbackDefinitionTechName);
@@ -415,6 +416,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "autoPlace", Operation.AutoPlace);
             AddIf(Obj, "autoFit", Operation.AutoFit);
             AddIf(Obj, "autoRoute", Operation.AutoRoute);
+            AddIf(Obj, "isShortcut", Operation.IsShortcut);
             AddIf(Obj, "layoutRole", Operation.LayoutRole);
             AddIf(Obj, "visual", ToGraph(Operation.Visual));
             Add(Obj, "originIdeaIds", Operation.OriginIdeaIds ?? new List<string>());
@@ -442,6 +444,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "includeInAutoFit", Visual.IncludeInAutoFit);
             AddIf(Obj, "includeInOverview", Visual.IncludeInOverview);
             AddIf(Obj, "includeInFullView", Visual.IncludeInFullView);
+            AddIf(Obj, "isShortcut", Visual.IsShortcut);
             AddIf(Obj, "relationshipCenterPlacement", Visual.RelationshipCenterPlacement);
             return Obj;
         }
@@ -771,6 +774,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Op = GetString(Source, "op");
             Result.Entity = GetString(Source, "entity");
             Result.Id = GetString(Source, "id");
+            Result.RepresentationId = GetString(Source, "representationId");
             Result.TechName = GetString(Source, "techName");
             Result.DefinitionTechName = GetString(Source, "definitionTechName");
             Result.FallbackDefinitionTechName = GetString(Source, "fallbackDefinitionTechName");
@@ -786,6 +790,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.AutoPlace = GetNullableBool(Source, "autoPlace");
             Result.AutoFit = GetNullableBool(Source, "autoFit");
             Result.AutoRoute = GetNullableBool(Source, "autoRoute");
+            Result.IsShortcut = GetNullableBool(Source, "isShortcut");
             Result.LayoutRole = GetString(Source, "layoutRole");
             Result.Visual = ReadVisualControl(GetDictionary(Source, "visual"));
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
@@ -813,6 +818,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.IncludeInAutoFit = GetNullableBool(Source, "includeInAutoFit");
             Result.IncludeInOverview = GetNullableBool(Source, "includeInOverview");
             Result.IncludeInFullView = GetNullableBool(Source, "includeInFullView");
+            Result.IsShortcut = GetNullableBool(Source, "isShortcut");
             Result.RelationshipCenterPlacement = GetString(Source, "relationshipCenterPlacement");
             return Result;
         }

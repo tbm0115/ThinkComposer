@@ -350,6 +350,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Op { get; set; }
         public string Entity { get; set; }
         public string Id { get; set; }
+        public string RepresentationId { get; set; }
         public string TechName { get; set; }
         public string DefinitionTechName { get; set; }
         public string FallbackDefinitionTechName { get; set; }
@@ -365,6 +366,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool? AutoPlace { get; set; }
         public bool? AutoFit { get; set; }
         public bool? AutoRoute { get; set; }
+        public bool? IsShortcut { get; set; }
         public string LayoutRole { get; set; }
         public CompositionJsonVisualControl Visual { get; set; }
         public List<string> OriginIdeaIds { get; set; }
@@ -387,6 +389,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool? IncludeInAutoFit { get; set; }
         public bool? IncludeInOverview { get; set; }
         public bool? IncludeInFullView { get; set; }
+        public bool? IsShortcut { get; set; }
         public string RelationshipCenterPlacement { get; set; }
     }
 

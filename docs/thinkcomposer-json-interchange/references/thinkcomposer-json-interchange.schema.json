@@ -474,6 +474,10 @@
           "type": "boolean",
           "description": "Full-view materialization hint for generated JSON. The importer records/honors it only as an explicit generic hint."
         },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "When true, place this visual representation as a Shortcut to an existing idea rather than as its primary/local visual."
+        },
         "relationshipCenterPlacement": {
           "$ref": "#/$defs/relationshipCenterPlacement"
         }
@@ -1230,6 +1234,10 @@
         "representationId": {
           "$ref": "#/$defs/guid"
         },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "True when this exported visual representation is a Shortcut to the referenced idea."
+        },
         "x": {
           "type": "number"
         },
@@ -1286,6 +1294,10 @@
         },
         "id": {
           "$ref": "#/$defs/guid"
+        },
+        "representationId": {
+          "$ref": "#/$defs/guid",
+          "description": "Optional visual representation id for place/update operations. Use this when a concept intentionally has more than one visual in the same view, such as a primary visual and a shortcut visual."
         },
         "techName": {
           "$ref": "#/$defs/techName"
@@ -1383,6 +1395,10 @@
         "autoRoute": {
           "type": "boolean",
           "description": "Overrides importOptions.autoRoutePlacedLinks for this operation. Set true to route an existing visible relationship touched by update/place; set false to keep a newly placed or repaired relationship's current connector route."
+        },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "For place operations, true creates/updates a shortcut visual representation of the referenced concept or relationship. Prefer visual.isShortcut for GPT-authored visual controls."
         },
         "originIdeaIds": {
           "type": "array",
@@ -1584,6 +1600,10 @@
         "visual": {
           "$ref": "#/$defs/visualControl",
           "description": "Accepted inside set for GPT-authored patches; top-level visual is preferred."
+        },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "Accepted inside set for GPT-authored place patches; visual.isShortcut is preferred."
         },
         "containerId": {
           "$ref": "#/$defs/guid"

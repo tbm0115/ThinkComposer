@@ -2655,12 +2655,20 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Operation = new CompositionJsonOperation();
             Operation.ViewId = View == null ? null : View.GlobalId.ToString("D");
             Operation.ViewTechName = View == null ? null : View.TechName;
+            Operation.RepresentationId = Source == null ? null : Source.RepresentationId;
+            Operation.IsShortcut = Source == null ? (bool?)null : Source.IsShortcut;
             Operation.X = Source == null ? null : Source.X;
             Operation.Y = Source == null ? null : Source.Y;
             Operation.Width = Source == null ? null : Source.Width;
             Operation.Height = Source == null ? null : Source.Height;
             Operation.AutoPlace = true;
             Operation.Visual = Source == null ? null : Source.Visual;
+            if (Source != null && Source.IsShortcut)
+            {
+                if (Operation.Visual == null)
+                    Operation.Visual = new CompositionJsonVisualControl();
+                Operation.Visual.IsShortcut = true;
+            }
             return Operation;
         }
 
@@ -3264,6 +3272,64 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             SkipVisualPlacement("Cannot place idea '" + Idea.TechName.ToStringAlways() + "' because its type is not supported for JSON visual placement.");
         }
 
+        private ConceptVisualRepresentation FindConceptVisualRepresentationForPlacement(Concept Concept, View View,
+                                                                                         CompositionJsonOperation Operation,
+                                                                                         bool? ShortcutRequest)
+        {
+            var Representations = Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
+                                      .Where(Representation => Representation.DisplayingView == View).ToList();
+
+            var ById = FindVisualRepresentationById(Representations, Operation == null ? null : Operation.RepresentationId);
+            if (ById != null)
+                return ById;
+
+            if (ShortcutRequest != null)
+                return Representations.FirstOrDefault(Representation => Representation.IsShortcut == ShortcutRequest.Value);
+
+            return Representations.FirstOrDefault();
+        }
+
+        private RelationshipVisualRepresentation FindRelationshipVisualRepresentationForPlacement(Relationship Relationship, View View,
+                                                                                                   CompositionJsonOperation Operation,
+                                                                                                   bool? ShortcutRequest)
+        {
+            var Representations = Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
+                                         .Where(Representation => Representation.DisplayingView == View).ToList();
+
+            var ById = FindVisualRepresentationById(Representations, Operation == null ? null : Operation.RepresentationId);
+            if (ById != null)
+                return ById;
+
+            if (ShortcutRequest != null)
+                return Representations.FirstOrDefault(Representation => Representation.IsShortcut == ShortcutRequest.Value);
+
+            return Representations.FirstOrDefault();
+        }
+
+        private static TRepresentation FindVisualRepresentationById<TRepresentation>(IEnumerable<TRepresentation> Representations, string RepresentationId)
+            where TRepresentation : VisualRepresentation
+        {
+            if (RepresentationId.IsAbsent())
+                return null;
+
+            return Representations.FirstOrDefault(Representation =>
+                   String.Equals(Representation.GlobalId.ToString("D"), RepresentationId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private bool? GetOperationShortcutRequest(CompositionJsonOperation Operation)
+        {
+            if (Operation == null)
+                return null;
+
+            if (Operation.IsShortcut != null)
+                return Operation.IsShortcut;
+
+            if (Operation.Visual != null && Operation.Visual.IsShortcut != null)
+                return Operation.Visual.IsShortcut;
+
+            return GetSetBool(Operation.Set, "isShortcut");
+        }
+
         private void PlaceConceptVisual(Concept Concept, View View, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
         {
             string RecursiveWarning;
@@ -3277,8 +3343,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            var Existing = Concept.VisualRepresentators.OfType<ConceptVisualRepresentation>()
-                                  .FirstOrDefault(Representation => Representation.DisplayingView == View);
+            var ShortcutRequest = GetOperationShortcutRequest(Operation);
+            var Existing = FindConceptVisualRepresentationForPlacement(Concept, View, Operation, ShortcutRequest);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
 
             var Width = GetOperationDouble(Operation, "width") ?? (ExistingSymbol == null ? GetConceptDefaultWidth(Concept.ConceptDefinitor.Value) : ExistingSymbol.BaseWidth);
@@ -3305,13 +3371,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             ConceptVisualRepresentation TargetRepresentation = Existing;
             if (TargetRepresentation == null)
             {
-                var AsShortcut = Concept.OwnerContainer != View.OwnerCompositeContainer;
+                var AsShortcut = ShortcutRequest.IsTrue() || Concept.OwnerContainer != View.OwnerCompositeContainer;
                 TargetRepresentation = ConceptCreationCommand.CreateConceptVisualRepresentation(Concept, View, Center, AsShortcut, true, Width, Height);
                 Changed = true;
                 CreatedVisualRepresentation = true;
             }
             else
             {
+                if (ShortcutRequest != null && TargetRepresentation.IsShortcut != ShortcutRequest.Value)
+                {
+                    TargetRepresentation.IsShortcut = ShortcutRequest.Value;
+                    Changed = true;
+                }
+
                 if (HasExplicitGeometry(Operation))
                 {
                     TargetRepresentation.MainSymbol.ResizeTo(Width, Height);
@@ -3356,8 +3428,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            var Existing = Relationship.VisualRepresentators.OfType<RelationshipVisualRepresentation>()
-                                      .FirstOrDefault(Representation => Representation.DisplayingView == View);
+            var ShortcutRequest = GetOperationShortcutRequest(Operation);
+            var Existing = FindRelationshipVisualRepresentationForPlacement(Relationship, View, Operation, ShortcutRequest);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
 
             this.Report.Log(FormatOperationPrefix() + "relationship endpoints for '" + Relationship.TechName +
@@ -3410,10 +3482,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             RelationshipVisualRepresentation TargetRepresentation = Existing;
             if (TargetRepresentation == null)
             {
-                var AsShortcut = Relationship.OwnerContainer != View.OwnerCompositeContainer;
+                var AsShortcut = ShortcutRequest.IsTrue() || Relationship.OwnerContainer != View.OwnerCompositeContainer;
                 TargetRepresentation = RelationshipCreationCommand.CreateRelationshipVisualRepresentation(Relationship, View, Center, AsShortcut);
                 Changed = true;
             }
+            else
+                if (ShortcutRequest != null && TargetRepresentation.IsShortcut != ShortcutRequest.Value)
+                {
+                    TargetRepresentation.IsShortcut = ShortcutRequest.Value;
+                    Changed = true;
+                }
 
             if (HasExplicitGeometry(Operation) && TargetRepresentation.MainSymbol != null)
             {
@@ -3717,6 +3795,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 IncludeInAutoFit = GetSetBool(Source, "includeInAutoFit"),
                 IncludeInOverview = GetSetBool(Source, "includeInOverview"),
                 IncludeInFullView = GetSetBool(Source, "includeInFullView"),
+                IsShortcut = GetSetBool(Source, "isShortcut"),
                 RelationshipCenterPlacement = GetSetString(Source, "relationshipCenterPlacement")
             };
         }

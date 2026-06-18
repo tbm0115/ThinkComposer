@@ -194,6 +194,36 @@ Rules:
 - For medium/large diagrams, also consider `autoRoutePlacedLinks: false` or `visualStrategy.deferRouting: true`; users can run Edit -> Appearance -> Route Links with Obstacle Avoidance after import.
 - If full-state JSON includes relationship visuals, omit exact relationship visual `x/y` unless exact placement is required, or make sure every relationship center is near the midpoint/corridor between its source and target concepts.
 
+## Shortcuts and duplicate-looking concepts
+
+Do not assume two concepts should be merged only because they share a `techName`. In ThinkComposer, semantic identity is the native idea id. A Shortcut is a visual representation of an existing idea; it is the right JSON/UX primitive when the same semantic concept should appear in more than one place.
+
+Rules:
+
+- Use one semantic concept plus shortcut visuals when the user says the item is the same concept shown in multiple contexts.
+- Use separate concepts, optionally with the same or similar `techName`, when summaries/descriptions/types intentionally differ by context.
+- For patch-style placement, emit `visual.isShortcut:true` on an `op:"place"` operation targeting the existing concept.
+- For full-state visual data, preserve exported `views[].visuals[].isShortcut:true`.
+- Include `representationId` when updating a specific visual representation, especially when one concept has both a primary visual and a shortcut visual in the same view.
+- Users can create shortcuts from existing duplicates with **Replace with Shortcut...** and navigate from a shortcut back to its primary/original visual with **Go to Original**.
+- Do not generate merge/delete operations to clean duplicates unless the user explicitly asks for semantic consolidation.
+
+Example shortcut placement:
+
+```json
+{
+  "op": "place",
+  "entity": "concept",
+  "techName": "Shared_Service",
+  "viewTechName": "Main_View",
+  "x": 460,
+  "y": 140,
+  "visual": {
+    "isShortcut": true
+  }
+}
+```
+
 ## Intent-agnostic visual/layout primitives
 
 ThinkComposer import code is intentionally source-neutral. This Skill, not the application importer, is responsible for translating source intent into ThinkComposer primitives.
@@ -390,6 +420,7 @@ Composition JSON import supports:
 - top-level `visualStrategy`
 - operation-level `autoFit`
 - operation-level `autoRoute`
+- operation-level or `visual.isShortcut`
 - operation-level `fallbackDefinitionTechName`
 - operation-level `strictDefinition`
 

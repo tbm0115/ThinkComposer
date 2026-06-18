@@ -198,6 +198,7 @@
     </Compile>
     <Compile Include="Composer\ComposerUI\ComplementCreationCommand.cs" />
     <Compile Include="Composer\ComposerUI\ShortcutCreationCommand.cs" />
+    <Compile Include="Composer\ComposerUI\ShortcutReplacementCommand.cs" />
     <Compile Include="Composer\ComposerUI\ViewComplementManipulationAdorner.cs" />
     <Compile Include="Composer\ComposerUI\EComplementManipulationAction.cs" />
     <Compile Include="Composer\ComposerUI\Widgets\FindAndReplaceDialog.xaml.cs">

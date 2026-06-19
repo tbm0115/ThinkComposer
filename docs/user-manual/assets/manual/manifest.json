@@ -1,0 +1,612 @@
+{
+  "source": "Installer/InstrumindThinkComposer_Manual.pdf",
+  "source_pages": 65,
+  "extraction": "content images only; repeated 237x38 header and small page furniture skipped",
+  "figures": [
+    {
+      "file": "assets/manual/page-07-compositions-01.png",
+      "page": 7,
+      "image": 2,
+      "width": 1530,
+      "height": 900,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-08-compositions-01.png",
+      "page": 8,
+      "image": 2,
+      "width": 601,
+      "height": 331,
+      "section": "compositions",
+      "duplicates": [
+        {
+          "page": 22,
+          "image": 2
+        }
+      ]
+    },
+    {
+      "file": "assets/manual/page-09-compositions-01.png",
+      "page": 9,
+      "image": 2,
+      "width": 861,
+      "height": 597,
+      "section": "compositions",
+      "duplicates": [
+        {
+          "page": 23,
+          "image": 2
+        }
+      ]
+    },
+    {
+      "file": "assets/manual/page-09-compositions-02.png",
+      "page": 9,
+      "image": 3,
+      "width": 315,
+      "height": 288,
+      "section": "compositions",
+      "duplicates": [
+        {
+          "page": 22,
+          "image": 3
+        }
+      ]
+    },
+    {
+      "file": "assets/manual/page-09-compositions-03.png",
+      "page": 9,
+      "image": 4,
+      "width": 484,
+      "height": 67,
+      "section": "compositions",
+      "duplicates": [
+        {
+          "page": 22,
+          "image": 4
+        }
+      ]
+    },
+    {
+      "file": "assets/manual/page-10-compositions-01.png",
+      "page": 10,
+      "image": 6,
+      "width": 510,
+      "height": 285,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-10-compositions-02.png",
+      "page": 10,
+      "image": 7,
+      "width": 138,
+      "height": 60,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-11-compositions-01.png",
+      "page": 11,
+      "image": 3,
+      "width": 122,
+      "height": 42,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-11-compositions-02.png",
+      "page": 11,
+      "image": 4,
+      "width": 730,
+      "height": 478,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-12-compositions-01.png",
+      "page": 12,
+      "image": 2,
+      "width": 607,
+      "height": 667,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-13-compositions-01.png",
+      "page": 13,
+      "image": 2,
+      "width": 541,
+      "height": 187,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-14-compositions-01.png",
+      "page": 14,
+      "image": 2,
+      "width": 672,
+      "height": 349,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-15-compositions-01.png",
+      "page": 15,
+      "image": 4,
+      "width": 326,
+      "height": 93,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-15-compositions-02.png",
+      "page": 15,
+      "image": 5,
+      "width": 323,
+      "height": 93,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-15-compositions-03.png",
+      "page": 15,
+      "image": 6,
+      "width": 326,
+      "height": 129,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-15-compositions-04.png",
+      "page": 15,
+      "image": 7,
+      "width": 202,
+      "height": 82,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-15-compositions-05.png",
+      "page": 15,
+      "image": 8,
+      "width": 227,
+      "height": 79,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-16-compositions-01.png",
+      "page": 16,
+      "image": 2,
+      "width": 327,
+      "height": 62,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-16-compositions-02.png",
+      "page": 16,
+      "image": 3,
+      "width": 301,
+      "height": 156,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-17-compositions-01.png",
+      "page": 17,
+      "image": 2,
+      "width": 359,
+      "height": 125,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-17-compositions-02.png",
+      "page": 17,
+      "image": 3,
+      "width": 344,
+      "height": 94,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-17-compositions-03.png",
+      "page": 17,
+      "image": 4,
+      "width": 463,
+      "height": 120,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-17-compositions-04.png",
+      "page": 17,
+      "image": 5,
+      "width": 462,
+      "height": 102,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-18-compositions-01.png",
+      "page": 18,
+      "image": 4,
+      "width": 178,
+      "height": 94,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-18-compositions-02.png",
+      "page": 18,
+      "image": 5,
+      "width": 310,
+      "height": 270,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-19-compositions-01.png",
+      "page": 19,
+      "image": 2,
+      "width": 314,
+      "height": 134,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-19-compositions-02.png",
+      "page": 19,
+      "image": 3,
+      "width": 220,
+      "height": 165,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-19-compositions-03.png",
+      "page": 19,
+      "image": 4,
+      "width": 291,
+      "height": 53,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-19-compositions-04.png",
+      "page": 19,
+      "image": 5,
+      "width": 134,
+      "height": 67,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-20-compositions-01.png",
+      "page": 20,
+      "image": 2,
+      "width": 255,
+      "height": 97,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-20-compositions-02.png",
+      "page": 20,
+      "image": 3,
+      "width": 180,
+      "height": 99,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-20-compositions-03.png",
+      "page": 20,
+      "image": 4,
+      "width": 344,
+      "height": 469,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-21-compositions-01.png",
+      "page": 21,
+      "image": 2,
+      "width": 334,
+      "height": 279,
+      "section": "compositions",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-24-domains-01.png",
+      "page": 24,
+      "image": 2,
+      "width": 505,
+      "height": 380,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-27-domains-01.png",
+      "page": 27,
+      "image": 2,
+      "width": 327,
+      "height": 408,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-27-domains-02.png",
+      "page": 27,
+      "image": 3,
+      "width": 273,
+      "height": 51,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-27-domains-03.png",
+      "page": 27,
+      "image": 4,
+      "width": 273,
+      "height": 51,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-27-domains-04.png",
+      "page": 27,
+      "image": 5,
+      "width": 124,
+      "height": 55,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-28-domains-01.png",
+      "page": 28,
+      "image": 2,
+      "width": 130,
+      "height": 50,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-28-domains-02.png",
+      "page": 28,
+      "image": 3,
+      "width": 130,
+      "height": 50,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-28-domains-03.png",
+      "page": 28,
+      "image": 4,
+      "width": 130,
+      "height": 42,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-28-domains-04.png",
+      "page": 28,
+      "image": 5,
+      "width": 130,
+      "height": 42,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-28-domains-05.png",
+      "page": 28,
+      "image": 7,
+      "width": 210,
+      "height": 70,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-28-domains-06.png",
+      "page": 28,
+      "image": 8,
+      "width": 148,
+      "height": 69,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-28-domains-07.png",
+      "page": 28,
+      "image": 9,
+      "width": 138,
+      "height": 71,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-29-domains-01.png",
+      "page": 29,
+      "image": 2,
+      "width": 140,
+      "height": 50,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-29-domains-02.png",
+      "page": 29,
+      "image": 3,
+      "width": 143,
+      "height": 53,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-29-domains-03.png",
+      "page": 29,
+      "image": 4,
+      "width": 306,
+      "height": 208,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-29-domains-04.png",
+      "page": 29,
+      "image": 5,
+      "width": 325,
+      "height": 257,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-30-domains-01.png",
+      "page": 30,
+      "image": 2,
+      "width": 270,
+      "height": 222,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-30-domains-02.png",
+      "page": 30,
+      "image": 3,
+      "width": 308,
+      "height": 237,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-31-domains-01.png",
+      "page": 31,
+      "image": 2,
+      "width": 643,
+      "height": 282,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-33-domains-01.png",
+      "page": 33,
+      "image": 2,
+      "width": 412,
+      "height": 137,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-33-domains-02.png",
+      "page": 33,
+      "image": 3,
+      "width": 264,
+      "height": 169,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-34-domains-01.png",
+      "page": 34,
+      "image": 5,
+      "width": 446,
+      "height": 182,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-38-domains-01.png",
+      "page": 38,
+      "image": 2,
+      "width": 676,
+      "height": 344,
+      "section": "domains",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-40-application-guide-01.png",
+      "page": 40,
+      "image": 2,
+      "width": 797,
+      "height": 614,
+      "section": "application-guide",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-42-application-guide-01.png",
+      "page": 42,
+      "image": 2,
+      "width": 700,
+      "height": 600,
+      "section": "application-guide",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-43-application-guide-01.png",
+      "page": 43,
+      "image": 2,
+      "width": 636,
+      "height": 274,
+      "section": "application-guide",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-43-application-guide-02.png",
+      "page": 43,
+      "image": 3,
+      "width": 440,
+      "height": 300,
+      "section": "application-guide",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-44-application-guide-01.png",
+      "page": 44,
+      "image": 2,
+      "width": 271,
+      "height": 241,
+      "section": "application-guide",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-48-application-guide-01.png",
+      "page": 48,
+      "image": 2,
+      "width": 1168,
+      "height": 810,
+      "section": "application-guide",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-48-application-guide-02.png",
+      "page": 48,
+      "image": 3,
+      "width": 1144,
+      "height": 793,
+      "section": "application-guide",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-55-information-model-01.png",
+      "page": 55,
+      "image": 2,
+      "width": 851,
+      "height": 770,
+      "section": "information-model",
+      "duplicates": []
+    },
+    {
+      "file": "assets/manual/page-56-information-model-01.png",
+      "page": 56,
+      "image": 2,
+      "width": 843,
+      "height": 778,
+      "section": "information-model",
+      "duplicates": []
+    }
+  ]
+}

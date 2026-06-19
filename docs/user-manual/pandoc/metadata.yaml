@@ -1,0 +1,25 @@
+---
+title: "ThinkComposer User Manual"
+subtitle: "Version 1.5.1619 - Visual thinking, domain modeling, interchange, and output generation"
+author: "Instrumind ThinkComposer / maintained fork by tbm0115"
+date: "2026-06-19"
+lang: "en-US"
+documentclass: book
+classoption:
+  - oneside
+papersize: letter
+fontsize: 10pt
+geometry:
+  - margin=0.85in
+  - headheight=15pt
+colorlinks: true
+linkcolor: TCBlue
+urlcolor: TCBlue
+toccolor: TCBlue
+toc: true
+toc-depth: 3
+numbersections: true
+secnumdepth: 3
+figPrefix: "Figure"
+tblPrefix: "Table"
+---

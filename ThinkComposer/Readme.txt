@@ -1,10 +1,13 @@
-﻿Instrumind ThinkComposer v1.5.1606
+﻿Instrumind ThinkComposer v1.5.1619
 ==================================
 
 Copyright (C) 2011-2016 Néstor Marcel Sánchez Ahumada
 
 Open-source project site: http://thinkcomposer.codeplex.com
-Find the author at: nestormarcel@gmail.com
+Original upstream repository: https://github.com/nmarcel/ThinkComposer
+Find the original author at: nestormarcel@gmail.com
+Maintained fork repository: https://github.com/tbm0115/ThinkComposer
+Fork maintainer: tbm0115
 
 --------------------------------------------------------------------------------------
 ThinkComposer is free software licensed under the GNU General Public License.
@@ -28,6 +31,11 @@ KNOWN ISSUES: Installer is alerted as untrusted software by web Browsers and Win
 
 VERSIONS HISTORY:
 *****************
+Version 1.5.1619;
+- Updated: User manual migrated to maintained Markdown/Pandoc sources and installer now includes the generated PDF manual.
+- Updated: Installer product identity/version synchronized with the publication procedure.
+- Updated: Release documentation identifies this repository as the independently maintained tbm0115 fork.
+
 Version 1.5.1606;
 - Fixed: Send to Back command not working in first layer over background.
 

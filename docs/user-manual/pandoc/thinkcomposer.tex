@@ -1,0 +1,82 @@
+\usepackage{xcolor}
+\usepackage{fontspec}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{titling}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fvextra}
+\usepackage{microtype}
+
+\definecolor{TCBlue}{HTML}{1777B8}
+\definecolor{TCGreen}{HTML}{4D9A57}
+\definecolor{TCInk}{HTML}{222831}
+\definecolor{TCMuted}{HTML}{5D6773}
+\definecolor{TCLight}{HTML}{EDF5FA}
+
+\defaultfontfeatures{Ligatures=NoCommon}
+\setmainfont{Arial}
+\setsansfont{Arial}
+\setmonofont{Courier New}[Scale=MatchLowercase]
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{TCMuted}{ThinkComposer User Manual}}
+\fancyhead[R]{\small\textcolor{TCMuted}{\leftmark}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\titleformat{\chapter}
+  {\normalfont\huge\bfseries\color{TCBlue}}
+  {\thechapter}
+  {0.75em}
+  {}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{TCInk}}
+  {\thesection}
+  {0.65em}
+  {}
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{TCInk}}
+  {\thesubsection}
+  {0.55em}
+  {}
+
+\captionsetup{
+  labelfont={bf,color=TCBlue},
+  textfont={small,color=TCMuted},
+  margin=12pt
+}
+
+\setlist[itemize]{topsep=4pt,itemsep=2pt,parsep=0pt}
+\setlist[enumerate]{topsep=4pt,itemsep=2pt,parsep=0pt}
+
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+  breaklines,
+  breakanywhere,
+  commandchars=\\\{\},
+  fontsize=\small
+}
+
+\renewcommand{\arraystretch}{1.18}
+\setlength{\LTpre}{0.6em}
+\setlength{\LTpost}{0.8em}
+
+\pretitle{%
+  \begin{center}
+  \vspace*{1.5cm}
+  \includegraphics[width=0.34\textwidth]{assets/brand/thinkcomposer-logo.png}\\[1.8cm]
+  \Huge\bfseries\color{TCBlue}
+}
+\posttitle{\par\end{center}\vspace{0.4cm}}
+\preauthor{\begin{center}\large\color{TCMuted}}
+\postauthor{\par\end{center}}
+\predate{\begin{center}\large\color{TCMuted}}
+\postdate{\par\end{center}\vfill}

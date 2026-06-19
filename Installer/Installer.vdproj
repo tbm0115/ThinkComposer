@@ -1062,8 +1062,8 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B783CE67366143D08E11A156FE4C8AB7"
             {
-            "SourcePath" = "8:InstrumindThinkComposer_Manual.pdf"
-            "TargetName" = "8:InstrumindThinkComposer_Manual.pdf"
+            "SourcePath" = "8:..\\docs\\user-manual\\output\\ThinkComposer_User_Manual.pdf"
+            "TargetName" = "8:ThinkComposer_User_Manual.pdf"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
             "Condition" = "8:"
@@ -1338,19 +1338,19 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ThinkComposer"
-        "ProductCode" = "8:{D7FD5CA0-38FE-41D8-B765-ECD3820FAD7E}"
-        "PackageCode" = "8:{23B4A606-3792-4767-AE18-6E980C01C79E}"
+        "ProductCode" = "8:{FDB01C2C-23A9-49BB-9033-5F22F975984F}"
+        "PackageCode" = "8:{35A654DF-8C09-4BA9-904F-992ADC9B0D67}"
         "UpgradeCode" = "8:{3E7D1ABB-B658-4CDD-8BC7-D850AA6AB94C}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:1.5.1607"
+        "ProductVersion" = "8:1.5.1619"
         "Manufacturer" = "8:Instrumind"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
-        "Title" = "8:Instrumind ThinkComposer v1.5"
+        "Title" = "8:Instrumind ThinkComposer v1.5.1619"
         "Subject" = "8:Create Concept Maps, Mind Maps and general purpose Diagrams with detailed content."
         "ARPCONTACT" = "8:Néstor Sánchez A."
         "Keywords" = "8:"
@@ -1503,7 +1503,7 @@
             }
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_48B942FDD72144ED9E5BA485B2D99957"
             {
-            "Name" = "8:InstrumindThinkComposer_Manual.pdf"
+            "Name" = "8:ThinkComposer_User_Manual.pdf"
             "Arguments" = "8:"
             "Description" = "8:"
             "ShowCmd" = "3:1"

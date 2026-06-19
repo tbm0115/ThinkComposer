@@ -926,18 +926,9 @@ namespace Instrumind.Common.Visualization
         /// </summary>
         public static Tuple<object> PerformDirectReadWrapped(this IDynamicStoreDataGridEditor SourceEditor, string FieldName, DataGridRow EditingRow = null)
         {
-            var SourceControl = SourceEditor as Control;
-            if (SourceControl == null)
-                throw new UsageAnomaly("The IDynamicStoreDataGridEditor provided must be also a Control.");
-
-            EditingRow = EditingRow.NullDefault(GetNearestVisualDominantOfType<DataGridRow>(SourceControl));
-            if (EditingRow == null)
-                return null;   // NOTE: The row may not exits while closing window (where previously the DataGrid has been unloaded)
-            // Cannot use: throw new UsageAnomaly("The provided editor-control must be exposed within a DataGridRow.");
-
-            var Store = EditingRow.Item as IDynamicStore;
+            var Store = TryGetDirectAccessStore(SourceEditor, ref EditingRow);
             if (Store == null)
-                throw new UsageAnomaly("The Item being edited by the exposing DataGridRow must implement IDynamicStore.");
+                return null;   // NOTE: The row may not exist while closing window, virtualization or placeholder row exposure.
 
             var Result = Store.GetStoredValue(FieldName);
             return Tuple.Create(Result);
@@ -950,21 +941,25 @@ namespace Instrumind.Common.Visualization
         /// </summary>
         public static bool PerformDirectWrite(this IDynamicStoreDataGridEditor SourceEditor, string FieldName, object Value, DataGridRow EditingRow = null)
         {
+            var Store = TryGetDirectAccessStore(SourceEditor, ref EditingRow);
+            if (Store == null)
+                return false;   // NOTE: The row may not exist while closing window, virtualization or placeholder row exposure.
+
+            var Result = Store.SetStoredValue(FieldName, Value);
+            return Result;
+        }
+
+        private static IDynamicStore TryGetDirectAccessStore(IDynamicStoreDataGridEditor SourceEditor, ref DataGridRow EditingRow)
+        {
             var SourceControl = SourceEditor as Control;
             if (SourceControl == null)
                 throw new UsageAnomaly("The IDynamicStoreDataGridEditor provided must be also a Control.");
 
             EditingRow = EditingRow.NullDefault(GetNearestVisualDominantOfType<DataGridRow>(SourceControl));
             if (EditingRow == null)
-                return false;   // NOTE: The row may not exist while closing window (where previously the DataGrid has been unloaded)
-                // Cannot use: throw new UsageAnomaly("The provided editor-control must be exposed within a DataGridRow.");
+                return null;
 
-            var Store = EditingRow.Item as IDynamicStore;
-            if (Store == null)
-                throw new UsageAnomaly("The Item being edited by the exposing DataGridRow must implement IDynamicStore.");
-
-            var Result = Store.SetStoredValue(FieldName, Value);
-            return Result;
+            return EditingRow.Item as IDynamicStore;
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,52 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": false,
+    "useActiveCompositionAsContainer": true,
+    "layoutMode": "none",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for Composition JSON shortcut round-trip behavior. Import into any fresh composition that has the generic Concept definition.",
+    "Expected result: one semantic concept is created, then placed a second time in the same view as a Shortcut visual. Export/re-import should preserve isShortcut=true on the shortcut representation."
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9a000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 140,
+      "width": 220,
+      "height": 70,
+      "set": {
+        "name": "Shared Service",
+        "techName": "Shared_Service",
+        "summary": "One semantic concept with a primary visual and a shortcut visual.",
+        "techSpec": "sample: composition-shortcut-roundtrip\nsemanticIdentity: one concept"
+      }
+    },
+    {
+      "op": "place",
+      "entity": "concept",
+      "id": "9a000000-0000-4000-8000-000000000001",
+      "techName": "Shared_Service",
+      "viewTechName": "Main_View",
+      "x": 460,
+      "y": 140,
+      "width": 220,
+      "height": 70,
+      "visual": {
+        "isShortcut": true,
+        "includeInView": true
+      }
+    }
+  ]
+}

@@ -42,6 +42,18 @@
     "importOptions": {
       "$ref": "#/$defs/importOptions"
     },
+    "visualStrategy": {
+      "$ref": "#/$defs/visualStrategy",
+      "description": "Optional large-import visual materialization strategy. Use this when generated JSON should create the semantic model without forcing ThinkComposer to create, refresh, auto-fit, or route every visual immediately."
+    },
+    "groups": {
+      "type": "array",
+      "description": "Explicit, source-neutral visual group requests. The importer creates or updates Group Region complements only when a group explicitly sets createGroupRegion=true; it never infers groups from source format, names, or relationships.",
+      "items": {
+        "$ref": "#/$defs/group"
+      },
+      "default": []
+    },
     "ideas": {
       "type": "array",
       "description": "Concept nodes. Relationships are stored separately in the relationships array.",
@@ -222,6 +234,47 @@
           "default": false,
           "description": "When true with strictDetailsCompatibility, detail compatibility failures block the import before apply."
         },
+        "relationshipVisualPlacementMode": {
+          "type": "string",
+          "enum": [
+            "explicit",
+            "midpoint",
+            "endpointCorridor",
+            "auto",
+            "hideGeneric",
+            "defer"
+          ],
+          "default": "auto",
+          "description": "Controls visible relationship central-symbol placement before connector routing. auto preserves existing centers that are already near their endpoint corridor and recomputes suspicious imported/global-band centers. endpointCorridor recomputes near source/target midpoint with concept/relationship overlap scoring. explicit preserves supplied relationship visual coordinates."
+        },
+        "recomputeSuspiciousRelationshipVisuals": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, auto relationship visual placement recomputes centers that are far outside the corridor between their visible origin and target concepts."
+        },
+        "hideGenericRelationshipCenters": {
+          "type": "boolean",
+          "default": false,
+          "description": "Reserved for domains where generic/simple relationship centers can be safely hidden or minimized. Current v1 keeps visible centers and places them near endpoint corridors unless a future safe hide path is available."
+        },
+        "maxRelationshipCenterDisplacement": {
+          "type": "number",
+          "minimum": 1,
+          "default": 250,
+          "description": "Maximum distance, in canvas units, that endpoint-corridor placement may move a relationship center away from the source/target midpoint during candidate scoring."
+        },
+        "relationshipCenterObstaclePadding": {
+          "type": "number",
+          "minimum": 0,
+          "default": 16,
+          "description": "Padding added around concept symbols when rejecting relationship-center candidates that would overlap concepts."
+        },
+        "relationshipCenterOverlapPadding": {
+          "type": "number",
+          "minimum": 0,
+          "default": 8,
+          "description": "Padding used when scoring or reporting relationship central-symbol overlap."
+        },
         "layoutMode": {
           "type": "string",
           "enum": [
@@ -241,6 +294,258 @@
           "description": "When true or omitted, import scans for previously imported self-recursive visual representations and removes only the invalid visuals, preserving concepts and relationships."
         }
       }
+    },
+    "visualStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "modelOnly",
+            "semanticModelOnly",
+            "overviewAndModel",
+            "optimizedFullVisual",
+            "exactFullVisual"
+          ],
+          "description": "Controls visual materialization. modelOnly creates semantic ideas/relationships/details/TechSpec and suppresses visuals. overviewAndModel creates the full model plus a capped overview. optimizedFullVisual allows visuals but defaults expensive auto-fit/route/refresh work to deferred. exactFullVisual preserves legacy exact placement behavior."
+        },
+        "largeModelThresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "concepts": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 300
+            },
+            "relationships": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 300
+            },
+            "visuals": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 600
+            }
+          },
+          "description": "Thresholds used by mode=auto to choose overviewAndModel for large generated documents."
+        },
+        "fullModelVisuals": {
+          "type": "boolean",
+          "default": false,
+          "description": "For overviewAndModel, false caps visual materialization to overview limits; true allows full visual materialization while still honoring defer flags."
+        },
+        "overviewView": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, overview visual placement prefers overviewViewTechName if that view already exists, otherwise the importer falls back to the active/root view. JSON view creation is still deferred."
+        },
+        "overviewViewTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Preferred existing overview view techName, such as Overview_View. If not found, active/root view fallback is used."
+        },
+        "maxOverviewConcepts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 150,
+          "description": "Maximum concept visuals to materialize in overviewAndModel when fullModelVisuals=false."
+        },
+        "maxOverviewRelationships": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 200,
+          "description": "Maximum relationship visuals to materialize in overviewAndModel when fullModelVisuals=false."
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": [],
+          "description": "Relationship definition techNames that describe overview grouping intent. Current importer records this intent for diagnostics; full grouping layouts remain manual/command-driven."
+        },
+        "deferRouting": {
+          "type": "boolean",
+          "description": "When true, import does not queue auto-route work even if importOptions.autoRoutePlacedLinks or operation autoRoute would normally route created links."
+        },
+        "deferAutoFit": {
+          "type": "boolean",
+          "description": "When true, import does not run concept auto-fit during apply even if auto-fit options are enabled."
+        },
+        "deferViewRefresh": {
+          "type": "boolean",
+          "description": "When true, import skips immediate affected-view ShowAll/FitContentIntoView/reveal work after apply. This is important for very large model imports."
+        },
+        "relationshipVisualPlacement": {
+          "$ref": "#/$defs/relationshipCenterPlacement",
+          "default": "auto",
+          "description": "Visual-strategy-level default for relationship central-symbol placement. importOptions.relationshipVisualPlacementMode overrides this. Use endpointCorridor or auto for generated diagrams where exact relationship label coordinates are not curated by hand."
+        }
+      }
+    },
+    "relationshipCenterPlacement": {
+      "type": "string",
+      "enum": [
+        "explicit",
+        "midpoint",
+        "endpointCorridor",
+        "auto",
+        "hideGeneric",
+        "defer"
+      ],
+      "description": "Generic relationship central-symbol placement mode. explicit preserves supplied coordinates; endpointCorridor recomputes near source/target endpoints; auto recomputes suspicious far-away centers."
+    },
+    "visualRole": {
+      "type": "string",
+      "enum": [
+        "Normal",
+        "GroupHeader",
+        "GroupRegionAnchor",
+        "Summary",
+        "Annotation",
+        "Diagnostic",
+        "Hidden",
+        "Deferred"
+      ],
+      "description": "Generic visual role for a concept or visual placement. These are explicit metadata hints only; ThinkComposer does not infer them from source names or domains."
+    },
+    "relationshipLayoutRole": {
+      "type": "string",
+      "enum": [
+        "Normal",
+        "Membership",
+        "Dependency",
+        "DataFlow",
+        "ControlFlow",
+        "SequenceFlow",
+        "Feedback",
+        "CrossLink",
+        "Annotation",
+        "Diagnostic",
+        "Unknown"
+      ],
+      "description": "Generic relationship layout role. The importer honors only explicitly supplied values and does not infer roles from relationship names."
+    },
+    "relationshipVisualDisplay": {
+      "type": "string",
+      "enum": [
+        "visible",
+        "hidden",
+        "deferred",
+        "labelOnly",
+        "diagnostic"
+      ],
+      "description": "Generic relationship visual display control. hidden/deferred can suppress visual placement where safe."
+    },
+    "visualControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/visualRole"
+        },
+        "display": {
+          "$ref": "#/$defs/relationshipVisualDisplay"
+        },
+        "includeInView": {
+          "type": "boolean",
+          "description": "When false, create the semantic item but suppress visual placement for this import."
+        },
+        "includeInArrangement": {
+          "type": "boolean",
+          "description": "When false, explicitly excludes this item from arrangement decisions that honor import/layout metadata."
+        },
+        "includeInRouting": {
+          "type": "boolean",
+          "description": "When false, explicitly excludes this relationship from import auto-routing."
+        },
+        "includeInAutoFit": {
+          "type": "boolean",
+          "description": "When false, explicitly excludes this concept from import auto-fit."
+        },
+        "includeInOverview": {
+          "type": "boolean",
+          "description": "Overview materialization hint for generated JSON. The importer records/honors it only as an explicit generic hint."
+        },
+        "includeInFullView": {
+          "type": "boolean",
+          "description": "Full-view materialization hint for generated JSON. The importer records/honors it only as an explicit generic hint."
+        },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "When true, place this visual representation as a Shortcut to an existing idea rather than as its primary/local visual."
+        },
+        "relationshipCenterPlacement": {
+          "$ref": "#/$defs/relationshipCenterPlacement"
+        }
+      },
+      "description": "Explicit generic visual/layout controls. These fields are intentionally source-agnostic."
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techName": {
+          "$ref": "#/$defs/techName"
+        },
+        "memberIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/guid"
+          },
+          "default": []
+        },
+        "memberTechNames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/techName"
+          },
+          "default": []
+        },
+        "headerConceptId": {
+          "$ref": "#/$defs/guid"
+        },
+        "headerConceptTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "createGroupRegion": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, create or update a visible Group Region complement around the listed visible member concepts. Default false."
+        },
+        "padding": {
+          "type": "number",
+          "minimum": 0,
+          "default": 80
+        },
+        "sendToBack": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "memberIds"
+          ]
+        },
+        {
+          "required": [
+            "memberTechNames"
+          ]
+        }
+      ],
+      "description": "Explicit visual grouping metadata. Group Regions are never inferred from source-specific names, subgraphs, or relationship definitions."
     },
     "targetContext": {
       "type": "object",
@@ -305,6 +610,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Rich/plain description text attached to the composition. Omission preserves the existing value; an explicit empty string clears it."
         },
         "techSpec": {
           "$ref": "#/$defs/editableText",
@@ -383,6 +692,10 @@
         "summary": {
           "$ref": "#/$defs/editableText"
         },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the embedded domain summary exported with the composition."
+        },
         "techSpec": {
           "$ref": "#/$defs/editableText",
           "description": "Technical specification text attached to the embedded domain summary. It is imported as text only and never executed."
@@ -424,6 +737,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the exported definition summary."
         },
         "techSpec": {
           "$ref": "#/$defs/editableText",
@@ -554,6 +871,13 @@
         "definitionName": {
           "type": "string"
         },
+        "layoutRole": {
+          "$ref": "#/$defs/relationshipLayoutRole",
+          "description": "Explicit generic layout role for relationship ideas. Ignored for concepts."
+        },
+        "visual": {
+          "$ref": "#/$defs/visualControl"
+        },
         "name": {
           "type": "string",
           "minLength": 1
@@ -563,6 +887,10 @@
         },
         "summary": {
           "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the concept or relationship. Omission preserves the existing value; an explicit empty string clears it."
         },
         "techSpec": {
           "$ref": "#/$defs/editableText",
@@ -681,6 +1009,18 @@
         },
         "roleVariantName": {
           "type": "string"
+        },
+        "descriptorName": {
+          "type": "string",
+          "description": "Optional relationship link descriptor display name. This is the descriptor on the link between the relationship and this endpoint concept, not the relationship's own summary."
+        },
+        "descriptorTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Optional relationship link descriptor technical name."
+        },
+        "descriptorSummary": {
+          "$ref": "#/$defs/editableText",
+          "description": "Optional relationship link descriptor summary text."
         },
         "ideaId": {
           "$ref": "#/$defs/guid"
@@ -876,6 +1216,13 @@
         "techName": {
           "$ref": "#/$defs/techName"
         },
+        "summary": {
+          "$ref": "#/$defs/editableText"
+        },
+        "description": {
+          "$ref": "#/$defs/editableText",
+          "description": "Description text attached to the view. Omission preserves the existing value; an explicit empty string clears it."
+        },
         "ownerIdeaId": {
           "$ref": "#/$defs/guid"
         },
@@ -910,6 +1257,10 @@
         "representationId": {
           "$ref": "#/$defs/guid"
         },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "True when this exported visual representation is a Shortcut to the referenced idea."
+        },
         "x": {
           "type": "number"
         },
@@ -923,6 +1274,10 @@
         "height": {
           "type": "number",
           "minimum": 0
+        },
+        "visual": {
+          "$ref": "#/$defs/visualControl",
+          "description": "Explicit visual controls for this visual representation."
         },
         "delete": {
           "type": "boolean"
@@ -963,6 +1318,10 @@
         "id": {
           "$ref": "#/$defs/guid"
         },
+        "representationId": {
+          "$ref": "#/$defs/guid",
+          "description": "Optional visual representation id for place/update operations. Use this when a concept intentionally has more than one visual in the same view, such as a primary visual and a shortcut visual."
+        },
         "techName": {
           "$ref": "#/$defs/techName"
         },
@@ -995,6 +1354,14 @@
         "strictDefinition": {
           "type": "boolean",
           "description": "When true on a relationship create operation, disables relationshipDefinitionFallbackTechName and requires the requested relationship definition to accept the endpoints."
+        },
+        "layoutRole": {
+          "$ref": "#/$defs/relationshipLayoutRole",
+          "description": "Explicit generic relationship layout role. The importer records/honors it only when supplied."
+        },
+        "visual": {
+          "$ref": "#/$defs/visualControl",
+          "description": "Explicit generic visual/layout controls for this operation."
         },
         "viewId": {
           "$ref": "#/$defs/guid"
@@ -1051,6 +1418,10 @@
         "autoRoute": {
           "type": "boolean",
           "description": "Overrides importOptions.autoRoutePlacedLinks for this operation. Set true to route an existing visible relationship touched by update/place; set false to keep a newly placed or repaired relationship's current connector route."
+        },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "For place operations, true creates/updates a shortcut visual representation of the referenced concept or relationship. Prefer visual.isShortcut for GPT-authored visual controls."
         },
         "originIdeaIds": {
           "type": "array",
@@ -1244,6 +1615,18 @@
         "strictDefinition": {
           "type": "boolean",
           "description": "Accepted inside set for GPT-authored relationship create patches; top-level strictDefinition is preferred."
+        },
+        "layoutRole": {
+          "$ref": "#/$defs/relationshipLayoutRole",
+          "description": "Accepted inside set for GPT-authored relationship create patches; top-level layoutRole is preferred."
+        },
+        "visual": {
+          "$ref": "#/$defs/visualControl",
+          "description": "Accepted inside set for GPT-authored patches; top-level visual is preferred."
+        },
+        "isShortcut": {
+          "type": "boolean",
+          "description": "Accepted inside set for GPT-authored place patches; visual.isShortcut is preferred."
         },
         "containerId": {
           "$ref": "#/$defs/guid"

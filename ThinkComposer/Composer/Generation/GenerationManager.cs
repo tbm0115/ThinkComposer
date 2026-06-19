@@ -49,9 +49,17 @@ namespace Instrumind.ThinkComposer.Composer.Generation
                 return;
 
             var Title = "File Generation from " + Source.Name;
+            var Configuration = Source.OwnerComposition.CompositeContentDomain.GenerationConfiguration;
+            var Preparation = OutputTemplatePreparationService.PrepareComposition(Source.OwnerComposition, Configuration.Language, "Generate Files");
 
-            var Generator = new FileGenerator(Source.OwnerComposition, Source.OwnerComposition.CompositeContentDomain.CurrentExternalLanguage,
-                                              Source.IdeaDefinitor.OwnerDomain.GenerationConfiguration);
+            if (GenerationManager.ShowPreparationIssues(Preparation, true))
+                return;
+
+            Preparation.LogToConsole();
+            Configuration.Language = Preparation.Language;
+            Source.OwnerComposition.CompositeContentDomain.CurrentExternalLanguage = Preparation.Language;
+
+            var Generator = new FileGenerator(Source.OwnerComposition, Preparation.Language, Configuration, Preparation);
 
             EntityEditEngine.ActiveEntityEditor.ReadTechNamesAsProgramIdentifiers =
                     Source.CompositeContentDomain.GenerationConfiguration.UseTechNamesAsProgramIdentifiers; ;
@@ -95,6 +103,8 @@ namespace Instrumind.ThinkComposer.Composer.Generation
                     curr.ExcludedIdeasGlobalIds.Clear();
                     curr.ExcludedIdeasGlobalIds.AddRange(ConfigPanel.SourceConfiguration.CurrentSelection.GetSelection(false)   // Gets the not-selected Ideas
                                                                 .Select(sel => sel.SourceIdea.GlobalId.ToString()));
+                    if (curr.Language != null)
+                        SourceComposition.CompositeContentDomain.CurrentExternalLanguage = curr.Language;
                     return true;
                 });
 
@@ -105,7 +115,43 @@ namespace Instrumind.ThinkComposer.Composer.Generation
             return Result;
         }
 
+        public static void ShowGenerationFilePreview(CompositionEngine Engine)
+        {
+            if (Engine == null || Engine.TargetComposition == null)
+                return;
+
+            var SelectedIdeas = (Engine.CurrentView == null
+                                 ? new Idea[0]
+                                 : Engine.CurrentView.SelectedRepresentations
+                                       .Where(Representation => Representation != null && Representation.RepresentedIdea != null)
+                                       .Select(Representation => Representation.RepresentedIdea)
+                                       .Distinct()
+                                       .ToArray());
+
+            var ScopeNote = "";
+            Idea Source = null;
+            if (SelectedIdeas.Length == 0)
+            {
+                Source = Engine.TargetComposition;
+                ScopeNote = "Preview scope: no concept or relationship is selected; using the active composition root, matching Generate Files scope.";
+            }
+            else
+            {
+                Source = SelectedIdeas.First();
+                ScopeNote = SelectedIdeas.Length == 1
+                            ? "Preview scope: selected " + (Source is Relationship ? "relationship" : "concept") + "."
+                            : "Preview scope: multiple items are selected; previewing the first selected item '" + Source.TechName + "'.";
+            }
+
+            ShowGenerationFilePreview(Source, ScopeNote);
+        }
+
         public static void ShowGenerationFilePreview(Idea Source)
+        {
+            ShowGenerationFilePreview(Source, null);
+        }
+
+        private static void ShowGenerationFilePreview(Idea Source, string ScopeNote)
         {
             if (Source == null || Source.EditEngine == null)
                 return;
@@ -133,10 +179,33 @@ namespace Instrumind.ThinkComposer.Composer.Generation
                     Source.IdeaDefinitor.OwnerDomain.CurrentExternalLanguage = Language;
                 }
 
-                var Preview = FileGenerator.GenerateFilePreview(Source, Language);
+                var OwnerComposition = Source as Composition;
+                if (OwnerComposition == null)
+                    OwnerComposition = Source.OwnerComposition;
+
+                var Preparation = (Source is Composition
+                                  ? OutputTemplatePreparationService.PrepareComposition(OwnerComposition, Language, "Generation Preview")
+                                  : OutputTemplatePreparationService.PrepareSelection(OwnerComposition, Language, new Idea[] { Source }, "Generation Preview"));
+                if (GenerationManager.ShowPreparationIssues(Preparation, true))
+                    return;
+
+                Preparation.LogToConsole();
+                Language = Preparation.Language;
+                var Generator = new FileGenerator(OwnerComposition, Language,
+                                                  OwnerComposition.CompositeContentDomain.GenerationConfiguration, Preparation);
+                var Preview = Generator.GeneratePreview(Source);
+                var EffectiveTemplateText = (Source is Composition
+                                             ? Preparation.CompositionTemplateText
+                                             : (Preparation.PreparedDefinitionTemplateTexts.ContainsKey(Source.IdeaDefinitor)
+                                                ? Preparation.PreparedDefinitionTemplateTexts[Source.IdeaDefinitor]
+                                                : Source.IdeaDefinitor.GetGenerationFinalTemplate(Language)));
+                var Directives = OutputTemplateDirectiveInfo.Parse(EffectiveTemplateText);
+                var ResolutionText = ScopeNote.NullDefault("") + Environment.NewLine +
+                                     OutputTemplateDiagnostics.BuildPreviewMetadata(Source, Language, EffectiveTemplateText,
+                                                                                    Directives, Preview, Preparation);
 
                 DialogOptionsWindow GenDialog = null;
-                var Previewer = new FileGenerationPreviewer(Preview.FileName, Preview.GeneratedText);
+                var Previewer = new FileGenerationPreviewer(Preview.FileName, Preview.GeneratedText, EffectiveTemplateText, ResolutionText);
                 Display.OpenContentDialogWindow(ref GenDialog, "Generate from: " + Source.Name,
                                                 Previewer, 600, 700);
             }
@@ -150,6 +219,48 @@ namespace Instrumind.ThinkComposer.Composer.Generation
             {
                 EntityEditEngine.ActiveEntityEditor.ReadTechNamesAsProgramIdentifiers = false;
             }
+        }
+
+        public static void RefreshOutputTemplates(Composition Source)
+        {
+            if (Source == null || Source.EditEngine == null)
+                return;
+
+            var Configuration = Source.CompositeContentDomain.GenerationConfiguration;
+            var Language = Configuration.Language.NullDefault(Source.CompositeContentDomain.CurrentExternalLanguage);
+            var Preparation = OutputTemplatePreparationService.PrepareComposition(Source, Language, "Refresh Output Templates");
+
+            Preparation.LogToConsole();
+
+            if (Preparation.HasBlockingErrors)
+            {
+                Display.DialogMessage("Cannot refresh Output Templates", Preparation.BuildBlockingMessage(), EMessageType.Warning);
+                return;
+            }
+
+            Configuration.Language = Preparation.Language;
+            Source.CompositeContentDomain.CurrentExternalLanguage = Preparation.Language;
+
+            Display.DialogMessage("Output Templates Refreshed",
+                                  Preparation.Warnings > 0 ? Preparation.BuildWarningsMessage() : Preparation.BuildSummary());
+        }
+
+        private static bool ShowPreparationIssues(OutputTemplatePreparationResult Preparation, bool AbortOnErrors)
+        {
+            if (Preparation == null)
+                return false;
+
+            if (Preparation.HasBlockingErrors)
+            {
+                Display.DialogMessage("Cannot generate Composition output", Preparation.BuildBlockingMessage(), EMessageType.Warning);
+                return AbortOnErrors;
+            }
+
+            if (Preparation.Warnings > 0)
+                Display.DialogMessage("Output template preparation completed with warnings",
+                                      Preparation.BuildWarningsMessage(), EMessageType.Warning);
+
+            return false;
         }
     }
 }

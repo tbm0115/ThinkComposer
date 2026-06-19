@@ -1,0 +1,93 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "visualStrategy": {
+    "mode": "modelOnly",
+    "largeModelThresholds": {
+      "concepts": 300,
+      "relationships": 300,
+      "visuals": 600
+    },
+    "fullModelVisuals": false,
+    "overviewView": false,
+    "maxOverviewConcepts": 2,
+    "maxOverviewRelationships": 1,
+    "deferRouting": true,
+    "deferAutoFit": true,
+    "deferViewRefresh": true
+  },
+  "warnings": [
+    "Sample for Composition JSON large-import visualStrategy. Import into any fresh composition that has the generic Concept and Relationship definitions.",
+    "Expected result: semantic create count is 3, visuals placed is 0, visuals suppressed by strategy is 3, auto-fit/auto-route/view refresh are deferred. Change visualStrategy.mode to overviewAndModel to exercise capped overview visuals."
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9b000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 120,
+      "width": 200,
+      "height": 64,
+      "set": {
+        "name": "Large Strategy Source",
+        "techName": "Large_Strategy_Source",
+        "summary": "Semantic source concept for visualStrategy regression.",
+        "techSpec": "sample: composition-large-visual-strategy\nvisualStrategy: modelOnly"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9b000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 420,
+      "y": 120,
+      "width": 200,
+      "height": 64,
+      "set": {
+        "name": "Large Strategy Target",
+        "techName": "Large_Strategy_Target",
+        "summary": "Semantic target concept for visualStrategy regression.",
+        "techSpec": "sample: composition-large-visual-strategy\nvisualStrategy: modelOnly"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9b000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "autoRoute": true,
+      "set": {
+        "name": "Large Strategy Link",
+        "techName": "Large_Strategy_Link",
+        "summary": "Relationship should be created semantically while its visual is suppressed by visualStrategy.",
+        "techSpec": "sample: composition-large-visual-strategy\nvisualStrategy: modelOnly",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Large_Strategy_Source"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Large_Strategy_Target"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -123,6 +123,16 @@ namespace Instrumind.ThinkComposer.Composer
                              (target, vexpo) => true,
                              (target) => { var Eng = target.GetDisplayingView().Engine; Eng.CurrentView.SelectObject(target); Eng.ConvertIdeasToAlternateDefinition(Eng.CurrentView.SelectedRepresentations.Select(vrep => vrep.RepresentedIdea)); }));
 
+            ContextMenuOptionsForVisualSymbols.Add(new Tuple<SimplePresentationElement, Func<VisualSymbol, FrameworkElement, bool?>, Action<VisualSymbol>>
+                            (new SimplePresentationElement("Replace with Shortcut...", "ReplaceWithShortcut", "Replace this visual concept with a Shortcut to another existing Concept.", Display.GetAppImage("paste_shortcut.png")),
+                             (target, vexpo) => (vexpo != target.GetDisplayingView().Presenter) ? (bool?)null : ShortcutReplacementCommand.CanReplaceWithShortcut(target),
+                             (target) => { var Eng = target.GetDisplayingView().Engine; Eng.CurrentView.SelectObject(target); ShortcutReplacementCommand.ReplaceWithShortcut(target); }));
+
+            ContextMenuOptionsForVisualSymbols.Add(new Tuple<SimplePresentationElement, Func<VisualSymbol, FrameworkElement, bool?>, Action<VisualSymbol>>
+                            (new SimplePresentationElement("Go to Original", "GoToOriginal", "Navigate to the original visual representation for this Shortcut.", Display.GetAppImage("page_view.png")),
+                             (target, vexpo) => (vexpo != target.GetDisplayingView().Presenter || target.OwnerRepresentation == null || !target.OwnerRepresentation.IsShortcut) ? (bool?)null : true,
+                             (target) => { var Eng = target.GetDisplayingView().Engine; Eng.CurrentView.SelectObject(target); Eng.GoToShortcutTarget(target); }));
+
             ContextMenuOptionsForVisualSymbols.Add(null);   // Separator
             
             ContextMenuOptionsForVisualSymbols.Add(new Tuple<SimplePresentationElement, Func<VisualSymbol, FrameworkElement, bool?>, Action<VisualSymbol>>

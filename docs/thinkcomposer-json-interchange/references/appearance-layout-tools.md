@@ -94,6 +94,8 @@ Routing behavior:
 - Otherwise, the router tries one-bend orthogonal candidates: horizontal-first and vertical-first.
 - Concept symbols are treated as obstacles, except the connector's own origin and target symbols.
 - Simple relationships that hide their central symbol are routed as one relationship-level unit. ThinkComposer represents these as two connector segments, `source concept -> hidden relationship symbol -> target concept`; the router moves that hidden relationship symbol to the midpoint for a straight route or to the chosen orthogonal elbow for an L-shaped route.
+- Before routing, the command can reposition visible relationship central symbols with the `EndpointCorridorRelationshipCenters` strategy. This places relationship bubbles near the midpoint/corridor between their visible origin and target concepts instead of leaving imported bubbles in distant global label rows.
+- Visible relationship central symbols can be included as obstacles for other connectors, while each connector excludes its own relationship center from its own obstacle set.
 - When a hidden-central simple relationship needs more than one elbow, the router can use a dogleg route without adding a new route model: the hidden relationship symbol becomes the hidden junction, and the two connector `IntermediatePosition` values become the source-side and target-side bends.
 - Selecting one segment of a hidden-central relationship routes the whole relationship once, not each hidden-endpoint segment separately.
 - Existing valid hand-routed connectors are preserved unless a candidate is materially better.
@@ -105,7 +107,7 @@ v1 limitations:
 
 - Only one bend is supported.
 - Hidden-central simple relationships can dogleg around same-row or same-column blockers, but this is still limited to one hidden junction plus one bend per connector segment.
-- Complements, group regions, and relationship central symbols are not obstacles yet.
+- Complements and group regions are not obstacles by default. Relationship central symbols may be obstacles for other links during route cleanup/import routing.
 - The native model is not extended with a serialized multi-point route, and ordinary visible-center connectors still use only one `IntermediatePosition`.
 - If a non-hidden-central link needs more than one bend to avoid obstacles, it is skipped rather than force-routed.
 
@@ -310,7 +312,9 @@ Limitations:
 
 JSON import now uses the same auto-fit service for concept visuals created or newly placed during import when `importOptions.autoFitPlacedConcepts` is omitted or true. A patch operation can override this with `autoFit: false`, or can force fitting for an updated existing concept with `autoFit: true`.
 
-JSON import also uses the same link-routing service for relationship visuals/connectors created, placed, or repaired during import when `importOptions.autoRoutePlacedLinks` is omitted or true. A patch operation can override this with `autoRoute: false`, or can force routing for an existing visible relationship touched by an update/place operation with `autoRoute: true`. Auto-route runs after auto-fit so obstacle bounds reflect fitted concept widths.
+JSON import also uses the same link-routing service for relationship visuals/connectors created, placed, or repaired during import when `importOptions.autoRoutePlacedLinks` is omitted or true. A patch operation can override this with `autoRoute: false`, or can force routing for an existing visible relationship touched by an update/place operation with `autoRoute: true`. Before routing, import can apply relationship-center placement with `importOptions.relationshipVisualPlacementMode` or `visualStrategy.relationshipVisualPlacement`; `auto` preserves centers already near their endpoints, while `endpointCorridor` recomputes centers near the source/target corridor. Auto-route runs after auto-fit and relationship-center correction so obstacle bounds and relationship centers are current.
+
+JSON import can also carry explicit, source-neutral layout metadata such as concept `visual.role`, relationship `layoutRole`, `visual.display`, `includeInArrangement`, `includeInRouting`, `includeInAutoFit`, and top-level `groups[]`. ThinkComposer honors these controls only when they are supplied; it does not infer layout roles or Group Regions from source formats, domains, concept names, or relationship names. The Skill or JSON generator is responsible for translating source-specific intent into those generic primitives.
 
 The auto-fit service, link-routing service, and `LayoutSelectionContext` remain UI-independent enough for JSON import layout passes and manual layout tools to share the same measurement, visible-graph, and connector-routing behavior.
 

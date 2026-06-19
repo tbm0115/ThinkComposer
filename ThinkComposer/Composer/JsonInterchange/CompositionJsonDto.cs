@@ -22,6 +22,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Relationships = new List<CompositionJsonRelationship>();
             this.Views = new List<CompositionJsonView>();
             this.Operations = new List<CompositionJsonOperation>();
+            this.Groups = new List<CompositionJsonGroup>();
             this.Warnings = new List<string>();
         }
 
@@ -33,10 +34,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public CompositionJsonTargetContext Requires { get; set; }
         public CompositionJsonComposition Composition { get; set; }
         public CompositionJsonImportOptions ImportOptions { get; set; }
+        public CompositionJsonVisualStrategy VisualStrategy { get; set; }
         public List<CompositionJsonIdea> Ideas { get; set; }
         public List<CompositionJsonRelationship> Relationships { get; set; }
         public List<CompositionJsonView> Views { get; set; }
         public List<CompositionJsonOperation> Operations { get; set; }
+        public List<CompositionJsonGroup> Groups { get; set; }
         public List<string> Warnings { get; set; }
     }
 
@@ -55,9 +58,44 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool? AbortOnRelationshipCompatibilityFailure { get; set; }
         public bool? StrictDetailsCompatibility { get; set; }
         public bool? AbortOnDetailCompatibilityFailure { get; set; }
+        public string RelationshipVisualPlacementMode { get; set; }
+        public bool? RecomputeSuspiciousRelationshipVisuals { get; set; }
+        public bool? HideGenericRelationshipCenters { get; set; }
+        public double? MaxRelationshipCenterDisplacement { get; set; }
+        public double? RelationshipCenterObstaclePadding { get; set; }
+        public double? RelationshipCenterOverlapPadding { get; set; }
         public string LayoutMode { get; set; }
         public bool? PreventSelfRecursiveCompositeViews { get; set; }
         public bool? RepairRecursiveVisuals { get; set; }
+    }
+
+    public class CompositionJsonVisualStrategy
+    {
+        public CompositionJsonVisualStrategy()
+        {
+            this.LargeModelThresholds = new CompositionJsonLargeModelThresholds();
+            this.GroupBy = new List<string>();
+        }
+
+        public string Mode { get; set; }
+        public CompositionJsonLargeModelThresholds LargeModelThresholds { get; set; }
+        public bool? FullModelVisuals { get; set; }
+        public bool? OverviewView { get; set; }
+        public string OverviewViewTechName { get; set; }
+        public int? MaxOverviewConcepts { get; set; }
+        public int? MaxOverviewRelationships { get; set; }
+        public List<string> GroupBy { get; set; }
+        public bool? DeferRouting { get; set; }
+        public bool? DeferAutoFit { get; set; }
+        public bool? DeferViewRefresh { get; set; }
+        public string RelationshipVisualPlacement { get; set; }
+    }
+
+    public class CompositionJsonLargeModelThresholds
+    {
+        public int? Concepts { get; set; }
+        public int? Relationships { get; set; }
+        public int? Visuals { get; set; }
     }
 
     public class CompositionJsonTargetContext
@@ -89,6 +127,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string ViewsPrefix { get; set; }
         public string RootViewId { get; set; }
@@ -108,6 +147,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string CompatibilitySignature { get; set; }
         public List<CompositionJsonDefinition> Definitions { get; set; }
@@ -120,6 +160,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
     }
 
@@ -152,12 +193,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
         public string DefinitionName { get; set; }
         public string ContainerId { get; set; }
         public string ContainerTechName { get; set; }
+        public CompositionJsonVisualControl Visual { get; set; }
         public List<string> ChildIdeaIds { get; set; }
         public List<string> CompositeViewIds { get; set; }
         public List<CompositionJsonDetail> Details { get; set; }
@@ -187,6 +230,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string TechSpec { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
@@ -195,6 +239,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool? StrictDefinition { get; set; }
         public string ContainerId { get; set; }
         public string ContainerTechName { get; set; }
+        public string LayoutRole { get; set; }
+        public CompositionJsonVisualControl Visual { get; set; }
         public List<string> OriginIdeaIds { get; set; }
         public List<string> OriginIdeaTechNames { get; set; }
         public List<string> TargetIdeaIds { get; set; }
@@ -215,6 +261,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string RoleDefinitionName { get; set; }
         public string RoleVariantTechName { get; set; }
         public string RoleVariantName { get; set; }
+        public string DescriptorName { get; set; }
+        public string DescriptorTechName { get; set; }
+        public string DescriptorSummary { get; set; }
         public string IdeaId { get; set; }
         public string IdeaTechName { get; set; }
     }
@@ -271,6 +320,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Name { get; set; }
         public string TechName { get; set; }
         public string Summary { get; set; }
+        public string Description { get; set; }
         public string OwnerIdeaId { get; set; }
         public string OwnerIdeaTechName { get; set; }
         public List<CompositionJsonVisual> Visuals { get; set; }
@@ -286,6 +336,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public double? Y { get; set; }
         public double? Width { get; set; }
         public double? Height { get; set; }
+        public CompositionJsonVisualControl Visual { get; set; }
     }
 
     public class CompositionJsonOperation
@@ -305,6 +356,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Op { get; set; }
         public string Entity { get; set; }
         public string Id { get; set; }
+        public string RepresentationId { get; set; }
         public string TechName { get; set; }
         public string DefinitionTechName { get; set; }
         public string FallbackDefinitionTechName { get; set; }
@@ -320,6 +372,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public bool? AutoPlace { get; set; }
         public bool? AutoFit { get; set; }
         public bool? AutoRoute { get; set; }
+        public bool? IsShortcut { get; set; }
+        public string LayoutRole { get; set; }
+        public CompositionJsonVisualControl Visual { get; set; }
         public List<string> OriginIdeaIds { get; set; }
         public List<string> OriginIdeaTechNames { get; set; }
         public List<string> TargetIdeaIds { get; set; }
@@ -328,5 +383,39 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public List<CompositionJsonDetail> Details { get; set; }
         public List<CompositionJsonMarker> Markers { get; set; }
         public Dictionary<string, object> Set { get; set; }
+    }
+
+    public class CompositionJsonVisualControl
+    {
+        public string Role { get; set; }
+        public string Display { get; set; }
+        public bool? IncludeInView { get; set; }
+        public bool? IncludeInArrangement { get; set; }
+        public bool? IncludeInRouting { get; set; }
+        public bool? IncludeInAutoFit { get; set; }
+        public bool? IncludeInOverview { get; set; }
+        public bool? IncludeInFullView { get; set; }
+        public bool? IsShortcut { get; set; }
+        public string RelationshipCenterPlacement { get; set; }
+    }
+
+    public class CompositionJsonGroup
+    {
+        public CompositionJsonGroup()
+        {
+            this.MemberIds = new List<string>();
+            this.MemberTechNames = new List<string>();
+        }
+
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string TechName { get; set; }
+        public List<string> MemberIds { get; set; }
+        public List<string> MemberTechNames { get; set; }
+        public string HeaderConceptId { get; set; }
+        public string HeaderConceptTechName { get; set; }
+        public bool? CreateGroupRegion { get; set; }
+        public double? Padding { get; set; }
+        public bool? SendToBack { get; set; }
     }
 }

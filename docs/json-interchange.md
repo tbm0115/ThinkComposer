@@ -30,13 +30,13 @@ Every supported file starts with:
 
 The repository also carries a bundled Codex skill under `docs/thinkcomposer-json-interchange/` plus `docs/thinkcomposer-json-interchange.zip`. Keep that skill bundle synchronized with this document, the schema, and the sample JSON files when the interchange format or layout-related import behavior changes.
 
-Exports include deterministic, pretty-printed DTO data rather than native binary or WPF object graphs. TechSpec fields are exported where supported and imported as plain text only; ThinkComposer does not execute TechSpec text during JSON import. The main top-level sections are:
+Exports include deterministic, pretty-printed DTO data rather than native binary or WPF object graphs. Description and TechSpec fields are exported where supported and imported as text only; ThinkComposer converts JSON `description` text to and from its native rich-text storage internally. ThinkComposer does not execute TechSpec text during JSON import. The main top-level sections are:
 
-- `composition`: document identity, name, tech name, summary, TechSpec, version fields, view prefix, active/root view ids, and domain summary.
-- `definitions`: domain definition names, tech names, summaries, and TechSpec where available for exported definitions referenced by ideas.
-- `ideas`: concepts with stable ids, definition references, editable text, TechSpec, container, markers, details, and child idea ids.
-- `relationships`: relationships with stable ids, definition references, editable text, TechSpec, role links, origin/target idea ids, and container.
-- `views`: view identity plus safe layout data for visible representations.
+- `composition`: document identity, name, tech name, summary, description, TechSpec, version fields, view prefix, active/root view ids, and domain summary.
+- `definitions`: domain definition names, tech names, summaries, descriptions, and TechSpec where available for exported definitions referenced by ideas.
+- `ideas`: concepts with stable ids, definition references, editable text, description, TechSpec, container, markers, details, and child idea ids.
+- `relationships`: relationships with stable ids, definition references, editable text, description, TechSpec, role links, origin/target idea ids, and container.
+- `views`: view identity, summary/description, and safe layout data for visible representations.
 - `operations`: optional patch instructions.
 - `warnings`: source/export notes for skipped or metadata-only native data. These are preserved as source warnings during import rather than treated as new import failures.
 
@@ -104,6 +104,162 @@ With this option, missing top-level concepts and relationships can be created wh
 Visuals in `views[].visuals[]` that refer to newly created or planned ideas are treated as placement requests. The importer uses the visual `x`, `y`, `width`, and `height` when supplied; otherwise it falls back to normal auto-placement. If a referenced idea/relationship was skipped, dependent visual skips are grouped in the log instead of flooding the dialog.
 
 Patch-style `operations` remain preferred for GPT-authored creation because they make intent, ordering, and safety easier to inspect.
+
+## Large Import Visual Strategy
+
+Large generated models should not hand-place, auto-fit, and auto-route every concept and relationship by default. Use top-level `visualStrategy` to describe how much visual materialization is intended:
+
+```json
+{
+  "visualStrategy": {
+    "mode": "overviewAndModel",
+    "largeModelThresholds": {
+      "concepts": 300,
+      "relationships": 300,
+      "visuals": 600
+    },
+    "fullModelVisuals": false,
+    "overviewView": true,
+    "overviewViewTechName": "Overview_View",
+    "maxOverviewConcepts": 150,
+    "maxOverviewRelationships": 200,
+    "groupBy": [
+      "Contains_Components",
+      "Contains_Data_Item"
+    ],
+    "deferRouting": true,
+    "deferAutoFit": true,
+    "deferViewRefresh": true,
+    "relationshipVisualPlacement": "endpointCorridor"
+  }
+}
+```
+
+Supported strategy modes:
+
+- `modelOnly` creates semantic concepts, relationships, details, markers, and TechSpec while suppressing visual placement. This is the safest mode for output-template generation and very large model imports.
+- `overviewAndModel` creates the full semantic model and materializes only a capped overview when `fullModelVisuals=false`. The importer prefers `overviewViewTechName` if that view already exists, otherwise it safely falls back to the active/root view. Creating new views from JSON is still deferred.
+- `optimizedFullVisual` allows full visual placement but defaults `deferAutoFit`, `deferRouting`, and `deferViewRefresh` to true so expensive UI work can be run manually later.
+- `exactFullVisual` preserves the previous exact-placement behavior and is appropriate for small or explicitly requested diagrams.
+- `auto` chooses `overviewAndModel` when document counts meet the configured thresholds; otherwise it behaves like `exactFullVisual`.
+
+When strategy deferral is active, the preview/apply dialog reports `Visual strategy`, `Visuals suppressed by strategy`, `Auto-fit deferred by strategy`, `Auto-route deferred by strategy`, and whether view refresh was deferred. Deferral is intentional and should be treated as a note, not an import failure. Manual Appearance commands can still be run after import when the user is ready to create or refine diagrams.
+
+## Relationship Center Placement And Routing
+
+ThinkComposer relationships can have visible central symbols, so a visible relationship often routes as `source concept -> relationship center -> target concept`. If generated JSON places all relationship centers in a global row or label band, connector lines are pulled through those distant centers and can sweep across the diagram.
+
+For generated diagrams, prefer concept placement plus endpoint-corridor relationship placement:
+
+```json
+{
+  "importOptions": {
+    "relationshipVisualPlacementMode": "endpointCorridor",
+    "recomputeSuspiciousRelationshipVisuals": true,
+    "maxRelationshipCenterDisplacement": 250,
+    "relationshipCenterObstaclePadding": 16,
+    "relationshipCenterOverlapPadding": 8
+  }
+}
+```
+
+Modes:
+
+- `auto` preserves relationship centers already near their endpoint corridor and recomputes suspicious centers, such as imported labels far from their source/target concepts.
+- `endpointCorridor` recomputes visible relationship centers near the midpoint of their visible origin/target concepts, rejects candidates that overlap concepts, scores relationship-bubble overlaps, and runs before auto-route.
+- `midpoint` uses the endpoint midpoint as the primary placement intent.
+- `explicit` preserves supplied relationship visual coordinates. Use this only for hand-curated diagrams.
+- `hideGeneric` is reserved for safe future hiding/minimizing of generic relationship centers; v1 keeps visible centers and places them near endpoints.
+- `defer` skips relationship visual placement correction.
+
+`visualStrategy.relationshipVisualPlacement` provides the same intent at the large-import strategy level, while `importOptions.relationshipVisualPlacementMode` overrides it. For large or uncertain imports, do not emit exact relationship visual `x/y` coordinates unless they are intentionally curated and close to the endpoint corridor.
+
+Regression sample: `samples/composition-relationship-center-placement.sample.json` intentionally imports relationship centers in a top/global label band. With `relationshipVisualPlacementMode: "auto"`, the final import summary should report suspicious centers and recomputed relationship centers before routing.
+
+## Shortcut Visuals
+
+ThinkComposer Shortcuts are visual representations of an existing Idea. They are not duplicate concepts or relationships. Use a Shortcut when the same concept should appear in another place in a diagram while preserving one semantic identity.
+
+Composition JSON exports shortcut visuals with `isShortcut:true` on the visual representation:
+
+```json
+{
+  "ideaTechName": "Shared_Service",
+  "representationId": "00000000-0000-0000-0000-000000000102",
+  "isShortcut": true,
+  "x": 420,
+  "y": 160
+}
+```
+
+Patch-style placement can request the same behavior with `visual.isShortcut:true`:
+
+```json
+{
+  "op": "place",
+  "entity": "concept",
+  "techName": "Shared_Service",
+  "viewTechName": "Main_View",
+  "x": 420,
+  "y": 160,
+  "visual": {
+    "isShortcut": true
+  }
+}
+```
+
+When a concept intentionally has both a primary visual and a shortcut visual in the same view, include `representationId` from export when updating a specific visual. Otherwise the importer matches by idea and view first and creates a shortcut only when the requested shortcut representation is missing.
+
+The UI command **Replace with Shortcut...** is available on a non-shortcut concept symbol. It replaces only the selected visual with a shortcut to a user-selected existing concept and reassigns only visible current-view relationship links that touched that visual. It does not merge/delete the source concept or copy source-specific summary/details/TechSpec.
+
+On a shortcut symbol, use **Go to Original** to navigate to a primary/original visual representation of the same idea. The command prefers a non-shortcut visual, switches to that view, brings the symbol into view, and points/selects it.
+
+## Intent-Agnostic Import Primitives
+
+ThinkComposer JSON import is intentionally source-neutral. The importer does not infer that a source-format subgraph is a Group Region, that a relationship named "contains" is membership, that a particular domain should be model-only, or that a concept name implies layout behavior. Those choices belong in the Skill or JSON generator.
+
+Use explicit metadata when the source intent matters:
+
+```json
+{
+  "groups": [
+    {
+      "name": "Subsystem A",
+      "techName": "Subsystem_A_Group",
+      "memberTechNames": ["A1", "A2", "A3"],
+      "headerConceptTechName": "Subsystem_A",
+      "createGroupRegion": true,
+      "padding": 80,
+      "sendToBack": true
+    }
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "relationship",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "layoutRole": "Membership",
+      "visual": {
+        "display": "hidden",
+        "includeInArrangement": false,
+        "includeInRouting": false
+      }
+    }
+  ]
+}
+```
+
+Generic concept visual roles are `Normal`, `GroupHeader`, `GroupRegionAnchor`, `Summary`, `Annotation`, `Diagnostic`, `Hidden`, and `Deferred`. `Hidden`/`Deferred` or `includeInView:false` creates semantic concepts while suppressing visual placement for this import.
+
+Generic relationship layout roles are `Normal`, `Membership`, `Dependency`, `DataFlow`, `ControlFlow`, `SequenceFlow`, `Feedback`, `CrossLink`, `Annotation`, `Diagnostic`, and `Unknown`. Relationship visual display values are `visible`, `hidden`, `deferred`, `labelOnly`, and `diagnostic`. Per-relationship `visual.relationshipCenterPlacement` can override the import-wide center placement mode with `explicit`, `midpoint`, `endpointCorridor`, `auto`, `hideGeneric`, or `defer`.
+
+`groups[]` creates or updates a visible Group Region complement only when `createGroupRegion:true` is supplied. The importer uses the listed visible member concepts and optional header concept; it does not infer groups from source names, relationship names, or domains.
+
+Regression samples:
+
+- `samples/composition-intent-agnostic-groups.sample.json` demonstrates explicit `groups[]`, a hidden membership relationship, and a visible dependency relationship.
+- `samples/composition-intent-agnostic-visual-controls.sample.json` demonstrates summary/deferred concepts, diagnostic relationship metadata, and endpoint-corridor relationship-center placement.
 
 ## Patch Operations Example
 
@@ -180,7 +336,7 @@ Patch-style `operations` remain preferred for GPT-authored creation because they
 
 Supported operations are `update`, `create`, `delete`, and `place` for the entity types where the native model can safely apply them.
 
-`set.techSpec` is supported for compositions, concepts, relationships, and exported definition summaries where the target native object exposes TechSpec. Omission preserves the current value. An explicit empty string clears TechSpec. The importer logs applied, unchanged, and skipped TechSpec field updates.
+`set.description` and `set.techSpec` are supported for compositions, concepts, relationships, and views where the target native object exposes those fields. JSON `description` values should be plain text; the importer converts them into native rich-text storage, and export converts native rich text back to plain text where possible. Omission preserves the current value. An explicit empty string clears the field. The importer logs applied description and TechSpec field updates. Composition JSON exports embedded-domain and definition descriptions as context; authoritative domain edits should still use Domain JSON interchange.
 
 Patch semantics:
 
@@ -191,6 +347,13 @@ Patch semantics:
 - Existing native data that is not represented in JSON is preserved.
 
 Relationship connectivity can be supplied at the operation top level or inside `set`. Top-level values are preferred when both are present, but `set.originIdeaIds`, `set.originIdeaTechNames`, `set.targetIdeaIds`, `set.targetIdeaTechNames`, and `set.links` are accepted for GPT-authored patches. Link `roleType` values are normalized case-insensitively, so `Origin`, `Target`, `origin`, and `target` are accepted.
+
+Each entry in `links[]` can also preserve link-level labels/descriptors:
+
+- `roleVariantTechName` / `roleVariantName` selects an allowed link-role variant when the relationship role exposes one.
+- `descriptorName`, `descriptorTechName`, and `descriptorSummary` preserve the optional link descriptor shown on the connector between the relationship and that endpoint concept. These are different from the relationship's own `name`, `techName`, `summary`, and `techSpec`.
+
+On import, an existing matching relationship link is updated with explicit descriptor and role-variant metadata instead of creating a duplicate link.
 
 Relationship create operations are upserts. If a `create relationship` operation matches an existing relationship by `id` or `techName`, the importer updates editable fields and repairs missing role links instead of creating a duplicate. Re-importing the same patch should not duplicate relationships, links, visuals, or connectors.
 
@@ -351,9 +514,9 @@ Concept visuals created or newly placed during import are auto-fitted to their v
 
 Relationship visuals created, placed, or repaired during import are auto-routed by default after concept auto-fit completes. This uses the same `LinkObstacleRoutingService` as `Edit -> Appearance -> Route Links with Obstacle Avoidance`, including hidden-central simple relationship routing and dogleg fallback. Existing unrelated links in the view are not routed. Use `"autoRoute": false` on an operation to preserve that operation's current connector geometry, or `"autoRoute": true` to route an existing visible relationship touched by an update/place operation.
 
-Details can be supplied at `operation.details` or `operation.set.details`. The importer merges both forms deterministically, with operation-level details taking precedence for duplicate designators. GPT-authored details can use `name`/`techName` or native `designatorName`/`designatorTechName`, and table rows can be supplied as `rows` or `records`.
+Details can be supplied at `operation.details`, `operation.set.details`, or full-state `ideas[].details` / `relationships[].details`. The importer merges patch-operation detail forms deterministically, with operation-level details taking precedence for duplicate designators. GPT-authored details can use `name`/`techName` or native `designatorName`/`designatorTechName`, and table rows can be supplied as `rows` or `records`.
 
-Native details require matching detail designators on the target idea definition. If the designator is missing or the detail shape is not implemented, the idea itself is still created/updated and the detail is reported separately. By default unsupported details are skipped:
+Native table/resource details require matching detail designators on the target idea definition. `Text` details can update known idea fields such as `Description`, `Summary`, or `TechSpec` when `targetPropertyTechName` is supplied. If the designator is missing or the detail shape is not implemented, the idea itself is still created/updated and the detail is reported separately. By default unsupported details are skipped:
 
 ```json
 {
@@ -363,7 +526,7 @@ Native details require matching detail designators on the target idea definition
 }
 ```
 
-For draft imports where preserving generated detail text matters more than native detail fidelity, set `detailFallbackMode` to `appendToTechSpec` or `appendToDescription`. The importer appends a clearly delimited text section containing the detail name, techName, kind, reason, text, and table rows. Prefer putting critical generated content directly in `summary`, `description`, or `techSpec` when the target domain does not define matching detail designators.
+For draft imports where preserving generated detail text matters more than native detail fidelity, set `detailFallbackMode` to `appendToTechSpec` or `appendToDescription`. The importer appends a clearly delimited text section containing the detail name, techName, kind, reason, text, fields, and table rows. Prefer putting critical generated content directly in `summary`, `description`, or `techSpec` when the target domain does not define matching detail designators.
 
 Layout options:
 
@@ -375,6 +538,9 @@ Layout options:
 - `autoRoutePlacedLinks` defaults to true. It routes newly created, newly placed, or repaired relationship visuals/connectors during import without routing every existing connector in the view.
 - `useActiveCompositionAsContainer` defaults to false. It is an opt-in convenience for root-level fixture imports into a fresh active composition.
 - `treatMissingFullStateItemsAsCreates` defaults to false. It is an opt-in for full-state-style GPT documents that should create missing top-level `ideas[]` and `relationships[]` in the active composition. Patch operations remain preferred.
+- `visualStrategy` is top-level metadata, not an `importOptions` field. Use it for large imports that should be model-only, overview-only, optimized/deferred, or exact full visual.
+- `relationshipVisualPlacementMode` defaults to `auto`. Use `endpointCorridor` for generated diagrams where relationship centers should be recomputed near the concepts they connect; use `explicit` only for curated coordinates.
+- `visual.isShortcut` on a `place` operation creates or updates a shortcut visual representation of an existing idea. A shortcut is visual identity, not a second semantic concept.
 - `relationshipDefinitionFallbackTechName` defaults to disabled. It can preserve draft graph structure by retrying compatibility-failed relationship creates with a generic relationship definition.
 - `detailFallbackMode` defaults to `skip`. `appendToTechSpec` and `appendToDescription` preserve unsupported details as delimited text on the idea.
 - `domainCompatibilityPolicy` defaults to `warn`. Use `requireTechName`, `requireId`, `requireVersion`, or `requireSignature` when a patch must target a specific embedded domain contract.
@@ -389,10 +555,10 @@ Manual Appearance layout commands are currently separate from JSON import layout
 GPT prompt example:
 
 ```text
-Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. Include x/y/width/height for important new concepts when deliberate placement matters, and add place operations for relationships so the new model items are visible in the intended view. Leave importOptions.autoFitPlacedConcepts and importOptions.autoRoutePlacedLinks true so new concept labels fit their text and new links route around obstacles; use operation autoFit:false or autoRoute:false only when I provide deliberate sizing or connector geometry. Do not delete anything unless I explicitly request it.
+Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. For small diagrams, include x/y/width/height only when deliberate placement matters and leave importOptions.autoFitPlacedConcepts/autoRoutePlacedLinks true. For large model imports, prefer top-level visualStrategy mode modelOnly or overviewAndModel with deferAutoFit, deferRouting, and deferViewRefresh true instead of hand-placing/routing every item. Do not delete anything unless I explicitly request it.
 ```
 
-Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, and `samples/composition-full-state-create.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`.
+Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-description-details-regression.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, `samples/composition-full-state-create.sample.json`, `samples/composition-shortcut-roundtrip.sample.json`, `samples/composition-large-visual-strategy.sample.json`, `samples/composition-relationship-center-placement.sample.json`, `samples/composition-intent-agnostic-groups.sample.json`, and `samples/composition-intent-agnostic-visual-controls.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The description/details sample verifies first-class `description`, `techSpec`, `operation.details`, `set.details`, and unsupported-detail fallback. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`. The shortcut round-trip sample demonstrates one semantic concept with a primary visual and a shortcut visual. The large visual strategy sample demonstrates a model import that suppresses or caps visual work so semantic data can import without forcing immediate full-diagram rendering. The intent-agnostic samples demonstrate explicit generic visual/group controls without source-specific importer behavior.
 
 ## Domain Interchange
 
@@ -402,9 +568,14 @@ Related docs:
 
 - `docs/domain-json-interchange.md`
 - `docs/domain-sync.md`
+- `docs/output-template-generation.md`
 - `docs/thinkcomposer-domain-json-interchange.schema.json`
 
 Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer `.tdom` or Domain JSON file. This command updates the embedded domain snapshot explicitly; it does not create a live sync link and does not delete legacy embedded-domain objects by omission.
+
+When an embedded Domain update adds or changes output templates, ThinkComposer still treats template bodies as text during import. Composition output generation prepares the imported definition-level templates before rendering, so users should not need to open Concept/Relationship Definition Output-Templates tabs after the update.
+
+`Tools -> Output -> Generation Preview` and `Generate Files...` now log template resolution details for imported templates, including owner scope, owner techName, selected external language, template hash, inferred role, subtemplate registry entries, and XML/JSON validation results. Use `docs/output-template-generation.md` when troubleshooting whether output came from an imported embedded-domain template, a definition-level template, a base/fallback template, or older native template text.
 
 ## Manual Regression
 
@@ -432,6 +603,8 @@ Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` 
 22. Add strict options to a known partially compatible generated patch. Expected result: preview reports compatibility failures and apply is blocked before creating concepts.
 23. Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition. Expected result: two concepts created, one relationship created, visuals placed, skipped zero.
 24. Import a full-state-style generated file without `treatMissingFullStateItemsAsCreates`. Expected result: the dialog/log notes that missing full-state ids were treated as updates and explains how to enable full-state-create mode.
+25. Import `samples/composition-shortcut-roundtrip.sample.json`. Expected result: one shared semantic concept is visible twice in the same view, with the second representation marked as a Shortcut; export/re-import should preserve `isShortcut:true`.
+26. Import `samples/composition-description-details-regression.sample.json`. Expected result: description and TechSpec fields apply with line breaks preserved; known-field Text details update Description; unsupported free-form details append to Description when fallback mode requests it.
 
 ## Troubleshooting
 
@@ -468,4 +641,4 @@ On import failure, ThinkComposer logs the exception message, full exception deta
 
 Images, attachments, styling, custom visual formatting, store-box references, and binary content are preserved in the `.tcom` file but exported as metadata or warnings only. Unsupported details are omitted from editable import behavior rather than failing export. Import does not delete by omission; deletions require explicit `delete: true` or an operation with `op: "delete"`.
 
-For details, text-like content is exported as editable text where possible. Table details are exported as arrays of field/value records when their field metadata can be represented safely. Resource links, internal links, and attachments are exported as metadata; large binary payloads are not inlined.
+For details, text-like content is exported as editable text where possible. Table details are exported as arrays of field/value records when their field metadata can be represented safely. Sparse or malformed table-detail cells are exported as empty strings with source warnings instead of aborting the whole composition export. Resource links and internal links are exported as safe metadata; attachments are metadata/text-only in JSON and large binary payloads are not inlined.

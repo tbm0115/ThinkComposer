@@ -14,6 +14,7 @@ using System.Text;
 using Instrumind.Common;
 using Instrumind.Common.Visualization;
 
+using Instrumind.ThinkComposer.Composer.Generation;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
@@ -196,6 +197,13 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 Result.TemplateText = Template.Text;
                 Result.ExtendsBaseTemplate = Template.ExtendsBaseTemplate;
                 Result.Order = Index++;
+                var Directives = OutputTemplateDirectiveInfo.Parse(Template.Text);
+                Result.Set["templateRole"] = Directives.Role.ToString();
+                if (!Directives.TargetFileName.IsAbsent())
+                    Result.Set["targetFileName"] = Directives.TargetFileName;
+                if (!Directives.TargetFileExtension.IsAbsent())
+                    Result.Set["targetFileExtension"] = Directives.TargetFileExtension;
+                Result.Set["templateHash"] = OutputTemplateDiagnostics.HashText(Template.Text).Substring(0, 16);
                 yield return Result;
             }
         }
@@ -208,7 +216,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.Name = Source.Name;
             Result.TechName = Source.TechName;
             Result.Summary = Source.Summary;
-            Result.Description = Source.Description;
+            Result.Description = Display.XamlRichTextToPlainTextOrSelf(Source.Description);
             Result.TechSpec = Source.TechSpec;
             return Result;
         }

@@ -1,0 +1,164 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "relationshipVisualPlacementMode": "endpointCorridor",
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "warnings": [
+    "Sample for intent-agnostic Composition JSON grouping primitives. Import into any fresh composition that has the generic Concept and Relationship definitions.",
+    "Expected result: concepts and relationships are created, a Group Region is created only because groups[].createGroupRegion=true, the membership relationship is hidden only because visual.display=hidden, and the dependency relationship remains visible."
+  ],
+  "groups": [
+    {
+      "name": "Subsystem A Group",
+      "techName": "Intent_Agnostic_Subsystem_A_Group",
+      "memberTechNames": [
+        "Intent_Agnostic_A1",
+        "Intent_Agnostic_A2",
+        "Intent_Agnostic_A3"
+      ],
+      "headerConceptTechName": "Intent_Agnostic_Subsystem_A",
+      "createGroupRegion": true,
+      "padding": 80,
+      "sendToBack": true
+    }
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d100000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 120,
+      "width": 220,
+      "height": 64,
+      "visual": {
+        "role": "GroupHeader",
+        "includeInArrangement": true,
+        "includeInRouting": true
+      },
+      "set": {
+        "name": "Subsystem A",
+        "techName": "Intent_Agnostic_Subsystem_A",
+        "summary": "Explicit group header concept. The importer does not infer this from the name."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d100000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 260,
+      "width": 180,
+      "height": 64,
+      "set": {
+        "name": "A1",
+        "techName": "Intent_Agnostic_A1",
+        "summary": "First explicit group member."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d100000-0000-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 380,
+      "y": 260,
+      "width": 180,
+      "height": 64,
+      "set": {
+        "name": "A2",
+        "techName": "Intent_Agnostic_A2",
+        "summary": "Second explicit group member."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9d100000-0000-4000-8000-000000000004",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 640,
+      "y": 260,
+      "width": 180,
+      "height": 64,
+      "set": {
+        "name": "A3",
+        "techName": "Intent_Agnostic_A3",
+        "summary": "Third explicit group member."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9d100000-0000-4000-8000-000000000101",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "layoutRole": "Membership",
+      "visual": {
+        "display": "hidden",
+        "includeInArrangement": false,
+        "includeInRouting": false,
+        "relationshipCenterPlacement": "defer"
+      },
+      "set": {
+        "name": "Subsystem A includes A1",
+        "techName": "Intent_Agnostic_Subsystem_A_Membership_A1",
+        "summary": "Semantic membership edge hidden by explicit JSON metadata only.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Intent_Agnostic_Subsystem_A"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Intent_Agnostic_A1"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9d100000-0000-4000-8000-000000000102",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "layoutRole": "Dependency",
+      "autoRoute": true,
+      "visual": {
+        "display": "visible",
+        "includeInArrangement": true,
+        "includeInRouting": true,
+        "relationshipCenterPlacement": "endpointCorridor"
+      },
+      "set": {
+        "name": "A2 depends on A3",
+        "techName": "Intent_Agnostic_A2_Depends_On_A3",
+        "summary": "Visible dependency edge with generic endpoint-corridor relationship-center placement.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Intent_Agnostic_A2"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Intent_Agnostic_A3"
+          }
+        ]
+      }
+    }
+  ]
+}

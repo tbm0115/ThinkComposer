@@ -55,10 +55,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Document.Requires = ReadTargetContext(GetDictionary(Root, "requires"));
             Document.Composition = ReadComposition(GetDictionary(Root, "composition"));
             Document.ImportOptions = ReadImportOptions(GetDictionary(Root, "importOptions"));
+            Document.VisualStrategy = ReadVisualStrategy(GetDictionary(Root, "visualStrategy"));
             Document.Ideas = ReadList(Root, "ideas", ReadIdea);
             Document.Relationships = ReadList(Root, "relationships", ReadRelationship);
             Document.Views = ReadList(Root, "views", ReadView);
             Document.Operations = ReadList(Root, "operations", ReadOperation);
+            Document.Groups = ReadList(Root, "groups", ReadGroup);
             Document.Warnings = ReadWarningList(Root, "warnings");
 
             return Document;
@@ -87,10 +89,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "requires", ToGraph(Document.Requires));
             AddIf(Obj, "composition", ToGraph(Document.Composition));
             AddIf(Obj, "importOptions", ToGraph(Document.ImportOptions));
+            AddIf(Obj, "visualStrategy", ToGraph(Document.VisualStrategy));
             Add(Obj, "ideas", ToList(Document.Ideas, ToGraph));
             Add(Obj, "relationships", ToList(Document.Relationships, ToGraph));
             Add(Obj, "views", ToList(Document.Views, ToGraph));
             Add(Obj, "operations", ToList(Document.Operations, ToGraph));
+            Add(Obj, "groups", ToList(Document.Groups, ToGraph));
             Add(Obj, "warnings", Document.Warnings ?? new List<string>());
             return Obj;
         }
@@ -114,9 +118,48 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "abortOnRelationshipCompatibilityFailure", ImportOptions.AbortOnRelationshipCompatibilityFailure);
             AddIf(Obj, "strictDetailsCompatibility", ImportOptions.StrictDetailsCompatibility);
             AddIf(Obj, "abortOnDetailCompatibilityFailure", ImportOptions.AbortOnDetailCompatibilityFailure);
+            AddIf(Obj, "relationshipVisualPlacementMode", ImportOptions.RelationshipVisualPlacementMode);
+            AddIf(Obj, "recomputeSuspiciousRelationshipVisuals", ImportOptions.RecomputeSuspiciousRelationshipVisuals);
+            AddIf(Obj, "hideGenericRelationshipCenters", ImportOptions.HideGenericRelationshipCenters);
+            AddIf(Obj, "maxRelationshipCenterDisplacement", ImportOptions.MaxRelationshipCenterDisplacement);
+            AddIf(Obj, "relationshipCenterObstaclePadding", ImportOptions.RelationshipCenterObstaclePadding);
+            AddIf(Obj, "relationshipCenterOverlapPadding", ImportOptions.RelationshipCenterOverlapPadding);
             AddIf(Obj, "layoutMode", ImportOptions.LayoutMode);
             AddIf(Obj, "preventSelfRecursiveCompositeViews", ImportOptions.PreventSelfRecursiveCompositeViews);
             AddIf(Obj, "repairRecursiveVisuals", ImportOptions.RepairRecursiveVisuals);
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonVisualStrategy Strategy)
+        {
+            if (Strategy == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "mode", Strategy.Mode);
+            AddIf(Obj, "largeModelThresholds", ToGraph(Strategy.LargeModelThresholds));
+            AddIf(Obj, "fullModelVisuals", Strategy.FullModelVisuals);
+            AddIf(Obj, "overviewView", Strategy.OverviewView);
+            AddIf(Obj, "overviewViewTechName", Strategy.OverviewViewTechName);
+            AddIf(Obj, "maxOverviewConcepts", Strategy.MaxOverviewConcepts);
+            AddIf(Obj, "maxOverviewRelationships", Strategy.MaxOverviewRelationships);
+            Add(Obj, "groupBy", Strategy.GroupBy ?? new List<string>());
+            AddIf(Obj, "deferRouting", Strategy.DeferRouting);
+            AddIf(Obj, "deferAutoFit", Strategy.DeferAutoFit);
+            AddIf(Obj, "deferViewRefresh", Strategy.DeferViewRefresh);
+            AddIf(Obj, "relationshipVisualPlacement", Strategy.RelationshipVisualPlacement);
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonLargeModelThresholds Thresholds)
+        {
+            if (Thresholds == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "concepts", Thresholds.Concepts);
+            AddIf(Obj, "relationships", Thresholds.Relationships);
+            AddIf(Obj, "visuals", Thresholds.Visuals);
             return Obj;
         }
 
@@ -157,6 +200,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Composition.Name);
             AddIf(Obj, "techName", Composition.TechName);
             AddIf(Obj, "summary", Composition.Summary);
+            AddIf(Obj, "description", Composition.Description);
             AddIf(Obj, "techSpec", Composition.TechSpec);
             AddIf(Obj, "viewsPrefix", Composition.ViewsPrefix);
             AddIf(Obj, "rootViewId", Composition.RootViewId);
@@ -176,6 +220,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Domain.Name);
             AddIf(Obj, "techName", Domain.TechName);
             AddIf(Obj, "summary", Domain.Summary);
+            AddIf(Obj, "description", Domain.Description);
             AddIf(Obj, "techSpec", Domain.TechSpec);
             AddIf(Obj, "compatibilitySignature", Domain.CompatibilitySignature);
             Add(Obj, "definitions", ToList(Domain.Definitions, ToGraph));
@@ -190,6 +235,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Definition.Name);
             AddIf(Obj, "techName", Definition.TechName);
             AddIf(Obj, "summary", Definition.Summary);
+            AddIf(Obj, "description", Definition.Description);
             AddIf(Obj, "techSpec", Definition.TechSpec);
             return Obj;
         }
@@ -223,9 +269,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Idea.Name);
             AddIf(Obj, "techName", Idea.TechName);
             AddIf(Obj, "summary", Idea.Summary);
+            AddIf(Obj, "description", Idea.Description);
             AddIf(Obj, "techSpec", Idea.TechSpec);
             AddIf(Obj, "containerId", Idea.ContainerId);
             AddIf(Obj, "containerTechName", Idea.ContainerTechName);
+            AddIf(Obj, "visual", ToGraph(Idea.Visual));
             Add(Obj, "childIdeaIds", Idea.ChildIdeaIds ?? new List<string>());
             Add(Obj, "compositeViewIds", Idea.CompositeViewIds ?? new List<string>());
             Add(Obj, "details", ToList(Idea.Details, ToGraph));
@@ -246,9 +294,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", Relationship.Name);
             AddIf(Obj, "techName", Relationship.TechName);
             AddIf(Obj, "summary", Relationship.Summary);
+            AddIf(Obj, "description", Relationship.Description);
             AddIf(Obj, "techSpec", Relationship.TechSpec);
             AddIf(Obj, "containerId", Relationship.ContainerId);
             AddIf(Obj, "containerTechName", Relationship.ContainerTechName);
+            AddIf(Obj, "layoutRole", Relationship.LayoutRole);
+            AddIf(Obj, "visual", ToGraph(Relationship.Visual));
             Add(Obj, "originIdeaIds", Relationship.OriginIdeaIds ?? new List<string>());
             Add(Obj, "originIdeaTechNames", Relationship.OriginIdeaTechNames ?? new List<string>());
             Add(Obj, "targetIdeaIds", Relationship.TargetIdeaIds ?? new List<string>());
@@ -271,6 +322,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "roleDefinitionName", Link.RoleDefinitionName);
             AddIf(Obj, "roleVariantTechName", Link.RoleVariantTechName);
             AddIf(Obj, "roleVariantName", Link.RoleVariantName);
+            AddIf(Obj, "descriptorName", Link.DescriptorName);
+            AddIf(Obj, "descriptorTechName", Link.DescriptorTechName);
+            AddIf(Obj, "descriptorSummary", Link.DescriptorSummary);
             AddIf(Obj, "ideaId", Link.IdeaId);
             AddIf(Obj, "ideaTechName", Link.IdeaTechName);
             return Obj;
@@ -324,6 +378,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "name", View.Name);
             AddIf(Obj, "techName", View.TechName);
             AddIf(Obj, "summary", View.Summary);
+            AddIf(Obj, "description", View.Description);
             AddIf(Obj, "ownerIdeaId", View.OwnerIdeaId);
             AddIf(Obj, "ownerIdeaTechName", View.OwnerIdeaTechName);
             Add(Obj, "visuals", ToList(View.Visuals, ToGraph));
@@ -341,6 +396,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "y", Visual.Y);
             AddIf(Obj, "width", Visual.Width);
             AddIf(Obj, "height", Visual.Height);
+            AddIf(Obj, "visual", ToGraph(Visual.Visual));
             return Obj;
         }
 
@@ -350,6 +406,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "op", Operation.Op);
             AddIf(Obj, "entity", Operation.Entity);
             AddIf(Obj, "id", Operation.Id);
+            AddIf(Obj, "representationId", Operation.RepresentationId);
             AddIf(Obj, "techName", Operation.TechName);
             AddIf(Obj, "definitionTechName", Operation.DefinitionTechName);
             AddIf(Obj, "fallbackDefinitionTechName", Operation.FallbackDefinitionTechName);
@@ -365,6 +422,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "autoPlace", Operation.AutoPlace);
             AddIf(Obj, "autoFit", Operation.AutoFit);
             AddIf(Obj, "autoRoute", Operation.AutoRoute);
+            AddIf(Obj, "isShortcut", Operation.IsShortcut);
+            AddIf(Obj, "layoutRole", Operation.LayoutRole);
+            AddIf(Obj, "visual", ToGraph(Operation.Visual));
             Add(Obj, "originIdeaIds", Operation.OriginIdeaIds ?? new List<string>());
             Add(Obj, "originIdeaTechNames", Operation.OriginIdeaTechNames ?? new List<string>());
             Add(Obj, "targetIdeaIds", Operation.TargetIdeaIds ?? new List<string>());
@@ -373,6 +433,44 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Add(Obj, "details", ToList(Operation.Details, ToGraph));
             Add(Obj, "markers", ToList(Operation.Markers, ToGraph));
             Add(Obj, "set", ToOrderedDictionary(Operation.Set));
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonVisualControl Visual)
+        {
+            if (Visual == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "role", Visual.Role);
+            AddIf(Obj, "display", Visual.Display);
+            AddIf(Obj, "includeInView", Visual.IncludeInView);
+            AddIf(Obj, "includeInArrangement", Visual.IncludeInArrangement);
+            AddIf(Obj, "includeInRouting", Visual.IncludeInRouting);
+            AddIf(Obj, "includeInAutoFit", Visual.IncludeInAutoFit);
+            AddIf(Obj, "includeInOverview", Visual.IncludeInOverview);
+            AddIf(Obj, "includeInFullView", Visual.IncludeInFullView);
+            AddIf(Obj, "isShortcut", Visual.IsShortcut);
+            AddIf(Obj, "relationshipCenterPlacement", Visual.RelationshipCenterPlacement);
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonGroup Group)
+        {
+            if (Group == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "id", Group.Id);
+            AddIf(Obj, "name", Group.Name);
+            AddIf(Obj, "techName", Group.TechName);
+            Add(Obj, "memberIds", Group.MemberIds ?? new List<string>());
+            Add(Obj, "memberTechNames", Group.MemberTechNames ?? new List<string>());
+            AddIf(Obj, "headerConceptId", Group.HeaderConceptId);
+            AddIf(Obj, "headerConceptTechName", Group.HeaderConceptTechName);
+            AddIf(Obj, "createGroupRegion", Group.CreateGroupRegion);
+            AddIf(Obj, "padding", Group.Padding);
+            AddIf(Obj, "sendToBack", Group.SendToBack);
             return Obj;
         }
 
@@ -395,9 +493,48 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.AbortOnRelationshipCompatibilityFailure = GetNullableBool(Source, "abortOnRelationshipCompatibilityFailure");
             Result.StrictDetailsCompatibility = GetNullableBool(Source, "strictDetailsCompatibility");
             Result.AbortOnDetailCompatibilityFailure = GetNullableBool(Source, "abortOnDetailCompatibilityFailure");
+            Result.RelationshipVisualPlacementMode = GetString(Source, "relationshipVisualPlacementMode");
+            Result.RecomputeSuspiciousRelationshipVisuals = GetNullableBool(Source, "recomputeSuspiciousRelationshipVisuals");
+            Result.HideGenericRelationshipCenters = GetNullableBool(Source, "hideGenericRelationshipCenters");
+            Result.MaxRelationshipCenterDisplacement = GetNullableDouble(Source, "maxRelationshipCenterDisplacement");
+            Result.RelationshipCenterObstaclePadding = GetNullableDouble(Source, "relationshipCenterObstaclePadding");
+            Result.RelationshipCenterOverlapPadding = GetNullableDouble(Source, "relationshipCenterOverlapPadding");
             Result.LayoutMode = GetString(Source, "layoutMode");
             Result.PreventSelfRecursiveCompositeViews = GetNullableBool(Source, "preventSelfRecursiveCompositeViews");
             Result.RepairRecursiveVisuals = GetNullableBool(Source, "repairRecursiveVisuals");
+            return Result;
+        }
+
+        private static CompositionJsonVisualStrategy ReadVisualStrategy(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonVisualStrategy();
+            Result.Mode = GetString(Source, "mode");
+            Result.LargeModelThresholds = ReadLargeModelThresholds(GetDictionary(Source, "largeModelThresholds"));
+            Result.FullModelVisuals = GetNullableBool(Source, "fullModelVisuals");
+            Result.OverviewView = GetNullableBool(Source, "overviewView");
+            Result.OverviewViewTechName = GetString(Source, "overviewViewTechName");
+            Result.MaxOverviewConcepts = GetNullableInt(Source, "maxOverviewConcepts");
+            Result.MaxOverviewRelationships = GetNullableInt(Source, "maxOverviewRelationships");
+            Result.GroupBy = ReadStringList(Source, "groupBy");
+            Result.DeferRouting = GetNullableBool(Source, "deferRouting");
+            Result.DeferAutoFit = GetNullableBool(Source, "deferAutoFit");
+            Result.DeferViewRefresh = GetNullableBool(Source, "deferViewRefresh");
+            Result.RelationshipVisualPlacement = GetString(Source, "relationshipVisualPlacement");
+            return Result;
+        }
+
+        private static CompositionJsonLargeModelThresholds ReadLargeModelThresholds(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonLargeModelThresholds();
+            Result.Concepts = GetNullableInt(Source, "concepts");
+            Result.Relationships = GetNullableInt(Source, "relationships");
+            Result.Visuals = GetNullableInt(Source, "visuals");
             return Result;
         }
 
@@ -440,6 +577,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.ViewsPrefix = GetString(Source, "viewsPrefix");
             Result.RootViewId = GetString(Source, "rootViewId");
@@ -459,6 +597,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.CompatibilitySignature = GetString(Source, "compatibilitySignature");
             Result.Definitions = ReadList(Source, "definitions", ReadDefinition);
@@ -473,6 +612,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             return Result;
         }
@@ -509,9 +649,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
+            Result.Visual = ReadVisualControl(GetDictionary(Source, "visual"));
             Result.ChildIdeaIds = ReadStringList(Source, "childIdeaIds");
             Result.CompositeViewIds = ReadStringList(Source, "compositeViewIds");
             Result.Details = ReadList(Source, "details", ReadDetail);
@@ -532,9 +674,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
+            Result.LayoutRole = GetString(Source, "layoutRole");
+            Result.Visual = ReadVisualControl(GetDictionary(Source, "visual"));
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
             Result.OriginIdeaTechNames = ReadStringList(Source, "originIdeaTechNames");
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");
@@ -557,6 +702,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.RoleDefinitionName = GetString(Source, "roleDefinitionName");
             Result.RoleVariantTechName = GetString(Source, "roleVariantTechName");
             Result.RoleVariantName = GetString(Source, "roleVariantName");
+            Result.DescriptorName = GetString(Source, "descriptorName");
+            Result.DescriptorTechName = GetString(Source, "descriptorTechName");
+            Result.DescriptorSummary = GetString(Source, "descriptorSummary");
             Result.IdeaId = GetString(Source, "ideaId");
             Result.IdeaTechName = GetString(Source, "ideaTechName");
             return Result;
@@ -581,15 +729,21 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Delete = GetBool(Source, "delete", false);
             Result.Kind = GetString(Source, "kind");
             Result.DesignatorId = GetString(Source, "designatorId");
-            Result.DesignatorTechName = GetString(Source, "designatorTechName");
-            Result.DesignatorName = GetString(Source, "designatorName");
-            Result.Text = GetString(Source, "text");
+            Result.DesignatorTechName = FirstPresent(GetString(Source, "designatorTechName"),
+                                                     GetString(Source, "detailTechName"),
+                                                     GetString(Source, "techName"));
+            Result.DesignatorName = FirstPresent(GetString(Source, "designatorName"),
+                                                 GetString(Source, "name"));
+            Result.Text = FirstPresent(GetString(Source, "text"),
+                                       GetString(Source, "content"),
+                                       GetString(Source, "value"));
             Result.TargetAddress = GetString(Source, "targetAddress");
             Result.TargetPropertyTechName = GetString(Source, "targetPropertyTechName");
             Result.Source = GetString(Source, "source");
             Result.MimeType = GetString(Source, "mimeType");
             Result.Fields = ReadList(Source, "fields", ReadField);
             Result.Records = ReadRecordList(Source, "records");
+            Result.Records.AddRange(ReadRecordList(Source, "rows"));
             return Result;
         }
 
@@ -610,6 +764,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Name = GetString(Source, "name");
             Result.TechName = GetString(Source, "techName");
             Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
             Result.OwnerIdeaId = GetString(Source, "ownerIdeaId");
             Result.OwnerIdeaTechName = GetString(Source, "ownerIdeaTechName");
             Result.Visuals = ReadList(Source, "visuals", ReadVisual);
@@ -627,6 +782,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Y = GetNullableDouble(Source, "y");
             Result.Width = GetNullableDouble(Source, "width");
             Result.Height = GetNullableDouble(Source, "height");
+            Result.Visual = ReadVisualControl(GetDictionary(Source, "visual"));
             return Result;
         }
 
@@ -636,6 +792,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Op = GetString(Source, "op");
             Result.Entity = GetString(Source, "entity");
             Result.Id = GetString(Source, "id");
+            Result.RepresentationId = GetString(Source, "representationId");
             Result.TechName = GetString(Source, "techName");
             Result.DefinitionTechName = GetString(Source, "definitionTechName");
             Result.FallbackDefinitionTechName = GetString(Source, "fallbackDefinitionTechName");
@@ -651,6 +808,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.AutoPlace = GetNullableBool(Source, "autoPlace");
             Result.AutoFit = GetNullableBool(Source, "autoFit");
             Result.AutoRoute = GetNullableBool(Source, "autoRoute");
+            Result.IsShortcut = GetNullableBool(Source, "isShortcut");
+            Result.LayoutRole = GetString(Source, "layoutRole");
+            Result.Visual = ReadVisualControl(GetDictionary(Source, "visual"));
             Result.OriginIdeaIds = ReadStringList(Source, "originIdeaIds");
             Result.OriginIdeaTechNames = ReadStringList(Source, "originIdeaTechNames");
             Result.TargetIdeaIds = ReadStringList(Source, "targetIdeaIds");
@@ -659,6 +819,41 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Details = ReadList(Source, "details", ReadDetail);
             Result.Markers = ReadList(Source, "markers", ReadMarker);
             Result.Set = GetObjectDictionary(Source, "set");
+            return Result;
+        }
+
+        private static CompositionJsonVisualControl ReadVisualControl(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonVisualControl();
+            Result.Role = GetString(Source, "role");
+            Result.Display = GetString(Source, "display");
+            Result.IncludeInView = GetNullableBool(Source, "includeInView");
+            Result.IncludeInArrangement = GetNullableBool(Source, "includeInArrangement");
+            Result.IncludeInRouting = GetNullableBool(Source, "includeInRouting");
+            Result.IncludeInAutoFit = GetNullableBool(Source, "includeInAutoFit");
+            Result.IncludeInOverview = GetNullableBool(Source, "includeInOverview");
+            Result.IncludeInFullView = GetNullableBool(Source, "includeInFullView");
+            Result.IsShortcut = GetNullableBool(Source, "isShortcut");
+            Result.RelationshipCenterPlacement = GetString(Source, "relationshipCenterPlacement");
+            return Result;
+        }
+
+        private static CompositionJsonGroup ReadGroup(IDictionary<string, object> Source)
+        {
+            var Result = new CompositionJsonGroup();
+            Result.Id = GetString(Source, "id");
+            Result.Name = GetString(Source, "name");
+            Result.TechName = GetString(Source, "techName");
+            Result.MemberIds = ReadStringList(Source, "memberIds");
+            Result.MemberTechNames = ReadStringList(Source, "memberTechNames");
+            Result.HeaderConceptId = GetString(Source, "headerConceptId");
+            Result.HeaderConceptTechName = GetString(Source, "headerConceptTechName");
+            Result.CreateGroupRegion = GetNullableBool(Source, "createGroupRegion");
+            Result.Padding = GetNullableDouble(Source, "padding");
+            Result.SendToBack = GetNullableBool(Source, "sendToBack");
             return Result;
         }
 
@@ -997,10 +1192,28 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Convert.ToString(Source[Key], CultureInfo.InvariantCulture);
         }
 
+        private static string FirstPresent(params string[] Values)
+        {
+            if (Values == null)
+                return null;
+
+            foreach (var Value in Values)
+                if (Value != null)
+                    return Value;
+
+            return null;
+        }
+
         public static int GetInt(IDictionary<string, object> Source, string Key, int DefaultValue)
         {
             int Result;
             return TryGetInt(Source, Key, out Result) ? Result : DefaultValue;
+        }
+
+        public static int? GetNullableInt(IDictionary<string, object> Source, string Key)
+        {
+            int Result;
+            return TryGetInt(Source, Key, out Result) ? (int?)Result : null;
         }
 
         public static bool TryGetInt(IDictionary<string, object> Source, string Key, out int Result)

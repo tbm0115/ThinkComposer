@@ -173,26 +173,32 @@ namespace Instrumind.ThinkComposer.Model.InformationModel
         /// </summary>
         public string GetFieldValueForExport(FieldDefinition Definitor, bool Quoted = false, bool UniversalDate = true, bool NullAsEmpty = true)
         {
+            if (Definitor == null)
+                return NullAsEmpty ? String.Empty : null;
+
             var Value = this.GetStoredValue(Definitor);
+            if (Value == null)
+                return NullAsEmpty ? String.Empty : null;
+
             string Result = Value.ToString();
 
-            if (Result == null)
-                if (NullAsEmpty)
-                    Result = String.Empty;
-                else
-                    return Result;
-
-            if (Definitor.FieldType.IsEqual(DataType.DataTypeDate))
+            if (Definitor.FieldType != null && Definitor.FieldType.IsEqual(DataType.DataTypeDate) && Value is DateTime)
                 Result = ((DateTime)Value).ToString("yyyy-MM-dd");
             else
-                if (Definitor.FieldType.IsEqual(DataType.DataTypeTime))
+                if (Definitor.FieldType != null && Definitor.FieldType.IsEqual(DataType.DataTypeTime) && Value is DateTime)
                     Result = ((DateTime)Value).ToString("hh:mm:ss");
                 else
-                    if (Definitor.FieldType.IsEqual(DataType.DataTypeDateTime))
+                    if (Definitor.FieldType != null && Definitor.FieldType.IsEqual(DataType.DataTypeDateTime) && Value is DateTime)
                         Result = ((DateTime)Value).ToString("yyyy-MM-dd hh:mm:ss");
                     else
-                        if (Definitor.FieldType.IsEqual(DataType.DataTypeTableRecordRef))
-                            Result = ((TableRecord)Value).Label;
+                        if (Definitor.FieldType != null && Definitor.FieldType.IsEqual(DataType.DataTypeTableRecordRef))
+                        {
+                            var ReferencedRecord = Value as TableRecord;
+                            Result = ReferencedRecord == null ? (NullAsEmpty ? String.Empty : null) : ReferencedRecord.Label;
+                        }
+
+            if (Result == null)
+                return Result;
 
             if (Quoted)
                 Result = "\"" + Result.Replace("\"", "\"\"") + "\"";

@@ -107,15 +107,36 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         public static LinkObstacleRoutingResult RouteVisibleConnectors(LayoutSelectionContext Context, LinkObstacleRoutingOptions Options)
         {
             Options = Options ?? new LinkObstacleRoutingOptions();
+            var Result = new LinkObstacleRoutingResult();
+
+            if (Context == null || Context.ActiveView == null)
+            {
+                Result.AddWarning("No active view is available for link routing.");
+                LogSummary(Result);
+                return Result;
+            }
+
+            if (Options.CorrectRelationshipCentersBeforeRouting)
+            {
+                var PlacementScope = Options.RouteSelectedConnectorsOnly
+                                     ? Context.SelectedRelationshipRepresentations
+                                     : Context.VisibleRelationshipRepresentations;
+                Result.RelationshipCenterPlacementResult =
+                    RelationshipVisualPlacementService.PlaceVisibleRelationshipCenters(Context,
+                                                                                       PlacementScope,
+                                                                                       Options.RelationshipVisualPlacementOptions);
+                foreach (var Warning in Result.RelationshipCenterPlacementResult.Warnings)
+                    Result.AddWarning("Relationship center placement: " + Warning);
+            }
+
             var Connectors = GetConnectorsForScope(Context, Options);
             var HiddenCentralRelationships = GetHiddenCentralRelationshipsForScope(Connectors);
             var HiddenCentralSet = new HashSet<RelationshipVisualRepresentation>(HiddenCentralRelationships);
             var IndividualConnectors = Connectors.Where(Connector => Connector.OwnerRelationshipRepresentation == null ||
                                                                      !HiddenCentralSet.Contains(Connector.OwnerRelationshipRepresentation))
                                                 .ToList();
-            var Result = new LinkObstacleRoutingResult();
 
-            Console.WriteLine("Appearance: Route Links with Obstacle Avoidance starting; view={0}; scope={1}; connectors={2}; hiddenCentralRelationships={3}; options obstaclePadding={4:0.##}, nearMissPadding={5:0.##}, minImprovement={6:0.##}, preserveExisting={7}.",
+            Console.WriteLine("Appearance: Route Links with Obstacle Avoidance starting; view={0}; scope={1}; connectors={2}; hiddenCentralRelationships={3}; options obstaclePadding={4:0.##}, nearMissPadding={5:0.##}, minImprovement={6:0.##}, preserveExisting={7}, correctRelationshipCenters={8}.",
                               DescribeView(Context == null ? null : Context.ActiveView),
                               Options.RouteSelectedConnectorsOnly ? "selected links" : "all visible links",
                               Connectors.Count,
@@ -123,15 +144,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                               Options.ObstaclePadding,
                               Options.NearMissPadding,
                               Options.MinimumRouteImprovement,
-                              Options.PreserveExistingValidRoutes);
-
-            if (Context == null || Context.ActiveView == null)
-            {
-                Result.Skipped = Connectors.Count;
-                Result.AddWarning("No active view is available for link routing.");
-                LogSummary(Result);
-                return Result;
-            }
+                              Options.PreserveExistingValidRoutes,
+                              Options.CorrectRelationshipCentersBeforeRouting ? "true" : "false");
 
             var ObstacleInfos = BuildObstacleInfos(Context, Options);
             var ObstacleRectangles = ObstacleInfos.Select(Obstacle => Obstacle.Bounds).ToList();
@@ -1399,6 +1413,15 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                               Result.ConnectorRoutesInspected, Result.RelationshipRoutesInspected, Result.Inspected,
                               Result.Routed, Result.DoglegRouted, Result.Straightened, Result.Unchanged,
                               Result.Skipped, Result.Warnings.Count);
+
+            if (Result.RelationshipCenterPlacementResult != null)
+                Console.WriteLine("Appearance: relationship center placement before routing; inspected={0}; recomputed={1}; preserved={2}; suspicious={3}; skipped={4}; finalOverlaps={5}.",
+                                  Result.RelationshipCenterPlacementResult.RelationshipCentersInspected,
+                                  Result.RelationshipCenterPlacementResult.RelationshipCentersRecomputed,
+                                  Result.RelationshipCenterPlacementResult.RelationshipCentersPreserved,
+                                  Result.RelationshipCenterPlacementResult.SuspiciousRelationshipCenters,
+                                  Result.RelationshipCenterPlacementResult.RelationshipCentersSkipped,
+                                  Result.RelationshipCenterPlacementResult.FinalRelationshipOverlapCount);
 
             foreach (var Warning in Result.Warnings)
                 Console.WriteLine("Appearance routing warning: {0}", Warning);

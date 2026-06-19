@@ -93,13 +93,20 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Undo import and confirm concept widths and connector routes revert.
 - [ ] Save, reopen, and export PDF/report.
 
-## Composition JSON TechSpec
+## Composition JSON Description, TechSpec, And Details
 
-- [ ] Export a `.tcom` JSON file from a composition that has TechSpec on the composition, concepts, relationships, or definitions.
+- [ ] Export a `.tcom` JSON file from a composition that has Description and TechSpec on the composition, concepts, relationships, views, or definitions.
+- [ ] Confirm exported JSON includes `description` where values exist.
 - [ ] Confirm exported JSON includes `techSpec` where values exist.
 - [ ] Import `samples/json-interchange-regression.sample.json` after adapting tech names to the active composition.
+- [ ] Confirm `set.description` updates an existing object and logs the field-level update.
 - [ ] Confirm `set.techSpec` updates an existing concept and logs the field-level update.
-- [ ] Save, reopen, and confirm TechSpec persists.
+- [ ] Import `samples/composition-description-details-regression.sample.json` into a blank All-Purpose composition.
+- [ ] Confirm description and TechSpec line breaks persist for composition, concepts, and relationships.
+- [ ] Open an imported concept's Properties dialog and confirm the Description tab opens without a XAML parse error.
+- [ ] Confirm known-field Text details can update Description through `targetPropertyTechName=Description`.
+- [ ] Confirm unsupported free-form details append to Description when `detailFallbackMode=appendToDescription`.
+- [ ] Save, reopen, and confirm Description and TechSpec persist.
 
 ## Composition JSON Fixture Imports
 
@@ -122,7 +129,22 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Add strict options to the current machine-monitoring generated patch and confirm `strictRelationshipCompatibility=true` plus `abortOnRelationshipCompatibilityFailure=true` blocks before concepts/relationships are created when compatibility failures exist.
 - [ ] Import a latest-Skill-generated full-state-style composition JSON without `treatMissingFullStateItemsAsCreates` and confirm the dialog/log explains that missing top-level ideas/relationships were treated as updates, not creates.
 - [ ] Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition and confirm concepts created=2, relationships created=1, visuals placed > 0, skipped=0.
+- [ ] Import `samples/composition-description-details-regression.sample.json` into a blank All-Purpose composition and confirm first-class descriptions, TechSpec, and detail fallback behavior apply without skipping created ideas.
+- [ ] Import `samples/composition-shortcut-roundtrip.sample.json` into a blank All-Purpose composition and confirm one semantic concept appears twice in the same view, with the second visual marked as a Shortcut.
+- [ ] Export/re-import the shortcut sample and confirm `isShortcut:true` persists and no duplicate semantic concept is created.
 - [ ] Add `treatMissingFullStateItemsAsCreates=true` to the generated full-state machine-monitoring JSON and confirm concepts are created instead of skipped; relationships either create or report relationship compatibility failures.
+- [ ] Import `samples/composition-large-visual-strategy.sample.json` into a blank All-Purpose composition and confirm `visualStrategy.mode=modelOnly` creates semantic concepts/relationships while suppressing visual placement, auto-fit, auto-route, and immediate view refresh.
+- [ ] Change the same sample to `visualStrategy.mode=overviewAndModel` and confirm only the capped overview visuals are planned/applied while the semantic model still imports.
+- [ ] For large generated composition JSON, confirm GPT-generated files use `visualStrategy` instead of hand-placing/routing hundreds or thousands of objects by default.
+- [ ] Import `samples/composition-relationship-center-placement.sample.json` and confirm relationship centers originally placed in a top/global band are recomputed near their source/target endpoint corridors when `relationshipVisualPlacementMode=auto`.
+- [ ] Re-import the same sample with `relationshipVisualPlacementMode=explicit` and confirm the intentionally bad relationship center positions are preserved.
+- [ ] Run Edit -> Appearance -> Route Links with Obstacle Avoidance and confirm the dialog reports relationship centers inspected/recomputed before routing.
+- [ ] Import `samples/composition-intent-agnostic-groups.sample.json` and confirm a Group Region is created only because `groups[].createGroupRegion=true`, the membership relationship is hidden only because `visual.display=hidden`, and the visible dependency relationship remains visible.
+- [ ] Import `samples/composition-intent-agnostic-visual-controls.sample.json` and confirm the summary concept is visible, the deferred concept is semantic-only/no visual, the dependency relationship center is corrected near endpoints, and the diagnostic relationship is excluded from routing because of explicit JSON metadata.
+- [ ] Confirm no source-specific inference appears in the log; decisions should say `reason=explicit JSON metadata` or use generic visual/layout option names.
+- [ ] In a composition with duplicate-looking concepts, right-click a non-shortcut concept visual, run `Replace with Shortcut...`, choose an existing target concept, and confirm only that visual is replaced by a shortcut.
+- [ ] Confirm visible current-view relationships touching the replaced visual are reassigned to the shortcut target, while other visuals/metadata on the source concept remain.
+- [ ] Try `Replace with Shortcut...` with a target concept that violates a visible relationship definition and confirm the command blocks without partial changes.
 - [ ] Import `samples/composition-relationship-fallback.sample.json` in a domain that has the requested strict relationship definition and generic `Relationship` fallback, or read its warning notes when the strict definition is unavailable.
 - [ ] Confirm `relationshipDefinitionFallbackTechName` is never used silently: fallback is logged, and `strictDefinition: true` prevents fallback.
 - [ ] Import a patch with `set.details` using a missing native detail designator and `detailFallbackMode=appendToTechSpec`; confirm the idea is still created and the detail text/rows are appended to TechSpec with a clear delimiter.
@@ -145,6 +167,21 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Confirm additive table, fields, concept definition, and output template are created without destructive changes.
 - [ ] Confirm field logs show parent table and data type resolution, and template logs show owner scope/owner/language resolution.
 - [ ] Save, reopen, and confirm changes persist.
+
+## Output Template Generation
+
+- [ ] Baseline repro: open a composition using a domain with concept/relationship output templates, do not open any Concept/Relationship Definition dialogs, run `Tools -> Output -> Generate Files...`, and confirm generation succeeds or reports only real missing templates/languages/subtemplates.
+- [ ] Refresh command: run `Tools -> Output -> Refresh Output Templates` and confirm the dialog reports concept definitions inspected, relationship definitions inspected, templates prepared, warnings, and errors without generating files.
+- [ ] Preview scope: clear the selection, run `Tools -> Output -> Generation Preview`, and confirm preview uses the active composition/root scope instead of being disabled.
+- [ ] Effective template: select one concept or relationship, run `Generation Preview`, and confirm the preview window shows `Rendered Output`, `Effective Template`, and `Resolution` tabs.
+- [ ] Resolution metadata: confirm preview shows target name/techName/id/kind, selected external language, template owner scope/techName, template role, template hash, generated filename, and validation notes.
+- [ ] Generate files: confirm each generated file logs `Output template resolution` with file path, source item, language, owner scope, template hash, role, and validation result.
+- [ ] Subtemplates: confirm the log contains `Output template subtemplates registered` entries and that explicit Fragment/SubTemplate templates are not emitted as standalone deliverables by default.
+- [ ] Validation: generate XML-like or JSON-like output and confirm the summary reports XML/JSON valid/invalid counts without crashing generation.
+- [ ] Save/reopen: import Domain JSON containing output templates, save the composition, close/reopen, generate composition output, and confirm no individual Output-Templates tabs need to be opened.
+- [ ] MTConnect case: open the MTConnect Machine Monitoring composition, import/update the companion MTConnect Domain JSON, and generate an MTConnectDevices, SHACL, Mermaid, Text, or Use-Case Proposal output if available.
+- [ ] Confirm the lower-left log contains `Output template preparation started`, active composition/domain/language context, inspected counts, materialized template counts, lint counts, and per-template warnings/errors.
+- [ ] Confirm output templates are not executed during Domain JSON import/export or refresh-only preparation.
 
 ## Embedded Domain Update
 

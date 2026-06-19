@@ -36,6 +36,13 @@ namespace Instrumind.ThinkComposer.Composer.Generation.Widgets
             this.TxbOutput.Text = GeneratedText;
         }
 
+        public FileGenerationPreviewer(string FileName, string GeneratedText, string EffectiveTemplateText, string ResolutionText)
+             : this(FileName, GeneratedText)
+        {
+            this.TxbEffectiveTemplate.Text = EffectiveTemplateText.NullDefault("");
+            this.TxbResolution.Text = ResolutionText.NullDefault("");
+        }
+
         /* private void BtnGenerate_Click(object sender, RoutedEventArgs e)
         {
             DotLiquid.Template.NamingConvention = new DotLiquid.NamingConventions.CSharpNamingConvention();

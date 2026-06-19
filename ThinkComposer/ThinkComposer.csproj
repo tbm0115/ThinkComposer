@@ -198,6 +198,7 @@
     </Compile>
     <Compile Include="Composer\ComposerUI\ComplementCreationCommand.cs" />
     <Compile Include="Composer\ComposerUI\ShortcutCreationCommand.cs" />
+    <Compile Include="Composer\ComposerUI\ShortcutReplacementCommand.cs" />
     <Compile Include="Composer\ComposerUI\ViewComplementManipulationAdorner.cs" />
     <Compile Include="Composer\ComposerUI\EComplementManipulationAction.cs" />
     <Compile Include="Composer\ComposerUI\Widgets\FindAndReplaceDialog.xaml.cs">
@@ -205,6 +206,8 @@
     </Compile>
     <Compile Include="Composer\Generation\FileGenerator.cs" />
     <Compile Include="Composer\Generation\GenerationManager.cs" />
+    <Compile Include="Composer\Generation\OutputTemplateDiagnostics.cs" />
+    <Compile Include="Composer\Generation\OutputTemplatePreparationService.cs" />
     <Compile Include="Composer\Generation\TemplateFilters.cs" />
     <Compile Include="Composer\Generation\Widgets\GeneratorSelectionEditor.xaml.cs">
       <DependentUpon>GeneratorSelectionEditor.xaml</DependentUpon>
@@ -285,6 +288,7 @@
     <Compile Include="Composer\Layout\RelationshipNodeDeclutterOptions.cs" />
     <Compile Include="Composer\Layout\RelationshipNodeDeclutterResult.cs" />
     <Compile Include="Composer\Layout\RelationshipNodeDeclutterService.cs" />
+    <Compile Include="Composer\Layout\RelationshipVisualPlacementService.cs" />
     <Compile Include="Composer\Layout\SpiderMapLayoutOptions.cs" />
     <Compile Include="Composer\Layout\SpiderMapLayoutResult.cs" />
     <Compile Include="Composer\Layout\SpiderMapLayoutService.cs" />

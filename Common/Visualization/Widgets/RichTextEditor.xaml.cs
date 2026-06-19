@@ -139,7 +139,8 @@ namespace Instrumind.Common.Visualization.Widgets
                 return;
             
             var Text = new TextRange(this.TextEditor.Document.ContentStart, this.TextEditor.Document.ContentEnd);
-            using (var Torrent = PropertyValue.StringToStream())
+            var StorageValue = Display.PlainTextToXamlRichText(PropertyValue);
+            using (var Torrent = StorageValue.StringToStream())
                 Text.Load(Torrent, DataFormats.Xaml);
         }
 

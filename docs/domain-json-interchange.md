@@ -99,6 +99,10 @@ The importer is intentionally conservative:
 - Output template bodies are imported as text only. Templates, scripts, TechSpec, and external language text are never executed.
 - If an external language or owner definition is missing for a template, the template is skipped unless that dependency exists or is created earlier in the patch.
 
+After apply, Domain base output-template collections are refreshed for the available external languages. Definition-level template slots are prepared automatically when composition generation or `Tools -> Output -> Refresh Output Templates` runs, so users do not need to open every definition's Output-Templates tab after Domain JSON import.
+
+Output-template create/update logs include owner scope, owner techName, external language match method, source collection, old/new text length, old/new template hash, `extendsBaseTemplate`, role, and target filename/extension hints. Template bodies are not written to the log. Use `Tools -> Output -> Generation Preview` to inspect the effective template and rendered output before generating files.
+
 The preview dialog summarizes planned changes. Detailed parse, planning, apply, skip, conflict, and rollback diagnostics are written to the lower-left application log.
 
 ## Report Categories
@@ -196,6 +200,8 @@ Use `samples/domain-json-additive-definition.sample.json` against a copied test 
 If the output template is skipped, check the log for an unresolved owner scope, owner definition, or external language. The importer accepts `ownerScope` and the alias `ownerKind`; supported scopes are `domainConcept`, `domainRelationship`, `conceptDefinition`, and `relationshipDefinition`.
 
 For embedded-domain updates from older `.tdom` sources, output template language references may contain punctuation variants. For example, `Mermaid.js_Flowchart` should resolve to `Mermaid_JS_Flowchart` when that is the only normalized match in the target domain. If two external languages normalize to the same key, the importer skips the template instead of guessing.
+
+For generation behavior after import, see `docs/output-template-generation.md`. Composition generation prepares imported concept/relationship definition templates before rendering and logs missing languages, missing template text, and missing subtemplates as preparation diagnostics.
 
 ## Limits
 

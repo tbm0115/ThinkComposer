@@ -172,6 +172,66 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             return Repairs;
         }
 
+        public static int RepairInvalidVisualRepresentations(Composition Composition, Action<string> Log, bool PreviewOnly)
+        {
+            if (Composition == null)
+                return 0;
+
+            var Repairs = 0;
+            var InvalidRepresentations = new HashSet<VisualRepresentation>();
+            var Ideas = Composition.GetSubgraphChildren().Where(Idea => Idea != null).Distinct().ToList();
+
+            foreach (var Idea in Ideas)
+            {
+                if (Idea.VisualRepresentators == null)
+                    continue;
+
+                var Representations = Idea.VisualRepresentators.ToList();
+                foreach (var Representation in Representations)
+                    if (IsInvalidVisualRepresentation(Representation, Idea))
+                    {
+                        Repairs++;
+                        if (Representation != null)
+                            InvalidRepresentations.Add(Representation);
+
+                        if (Log != null)
+                            Log("Removed invalid visual representation for idea '" +
+                                Idea.TechName.ToStringAlways() + "' from view '" +
+                                (Representation == null || Representation.DisplayingView == null
+                                 ? "<none>"
+                                 : Representation.DisplayingView.TechName.ToStringAlways()) +
+                                "': " + GetInvalidVisualRepresentationReason(Representation, Idea) + ".");
+
+                        if (!PreviewOnly)
+                            RemoveVisualRepresentation(Representation, Idea);
+                    }
+            }
+
+            var Views = Ideas.SelectMany(Idea => Idea.CompositeViews ?? Enumerable.Empty<View>()).Where(View => View != null).Distinct().ToList();
+            foreach (var View in Views)
+            {
+                if (View.ViewChildren == null)
+                    continue;
+
+                var OrphanChildren = View.ViewChildren
+                                         .Where(Child => IsInvalidViewChild(View, Child, InvalidRepresentations))
+                                         .ToList();
+
+                foreach (var Child in OrphanChildren)
+                {
+                    Repairs++;
+                    if (Log != null)
+                        Log("Removed invalid visual child from view '" + View.TechName.ToStringAlways() +
+                            "': " + GetInvalidViewChildReason(View, Child) + ".");
+
+                    if (!PreviewOnly)
+                        RemoveViewChild(View, Child);
+                }
+            }
+
+            return Repairs;
+        }
+
         private static string ValidateCompositeContentRender(VisualSymbol SourceSymbol)
         {
             if (SourceSymbol == null || SourceSymbol.OwnerRepresentation == null)
@@ -234,7 +294,114 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                                                   ((VisualComplement)Child.Key).Target.OwnerGlobal == View);
         }
 
+        private static bool IsInvalidVisualRepresentation(VisualRepresentation Representation, Idea ExpectedIdea)
+        {
+            return !String.IsNullOrEmpty(GetInvalidVisualRepresentationReason(Representation, ExpectedIdea));
+        }
+
+        private static string GetInvalidVisualRepresentationReason(VisualRepresentation Representation, Idea ExpectedIdea)
+        {
+            if (Representation == null)
+                return "visual representation entry is null";
+
+            if (Representation.DisplayingView == null)
+                return "displaying view is null";
+
+            if (Representation.RepresentedIdea == null)
+                return "represented idea is null";
+
+            if (ExpectedIdea != null && Representation.RepresentedIdea != ExpectedIdea)
+                return "represented idea does not match the owning idea's visual list";
+
+            if (Representation.VisualParts == null)
+                return "visual parts collection is null";
+
+            var MainSymbol = Representation.MainSymbol;
+            if (MainSymbol == null)
+                return "main symbol is null";
+
+            if (MainSymbol.OwnerRepresentation != Representation)
+                return "main symbol points to a different owner representation";
+
+            if (!Representation.VisualParts.Contains(MainSymbol))
+                return "main symbol is not present in the representation visual parts";
+
+            return null;
+        }
+
+        private static bool IsInvalidViewChild(View View, ViewChild Child, ISet<VisualRepresentation> InvalidRepresentations)
+        {
+            var Reason = GetInvalidViewChildReason(View, Child);
+            if (String.IsNullOrEmpty(Reason))
+                return false;
+
+            var Element = Child == null ? null : Child.Key as VisualElement;
+            if (Element != null &&
+                Element.OwnerRepresentation != null &&
+                InvalidRepresentations != null &&
+                InvalidRepresentations.Contains(Element.OwnerRepresentation))
+                return false;
+
+            return true;
+        }
+
+        private static string GetInvalidViewChildReason(View View, ViewChild Child)
+        {
+            if (Child == null)
+                return "view child entry is null";
+
+            if (Child.Key == null)
+                return "view child key is null";
+
+            var Element = Child.Key as VisualElement;
+            if (Element == null)
+                return null;
+
+            var Representation = Element.OwnerRepresentation;
+            if (Representation == null)
+                return "visual element has no owner representation";
+
+            if (Representation.DisplayingView != null && View != null && Representation.DisplayingView != View)
+                return "visual element owner representation belongs to a different view";
+
+            if (Representation.VisualParts == null || !Representation.VisualParts.Contains(Element))
+                return "visual element is not present in its owner representation visual parts";
+
+            var Symbol = Element as VisualSymbol;
+            if (Symbol != null)
+            {
+                if (Representation.MainSymbol == null)
+                    return "visual symbol owner representation has no main symbol";
+
+                if (Representation.MainSymbol != Symbol)
+                    return "visual symbol is not the owner representation main symbol";
+            }
+
+            var Connector = Element as VisualConnector;
+            if (Connector != null)
+            {
+                if (!(Representation is RelationshipVisualRepresentation))
+                    return "visual connector owner representation is not a relationship visual representation";
+
+                if (Representation.MainSymbol == null)
+                    return "visual connector owner representation has no main symbol";
+
+                if (Connector.OriginSymbol == null || Connector.TargetSymbol == null)
+                    return "visual connector has a null endpoint symbol";
+
+                if (Connector.RepresentedLink == null)
+                    return "visual connector has no represented relationship link";
+            }
+
+            return null;
+        }
+
         private static void RemoveVisualRepresentation(VisualRepresentation Representation)
+        {
+            RemoveVisualRepresentation(Representation, Representation == null ? null : Representation.RepresentedIdea);
+        }
+
+        private static void RemoveVisualRepresentation(VisualRepresentation Representation, Idea OwningIdea)
         {
             if (Representation == null)
                 return;
@@ -264,6 +431,18 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
 
             if (Representation.RepresentedIdea != null && Representation.RepresentedIdea.VisualRepresentators.Contains(Representation))
                 Representation.RepresentedIdea.VisualRepresentators.Remove(Representation);
+
+            if (OwningIdea != null && OwningIdea != Representation.RepresentedIdea && OwningIdea.VisualRepresentators.Contains(Representation))
+                OwningIdea.VisualRepresentators.Remove(Representation);
+        }
+
+        private static void RemoveViewChild(View View, ViewChild Child)
+        {
+            if (View == null || View.ViewChildren == null || Child == null)
+                return;
+
+            while (View.ViewChildren.Contains(Child))
+                View.ViewChildren.Remove(Child);
         }
 
         private static List<Guid> GetRenderStack()

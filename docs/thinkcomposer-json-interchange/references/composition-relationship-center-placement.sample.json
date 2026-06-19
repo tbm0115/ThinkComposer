@@ -1,0 +1,209 @@
+{
+  "format": "ThinkComposer.JsonInterchange",
+  "formatVersion": 1,
+  "application": "ThinkComposer",
+  "importOptions": {
+    "autoPlaceNewItems": true,
+    "autoFitPlacedConcepts": true,
+    "autoRoutePlacedLinks": true,
+    "useActiveCompositionAsContainer": true,
+    "relationshipVisualPlacementMode": "auto",
+    "recomputeSuspiciousRelationshipVisuals": true,
+    "maxRelationshipCenterDisplacement": 250,
+    "relationshipCenterObstaclePadding": 16,
+    "relationshipCenterOverlapPadding": 8,
+    "layoutMode": "gridNearViewport",
+    "preventSelfRecursiveCompositeViews": true,
+    "repairRecursiveVisuals": true
+  },
+  "visualStrategy": {
+    "mode": "exactFullVisual",
+    "relationshipVisualPlacement": "endpointCorridor"
+  },
+  "warnings": [
+    "Sample for Composition JSON relationship-center placement. Import into any fresh composition that has the generic Concept and Relationship definitions.",
+    "The relationship visuals intentionally start in a top/global label band. Expected result: Created 9, Skipped 0; suspicious relationship centers are recomputed near their endpoint corridors before auto-route."
+  ],
+  "operations": [
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9c000000-0000-4000-8000-000000000001",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 260,
+      "width": 190,
+      "height": 64,
+      "set": {
+        "name": "Intake Service",
+        "techName": "Center_Placement_Intake_Service",
+        "summary": "Endpoint for relationship-center placement regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9c000000-0000-4000-8000-000000000002",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 430,
+      "y": 260,
+      "width": 190,
+      "height": 64,
+      "set": {
+        "name": "Processing Worker",
+        "techName": "Center_Placement_Processing_Worker",
+        "summary": "Endpoint for relationship-center placement regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9c000000-0000-4000-8000-000000000003",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 740,
+      "y": 260,
+      "width": 190,
+      "height": 64,
+      "set": {
+        "name": "Result Store",
+        "techName": "Center_Placement_Result_Store",
+        "summary": "Endpoint for relationship-center placement regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9c000000-0000-4000-8000-000000000004",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 120,
+      "y": 500,
+      "width": 190,
+      "height": 64,
+      "set": {
+        "name": "Operator Console",
+        "techName": "Center_Placement_Operator_Console",
+        "summary": "Endpoint for relationship-center placement regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "concept",
+      "id": "9c000000-0000-4000-8000-000000000005",
+      "definitionTechName": "Concept",
+      "containerTechName": "Active_Composition_Root",
+      "x": 430,
+      "y": 500,
+      "width": 190,
+      "height": 64,
+      "set": {
+        "name": "Health Monitor",
+        "techName": "Center_Placement_Health_Monitor",
+        "summary": "Endpoint for relationship-center placement regression."
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9c000000-0000-4000-8000-000000000101",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "x": 150,
+      "y": 40,
+      "autoRoute": true,
+      "set": {
+        "name": "Intake To Worker",
+        "techName": "Center_Placement_Intake_To_Worker",
+        "summary": "Relationship center intentionally starts far above both endpoints.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Center_Placement_Intake_Service"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Center_Placement_Processing_Worker"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9c000000-0000-4000-8000-000000000102",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "x": 350,
+      "y": 40,
+      "autoRoute": true,
+      "set": {
+        "name": "Worker To Store",
+        "techName": "Center_Placement_Worker_To_Store",
+        "summary": "Relationship center intentionally starts in the same top label band.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Center_Placement_Processing_Worker"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Center_Placement_Result_Store"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9c000000-0000-4000-8000-000000000103",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "x": 550,
+      "y": 40,
+      "autoRoute": true,
+      "set": {
+        "name": "Console Requests",
+        "techName": "Center_Placement_Console_Requests",
+        "summary": "Diagonal relationship center intentionally starts far from its endpoint corridor.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Center_Placement_Operator_Console"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Center_Placement_Processing_Worker"
+          }
+        ]
+      }
+    },
+    {
+      "op": "create",
+      "entity": "relationship",
+      "id": "9c000000-0000-4000-8000-000000000104",
+      "definitionTechName": "Relationship",
+      "containerTechName": "Active_Composition_Root",
+      "x": 750,
+      "y": 40,
+      "autoRoute": true,
+      "set": {
+        "name": "Monitor Observes",
+        "techName": "Center_Placement_Monitor_Observes",
+        "summary": "Second diagonal relationship center intentionally starts in the same top label band.",
+        "links": [
+          {
+            "roleType": "Origin",
+            "ideaTechName": "Center_Placement_Health_Monitor"
+          },
+          {
+            "roleType": "Target",
+            "ideaTechName": "Center_Placement_Result_Store"
+          }
+        ]
+      }
+    }
+  ]
+}

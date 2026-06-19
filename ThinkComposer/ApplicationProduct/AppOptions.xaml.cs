@@ -14,6 +14,7 @@ using System.Windows.Shapes;
 
 using Instrumind.Common;
 using Instrumind.Common.Visualization;
+using Instrumind.ThinkComposer.Composer.ComposerUI;
 
 namespace Instrumind.ThinkComposer.ApplicationProduct
 {
@@ -25,10 +26,16 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
         public AppOptions()
         {
             InitializeComponent();
+
+            this.CbxSingleUseConceptPlacement.IsChecked = ConceptCreationCommand.IsSingleUseConceptPlacementConfigured;
         }
 
         private void BtnAccept_Click(object sender, RoutedEventArgs e)
         {
+            AppExec.SetConfiguration<bool>(ConceptCreationCommand.CONFIG_SCOPE_IDEA_EDITING,
+                                           ConceptCreationCommand.CONFIG_CODE_SINGLE_USE_CONCEPT_PLACEMENT,
+                                           this.CbxSingleUseConceptPlacement.IsChecked.IsTrue(), true);
+
             Display.GetCurrentWindow().Close();
         }
 

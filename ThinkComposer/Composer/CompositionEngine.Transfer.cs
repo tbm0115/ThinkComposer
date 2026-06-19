@@ -714,30 +714,31 @@ namespace Instrumind.ThinkComposer.Composer
             {
                 var InterRel = InterrelationsMap.FirstOrDefault(
                                     intrel => intrel.Value0.RepresentedIdea == SourceVisConn.RepresentedLink.AssociatedIdea);
-                if (InterRel == null || InterRel.Value1 == null)
+
+                var AssociatedIdea = (InterRel != null && InterRel.Value1 != null
+                                      ? InterRel.Value1.RepresentedIdea
+                                      : SourceVisConn.RepresentedLink.AssociatedIdea);
+
+                var OriginWasCloned = false;
+                var OriginSymbol = ResolvePastedConnectorSymbol(SourceVisConn.OriginSymbol, ClonedRelVisRep.DisplayingView,
+                                                                InterrelationsMap, out OriginWasCloned);
+
+                var TargetWasCloned = false;
+                var TargetSymbol = ResolvePastedConnectorSymbol(SourceVisConn.TargetSymbol, ClonedRelVisRep.DisplayingView,
+                                                                InterrelationsMap, out TargetWasCloned);
+
+                if (OriginSymbol == null || TargetSymbol == null)
                     continue;
 
-                var ClonedRoleLink = new RoleBasedLink(ClonedRelVisRep.RepresentedRelationship, InterRel.Value1.RepresentedIdea,
+                var ClonedRoleLink = new RoleBasedLink(ClonedRelVisRep.RepresentedRelationship, AssociatedIdea,
                                                        SourceVisConn.RepresentedLink.RoleDefinitor, SourceVisConn.RepresentedLink.RoleVariant);
 
                 if (SourceVisConn.RepresentedLink.Descriptor != null)
                     ClonedRoleLink.Descriptor = (SimplePresentationElement)SourceVisConn.RepresentedLink.Descriptor.CreateClone();
 
-                // Next, the origin and target symbols are pointed and eventually replaced by the cloned ones
-                // (if they were within the pasted visual representations)
-                VisualSymbol OriginSymbol = SourceVisConn.OriginSymbol;
-                var OriginInterRel = InterrelationsMap.FirstOrDefault(intrel => intrel.Value0.MainSymbol == SourceVisConn.OriginSymbol);
-                if (OriginInterRel != null)
-                    OriginSymbol = OriginInterRel.Value1.MainSymbol;
-
-                VisualSymbol TargetSymbol = SourceVisConn.TargetSymbol;
-                var TargetInterRel = InterrelationsMap.FirstOrDefault(intrel => intrel.Value0.MainSymbol == SourceVisConn.TargetSymbol);
-                if (TargetInterRel != null)
-                    TargetSymbol = TargetInterRel.Value1.MainSymbol;
-
                 var ClonedVisConn = new VisualConnector(ClonedRelVisRep, ClonedRoleLink, OriginSymbol, TargetSymbol,
-                                                        new Point(SourceVisConn.OriginPosition.X + DeltaX, SourceVisConn.OriginPosition.Y + DeltaY),
-                                                        new Point(SourceVisConn.TargetPosition.X + DeltaX, SourceVisConn.TargetPosition.Y + DeltaY));
+                                                        ReappointConnectorPoint(SourceVisConn.OriginPosition, OriginWasCloned, DeltaX, DeltaY),
+                                                        ReappointConnectorPoint(SourceVisConn.TargetPosition, TargetWasCloned, DeltaX, DeltaY));
 
                 ClonedVisConn.IntermediatePosition = (SourceVisConn.IntermediatePosition == Display.NULL_POINT
                                                       ? Display.NULL_POINT
@@ -748,6 +749,38 @@ namespace Instrumind.ThinkComposer.Composer
             }
 
             ClonedRelVisRep.Render();
+        }
+
+        private static VisualSymbol ResolvePastedConnectorSymbol(VisualSymbol SourceSymbol, View TargetView,
+                                                                 List<Capsule<VisualRepresentation, VisualRepresentation>> InterrelationsMap,
+                                                                 out bool WasCloned)
+        {
+            WasCloned = false;
+
+            if (SourceSymbol == null)
+                return null;
+
+            var InterRel = InterrelationsMap.FirstOrDefault(intrel => intrel.Value0.MainSymbol == SourceSymbol &&
+                                                                      intrel.Value1 != null);
+            if (InterRel != null)
+            {
+                WasCloned = true;
+                return InterRel.Value1.MainSymbol;
+            }
+
+            if (SourceSymbol.OwnerRepresentation != null &&
+                SourceSymbol.OwnerRepresentation.DisplayingView == TargetView)
+                return SourceSymbol;
+
+            return null;
+        }
+
+        private static Point ReappointConnectorPoint(Point SourcePoint, bool SymbolWasCloned, double DeltaX, double DeltaY)
+        {
+            if (!SymbolWasCloned)
+                return SourcePoint;
+
+            return new Point(SourcePoint.X + DeltaX, SourcePoint.Y + DeltaY);
         }
 
         /* POSTPONED

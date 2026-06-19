@@ -306,7 +306,7 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI.Widgets
                         SelectedEditCard.DetailContent.UpdateDesignatorIdentification();
                         SelectedEditCard.SetContent();
 
-                        // Not needed? this.SourceIdea.Details.AddNew(DetailTable);
+                        this.SourceIdea.Details.AddNew(DetailTable);
                     }
                 }
             }

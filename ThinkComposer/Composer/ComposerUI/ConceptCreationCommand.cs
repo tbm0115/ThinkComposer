@@ -52,6 +52,9 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
     /// </summary>
     public class ConceptCreationCommand : WorkCommandInteractive<MouseEventArgs>
     {
+        public const string CONFIG_SCOPE_IDEA_EDITING = "IdeaEditing";
+        public const string CONFIG_CODE_SINGLE_USE_CONCEPT_PLACEMENT = "Palette.SingleUseConceptPlacement";
+
         public CompositionEngine ContextEngine { get; protected set; }
         public ConceptDefinition ConceptDef { get; protected set; }
 
@@ -171,6 +174,12 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                     return false;
                 }
 
+                if (IsSingleUseConceptPlacementConfigured)
+                {
+                    this.Terminate(true, Parameter);
+                    return false;
+                }
+
             }
             else
                 if (TargetRepresentation == null && Mouse.LeftButton == MouseButtonState.Pressed
@@ -245,6 +254,11 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
             Display.GetCurrentWindow().Cursor = Cursors.Arrow;
 
             ProductDirector.ConceptPaletteControl.ClearSelection();
+        }
+
+        public static bool IsSingleUseConceptPlacementConfigured
+        {
+            get { return AppExec.GetConfiguration<bool>(CONFIG_SCOPE_IDEA_EDITING, CONFIG_CODE_SINGLE_USE_CONCEPT_PLACEMENT, true); }
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------

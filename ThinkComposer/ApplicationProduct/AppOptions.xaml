@@ -6,7 +6,13 @@
              xmlns:imcv="clr-namespace:Instrumind.Common.Visualization.Widgets;assembly=Instrumind.Common">
     <StackPanel>
         <DockPanel MinWidth="200" MinHeight="200">
-            
+            <StackPanel Margin="8">
+                <TextBlock Text="Editing" FontWeight="Bold" Margin="0,0,0,6" />
+                <CheckBox x:Name="CbxSingleUseConceptPlacement"
+                          Content="Place one concept per palette selection"
+                          ToolTip="When enabled, selecting a concept from the palette creates one concept and then clears the palette selection."
+                          Margin="0,2,0,0" />
+            </StackPanel>
         </DockPanel>
         <DockPanel>
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">

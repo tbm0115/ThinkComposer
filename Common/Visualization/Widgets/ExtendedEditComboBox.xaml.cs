@@ -136,8 +136,8 @@ namespace Instrumind.Common.Visualization.Widgets
 
         public object SelectedItem
         {
-            get { return (object)GetValue(ExtendedEditComboBox.ItemsSourceProperty); }
-            set { SetValue(ExtendedEditComboBox.ItemsSourceProperty, value); }
+            get { return (object)GetValue(ExtendedEditComboBox.SelectedItemProperty); }
+            set { SetValue(ExtendedEditComboBox.SelectedItemProperty, value); }
         }
         private static void OnSelectedItemChanged(DependencyObject depobj, DependencyPropertyChangedEventArgs evargs)
         {

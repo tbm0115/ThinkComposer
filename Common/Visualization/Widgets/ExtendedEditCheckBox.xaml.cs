@@ -45,7 +45,11 @@ namespace Instrumind.Common.Visualization.Widgets
         private void CheckBox_Loaded(object sender, RoutedEventArgs e)
         {
             if (this.ApplyDirectAccess && !this.StorageFieldName.IsAbsent())
-                this.IsChecked = (bool)this.PerformDirectRead(this.StorageFieldName);
+            {
+                var StoredValue = this.PerformDirectReadWrapped(this.StorageFieldName);
+                if (StoredValue != null && StoredValue.Item1 is bool)
+                    this.IsChecked = (bool)StoredValue.Item1;
+            }
         }
 
         public string StorageFieldName
@@ -72,11 +76,16 @@ namespace Instrumind.Common.Visualization.Widgets
             if (this.StorageFieldName.IsAbsent())
                 return;
 
-            var StoredValue = this.PerformDirectRead(this.StorageFieldName);
+            if (this.ApplyDirectAccess)
+            {
+                var StoredValue = this.PerformDirectReadWrapped(this.StorageFieldName);
+                if (StoredValue == null)
+                    return;
 
-            // IMPORTANT: This prevents infinite-loop (must use IsEqual() because of not casting Object)
-            if (StoredValue.IsEqual(this.IsChecked.IsTrue()))
-                return;
+                // IMPORTANT: This prevents infinite-loop (must use IsEqual() because of not casting Object)
+                if (StoredValue.Item1.IsEqual(this.IsChecked.IsTrue()))
+                    return;
+            }
 
             if (this.EditingAction != null)
                 this.EditingAction(this.IsChecked.IsTrue());

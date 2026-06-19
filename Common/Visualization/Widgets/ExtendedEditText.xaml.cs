@@ -83,7 +83,11 @@ namespace Instrumind.Common.Visualization.Widgets
                 this.ParentWindow.KeyDown += WhenKeyPressed;
 
             if (this.ApplyDirectAccess && !this.StorageFieldName.IsAbsent())
-                this.Editor.Text = this.PerformDirectRead(this.StorageFieldName, this.ParentRow) as string;
+            {
+                var StoredValue = this.PerformDirectReadWrapped(this.StorageFieldName, this.ParentRow);
+                if (StoredValue != null)
+                    this.Editor.Text = StoredValue.Item1 as string;
+            }
         }
 
         private void UserControl_Unloaded(object sender, RoutedEventArgs e)
@@ -118,6 +122,7 @@ namespace Instrumind.Common.Visualization.Widgets
             get { return (string)GetValue(ExtendedEditText.ValueProperty); }
             set { SetValue(ExtendedEditText.ValueProperty, value); }
         }
+        private bool IsApplyingEditedTextValue = false;
         private static void OnValueChanged(DependencyObject depobj, DependencyPropertyChangedEventArgs evargs)
         {
             // IMPORTANT: Do not accept null values, because it can fall in
@@ -127,27 +132,64 @@ namespace Instrumind.Common.Visualization.Widgets
 
             var Target = depobj as ExtendedEditText;
             var NewValue = (string)evargs.NewValue;
-            var OldValue = (Target.ApplyDirectAccess && !Target.StorageFieldName.IsAbsent()
-                            ? Target.PerformDirectRead(Target.StorageFieldName, Target.ParentRow).ToStringAlways()
-                            : Target.Editor.Text);
 
-            if (OldValue == NewValue)
+            if (Target.IsApplyingEditedTextValue)
                 return;
 
-            //T Console.WriteLine("Old-Value=[{0}], New-Value=[{1}]", OldValue, NewValue);
+            Target.ApplyEditedTextValue(NewValue, false, evargs.OldValue as string);
+        }
 
-            if (Target.EditingAction != null)
-                Target.EditingAction(NewValue);
+        private void ApplyEditedTextValue(string NewValue, bool UpdateValueProperty = true, string PreviousValue = null)
+        {
+            if (NewValue == null)
+                return;
 
-            if (Target.ApplyDirectAccess && !Target.StorageFieldName.IsAbsent()
-                && NewValue != Convert.ToString(Target.PerformDirectRead(Target.StorageFieldName, Target.ParentRow)))
-                Target.PerformDirectWrite(Target.StorageFieldName, NewValue, Target.ParentRow);
+            Tuple<object> StoredValue = null;
+            var OldValue = PreviousValue ?? this.Value ?? "";
 
-            Target.Editor.Text = NewValue;
-            /*- var Binder = Target.Editor.GetBindingExpression(TextBox.TextProperty);
-            if (Binder != null)
-                Binder.UpdateTarget(); */
+            if (this.ApplyDirectAccess && !this.StorageFieldName.IsAbsent())
+            {
+                StoredValue = this.PerformDirectReadWrapped(this.StorageFieldName, this.ParentRow);
+                if (StoredValue != null)
+                    OldValue = StoredValue.Item1.ToStringAlways();
+            }
 
+            if (UpdateValueProperty)
+            {
+                this.IsApplyingEditedTextValue = true;
+                try
+                {
+                    this.SetCurrentValue(ExtendedEditText.ValueProperty, NewValue);
+
+                    var Binder = this.GetBindingExpression(ExtendedEditText.ValueProperty);
+                    if (Binder != null)
+                        try
+                        {
+                            Binder.UpdateSource();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // Some legacy hosts use one-way bindings and rely on EditingAction/direct access.
+                        }
+                }
+                finally
+                {
+                    this.IsApplyingEditedTextValue = false;
+                }
+            }
+
+            if (OldValue != NewValue)
+            {
+                //T Console.WriteLine("Old-Value=[{0}], New-Value=[{1}]", OldValue, NewValue);
+
+                if (this.EditingAction != null)
+                    this.EditingAction(NewValue);
+
+                if (StoredValue != null)
+                    this.PerformDirectWrite(this.StorageFieldName, NewValue, this.ParentRow);
+            }
+
+            this.Editor.Text = NewValue;
         }
 
         public IEnumerable<object> ValuesSource
@@ -239,12 +281,8 @@ namespace Instrumind.Common.Visualization.Widgets
         {
             var Target = ((TextBox)sender).GetNearestVisualDominantOfType<ExtendedEditText>();
 
-            if (Target.EditingAction != null)
-                Target.EditingAction(Target.Editor.Text);
-
-            if (CanUpdateAtLostFocus && Target.ApplyDirectAccess && !Target.StorageFieldName.IsAbsent()
-                && Target.Editor.Text != Target.PerformDirectRead(Target.StorageFieldName, Target.ParentRow).ToStringAlways())
-                Target.PerformDirectWrite(Target.StorageFieldName, Target.Editor.Text, Target.ParentRow);
+            if (CanUpdateAtLostFocus)
+                Target.ApplyEditedTextValue(Target.Editor.Text);
 
             Target.ResolveListActionerHide();
             Target.ResolveTreeActionerHide();
@@ -308,13 +346,15 @@ namespace Instrumind.Common.Visualization.Widgets
                         // NOTE: The can-update-at-lost-focus static flag must be used to ensure
                         //       no cross firing of events trying to update editor and record.
                         CanUpdateAtLostFocus = false;
-                        var Value = Extraction.Item2.ToStringAlways();
-                        edt.Editor.Text = Value;
-
-                        if (edt.ApplyDirectAccess && !edt.StorageFieldName.IsAbsent())
-                            edt.PerformDirectWrite(this.StorageFieldName, Value, this.ParentRow);
-
-                        this.PostCall(ed => CanUpdateAtLostFocus = true, true);
+                        try
+                        {
+                            var Value = Extraction.Item2.ToStringAlways();
+                            edt.ApplyEditedTextValue(Value);
+                        }
+                        finally
+                        {
+                            this.PostCall(ed => CanUpdateAtLostFocus = true, true);
+                        }
                     });
 
             this.PopupSelectorList.IsOpen = false;

@@ -1,4 +1,9 @@
-﻿# 1.5.1606
+﻿# 1.5.1619
+- Updated: User manual migrated to maintained Markdown/Pandoc sources and installer now includes the generated PDF manual.
+- Updated: Installer product identity/version synchronized with the publication procedure.
+- Updated: Release documentation identifies this repository as the independently maintained tbm0115 fork.
+
+# 1.5.1606
 - Fixed: Send to Back command not working in first layer over background.
 
 # 1.5.1605

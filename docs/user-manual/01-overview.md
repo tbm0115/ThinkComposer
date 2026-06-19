@@ -2,6 +2,8 @@
 
 ThinkComposer is a visual thinking tool for understanding problems, designing solutions, and expressing knowledge. It helps users create concept maps, mind maps, models, diagrams, and structured visual documents with detailed content attached to the visual elements.
 
+This manual documents the independently maintained `tbm0115/ThinkComposer` fork while preserving the original ThinkComposer product model, terminology, and attribution.
+
 The product is intended for professionals, academic users, students, analysts, designers, managers, and teams who need graphic means to explore, organize, and communicate knowledge. It is especially useful when the work involves discovery, problem analysis, solution design, research, process modeling, or knowledge transfer.
 
 ![Composition example](assets/manual/page-07-compositions-01.png)

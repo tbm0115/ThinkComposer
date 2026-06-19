@@ -1,12 +1,3 @@
----
-title: "ThinkComposer User Manual"
-subtitle: "Visual thinking, domain modeling, interchange, and output generation"
-author: "Instrumind ThinkComposer"
-date: "2026-06-19"
----
-
-![ThinkComposer logo](assets/brand/thinkcomposer-logo.png)
-
 # ThinkComposer User Manual
 
 This manual is the maintained Markdown source for the ThinkComposer user documentation. It migrates the legacy PDF manual into editable Markdown and updates it with the current documentation in this repository.
@@ -61,6 +52,8 @@ The script writes:
 ```text
 docs/user-manual/output/ThinkComposer_User_Manual.pdf
 ```
+
+The PDF build uses the chapter files directly and does not include this `index.md` source guide. This keeps maintainer notes, source coverage notes, and build instructions out of the end-user PDF.
 
 Pandoc is required. The configured PDF engine is `xelatex`; if it is not installed, the script stops with an actionable dependency message.
 

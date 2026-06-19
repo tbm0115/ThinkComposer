@@ -24,7 +24,6 @@ try {
     New-Item -ItemType Directory -Force (Split-Path -Parent $OutputPath) | Out-Null
 
     $sources = @(
-        "index.md",
         "01-overview.md",
         "02-base-model.md",
         "03-application-guide.md",

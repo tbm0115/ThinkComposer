@@ -1,24 +1,12 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProductVersion>10.0.20506</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{325A7865-E1DB-490E-97D6-C6D570BE952A}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Instrumind.ThinkComposer</RootNamespace>
     <AssemblyName>Instrumind.ThinkComposer</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
     <ApplicationIcon>ApplicationProduct\Images\Instrumind_ThinkComposer.ico</ApplicationIcon>
     <IsWebBootstrapper>true</IsWebBootstrapper>
-    <TargetFrameworkProfile>
-    </TargetFrameworkProfile>
     <PublishUrl>Publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Web</InstallFrom>
@@ -37,15 +25,19 @@
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <UseWPF>true</UseWPF>
+    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+    <Configurations>CD_ROM;Debug;DVD-5;Release;SingleImage</Configurations>
+    <SignManifests>false</SignManifests>
+    <AssemblyOriginatorKeyFile />
+    <ManifestCertificateThumbprint>7F77489E3767E0232BA387016298903D505DBAB1</ManifestCertificateThumbprint>
+    <ManifestKeyFile />
+    <TargetZone>LocalIntranet</TargetZone>
+    <GenerateManifests>false</GenerateManifests>
+    <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
     <CodeContractsEnableRuntimeChecking>False</CodeContractsEnableRuntimeChecking>
     <CodeContractsCustomRewriterAssembly />
     <CodeContractsCustomRewriterClass />
@@ -65,703 +57,32 @@
     <CodeContractsUseBaseLine>False</CodeContractsUseBaseLine>
     <CodeContractsRunInBackground>True</CodeContractsRunInBackground>
     <CodeContractsShowSquigglies>False</CodeContractsShowSquigglies>
-    <DocumentationFile>
-    </DocumentationFile>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <DebugType>full</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>
-    </DocumentationFile>
     <DebugSymbols>true</DebugSymbols>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignManifests>false</SignManifests>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
-  </PropertyGroup>
-  <PropertyGroup>
-    <AssemblyOriginatorKeyFile>
-    </AssemblyOriginatorKeyFile>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ManifestCertificateThumbprint>7F77489E3767E0232BA387016298903D505DBAB1</ManifestCertificateThumbprint>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ManifestKeyFile>
-    </ManifestKeyFile>
-  </PropertyGroup>
-  <PropertyGroup>
-    <TargetZone>LocalIntranet</TargetZone>
-  </PropertyGroup>
-  <PropertyGroup>
-    <GenerateManifests>false</GenerateManifests>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="PresentationFramework.Aero" />
-    <Reference Include="ReachFramework" />
-    <Reference Include="System" />
-    <Reference Include="System.configuration" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Printing" />
-    <Reference Include="System.Web.Extensions" />
-    <Reference Include="System.Xaml" />
-    <Reference Include="System.Xml" />
-    <Reference Include="Microsoft.CSharp">
-      <RequiredTargetFramework>4.0</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="System.Core">
+    <Reference Update="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
-    <Reference Include="System.Xml.Linq">
+    <Reference Update="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
-    <Reference Include="System.Data.DataSetExtensions">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="WindowsBase">
-      <RequiredTargetFramework>3.0</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="PresentationCore">
-      <RequiredTargetFramework>3.0</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="PresentationFramework">
-      <RequiredTargetFramework>3.0</RequiredTargetFramework>
-    </Reference>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.9" />
+    <PackageReference Include="DotLiquid" Version="2.3.197" />
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <PackageReference Include="PdfSharpCore" Version="1.3.67" />
   </ItemGroup>
   <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </ApplicationDefinition>
-    <Compile Include="ApplicationProduct\About.xaml.cs">
-      <DependentUpon>About.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\AppOptions.xaml.cs">
-      <DependentUpon>AppOptions.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\AppHelp.xaml.cs">
-      <DependentUpon>AppHelp.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\AppVersionUpdate.xaml.cs">
-      <DependentUpon>AppVersionUpdate.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\AppRegistration.xaml.cs">
-      <DependentUpon>AppRegistration.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\DomainSelector.xaml.cs">
-      <DependentUpon>DomainSelector.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\LicensingConfig.cs" />
-    <Compile Include="ApplicationProduct\ProductDirector.cs" />
-    <Compile Include="ApplicationProduct\Widgets\WidgetDocumentVisualizer.xaml.cs">
-      <DependentUpon>WidgetDocumentVisualizer.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetItemsPalette.xaml.cs">
-      <DependentUpon>WidgetItemsPalette.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetItemsPaletteGroup.xaml.cs">
-      <DependentUpon>WidgetItemsPaletteGroup.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetVisualSampleSelector.xaml.cs">
-      <DependentUpon>WidgetVisualSampleSelector.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetMessenger.xaml.cs">
-      <DependentUpon>WidgetMessenger.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetNavMap.xaml.cs">
-      <DependentUpon>WidgetNavMap.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetNavTree.xaml.cs">
-      <DependentUpon>WidgetNavTree.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetPalette.xaml.cs">
-      <DependentUpon>WidgetPalette.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetInterrelationsPanel.xaml.cs">
-      <DependentUpon>WidgetInterrelationsPanel.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ApplicationProduct\Widgets\WidgetsHelper.cs" />
-    <Compile Include="ApplicationProduct\Widgets\WidgetStatusBar.xaml.cs">
-      <DependentUpon>WidgetStatusBar.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\ComposerUI\ComplementCreationCommand.cs" />
-    <Compile Include="Composer\ComposerUI\ShortcutCreationCommand.cs" />
-    <Compile Include="Composer\ComposerUI\ShortcutReplacementCommand.cs" />
-    <Compile Include="Composer\ComposerUI\ViewComplementManipulationAdorner.cs" />
-    <Compile Include="Composer\ComposerUI\EComplementManipulationAction.cs" />
-    <Compile Include="Composer\ComposerUI\Widgets\FindAndReplaceDialog.xaml.cs">
-      <DependentUpon>FindAndReplaceDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\Generation\FileGenerator.cs" />
-    <Compile Include="Composer\Generation\GenerationManager.cs" />
-    <Compile Include="Composer\Generation\OutputTemplateDiagnostics.cs" />
-    <Compile Include="Composer\Generation\OutputTemplatePreparationService.cs" />
-    <Compile Include="Composer\Generation\TemplateFilters.cs" />
-    <Compile Include="Composer\Generation\Widgets\GeneratorSelectionEditor.xaml.cs">
-      <DependentUpon>GeneratorSelectionEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\Generation\Widgets\FileGenerationPreviewer.xaml.cs">
-      <DependentUpon>FileGenerationPreviewer.xaml</DependentUpon>
-    </Compile>
     <EmbeddedResource Include="ApplicationProduct\BaseTemplates\Text_Propositions.tct" />
     <None Include="Composer\Merging\CompositionMerger.cs" />
     <None Include="Composer\Merging\MergingManager.cs" />
     <None Include="Composer\Merging\SchemaMemberGroup.cs" />
     <None Include="Composer\Merging\SchemaMemberSelection.cs" />
-    <None Include="Composer\Merging\Widgets\MergePreparer.xaml.cs">
-      <DependentUpon>MergePreparer.xaml</DependentUpon>
-    </None>
-    <None Include="Composer\Merging\Widgets\MergerCompositionBrowser.xaml.cs">
-      <DependentUpon>MergerCompositionBrowser.xaml</DependentUpon>
-    </None>
-    <None Include="Composer\Merging\Widgets\MergerPropertiesComparer.xaml.cs">
-      <DependentUpon>MergerPropertiesComparer.xaml</DependentUpon>
-    </None>
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.RelationshipDefClusters.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ConceptDefClusters.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ExternalLanguages.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonDto.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonExporter.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImporter.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImportReport.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonInterchangeCommands.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonMergeApplier.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonMergePlanner.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonReferenceResolver.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonSerializer.cs" />
-    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonWarningFormatter.cs" />
-    <Compile Include="Definitor\DefinitorUI\Widgets\TemplateEditor.xaml.cs">
-      <DependentUpon>TemplateEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\TemplateTester.xaml.cs">
-      <DependentUpon>TemplateTester.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="MetaModel\Configurations\TextTemplate.cs" />
-    <Compile Include="MetaModel\Configurations\IdeaSelection.cs" />
-    <Compile Include="Composer\Generation\GenerationResult.cs" />
-    <Compile Include="Composer\ModelFixes.cs" />
-    <Compile Include="Composer\CompositionEngine.Search.cs" />
-    <Compile Include="Composer\ComposerUI\Widgets\SingleTableRecordEditor.xaml.cs">
-      <DependentUpon>SingleTableRecordEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\ComposerUI\Widgets\RecordFieldExpositor.xaml.cs">
-      <DependentUpon>RecordFieldExpositor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\ComposerUI\MarkerAssignmentCommand.cs" />
-    <Compile Include="Composer\ComposerUI\Widgets\DetailInternalPropertyEditor.xaml.cs">
-      <DependentUpon>DetailInternalPropertyEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\ComposerUI\Widgets\MarkingsEditor.xaml.cs">
-      <DependentUpon>MarkingsEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\JsonInterchange\CompositionJsonDto.cs" />
-    <Compile Include="Composer\JsonInterchange\CompositionJsonExporter.cs" />
-    <Compile Include="Composer\JsonInterchange\CompositionJsonImporter.cs" />
-    <Compile Include="Composer\JsonInterchange\CompositionJsonImportReport.cs" />
-    <Compile Include="Composer\JsonInterchange\CompositionJsonSerializer.cs" />
-    <Compile Include="Composer\JsonInterchange\CompositionJsonWarningFormatter.cs" />
-    <Compile Include="Composer\Layout\CompositionAppearanceCommands.cs" />
-    <Compile Include="Composer\Layout\ConceptAutoFitService.cs" />
-    <Compile Include="Composer\Layout\FlowchartLayoutOptions.cs" />
-    <Compile Include="Composer\Layout\FlowchartLayoutResult.cs" />
-    <Compile Include="Composer\Layout\FlowchartLayoutService.cs" />
-    <Compile Include="Composer\Layout\HierarchyMapLayoutOptions.cs" />
-    <Compile Include="Composer\Layout\HierarchyMapLayoutResult.cs" />
-    <Compile Include="Composer\Layout\HierarchyMapLayoutService.cs" />
-    <Compile Include="Composer\Layout\LayoutBoundsNormalizer.cs" />
-    <Compile Include="Composer\Layout\LayoutSelectionContext.cs" />
-    <Compile Include="Composer\Layout\LinkObstacleRoutingOptions.cs" />
-    <Compile Include="Composer\Layout\LinkObstacleRoutingResult.cs" />
-    <Compile Include="Composer\Layout\LinkObstacleRoutingService.cs" />
-    <Compile Include="Composer\Layout\RelationshipNodeDeclutterOptions.cs" />
-    <Compile Include="Composer\Layout\RelationshipNodeDeclutterResult.cs" />
-    <Compile Include="Composer\Layout\RelationshipNodeDeclutterService.cs" />
-    <Compile Include="Composer\Layout\RelationshipVisualPlacementService.cs" />
-    <Compile Include="Composer\Layout\SpiderMapLayoutOptions.cs" />
-    <Compile Include="Composer\Layout\SpiderMapLayoutResult.cs" />
-    <Compile Include="Composer\Layout\SpiderMapLayoutService.cs" />
-    <Compile Include="Composer\Layout\SystemMapLayoutOptions.cs" />
-    <Compile Include="Composer\Layout\SystemMapLayoutResult.cs" />
-    <Compile Include="Composer\Layout\SystemMapLayoutService.cs" />
-    <Compile Include="Composer\CompositionsManager.ProjectCommands.cs" />
-    <Compile Include="Composer\CompositionsManager.EditingCommands.cs" />
-    <Compile Include="Composer\CompositionsManager.ExtrasCommands.cs" />
-    <Compile Include="Composer\CompositionEngine.Transfer.cs" />
-    <Compile Include="Composer\CompositionEngine.ContextMenuOptions.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlGenerator.IdeaDetails.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlGenerator.StyleSheet.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlPage.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlGenerator.Content.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlGenerator.ContentCard.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlGenerator.ContentList.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlGenerator.IdeaMembers.cs" />
-    <Compile Include="Composer\Reporting\ReportingManager.cs" />
-    <Compile Include="Composer\Reporting\ReportHtmlGenerator.cs" />
-    <Compile Include="Composer\Reporting\ReportStandardGenerator.IdeaDetails.cs" />
-    <Compile Include="Composer\Reporting\ReportStandardGenerator.ContentList.cs" />
-    <Compile Include="Composer\Reporting\ReportStandardGenerator.ContentCard.cs" />
-    <Compile Include="Composer\Reporting\ReportStandardPagesMaker.cs" />
-    <Compile Include="Composer\Reporting\Widgets\DisplayListEditor.xaml.cs">
-      <DependentUpon>DisplayListEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\Reporting\Widgets\DisplayCardEditor.xaml.cs">
-      <DependentUpon>DisplayCardEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\Reporting\Widgets\ReportConfigurationEditor.xaml.cs">
-      <DependentUpon>ReportConfigurationEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\Reporting\ReportStandardGenerator.IdeaMembers.cs" />
-    <Compile Include="Definitor\DefinitorUI\Widgets\ArrangeTabForConceptDef.xaml.cs">
-      <DependentUpon>ArrangeTabForConceptDef.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\ArrangeTabForRelationshipDef.xaml.cs">
-      <DependentUpon>ArrangeTabForRelationshipDef.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\DomainTemplatingSubform.xaml.cs">
-      <DependentUpon>DomainTemplatingSubform.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\TableDetailDesignatorStructSubform.xaml.cs">
-      <DependentUpon>TableDetailDesignatorStructSubform.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\VisualElementPreviewer.xaml.cs">
-      <DependentUpon>VisualElementPreviewer.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="MetaModel\Configurations\DisplayCard.cs" />
-    <Compile Include="MetaModel\Configurations\DisplayList.cs" />
-    <Compile Include="MetaModel\Configurations\ExternalLanguageDeclaration.cs" />
-    <Compile Include="MetaModel\Configurations\ReportConfiguration.cs" />
-    <Compile Include="Composer\Reporting\ReportStandardGenerator.Content.cs" />
-    <Compile Include="Composer\Reporting\ReportStandardGenerator.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.VariantDefinitions.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.MarkerDefinitions.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.TableDefinitions.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\TableDefinitionMaintainer.StructureDefinitions.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.RelationshipDefinitions.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ConceptDefinitions.cs" />
-    <Compile Include="Definitor\DefinitorUI\Widgets\LinkRoleDefSpecSubform.xaml.cs">
-      <DependentUpon>LinkRoleDefSpecSubform.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\TextFormatsMaintainer.xaml.cs">
-      <DependentUpon>TextFormatsMaintainer.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\VisualConnectorFormatSubform.xaml.cs">
-      <DependentUpon>VisualConnectorFormatSubform.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\VisualElementFormatSubform.xaml.cs">
-      <DependentUpon>VisualElementFormatSubform.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\TableStructureSubform.xaml.cs">
-      <DependentUpon>TableStructureSubform.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DetailBaseCard.cs" />
-    <Compile Include="Definitor\DefinitorUI\Widgets\DetailsDefinitorMaintainer.xaml.cs">
-      <DependentUpon>DetailsDefinitorMaintainer.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\VisualSymbolFormatSubform.xaml.cs">
-      <DependentUpon>VisualSymbolFormatSubform.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DefinitorUI\Widgets\GlobalDetailsDefinitor.xaml.cs">
-      <DependentUpon>GlobalDetailsDefinitor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Definitor\DetailDefinitionCard.cs" />
-    <Compile Include="Definitor\DefinitorMaintenance\TableDefinitionMaintainer.cs" />
-    <Compile Include="Composer\ComposerUI\ConceptCreationCommand.cs" />
-    <Compile Include="Composer\ComposerUI\DetailEditingCard.cs" />
-    <Compile Include="Composer\ComposerUI\EConnectorManipulationAction.cs" />
-    <Compile Include="Composer\ComposerUI\ViewConnectorManipulationAdorner.cs" />
-    <Compile Include="Composer\ComposerUI\ESymbolManipulationAction.cs" />
-    <Compile Include="Composer\ComposerUI\EManipulationDirection.cs" />
-    <Compile Include="Composer\ComposerUI\RelationshipCreationCommand.cs" />
-    <Compile Include="Composer\ComposerUI\ViewManipulationAdorner.cs" />
-    <Compile Include="Composer\ComposerUI\ViewManipulationManager.cs" />
-    <Compile Include="Composer\ComposerUI\ViewSymbolManipulationAdorner.cs" />
-    <Compile Include="Composer\ComposerUI\Widgets\DetailAttachmentEditor.cs" />
-    <Compile Include="Composer\ComposerUI\Widgets\DetailsEditorMaintainer.xaml.cs">
-      <DependentUpon>DetailsEditorMaintainer.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\ComposerUI\Widgets\DetailTableEditor.xaml.cs">
-      <DependentUpon>DetailTableEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\ComposerUI\Widgets\DetailLinkEditor.xaml.cs">
-      <DependentUpon>DetailLinkEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\ComposerUI\Widgets\LocalDetailsEditor.xaml.cs">
-      <DependentUpon>LocalDetailsEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Composer\CompositionEngine.Core.cs" />
-    <Compile Include="Composer\CompositionsManager.cs" />
-    <Compile Include="Composer\CompositionEngine.Interaction.cs" />
-    <Compile Include="Composer\CompositionEngine.Editing.cs" />
-    <Compile Include="Definitor\DomainServices.cs" />
-    <Compile Include="Definitor\DomainsManager.cs" />
-    <Compile Include="MetaModel\Configurations\FileGenerationConfiguration.cs" />
-    <Compile Include="MetaModel\Domain.cs" />
-    <Compile Include="MetaModel\EAlterability.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\ConceptDefinition.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\ITableDesignator.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\LinkDetailDesignator.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\AttachmentDetailDesignator.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\DetailDesignator.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\ERoleType.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\IdeaDefinition.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\TableDetailDesignator.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\LinkRoleDefinition.cs" />
-    <Compile Include="MetaModel\GraphMetaModel\RelationshipDefinition.cs" />
-    <Compile Include="MetaModel\IClusterableDef.cs" />
-    <Compile Include="MetaModel\IDefined.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\BasicDataType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\ChoiceType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\PictureType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\TableType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\IdeaLinkType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\InternalLinkType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\DataType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\DateTimeType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\FileDataType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\FieldDefinition.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\LinkDataType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\NumberType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\TableDefinition.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\TableRecordLinkType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\TextType.cs" />
-    <Compile Include="MetaModel\InformationMetaModel\ResourceLinkType.cs" />
-    <Compile Include="MetaModel\MarkerDefinition.cs" />
-    <Compile Include="MetaModel\MetaCategory.cs" />
-    <Compile Include="MetaModel\MetaDefinition.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\AttachmentAppearance.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EPlacementOnBorderHorizontal.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EAutoPositioningMode.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\ESymbolPart.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EVecinityQuadrant.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EVisualDispositionBidimensional.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EVisualDispositionMonodimensional.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\LinkAppearance.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\ETextPurpose.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\TableAppearance.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EHorizontalPlacement.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EPathCorner.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EPathStyle.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\Plugs.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\Shapes.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\EVerticalPlacement.cs" />
-    <Compile Include="Definitor\DefinitorUI\MasterDrawer.cs" />
-    <Compile Include="Definitor\DefinitorUI\PathDrawer.cs" />
-    <Compile Include="Definitor\DefinitorUI\PlugDrawer.cs" />
-    <Compile Include="Definitor\DefinitorUI\SymbolDrawer.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\VisualConnectorsFormat.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\VisualElementFormat.cs" />
-    <Compile Include="Model\GraphModel\MarkerAssignment.cs" />
-    <Compile Include="Model\GraphModel\RoleBasedLink.cs" />
-    <Compile Include="Model\InformationModel\ContainedDetail.cs" />
-    <Compile Include="Model\InformationModel\Attachment.cs" />
-    <Compile Include="Model\InformationModel\TableRecord.cs" />
-    <Compile Include="Model\InformationModel\InternalLink.cs" />
-    <Compile Include="Model\InformationModel\ResourceLink.cs" />
-    <Compile Include="Model\InformationModel\Table.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\ETableLayoutStyle.cs" />
-    <Compile Include="Model\InformationModel\Link.cs" />
-    <Compile Include="Model\VisualModel\ConceptVisualRepresentation.cs" />
-    <Compile Include="Model\VisualModel\CompositeViewIntegrity.cs" />
-    <Compile Include="Model\VisualModel\VisualComplement.GenerateLegend.cs" />
-    <Compile Include="Model\VisualModel\VisualComplement.GenerateInfoCard.cs" />
-    <Compile Include="Model\VisualModel\VisualComplement.cs" />
-    <Compile Include="Model\VisualModel\EVisualLevel.cs" />
-    <Compile Include="Model\VisualModel\ViewChild.cs" />
-    <Compile Include="Model\VisualModel\RelationshipVisualRepresentation.cs" />
-    <Compile Include="Model\VisualModel\VisualSymbol.DrawDetails.cs" />
-    <Compile Include="Model\VisualModel\VisualConnector.cs" />
-    <Compile Include="Model\VisualModel\VisualInert.cs" />
-    <Compile Include="Model\VisualModel\VisualRepresentation.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\VisualSymbolFormat.cs" />
-    <Compile Include="Model\Composition.cs" />
-    <Compile Include="Model\GraphModel\Concept.cs" />
-    <Compile Include="Model\GraphModel\EConceptType.cs" />
-    <Compile Include="Model\GraphModel\Idea.cs" />
-    <Compile Include="Model\GraphModel\Relationship.cs" />
-    <Compile Include="Model\VisualModel\EVisualRepresentationPart.cs" />
-    <Compile Include="Model\VisualModel\View.cs" />
-    <Compile Include="Model\VisualModel\ViewPresenter.cs" />
-    <Compile Include="Model\VisualModel\VisualShape.cs" />
-    <Compile Include="Model\VisualModel\VisualElement.cs" />
-    <Compile Include="Model\VisualModel\VisualObject.cs" />
-    <Compile Include="Model\VisualModel\VisualSymbol.cs" />
-    <Compile Include="MetaModel\VisualMetaModel\DetailAppearance.cs" />
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-    <Compile Include="Settings.cs" />
-    <Compile Include="ApplicationShell\MainWindowHeader.xaml.cs">
-      <DependentUpon>MainWindowHeader.xaml</DependentUpon>
-    </Compile>
-    <Page Include="ApplicationProduct\About.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\AppOptions.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\AppHelp.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="ApplicationProduct\AppVersionUpdate.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="ApplicationProduct\AppRegistration.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="ApplicationProduct\DomainSelector.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="ApplicationProduct\Cursors\AppCursors.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetDocumentVisualizer.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetItemsPalette.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetItemsPaletteGroup.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetVisualSampleSelector.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetMessenger.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetNavMap.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetNavTree.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetPalette.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetInterrelationsPanel.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="ApplicationProduct\Widgets\WidgetStatusBar.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\FindAndReplaceDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\SingleTableRecordEditor.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\RecordFieldExpositor.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="ApplicationShell\MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Compile Include="App.xaml.cs">
-      <DependentUpon>App.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ApplicationShell\MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Page Include="ApplicationShell\MainWindowHeader.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\DetailInternalPropertyEditor.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\DetailsEditorMaintainer.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\DetailTableEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\DetailLinkEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\MarkingsEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\Generation\Widgets\GeneratorSelectionEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\Generation\Widgets\FileGenerationPreviewer.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <None Include="Composer\Merging\Widgets\MergePreparer.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Composer\Merging\Widgets\MergerCompositionBrowser.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Composer\Merging\Widgets\MergerPropertiesComparer.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </None>
-    <Page Include="Composer\Reporting\Widgets\DisplayListEditor.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Composer\Reporting\Widgets\DisplayCardEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Composer\Reporting\Widgets\ReportConfigurationEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\ArrangeTabForConceptDef.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\ArrangeTabForRelationshipDef.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\DomainTemplatingSubform.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\LinkRoleDefSpecSubform.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\TableDetailDesignatorStructSubform.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\TemplateEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\TemplateTester.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\TextFormatsMaintainer.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\VisualConnectorFormatSubform.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\VisualElementFormatSubform.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\DetailsDefinitorMaintainer.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\VisualElementPreviewer.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\VisualSymbolFormatSubform.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\GlobalDetailsDefinitor.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Composer\ComposerUI\Widgets\LocalDetailsEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Definitor\DefinitorUI\Widgets\TableStructureSubform.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="MetaModel\VisualMetaModel\DecoratorGeometries.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="MetaModel\VisualMetaModel\PlugsTester.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="MetaModel\VisualMetaModel\SymbolsTester.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="MetaModel\VisualMetaModel\PlugGeometries.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="MetaModel\VisualMetaModel\SymbolGeometries.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Themes\Generic.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <SubType>Designer</SubType>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <None Include="app.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </None>
     <EmbeddedResource Include="ApplicationProduct\LanguageSyntaxes\TcTemplate.xshd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -775,17 +96,11 @@
     <EmbeddedResource Include="ApplicationProduct\BaseTemplates\CSharp_Class.tct" />
     <EmbeddedResource Include="ApplicationProduct\BaseTemplates\SQL_Table.tct" />
     <EmbeddedResource Include="ApplicationProduct\BaseTemplates\CSharp_Interface.tct" />
-    <None Include="Properties\app.manifest" />
     <Resource Include="Fonts\VENUSRIS.ttf" />
     <Resource Include="Fonts\VOX.TTF" />
     <Resource Include="ApplicationProduct\Fonts\VENUSRIS.ttf" />
     <Resource Include="ApplicationProduct\Fonts\VOX.TTF" />
-    <None Include="ApplicationProduct\Images\Instrumind_ThinkComposer.pdn" />
     <None Include="Properties\InstrumindThinkComposer_Key.pfx" />
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
@@ -795,18 +110,7 @@
     <SplashScreen Include="ApplicationShell\Images\Instrumind_ThinkComposer_Splash.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Common\Common.csproj">
-      <Project>{2BE2B928-B692-44AB-A90B-38BB8154BBA0}</Project>
-      <Name>Common</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\DotLiquid\DotLiquid-2010.csproj">
-      <Project>{429C3908-6AEA-4EE6-9450-06A196DC87DB}</Project>
-      <Name>DotLiquid-2010</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\ICSharpCode.AvalonEdit\ICSharpCode.AvalonEdit.csproj">
-      <Project>{6C55B776-26D4-4DB3-A6AB-87E783B2F3D1}</Project>
-      <Name>ICSharpCode.AvalonEdit</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\Common\Common.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="ApplicationProduct\Images\folder_image.png" />
@@ -1615,12 +919,21 @@
     <Resource Include="ApplicationProduct\Images\shape_multiple.png" />
     <Resource Include="ApplicationProduct\Images\shape_tilt.png" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+  <ItemGroup Label="Compile items now included by globbing that were not in the original project file">
+    <Compile Remove="Composer\Merging\Widgets\MergerPropertiesComparer.xaml.cs" />
+    <Compile Remove="Composer\Merging\Widgets\MergerCompositionBrowser.xaml.cs" />
+    <Compile Remove="Composer\Merging\Widgets\MergePreparer.xaml.cs" />
+    <Compile Remove="Composer\Merging\SchemaMemberSelection.cs" />
+    <Compile Remove="Composer\Merging\SchemaMemberGroup.cs" />
+    <Compile Remove="Composer\Merging\MergingManager.cs" />
+    <Compile Remove="Composer\Merging\CompositionMerger.cs" />
+    <Compile Remove="ApplicationProduct\_FixSeparationPending\ProductDirector.Special.cs" />
+    <Compile Remove="ApplicationProduct\_FixSeparationPending\ProductDirector.PalettesAndToolbar.cs" />
+    <Compile Remove="ApplicationProduct\_FixSeparationPending\ProductDirector.cs" />
+  </ItemGroup>
+  <ItemGroup Label="Page items now included by globbing that were not in the original project file">
+    <Page Remove="Composer\Merging\Widgets\MergerPropertiesComparer.xaml" />
+    <Page Remove="Composer\Merging\Widgets\MergerCompositionBrowser.xaml" />
+    <Page Remove="Composer\Merging\Widgets\MergePreparer.xaml" />
+  </ItemGroup>
 </Project>

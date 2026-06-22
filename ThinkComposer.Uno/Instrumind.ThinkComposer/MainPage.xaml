@@ -1,0 +1,2186 @@
+<Page x:Class="Instrumind.ThinkComposer.MainPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="using:Instrumind.ThinkComposer"
+      RequestedTheme="Light"
+      Background="#EAF4F7">
+  <Page.Resources>
+    <DataTemplate x:Key="CheckBoxContentTextTemplate">
+      <TextBlock Text="{Binding}"
+                 Foreground="#111827"
+                 FontSize="13"
+                 TextWrapping="NoWrap"
+                 VerticalAlignment="Center" />
+    </DataTemplate>
+
+    <Style TargetType="CheckBox">
+      <Setter Property="Foreground" Value="#111827" />
+      <Setter Property="RequestedTheme" Value="Light" />
+      <Setter Property="ContentTemplate" Value="{StaticResource CheckBoxContentTextTemplate}" />
+    </Style>
+
+    <Style x:Key="CommandButtonStyle" TargetType="Button">
+      <Setter Property="Foreground" Value="#111827" />
+      <Setter Property="Background" Value="#F8FAFC" />
+      <Setter Property="BorderBrush" Value="#9EB5C2" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="MinHeight" Value="31" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="RequestedTheme" Value="Light" />
+    </Style>
+
+    <Style x:Key="PanelHeaderSearchBoxStyle" TargetType="TextBox">
+      <Setter Property="RequestedTheme" Value="Light" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="#111827" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="BorderBrush" Value="#7EA8BA" />
+      <Setter Property="PlaceholderForeground" Value="#6B7280" />
+    </Style>
+
+    <Style x:Key="PanelHeaderIconButtonStyle" TargetType="Button">
+      <Setter Property="Foreground" Value="#111827" />
+      <Setter Property="Background" Value="#F8FAFC" />
+      <Setter Property="BorderBrush" Value="#7EA8BA" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Padding" Value="1" />
+      <Setter Property="RequestedTheme" Value="Light" />
+    </Style>
+
+    <Style x:Key="PaletteInlineActionButtonStyle" TargetType="Button">
+      <Setter Property="Foreground" Value="#111827" />
+      <Setter Property="Background" Value="#F8FAFC" />
+      <Setter Property="BorderBrush" Value="#AEC7D2" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="21" />
+      <Setter Property="MinHeight" Value="20" />
+      <Setter Property="Padding" Value="1" />
+      <Setter Property="RequestedTheme" Value="Light" />
+    </Style>
+
+    <Style x:Key="PaletteListItemContainerStyle" TargetType="ListViewItem">
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+
+    <Style x:Key="ToggleCommandButtonStyle" TargetType="ToggleButton">
+      <Setter Property="Foreground" Value="#111827" />
+      <Setter Property="Background" Value="#F8FAFC" />
+      <Setter Property="BorderBrush" Value="#9EB5C2" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="MinHeight" Value="31" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="RequestedTheme" Value="Light" />
+    </Style>
+
+    <Style x:Key="VerticalSplitterThumbStyle" TargetType="local:ResizeGrip">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="MinWidth" Value="10" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="#D2E8F0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="local:ResizeGrip">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="#7DA9BA"
+                    BorderThickness="1,0">
+              <StackPanel Orientation="Horizontal"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Spacing="2">
+                <Rectangle Width="2"
+                           Height="28"
+                           Fill="#587F91" />
+                <Rectangle Width="2"
+                           Height="28"
+                           Fill="#587F91" />
+              </StackPanel>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="HorizontalSplitterThumbStyle" TargetType="local:ResizeGrip">
+      <Setter Property="Height" Value="10" />
+      <Setter Property="MinHeight" Value="10" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="#D2E8F0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="local:ResizeGrip">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="#7DA9BA"
+                    BorderThickness="0,1">
+              <StackPanel Orientation="Vertical"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Spacing="2">
+                <Rectangle Width="34"
+                           Height="2"
+                           Fill="#587F91" />
+                <Rectangle Width="34"
+                           Height="2"
+                           Fill="#587F91" />
+              </StackPanel>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <DataTemplate x:Key="NavigationItemTemplate">
+      <Border Padding="8,6"
+              Margin="0,0,0,4"
+              Background="#F8FBFC"
+              BorderBrush="#D5E2E8"
+              BorderThickness="1">
+        <TextBlock Text="{Binding}"
+                   Foreground="#111827"
+                   FontSize="13"
+                   TextWrapping="Wrap" />
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ContentTreeItemTemplate">
+      <Border Padding="2,2"
+              Background="#E8F3F7">
+        <Grid ColumnSpacing="7"
+              MinHeight="24">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="44" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid Width="42"
+                Height="18"
+                VerticalAlignment="Top"
+                Margin="0,2,0,0">
+            <Border Width="38"
+                    Height="13"
+                    CornerRadius="7"
+                    Background="{Binding Content.SymbolFillBrush}"
+                    BorderBrush="{Binding Content.SymbolStrokeBrush}"
+                    BorderThickness="2"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding Content.ShapeSymbolVisibility}">
+              <Border Width="28"
+                      Height="4"
+                      CornerRadius="3"
+                      Background="#FFFFFF"
+                      Opacity="0.55"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Top"
+                      Margin="0,1,0,0" />
+            </Border>
+            <Grid Visibility="{Binding Content.RelationshipSymbolVisibility}">
+              <Path Data="M 2,9 L 31,9"
+                    Stroke="{Binding Content.SymbolStrokeBrush}"
+                    StrokeThickness="2" />
+              <Path Data="M 27,5 L 32,9 L 27,13"
+                    Stroke="{Binding Content.SymbolStrokeBrush}"
+                    StrokeThickness="2" />
+              <Ellipse Width="4"
+                       Height="4"
+                       Fill="{Binding Content.SymbolStrokeBrush}"
+                       HorizontalAlignment="Left"
+                       Margin="1,7,0,0" />
+            </Grid>
+            <Grid Width="24"
+                  Height="18"
+                  HorizontalAlignment="Left"
+                  Visibility="{Binding Content.ViewSymbolVisibility}">
+              <Border Width="17"
+                      Height="15"
+                      Background="#F8FAFC"
+                      BorderBrush="#7BAEC5"
+                      BorderThickness="1"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center" />
+              <Path Data="M 8,3 L 16,15 M 16,3 L 8,15"
+                    Stroke="#0EA5E9"
+                    StrokeThickness="1.5" />
+              <Ellipse Width="4"
+                       Height="4"
+                       Fill="#EF4444"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top"
+                       Margin="4,2,0,0" />
+            </Grid>
+            <Image Source="{Binding Content.PictographSource}"
+                   Stretch="Uniform"
+                   Visibility="{Binding Content.PictographVisibility}" />
+          </Grid>
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="{Binding Content.Name}"
+                       Foreground="#111827"
+                       FontSize="12"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding Content.Description}"
+                       Foreground="#64748B"
+                       FontSize="11"
+                       FontStyle="Italic"
+                       TextTrimming="CharacterEllipsis"
+                       Margin="0,1,0,0" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="DetailItemTemplate">
+      <TextBlock Text="{Binding}"
+                 Foreground="#1F2937"
+                 FontSize="13"
+                 TextWrapping="Wrap"
+                 Margin="0,0,0,5" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="DocumentItemTemplate">
+      <Border Padding="10,6"
+              Margin="0,0,0,4"
+              Background="#FFFFFF"
+              BorderBrush="#E0E8ED"
+              BorderThickness="1">
+        <TextBlock Text="{Binding}"
+                   Foreground="#111827"
+                   FontFamily="Consolas"
+                   FontSize="12"
+                   TextWrapping="Wrap" />
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="PaletteItemTemplate">
+      <Border Padding="6,4"
+              Margin="0,0,4,4"
+              Background="#EEF5F7"
+              BorderBrush="#C9DAE2"
+              BorderThickness="1"
+              HorizontalAlignment="Stretch">
+        <Grid ColumnSpacing="6">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="38" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid Width="36"
+                Height="22"
+                VerticalAlignment="Center">
+            <Image Source="{Binding PictogramSource}"
+                   Stretch="Uniform"
+                   Visibility="{Binding PictographVisibility}" />
+            <local:SymbolGlyph Width="34"
+                               Height="18"
+                               ShapeName="{Binding ShapeName}"
+                               SymbolFill="{Binding FillBrush}"
+                               SymbolStroke="{Binding StrokeBrush}"
+                               SymbolThickness="1.5"
+                               Visibility="{Binding GlyphSymbolVisibility}" />
+          </Grid>
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="{Binding Name}"
+                       Foreground="#111827"
+                       FontSize="11"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding Subtitle}"
+                       Foreground="#64748B"
+                       FontSize="10"
+                       TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal"
+                        Spacing="2"
+                        Margin="0,3,0,0"
+                        Visibility="{Binding InlineActionsVisibility}">
+              <Button Style="{StaticResource PaletteInlineActionButtonStyle}"
+                      Click="PaletteInlineEditClicked"
+                      ToolTipService.ToolTip="Edit selected definition">
+                <SymbolIcon Symbol="Edit" Foreground="#2563EB" />
+              </Button>
+              <Button Style="{StaticResource PaletteInlineActionButtonStyle}"
+                      Click="PaletteInlineDuplicateClicked"
+                      ToolTipService.ToolTip="Duplicate selected definition">
+                <SymbolIcon Symbol="Copy" Foreground="#2563EB" />
+              </Button>
+              <Button Style="{StaticResource PaletteInlineActionButtonStyle}"
+                      Click="PaletteInlineDeleteClicked"
+                      ToolTipService.ToolTip="Delete selected definition">
+                <SymbolIcon Symbol="Delete" Foreground="#DC2626" />
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ConceptStylePresetTemplate">
+      <Border Width="35"
+              Height="18"
+              Margin="1"
+              Background="{Binding FillBrush}"
+              BorderBrush="{Binding StrokeBrush}"
+              BorderThickness="{Binding BorderThickness}"
+              CornerRadius="3" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="ShapeOptionTemplate">
+      <Border Width="190"
+              Height="27"
+              Padding="4,2"
+              Margin="1"
+              Background="#FFFFFF"
+              BorderBrush="#E5EEF2"
+              BorderThickness="1">
+        <Grid ColumnSpacing="7">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="44" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <local:SymbolGlyph Width="38"
+                             Height="18"
+                             ShapeName="{Binding ShapeName}"
+                             SymbolFill="{Binding FillBrush}"
+                             SymbolStroke="{Binding StrokeBrush}"
+                             SymbolThickness="1"
+                             VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1"
+                     Text="{Binding DisplayName}"
+                     Foreground="#111827"
+                     FontSize="11"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" />
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ConceptDetailEditTemplate">
+      <Border Background="#F8FBFC"
+              BorderBrush="#D5E2E8"
+              BorderThickness="1"
+              Padding="6"
+              Margin="0,0,0,5">
+        <Grid ColumnSpacing="6">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="82" />
+            <ColumnDefinition Width="86" />
+            <ColumnDefinition Width="78" />
+          </Grid.ColumnDefinitions>
+          <TextBox Text="{Binding Title, Mode=TwoWay}"
+                   RequestedTheme="Light"
+                   Foreground="#111827"
+                   Background="#FFFFFF"
+                   BorderBrush="#9EB5C2"
+                   MinHeight="28" />
+          <TextBox Grid.Column="1"
+                   Text="{Binding Kind, Mode=TwoWay}"
+                   RequestedTheme="Light"
+                   Foreground="#111827"
+                   Background="#FFFFFF"
+                   BorderBrush="#9EB5C2"
+                   MinHeight="28" />
+          <CheckBox Grid.Column="2"
+                    Content="Show"
+                    IsChecked="{Binding IsDisplayed, Mode=TwoWay}"
+                    VerticalAlignment="Center" />
+          <CheckBox Grid.Column="3"
+                    Content="Title"
+                    IsChecked="{Binding ShowTitle, Mode=TwoWay}"
+                    VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="DomainTileTemplate">
+      <Border Width="500"
+              MinHeight="144"
+              Margin="0,0,8,8"
+              Background="#EAF4F7"
+              BorderBrush="#9EC3D1"
+              BorderThickness="1">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <Border Background="#A8CFDC"
+                  Padding="6,3">
+            <TextBlock Text="{Binding FileName}"
+                       Foreground="#FFFFFF"
+                       FontSize="11"
+                       FontWeight="SemiBold" />
+          </Border>
+          <Grid Grid.Row="1"
+                Padding="8"
+                ColumnSpacing="10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="48" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="220" />
+            </Grid.ColumnDefinitions>
+
+            <Image Source="{Binding Pictogram}"
+                   Width="40"
+                   Height="40"
+                   Stretch="Uniform"
+                   VerticalAlignment="Bottom" />
+
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="{Binding Name}"
+                         Foreground="#111827"
+                         FontWeight="SemiBold"
+                         FontSize="13"
+                         Margin="0,0,0,4" />
+              <TextBlock Text="{Binding Summary}"
+                         Foreground="#111827"
+                         FontSize="12"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Border Grid.Column="2"
+                    Background="#FFFFFF"
+                    BorderBrush="#D5E2E8"
+                    BorderThickness="1">
+              <Image Source="{Binding Snapshot}"
+                     Width="216"
+                     Height="112"
+                     Stretch="Uniform" />
+            </Border>
+          </Grid>
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="MessageItemTemplate">
+      <TextBlock Text="{Binding}"
+                 Foreground="#111827"
+                 FontSize="12"
+                 FontFamily="Consolas"
+                 TextWrapping="Wrap" />
+    </DataTemplate>
+  </Page.Resources>
+
+  <Grid x:Name="MainShellGrid"
+        Background="#EAF4F7">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="10" />
+      <RowDefinition Height="72" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0"
+          Background="#DCEFF5"
+          BorderBrush="#A9C6D2"
+          BorderThickness="0,0,0,1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <Grid x:Name="RouteBar"
+            Visibility="Collapsed"
+            Padding="10,6"
+            ColumnSpacing="8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Text="ThinkComposer"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Foreground="#111827"
+                   VerticalAlignment="Center"
+                   Margin="0,0,12,0" />
+
+        <TextBox x:Name="FilePathTextBox"
+                 Grid.Column="1"
+                 RequestedTheme="Light"
+                 MinWidth="360"
+                 PlaceholderText="Path to .tdom, .tcom, .tct, .json, or .xml"
+                 Foreground="#111827"
+                 Background="#FFFFFF"
+                 BorderBrush="#9EB5C2"
+                 PlaceholderForeground="#6B7280"
+                 VerticalAlignment="Center" />
+
+        <Button Grid.Column="2"
+                Style="{StaticResource CommandButtonStyle}"
+                Click="OpenClicked"
+                ToolTipService.ToolTip="Open a ThinkComposer composition or domain package">
+          <StackPanel Orientation="Horizontal"
+                      Spacing="6">
+            <SymbolIcon Symbol="OpenFile" Foreground="#2563EB" />
+            <TextBlock Text="Browse" Foreground="#111827" />
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Column="3"
+                Style="{StaticResource CommandButtonStyle}"
+                Click="LoadPathClicked"
+                ToolTipService.ToolTip="Load the path shown in the text box">
+          <StackPanel Orientation="Horizontal"
+                      Spacing="6">
+            <SymbolIcon Symbol="Import" Foreground="#2563EB" />
+            <TextBlock Text="Load" Foreground="#111827" />
+          </StackPanel>
+        </Button>
+      </Grid>
+
+      <ScrollViewer Grid.Row="1"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Disabled">
+        <StackPanel Orientation="Horizontal"
+                    Padding="6,0,6,6"
+                    Spacing="6">
+          <Border Background="#EEF7FA"
+                  BorderBrush="#A9C6D2"
+                  BorderThickness="1"
+                  Padding="6">
+            <StackPanel>
+              <TextBlock Text="Composition"
+                         Foreground="#111827"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Margin="0,0,0,4" />
+              <StackPanel Orientation="Horizontal"
+                          Spacing="5">
+                <Button Style="{StaticResource CommandButtonStyle}" Click="NewCompositionClicked">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="Add" Foreground="#2563EB" />
+                    <TextBlock Text="New" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="OpenClicked">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="OpenFile" Foreground="#2563EB" />
+                    <TextBlock Text="Open" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="SaveClicked">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="Save" Foreground="#2563EB" />
+                    <TextBlock Text="Save" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="OpenSampleClicked">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="Document" Foreground="#2563EB" />
+                    <TextBlock Text="All-Purpose" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#EEF7FA"
+                  BorderBrush="#A9C6D2"
+                  BorderThickness="1"
+                  Padding="6">
+            <StackPanel>
+              <TextBlock Text="Exchange"
+                         Foreground="#111827"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Margin="0,0,0,4" />
+              <StackPanel Orientation="Horizontal"
+                          Spacing="5">
+                <Button Style="{StaticResource CommandButtonStyle}" Click="CommandPlaceholderClicked" Tag="Import JSON">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="Import" Foreground="#2563EB" />
+                    <TextBlock Text="Import JSON" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="CommandPlaceholderClicked" Tag="Export JSON">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="Upload" Foreground="#2563EB" />
+                    <TextBlock Text="Export JSON" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#EEF7FA"
+                  BorderBrush="#A9C6D2"
+                  BorderThickness="1"
+                  Padding="6">
+            <StackPanel>
+              <TextBlock Text="Reports"
+                         Foreground="#111827"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Margin="0,0,0,4" />
+              <StackPanel Orientation="Horizontal"
+                          Spacing="5">
+                <Button Style="{StaticResource CommandButtonStyle}" Click="ExportPdfClicked">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="Print" Foreground="#2563EB" />
+                    <TextBlock Text="PDF" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="CommandPlaceholderClicked" Tag="HTML Report">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="World" Foreground="#2563EB" />
+                    <TextBlock Text="HTML" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#EEF7FA"
+                  BorderBrush="#A9C6D2"
+                  BorderThickness="1"
+                  Padding="6">
+            <StackPanel>
+              <TextBlock Text="View"
+                         Foreground="#111827"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Margin="0,0,0,4" />
+              <StackPanel Orientation="Horizontal"
+                          Spacing="5">
+                <Button Style="{StaticResource CommandButtonStyle}" Click="CommandPlaceholderClicked" Tag="Actual Size">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="Zoom" Foreground="#2563EB" />
+                    <TextBlock Text="Actual Size" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="CommandPlaceholderClicked" Tag="Zoom In">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="ZoomIn" Foreground="#2563EB" />
+                    <TextBlock Text="Zoom In" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="CommandPlaceholderClicked" Tag="Zoom Out">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="ZoomOut" Foreground="#2563EB" />
+                    <TextBlock Text="Zoom Out" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButtonStyle}" Click="CommandPlaceholderClicked" Tag="Fit to View">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <SymbolIcon Symbol="FullScreen" Foreground="#2563EB" />
+                    <TextBlock Text="Fit" Foreground="#111827" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Background="#EEF7FA"
+                  BorderBrush="#A9C6D2"
+                  BorderThickness="1"
+                  Padding="6">
+            <StackPanel>
+              <TextBlock Text="Indicators"
+                         Foreground="#111827"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         Margin="0,0,0,4" />
+              <StackPanel Orientation="Horizontal"
+                          Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="3">
+                  <CheckBox x:Name="ShowGridCheckBox" IsChecked="True" RequestedTheme="Light" />
+                  <TextBlock Text="Grid" Foreground="#111827" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="3">
+                  <CheckBox x:Name="SnapGridCheckBox" IsChecked="True" RequestedTheme="Light" />
+                  <TextBlock Text="Snap" Foreground="#111827" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="3">
+                  <CheckBox x:Name="MarkersCheckBox" IsChecked="True" RequestedTheme="Light" />
+                  <TextBlock Text="Markers" Foreground="#111827" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="3">
+                  <CheckBox x:Name="IndicatorsCheckBox" IsChecked="True" RequestedTheme="Light" />
+                  <TextBlock Text="Indicators" Foreground="#111827" VerticalAlignment="Center" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <Grid x:Name="MainWorkspaceGrid"
+          Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="294" />
+        <ColumnDefinition Width="10" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="10" />
+        <ColumnDefinition Width="284" />
+      </Grid.ColumnDefinitions>
+
+      <Grid x:Name="LeftPaneGrid"
+            Grid.Column="0"
+            Margin="0,0,2,0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="0.58*" />
+          <RowDefinition Height="10" />
+          <RowDefinition Height="0.42*" />
+        </Grid.RowDefinitions>
+
+        <Border Background="#E8F3F7"
+                BorderBrush="#B6CDD8"
+                BorderThickness="0,0,1,1">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Background="#AFCBD6"
+                    Padding="5,3">
+              <Grid ColumnSpacing="5">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Content"
+                           Foreground="#FFFFFF"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,4,0" />
+                <TextBox x:Name="ContentFindTextBox"
+                         Grid.Column="1"
+                         Style="{StaticResource PanelHeaderSearchBoxStyle}"
+                         PlaceholderText="Find..."
+                         TextChanged="ContentFindTextChanged" />
+                <ToggleButton x:Name="ContentSortToggle"
+                              Grid.Column="2"
+                              Style="{StaticResource ToggleCommandButtonStyle}"
+                              Width="36"
+                              Height="24"
+                              MinHeight="24"
+                              Padding="2,0"
+                              Click="ContentSortToggleClicked"
+                              ToolTipService.ToolTip="Sort content by name">
+                  <TextBlock Text="A-Z"
+                             Foreground="#111827"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                </ToggleButton>
+              </Grid>
+            </Border>
+            <TreeView x:Name="ContentTree"
+                      Grid.Row="1"
+                      Margin="6,4,6,6"
+                      RequestedTheme="Light"
+                      Background="#E8F3F7"
+                      Foreground="#111827"
+                      ItemTemplate="{StaticResource ContentTreeItemTemplate}" />
+          </Grid>
+        </Border>
+
+        <local:ResizeGrip x:Name="LeftPaneHorizontalSplitter"
+                           Grid.Row="1"
+                           CursorShape="SizeNorthSouth"
+                           Style="{StaticResource HorizontalSplitterThumbStyle}"
+                           DragDelta="LeftPaneSplitterDragDelta"
+                           ToolTipService.ToolTip="Resize Content and Interrelations panels" />
+
+        <Border Grid.Row="2"
+                Background="#E8F3F7"
+                BorderBrush="#B6CDD8"
+                BorderThickness="0,0,1,0">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Background="#AFCBD6"
+                    Padding="6,3">
+              <TextBlock Text="Interrelations"
+                         Foreground="#FFFFFF"
+                         FontWeight="SemiBold" />
+            </Border>
+            <ScrollViewer Grid.Row="1"
+                          Padding="6">
+              <ItemsControl x:Name="InterrelationsList"
+                            ItemTemplate="{StaticResource NavigationItemTemplate}" />
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </Grid>
+
+      <local:ResizeGrip x:Name="MainLeftVerticalSplitter"
+                         Grid.Column="1"
+                         CursorShape="SizeWestEast"
+                         Style="{StaticResource VerticalSplitterThumbStyle}"
+                         DragDelta="MainLeftSplitterDragDelta"
+                         ToolTipService.ToolTip="Resize left pane" />
+
+      <Grid Grid.Column="2"
+            Background="#F7FBFD">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="DocumentTabStrip"
+              Background="#D5EAF1"
+              BorderBrush="#A9C6D2"
+              BorderThickness="0,0,0,1">
+          <StackPanel Orientation="Horizontal">
+            <Border Background="#FFFFFF"
+                    BorderBrush="#A9C6D2"
+                    BorderThickness="1,1,1,0"
+                    Padding="8,3"
+                    Margin="6,4,0,0">
+              <TextBlock x:Name="MainTabText"
+                         Text="Main View"
+                         Foreground="#111827"
+                         FontWeight="SemiBold" />
+            </Border>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+          <Grid x:Name="BlankWorkspacePanel"
+                Background="#FFFFFF">
+          </Grid>
+
+          <Grid x:Name="DocumentWorkspacePanel"
+                Visibility="Collapsed"
+                Padding="20">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Orientation="Horizontal"
+                        Spacing="12"
+                        Margin="0,0,0,14">
+              <TextBlock x:Name="CompositionTitle"
+                         Text="No file loaded"
+                         FontSize="24"
+                         FontWeight="SemiBold"
+                         Foreground="#111827" />
+              <TextBlock x:Name="CompositionStatus"
+                         Text="Use New or Open"
+                         VerticalAlignment="Bottom"
+                         Foreground="#5B6472" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    BorderBrush="#C5D8E1"
+                    BorderThickness="1"
+                    Background="#FFFFFF">
+              <ScrollViewer>
+                <StackPanel Padding="16">
+                  <TextBlock Text="Loaded Document"
+                             FontSize="16"
+                             FontWeight="SemiBold"
+                             Foreground="#1F2937"
+                             Margin="0,0,0,10" />
+
+                  <ItemsControl x:Name="DocumentDetailsList"
+                                ItemTemplate="{StaticResource DetailItemTemplate}"
+                                Margin="0,0,0,12" />
+
+                  <Border x:Name="SnapshotFrame"
+                          Height="340"
+                          Visibility="Collapsed"
+                          Background="#F8FAFC"
+                          BorderBrush="#CBD5E1"
+                          BorderThickness="1"
+                          Margin="0,0,0,12">
+                    <Grid>
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                      </Grid.RowDefinitions>
+
+                      <Border Background="#E8EEF7"
+                              BorderBrush="#CBD5E1"
+                              BorderThickness="0,0,0,1"
+                              Padding="10,6">
+                        <TextBlock x:Name="SnapshotTitle"
+                                   Text="Snapshot preview"
+                                   Foreground="#1F2937"
+                                   FontWeight="SemiBold" />
+                      </Border>
+
+                      <Image x:Name="SnapshotImage"
+                             Grid.Row="1"
+                             Stretch="Uniform"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch" />
+                    </Grid>
+                  </Border>
+
+                  <TextBlock Text="Package / Migration Diagnostics"
+                             FontSize="14"
+                             FontWeight="SemiBold"
+                             Foreground="#1F2937"
+                             Margin="0,0,0,8" />
+                  <ItemsControl x:Name="DocumentItemsList"
+                                ItemTemplate="{StaticResource DocumentItemTemplate}" />
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+          </Grid>
+        </Grid>
+      </Grid>
+
+      <local:ResizeGrip x:Name="MainRightVerticalSplitter"
+                         Grid.Column="3"
+                         CursorShape="SizeWestEast"
+                         Style="{StaticResource VerticalSplitterThumbStyle}"
+                         DragDelta="MainRightSplitterDragDelta"
+                         ToolTipService.ToolTip="Resize right pane" />
+
+      <Grid x:Name="RightPaneGrid"
+            Grid.Column="4"
+            Margin="2,0,0,0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="0.34*" />
+          <RowDefinition Height="10" />
+          <RowDefinition Height="0.24*" />
+          <RowDefinition Height="10" />
+          <RowDefinition Height="0.2*" />
+          <RowDefinition Height="10" />
+          <RowDefinition Height="0.22*" />
+        </Grid.RowDefinitions>
+
+        <Border Background="#E8F3F7"
+                BorderBrush="#B6CDD8"
+                BorderThickness="1,0,0,1">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Background="#AFCBD6"
+                    Padding="5,3">
+              <Grid ColumnSpacing="4">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Concepts"
+                           Foreground="#FFFFFF"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,3,0" />
+                <TextBox x:Name="ConceptSearchTextBox"
+                         Grid.Column="1"
+                         Style="{StaticResource PanelHeaderSearchBoxStyle}"
+                         PlaceholderText="Find..."
+                         TextChanged="ConceptSearchTextChanged" />
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="2">
+                  <Button Style="{StaticResource PanelHeaderIconButtonStyle}" Click="ConceptAddClicked" ToolTipService.ToolTip="Add Concept definition">
+                    <SymbolIcon Symbol="Add" Foreground="#2563EB" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <ListView x:Name="ConceptPaletteList"
+                      Grid.Row="1"
+                      Padding="6,4,0,6"
+                      RequestedTheme="Light"
+                      Background="#E8F3F7"
+                      SelectionMode="Single"
+                      IsItemClickEnabled="True"
+                      SelectionChanged="PaletteSelectionChanged"
+                      ItemContainerStyle="{StaticResource PaletteListItemContainerStyle}"
+                      DoubleTapped="ConceptPaletteDoubleTapped"
+                      ItemTemplate="{StaticResource PaletteItemTemplate}" />
+          </Grid>
+        </Border>
+
+        <local:ResizeGrip x:Name="RightPaneConceptRelationshipSplitter"
+                           Grid.Row="1"
+                           CursorShape="SizeNorthSouth"
+                           Style="{StaticResource HorizontalSplitterThumbStyle}"
+                           DragDelta="RightPaneSplitterDragDelta"
+                           Tag="0,2"
+                           ToolTipService.ToolTip="Resize Concepts and Relationships panels" />
+
+        <Border Grid.Row="2"
+                Background="#E8F3F7"
+                BorderBrush="#B6CDD8"
+                BorderThickness="1,0,0,1">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Background="#AFCBD6"
+                    Padding="5,3">
+              <Grid ColumnSpacing="4">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Relationships"
+                           Foreground="#FFFFFF"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,3,0" />
+                <TextBox x:Name="RelationshipSearchTextBox"
+                         Grid.Column="1"
+                         Style="{StaticResource PanelHeaderSearchBoxStyle}"
+                         PlaceholderText="Find..."
+                         TextChanged="RelationshipSearchTextChanged" />
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="2">
+                  <Button Style="{StaticResource PanelHeaderIconButtonStyle}" Click="RelationshipAddClicked" ToolTipService.ToolTip="Add Relationship definition">
+                    <SymbolIcon Symbol="Add" Foreground="#2563EB" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <ListView x:Name="RelationshipPaletteList"
+                      Grid.Row="1"
+                      Padding="6,4,0,6"
+                      RequestedTheme="Light"
+                      Background="#E8F3F7"
+                      SelectionMode="Single"
+                      IsItemClickEnabled="True"
+                      SelectionChanged="PaletteSelectionChanged"
+                      ItemContainerStyle="{StaticResource PaletteListItemContainerStyle}"
+                      DoubleTapped="RelationshipPaletteDoubleTapped"
+                      ItemTemplate="{StaticResource PaletteItemTemplate}" />
+          </Grid>
+        </Border>
+
+        <local:ResizeGrip x:Name="RightPaneRelationshipMarkerSplitter"
+                           Grid.Row="3"
+                           CursorShape="SizeNorthSouth"
+                           Style="{StaticResource HorizontalSplitterThumbStyle}"
+                           DragDelta="RightPaneSplitterDragDelta"
+                           Tag="2,4"
+                           ToolTipService.ToolTip="Resize Relationships and Markers panels" />
+
+        <Border Grid.Row="4"
+                Background="#E8F3F7"
+                BorderBrush="#B6CDD8"
+                BorderThickness="1,0,0,1">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Background="#AFCBD6"
+                    Padding="5,3">
+              <Grid ColumnSpacing="4">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Markers"
+                           Foreground="#FFFFFF"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,3,0" />
+                <TextBox x:Name="MarkerSearchTextBox"
+                         Grid.Column="1"
+                         Style="{StaticResource PanelHeaderSearchBoxStyle}"
+                         PlaceholderText="Find..."
+                         TextChanged="MarkerSearchTextChanged" />
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="2">
+                  <Button Style="{StaticResource PanelHeaderIconButtonStyle}" Click="MarkerAddClicked" ToolTipService.ToolTip="Add Marker definition">
+                    <SymbolIcon Symbol="Add" Foreground="#2563EB" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <ListView x:Name="MarkerPaletteList"
+                      Grid.Row="1"
+                      Padding="6,4,0,6"
+                      RequestedTheme="Light"
+                      Background="#E8F3F7"
+                      SelectionMode="Single"
+                      IsItemClickEnabled="True"
+                      SelectionChanged="PaletteSelectionChanged"
+                      ItemContainerStyle="{StaticResource PaletteListItemContainerStyle}"
+                      DoubleTapped="MarkerPaletteDoubleTapped"
+                      ItemTemplate="{StaticResource PaletteItemTemplate}" />
+          </Grid>
+        </Border>
+
+        <local:ResizeGrip x:Name="RightPaneMarkerComplementSplitter"
+                           Grid.Row="5"
+                           CursorShape="SizeNorthSouth"
+                           Style="{StaticResource HorizontalSplitterThumbStyle}"
+                           DragDelta="RightPaneSplitterDragDelta"
+                           Tag="4,6"
+                           ToolTipService.ToolTip="Resize Markers and Complements panels" />
+
+        <Border Grid.Row="6"
+                Background="#E8F3F7"
+                BorderBrush="#B6CDD8"
+                BorderThickness="1,0,0,0">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Background="#AFCBD6"
+                    Padding="5,3">
+              <Grid ColumnSpacing="4">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Complements"
+                           Foreground="#FFFFFF"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,3,0" />
+                <TextBox x:Name="ComplementSearchTextBox"
+                         Grid.Column="1"
+                         Style="{StaticResource PanelHeaderSearchBoxStyle}"
+                         PlaceholderText="Find..."
+                         TextChanged="ComplementSearchTextChanged" />
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="2">
+                  <Button Style="{StaticResource PanelHeaderIconButtonStyle}" Click="ComplementAddClicked" ToolTipService.ToolTip="Add Complement definition">
+                    <SymbolIcon Symbol="Add" Foreground="#2563EB" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <ListView x:Name="ComplementPaletteList"
+                      Grid.Row="1"
+                      Padding="6,4,0,6"
+                      RequestedTheme="Light"
+                      Background="#E8F3F7"
+                      SelectionMode="Single"
+                      IsItemClickEnabled="True"
+                      SelectionChanged="PaletteSelectionChanged"
+                      ItemContainerStyle="{StaticResource PaletteListItemContainerStyle}"
+                      DoubleTapped="ComplementPaletteDoubleTapped"
+                      ItemTemplate="{StaticResource PaletteItemTemplate}" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <local:ResizeGrip x:Name="BottomPanelHorizontalSplitter"
+                       Grid.Row="2"
+                       CursorShape="SizeNorthSouth"
+                       Style="{StaticResource HorizontalSplitterThumbStyle}"
+                       DragDelta="BottomPanelSplitterDragDelta"
+                       ToolTipService.ToolTip="Resize bottom output panel" />
+
+    <Grid Grid.Row="3"
+          Background="#F7FBFD"
+          BorderBrush="#A9C6D2"
+          BorderThickness="0,1,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="390" />
+      </Grid.ColumnDefinitions>
+      <Border Padding="8"
+              BorderBrush="#A9C6D2"
+              BorderThickness="0,0,1,0">
+        <ItemsControl x:Name="MessageList"
+                      ItemTemplate="{StaticResource MessageItemTemplate}" />
+      </Border>
+      <Grid Grid.Column="1"
+            Padding="8"
+            ColumnSpacing="8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="StatusText"
+                   Text="Ready"
+                   Foreground="#111827"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Center" />
+        <TextBlock x:Name="ZoomText"
+                   Grid.Column="1"
+                   Text="100%"
+                   Foreground="#1F2937"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center" />
+      </Grid>
+    </Grid>
+
+    <Grid x:Name="DomainDialogOverlay"
+          Grid.RowSpan="4"
+          Visibility="Collapsed"
+          Background="#66000000">
+      <Border Margin="28"
+              Background="#DDF7F7"
+              BorderBrush="#2F6F95"
+              BorderThickness="2"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <Border Background="#5F99BA"
+                  BorderBrush="#2F6F95"
+                  BorderThickness="0,0,0,1"
+                  Padding="6,4">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="Select Domain file to create Composition..."
+                         Foreground="#FFFFFF"
+                         FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
+              <Button Grid.Column="1"
+                      Style="{StaticResource CommandButtonStyle}"
+                      Padding="8,2"
+                      MinHeight="24"
+                      Click="DomainDialogCancelClicked"
+                      ToolTipService.ToolTip="Close">
+                <TextBlock Text="X" Foreground="#111827" FontWeight="SemiBold" />
+              </Button>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="1"
+                Padding="8,6"
+                ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Folder:"
+                       Foreground="#111827"
+                       FontSize="12"
+                       VerticalAlignment="Center" />
+            <TextBlock x:Name="DomainFolderText"
+                       Grid.Column="1"
+                       Foreground="#1F2937"
+                       Background="#FFFFFF"
+                       Padding="6,3"
+                       TextWrapping="NoWrap" />
+          </Grid>
+
+          <GridView x:Name="DomainCatalogView"
+                    Grid.Row="2"
+                    Padding="8,0,8,8"
+                    ItemTemplate="{StaticResource DomainTileTemplate}"
+                    SelectionChanged="DomainCatalogSelectionChanged" />
+
+          <Grid Grid.Row="3"
+                Padding="8"
+                Background="#CCF8FFFF">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+              <CheckBox x:Name="UseTemplateCheckBox" IsChecked="True" RequestedTheme="Light" />
+              <TextBlock Text="Use Template"
+                         Foreground="#111827"
+                         FontSize="12"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+
+            <Button Grid.Column="2"
+                    Style="{StaticResource CommandButtonStyle}"
+                    Click="DomainDialogBasicClicked"
+                    Margin="0,0,8,0">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <SymbolIcon Symbol="Document" Foreground="#2563EB" />
+                <TextBlock Text="Basic Domain" Foreground="#111827" />
+              </StackPanel>
+            </Button>
+
+            <Button Grid.Column="3"
+                    Style="{StaticResource CommandButtonStyle}"
+                    Click="DomainDialogCancelClicked">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <SymbolIcon Symbol="Cancel" Foreground="#DC2626" />
+                <TextBlock Text="Cancel" Foreground="#111827" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid x:Name="ConceptEditorOverlay"
+          Grid.RowSpan="4"
+          RequestedTheme="Light"
+          Visibility="Collapsed"
+          Background="#66000000">
+      <Border Margin="32"
+              Background="#DDF7F7"
+              BorderBrush="#2F6F95"
+              BorderThickness="2"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="152" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <Border Background="#5F99BA"
+                  BorderBrush="#2F6F95"
+                  BorderThickness="0,0,0,1"
+                  Padding="6,4">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock x:Name="ConceptEditorTitleText"
+                         Text="Edit Concept Definition"
+                         Foreground="#FFFFFF"
+                         FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
+              <Button Grid.Column="1"
+                      Style="{StaticResource CommandButtonStyle}"
+                      Padding="8,2"
+                      MinHeight="24"
+                      Click="ConceptEditorCancelClicked"
+                      ToolTipService.ToolTip="Close">
+                <TextBlock Text="X" Foreground="#111827" FontWeight="SemiBold" />
+              </Button>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="1"
+                Background="#F8FBFC"
+                Padding="10">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="Preview"
+                         Foreground="#2F6F95"
+                         FontWeight="SemiBold" />
+              <Button Grid.Column="1"
+                      Style="{StaticResource CommandButtonStyle}"
+                      Padding="8,3"
+                      MinHeight="24"
+                      Click="ConceptStylePresetClicked">
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight">
+                    <ScrollViewer Width="460"
+                                  Height="320"
+                                  RequestedTheme="Light"
+                                  Background="#FFFFFF">
+                      <GridView x:Name="ConceptStylePresetGrid"
+                                RequestedTheme="Light"
+                                Background="#FFFFFF"
+                                SelectionMode="Single"
+                                ItemTemplate="{StaticResource ConceptStylePresetTemplate}"
+                                SelectionChanged="ConceptStylePresetSelectionChanged"
+                                Padding="4" />
+                    </ScrollViewer>
+                  </Flyout>
+                </Button.Flyout>
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <SymbolIcon Symbol="ViewAll" Foreground="#2563EB" />
+                  <TextBlock Text="Select predefined Style" Foreground="#111827" FontSize="12" />
+                </StackPanel>
+              </Button>
+            </Grid>
+
+            <Grid Grid.Row="1"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <Grid Width="170"
+                    Height="42">
+                <Border x:Name="ConceptPreviewBorder"
+                        Width="148"
+                        Height="32"
+                        CornerRadius="16"
+                        Background="#FFFFE540"
+                        BorderBrush="#FFD4A900"
+                        BorderThickness="2"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center" />
+                <Ellipse x:Name="ConceptPreviewEllipse"
+                         Width="148"
+                         Height="32"
+                         Fill="#FFFFE540"
+                         Stroke="#FFD4A900"
+                         StrokeThickness="2"
+                         Visibility="Collapsed"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+                <Polygon x:Name="ConceptPreviewPolygon"
+                         Fill="#FFFFE540"
+                         Stroke="#FFD4A900"
+                         StrokeThickness="2"
+                         Visibility="Collapsed"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+                <local:SymbolGlyph x:Name="ConceptPreviewGlyph"
+                                   Width="148"
+                                   Height="32"
+                                   ShapeName="Capsule"
+                                   SymbolFill="#FFFFE540"
+                                   SymbolStroke="#FFD4A900"
+                                   SymbolThickness="2"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                <TextBlock x:Name="ConceptPreviewNameText"
+                           Text="Concept"
+                           Foreground="#0000CC"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+                <Border x:Name="ConceptPreviewPictogramMarker"
+                        Width="22"
+                        Height="24"
+                        Background="#FFFFFF"
+                        BorderBrush="#CBD5E1"
+                        BorderThickness="1"
+                        CornerRadius="1"
+                        HorizontalAlignment="Right"
+                        Margin="0,0,18,0">
+                  <SymbolIcon Symbol="Document" Foreground="#94A3B8" />
+                </Border>
+              </Grid>
+              <Border Grid.Row="1"
+                      Width="124"
+                      Height="76"
+                      BorderBrush="#FFD4A900"
+                      BorderThickness="2"
+                      Background="#F8FAFC"
+                      HorizontalAlignment="Center">
+                <StackPanel>
+                  <Border Background="#6B7280"
+                          Padding="4,2">
+                    <TextBlock Text="Detail Heading"
+                               Foreground="#FFFFFF"
+                               FontSize="11"
+                               FontWeight="SemiBold" />
+                  </Border>
+                  <TextBlock Text="Detail Caption"
+                             Foreground="#111827"
+                             FontSize="10"
+                             HorizontalAlignment="Center" />
+                  <TextBlock Text="Detail Content"
+                             Foreground="#111827"
+                             FontSize="10"
+                             Margin="4,1,0,0" />
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Grid>
+
+          <StackPanel Grid.Row="2"
+                      Orientation="Horizontal"
+                      Background="#C7EEF2"
+                      Padding="6,5,6,0"
+                      Spacing="4">
+            <Button x:Name="ConceptGeneralTabButton" Style="{StaticResource CommandButtonStyle}" Click="ConceptEditorTabClicked" Tag="General"><TextBlock Text="General" Foreground="#111827" /></Button>
+            <Button x:Name="ConceptArrangeTabButton" Style="{StaticResource CommandButtonStyle}" Click="ConceptEditorTabClicked" Tag="Arrange"><TextBlock Text="Arrange" Foreground="#111827" /></Button>
+            <Button x:Name="ConceptSymbolTabButton" Style="{StaticResource CommandButtonStyle}" Click="ConceptEditorTabClicked" Tag="Symbol"><TextBlock Text="Symbol format" Foreground="#111827" /></Button>
+            <Button x:Name="ConceptDetailsTabButton" Style="{StaticResource CommandButtonStyle}" Click="ConceptEditorTabClicked" Tag="Details"><TextBlock Text="Details" Foreground="#111827" /></Button>
+            <Button x:Name="ConceptDescriptionTabButton" Style="{StaticResource CommandButtonStyle}" Click="ConceptEditorTabClicked" Tag="Description"><TextBlock Text="Description" Foreground="#111827" /></Button>
+            <Button x:Name="ConceptTechSpecTabButton" Style="{StaticResource CommandButtonStyle}" Click="ConceptEditorTabClicked" Tag="TechSpec"><TextBlock Text="Tech-Spec" Foreground="#111827" /></Button>
+            <Button x:Name="ConceptTemplatesTabButton" Style="{StaticResource CommandButtonStyle}" Click="ConceptEditorTabClicked" Tag="Templates"><TextBlock Text="Output-Templates" Foreground="#111827" /></Button>
+          </StackPanel>
+
+          <ScrollViewer Grid.Row="3"
+                        Background="#EAF4F7"
+                        Padding="10">
+            <Grid>
+              <StackPanel x:Name="ConceptGeneralPanel" Spacing="6">
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="92" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="86" />
+                    <ColumnDefinition Width="100" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="Name/Title" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="ConceptNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ConceptEditorFieldChanged" />
+                  <TextBlock Grid.Column="2" Text="Pictogram" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="ConceptPictogramTextBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="asset key" TextChanged="ConceptEditorFieldChanged" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="92" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="Tech-Name" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="ConceptTechNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="92" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="Summary" Foreground="#111827" VerticalAlignment="Top" Margin="0,6,0,0" />
+                  <TextBox x:Name="ConceptSummaryTextBox" Grid.Column="1" Height="96" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" AcceptsReturn="True" TextWrapping="Wrap" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="92" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="Global ID" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="ConceptGlobalIdTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#475569" Background="#F8FAFC" BorderBrush="#CBD5E1" IsReadOnly="True" />
+                </Grid>
+                <Grid ColumnSpacing="12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="132" />
+                    <ColumnDefinition Width="132" />
+                    <ColumnDefinition Width="190" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <CheckBox x:Name="ConceptIsComposableCheckBox" Content="Is Composable" RequestedTheme="Light" Foreground="#111827" />
+                  <CheckBox x:Name="ConceptIsVersionableCheckBox" Grid.Column="1" Content="Is Versionable" RequestedTheme="Light" Foreground="#111827" />
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Shape" Foreground="#111827" VerticalAlignment="Center" />
+                    <Grid Width="220">
+                      <Button x:Name="ConceptRepresentativeShapeButton"
+                              Style="{StaticResource CommandButtonStyle}"
+                              Width="220"
+                              MinHeight="28"
+                              Padding="4,2"
+                              ToolTipService.ToolTip="Representative Shape">
+                        <Button.Flyout>
+                          <Flyout Placement="Bottom">
+                            <ScrollViewer Width="620" Height="340" RequestedTheme="Light" Background="#FFFFFF">
+                              <GridView x:Name="ConceptRepresentativeShapeGrid"
+                                        Tag="ConceptRepresentative"
+                                        RequestedTheme="Light"
+                                        Background="#FFFFFF"
+                                        SelectionMode="Single"
+                                        ItemTemplate="{StaticResource ShapeOptionTemplate}"
+                                        SelectionChanged="ShapeOptionSelectionChanged"
+                                        Padding="4" />
+                            </ScrollViewer>
+                          </Flyout>
+                        </Button.Flyout>
+                        <Grid ColumnSpacing="6">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44" />
+                            <ColumnDefinition Width="*" />
+                          </Grid.ColumnDefinitions>
+                          <local:SymbolGlyph x:Name="ConceptRepresentativeShapeGlyph"
+                                             Width="38"
+                                             Height="18"
+                                             ShapeName="Capsule"
+                                             SymbolFill="#FFFFFFFF"
+                                             SymbolStroke="#FF111827"
+                                             SymbolThickness="1"
+                                             VerticalAlignment="Center" />
+                          <TextBlock x:Name="ConceptRepresentativeShapeText"
+                                     Grid.Column="1"
+                                     Text="Capsule"
+                                     Foreground="#111827"
+                                     FontSize="12"
+                                     VerticalAlignment="Center"
+                                     TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                      </Button>
+                      <ComboBox x:Name="ConceptRepresentativeShapeComboBox" Visibility="Collapsed" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="ConceptEditorSelectionChanged" />
+                    </Grid>
+                  </StackPanel>
+                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Cluster" Foreground="#111827" VerticalAlignment="Center" />
+                    <TextBox x:Name="ConceptClusterTextBox" Width="190" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                  </StackPanel>
+                </Grid>
+                <CheckBox x:Name="ConceptPreciseConnectCheckBox" Content="Precise Connect by default" RequestedTheme="Light" Foreground="#111827" />
+              </StackPanel>
+
+              <StackPanel x:Name="ConceptArrangePanel" Visibility="Collapsed" Spacing="10">
+                <CheckBox x:Name="ConceptHasGroupRegionCheckBox" Content="Has Group Region" RequestedTheme="Light" Foreground="#111827" />
+                <CheckBox x:Name="ConceptHasGroupLineCheckBox" Content="Has Group Line" RequestedTheme="Light" Foreground="#111827" />
+                <CheckBox x:Name="ConceptAutoCreateRelatedCheckBox" Content="Can Automatically Create Related Concepts" RequestedTheme="Light" Foreground="#111827" />
+                <Border Padding="10" BorderBrush="#CBD5E1" BorderThickness="1" Background="#F8FAFC">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="Automatic Creation parameters..." Foreground="#64748B" FontWeight="SemiBold" />
+                    <Grid ColumnSpacing="8">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Text="Definition of Concept to Create" Foreground="#111827" VerticalAlignment="Center" />
+                      <ComboBox x:Name="ConceptAutoCreationConceptComboBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                    </Grid>
+                    <Grid ColumnSpacing="8">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Text="Associating Relationship Definition" Foreground="#111827" VerticalAlignment="Center" />
+                      <ComboBox x:Name="ConceptAutoCreationRelationshipComboBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="20">
+                      <CheckBox x:Name="ConceptPositioningRadialCheckBox" Content="Positioning Is Radial" RequestedTheme="Light" Foreground="#111827" />
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Positioning Mode" Foreground="#111827" VerticalAlignment="Center" />
+                        <ComboBox x:Name="ConceptPositioningModeComboBox" Width="190" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                      </StackPanel>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+                <CheckBox x:Name="ConceptCanGroupIntersectingCheckBox" Content="Can Group Intersecting Objects" RequestedTheme="Light" Foreground="#111827" />
+                <CheckBox x:Name="ConceptAutoCreateGroupedCheckBox" Content="Can Automatically Create Grouped Concepts" RequestedTheme="Light" Foreground="#111827" />
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Automatic Grouped Concept Def." Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="ConceptAutoGroupedConceptComboBox" Width="360" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                </StackPanel>
+              </StackPanel>
+
+              <Grid x:Name="ConceptSymbolPanel" Visibility="Collapsed" ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="310" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="8">
+                  <StackPanel Orientation="Horizontal" Spacing="16">
+                    <CheckBox x:Name="ConceptShowGlobalDetailsFirstCheckBox" Content="Show Global Details First" RequestedTheme="Light" Foreground="#111827" />
+                    <CheckBox x:Name="ConceptUseNameAsTitleCheckBox" Content="Use Name as main Title" RequestedTheme="Light" Foreground="#111827" />
+                    <CheckBox x:Name="ConceptFlippedHorizontallyCheckBox" Content="Flipped Horizontally" RequestedTheme="Light" Foreground="#111827" />
+                    <CheckBox x:Name="ConceptFlippedVerticallyCheckBox" Content="Flipped Vertically" RequestedTheme="Light" Foreground="#111827" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="Subtitle Visual Disposition" Foreground="#111827" VerticalAlignment="Center" />
+                    <ComboBox x:Name="ConceptSubtitleDispositionComboBox" Width="150" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                    <TextBlock Text="Pictogram Visual Disposition" Foreground="#111827" VerticalAlignment="Center" />
+                    <ComboBox x:Name="ConceptPictogramDispositionComboBox" Width="150" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="16">
+                    <CheckBox x:Name="ConceptTiltedCheckBox" Content="Tilted" RequestedTheme="Light" Foreground="#111827" />
+                    <CheckBox x:Name="ConceptAsMultipleCheckBox" Content="As Multiple" RequestedTheme="Light" Foreground="#111827" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="Initial Width" Foreground="#111827" VerticalAlignment="Center" />
+                    <TextBox x:Name="ConceptInitialWidthTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ConceptEditorFieldChanged" />
+                    <TextBlock Text="Initial Height" Foreground="#111827" VerticalAlignment="Center" />
+                    <TextBox x:Name="ConceptInitialHeightTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ConceptEditorFieldChanged" />
+                  </StackPanel>
+                  <Border Padding="8" BorderBrush="#CBD5E1" BorderThickness="1">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="Details..." Foreground="#111827" FontWeight="SemiBold" />
+                      <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="Heading Foreground" Foreground="#111827" VerticalAlignment="Center" />
+                        <TextBox Width="86" Text="#FF111827" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                        <TextBlock Text="Content Background" Foreground="#111827" VerticalAlignment="Center" />
+                        <TextBox Width="86" Text="#FFFFFFFF" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="8">
+                  <TextBlock Text="Style" Foreground="#111827" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Shape" Foreground="#111827" VerticalAlignment="Center" />
+                    <Grid Width="220">
+                      <Button x:Name="ConceptSymbolShapeButton"
+                              Style="{StaticResource CommandButtonStyle}"
+                              Width="220"
+                              MinHeight="28"
+                              Padding="4,2"
+                              ToolTipService.ToolTip="Symbol Shape">
+                        <Button.Flyout>
+                          <Flyout Placement="Bottom">
+                            <ScrollViewer Width="620" Height="340" RequestedTheme="Light" Background="#FFFFFF">
+                              <GridView x:Name="ConceptSymbolShapeGrid"
+                                        Tag="ConceptSymbol"
+                                        RequestedTheme="Light"
+                                        Background="#FFFFFF"
+                                        SelectionMode="Single"
+                                        ItemTemplate="{StaticResource ShapeOptionTemplate}"
+                                        SelectionChanged="ShapeOptionSelectionChanged"
+                                        Padding="4" />
+                            </ScrollViewer>
+                          </Flyout>
+                        </Button.Flyout>
+                        <Grid ColumnSpacing="6">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44" />
+                            <ColumnDefinition Width="*" />
+                          </Grid.ColumnDefinitions>
+                          <local:SymbolGlyph x:Name="ConceptSymbolShapeGlyph"
+                                             Width="38"
+                                             Height="18"
+                                             ShapeName="Capsule"
+                                             SymbolFill="#FFFFFFFF"
+                                             SymbolStroke="#FF111827"
+                                             SymbolThickness="1"
+                                             VerticalAlignment="Center" />
+                          <TextBlock x:Name="ConceptSymbolShapeText"
+                                     Grid.Column="1"
+                                     Text="Capsule"
+                                     Foreground="#111827"
+                                     FontSize="12"
+                                     VerticalAlignment="Center"
+                                     TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                      </Button>
+                      <ComboBox x:Name="ConceptSymbolShapeComboBox" Visibility="Collapsed" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="ConceptEditorSelectionChanged" />
+                    </Grid>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Line Brush" Foreground="#111827" VerticalAlignment="Center" />
+                    <TextBox x:Name="ConceptStrokeColorTextBox" Width="104" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ConceptEditorFieldChanged" />
+                    <TextBlock Text="Main Background" Foreground="#111827" VerticalAlignment="Center" />
+                    <TextBox x:Name="ConceptFillColorTextBox" Width="104" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ConceptEditorFieldChanged" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Line Dash" Foreground="#111827" VerticalAlignment="Center" />
+                    <ComboBox Width="214" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectedIndex="0">
+                      <ComboBoxItem Content="Solid" />
+                      <ComboBoxItem Content="Dashed" />
+                    </ComboBox>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Line Thickness" Foreground="#111827" VerticalAlignment="Center" />
+                    <TextBox x:Name="ConceptLineThicknessTextBox" Width="92" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ConceptEditorFieldChanged" />
+                  </StackPanel>
+                  <TextBlock Text="Text Formats..." Foreground="#111827" FontWeight="SemiBold" Margin="0,8,0,0" />
+                  <Border Height="32" Background="#E2E8F0"><TextBlock Text="Title    AaBbCc 01234" Foreground="#0000CC" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                  <Border Height="32" Background="#E5E7EB"><TextBlock Text="Subtitle    AaBbCc 01234" Foreground="#111827" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                  <Border Height="32" Background="#CBD5E1"><TextBlock Text="Detail Heading    AaBbCc 01234" Foreground="#FFFFFF" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                  <Border Height="32" Background="#F1F5F9"><TextBlock Text="Detail Caption    AaBbCc 01234" Foreground="#111827" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                </StackPanel>
+              </Grid>
+
+              <StackPanel x:Name="ConceptDetailsPanel" Visibility="Collapsed" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="From Definition..." Foreground="#111827" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <Button Style="{StaticResource CommandButtonStyle}" Click="ConceptDetailDesignateClicked"><TextBlock Text="Designate" Foreground="#111827" /></Button>
+                  <Button Style="{StaticResource CommandButtonStyle}" Click="ConceptDetailAddClicked"><TextBlock Text="Add" Foreground="#111827" /></Button>
+                  <Button Style="{StaticResource CommandButtonStyle}" Click="ConceptDetailDeleteClicked"><TextBlock Text="Delete" Foreground="#111827" /></Button>
+                </StackPanel>
+                <ListView x:Name="ConceptDetailsList"
+                          RequestedTheme="Light"
+                          SelectionMode="Single"
+                          Background="#EAF4F7"
+                          ItemTemplate="{StaticResource ConceptDetailEditTemplate}" />
+              </StackPanel>
+
+              <StackPanel x:Name="ConceptDescriptionPanel" Visibility="Collapsed" Spacing="6">
+                <TextBlock Text="Description" Foreground="#111827" FontWeight="SemiBold" />
+                <TextBox x:Name="ConceptDescriptionTextBox" Height="330" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" AcceptsReturn="True" TextWrapping="Wrap" />
+              </StackPanel>
+
+              <StackPanel x:Name="ConceptTechSpecPanel" Visibility="Collapsed" Spacing="6">
+                <TextBlock Text="Tech-Spec" Foreground="#111827" FontWeight="SemiBold" />
+                <TextBox x:Name="ConceptTechSpecTextBox" Height="330" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap" />
+              </StackPanel>
+
+              <StackPanel x:Name="ConceptTemplatesPanel" Visibility="Collapsed" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Language:" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="ConceptTemplateLanguageComboBox" Width="220" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                  <Button Style="{StaticResource CommandButtonStyle}" Click="ConceptTemplateInsertClicked"><TextBlock Text="Insert predefined..." Foreground="#111827" /></Button>
+                  <Button Style="{StaticResource CommandButtonStyle}" Click="ConceptTemplateTestClicked"><TextBlock Text="Test" Foreground="#111827" /></Button>
+                </StackPanel>
+                <TextBox x:Name="ConceptTemplateTextBox" Height="300" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap" />
+                <CheckBox x:Name="ConceptTemplateExtendsBaseCheckBox" Content="Extends Base Template" RequestedTheme="Light" Foreground="#111827" />
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+
+          <Grid Grid.Row="4"
+                Background="#CCF8FFFF"
+                Padding="8"
+                ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="ConceptEditorValidationText"
+                       Foreground="#B91C1C"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap" />
+            <Button Grid.Column="1"
+                    Style="{StaticResource CommandButtonStyle}"
+                    Click="ConceptEditorOkClicked">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <SymbolIcon Symbol="Accept" Foreground="#16A34A" />
+                <TextBlock Text="OK" Foreground="#111827" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="2"
+                    Style="{StaticResource CommandButtonStyle}"
+                    Click="ConceptEditorCancelClicked">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <SymbolIcon Symbol="Cancel" Foreground="#DC2626" />
+                <TextBlock Text="Cancel" Foreground="#111827" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid x:Name="RelationshipEditorOverlay"
+          Grid.RowSpan="4"
+          RequestedTheme="Light"
+          Visibility="Collapsed"
+          Background="#66000000">
+      <Border Margin="32"
+              Background="#DDF7F7"
+              BorderBrush="#2F6F95"
+              BorderThickness="2"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="136" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <Border Background="#5F99BA" Padding="6,4">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock x:Name="RelationshipEditorTitleText" Text="Edit Relationship Definition" Foreground="#FFFFFF" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Style="{StaticResource CommandButtonStyle}" Padding="8,2" MinHeight="24" Click="RelationshipEditorCancelClicked">
+                <TextBlock Text="X" Foreground="#111827" FontWeight="SemiBold" />
+              </Button>
+            </Grid>
+          </Border>
+          <Grid Grid.Row="1" Background="#F8FBFC" Padding="10">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Preview" Foreground="#2F6F95" FontWeight="SemiBold" />
+            <Grid Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Width="330" Height="84">
+              <Line x:Name="RelationshipPreviewConnector" X1="22" Y1="42" X2="306" Y2="42" Stroke="#FF64748B" StrokeThickness="2" />
+              <Path x:Name="RelationshipPreviewTailPlug" Data="M 34,34 L 20,42 L 34,50" Stroke="#FF64748B" StrokeThickness="2" Visibility="Collapsed" />
+              <Path x:Name="RelationshipPreviewHeadPlug" Data="M 296,34 L 310,42 L 296,50" Stroke="#FF64748B" StrokeThickness="2" />
+              <TextBlock x:Name="RelationshipPreviewOriginRoleText" Text="Origin" Foreground="#FF475569" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="22,0,0,0" />
+              <TextBlock x:Name="RelationshipPreviewTargetRoleText" Text="Target" Foreground="#FF475569" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,18,0" />
+              <Border x:Name="RelationshipPreviewBorder" Width="150" Height="34" CornerRadius="17" Background="#FFE5E7EB" BorderBrush="#FF64748B" BorderThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <Ellipse x:Name="RelationshipPreviewEllipse" Width="150" Height="34" Fill="#FFE5E7EB" Stroke="#FF64748B" StrokeThickness="2" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <Polygon x:Name="RelationshipPreviewPolygon" Fill="#FFE5E7EB" Stroke="#FF64748B" StrokeThickness="2" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <local:SymbolGlyph x:Name="RelationshipPreviewGlyph" Width="150" Height="34" ShapeName="Ellipse" SymbolFill="#FFE5E7EB" SymbolStroke="#FF64748B" SymbolThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <TextBlock x:Name="RelationshipPreviewNameText" Text="Relationship" Foreground="#111827" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+          </Grid>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Background="#C7EEF2" Padding="6,5,6,0" Spacing="4">
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="General"><TextBlock Text="General" Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Arrange"><TextBlock Text="Arrange" Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Origin"><TextBlock Text="Origin/Participant Link-Role Def." Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Target"><TextBlock Text="Target Link-Role Def." Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Symbol"><TextBlock Text="Symbol format" Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Connector"><TextBlock Text="Connectors format" Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Details"><TextBlock Text="Details" Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Description"><TextBlock Text="Description" Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="TechSpec"><TextBlock Text="Tech-Spec" Foreground="#111827" /></Button>
+            <Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorTabClicked" Tag="Templates"><TextBlock Text="Output-Templates" Foreground="#111827" /></Button>
+          </StackPanel>
+          <ScrollViewer Grid.Row="3" Background="#EAF4F7" Padding="10">
+            <Grid>
+              <StackPanel x:Name="RelationshipGeneralPanel" Spacing="6">
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /><ColumnDefinition Width="86" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Name/Title" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" />
+                  <TextBlock Grid.Column="2" Text="Pictogram" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipPictogramTextBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Tech-Name" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipTechNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Summary" Foreground="#111827" VerticalAlignment="Top" Margin="0,6,0,0" />
+                  <TextBox x:Name="RelationshipSummaryTextBox" Grid.Column="1" Height="84" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" AcceptsReturn="True" TextWrapping="Wrap" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Global ID" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipGlobalIdTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#475569" Background="#F8FAFC" BorderBrush="#CBD5E1" IsReadOnly="True" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Ancestor" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipAncestorComboBox"
+                            Grid.Column="1"
+                            RequestedTheme="Light"
+                            Foreground="#111827"
+                            Background="#FFFFFF" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                  <CheckBox x:Name="RelationshipIsComposableCheckBox" Content="Is Composable" />
+                  <CheckBox x:Name="RelationshipIsVersionableCheckBox" Content="Is Versionable" />
+                  <CheckBox x:Name="RelationshipPreciseConnectCheckBox" Content="Precise Connect by default" />
+                  <CheckBox x:Name="RelationshipIsDirectionalCheckBox" Content="Relationship is Directional" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                  <CheckBox x:Name="RelationshipIsSimpleCheckBox" Content="Is Simple" />
+                  <CheckBox x:Name="RelationshipHideCentralCheckBox" Content="Hide Central Symbol When Simple" />
+                  <CheckBox x:Name="RelationshipShowNameIfHiddenCheckBox" Content="Show Name If Hiding Central Symbol" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Shape" Foreground="#111827" VerticalAlignment="Center" />
+                  <Grid Width="220">
+                    <Button x:Name="RelationshipRepresentativeShapeButton"
+                            Style="{StaticResource CommandButtonStyle}"
+                            Width="220"
+                            MinHeight="28"
+                            Padding="4,2"
+                            ToolTipService.ToolTip="Representative Shape">
+                      <Button.Flyout>
+                        <Flyout Placement="Bottom">
+                          <ScrollViewer Width="620" Height="340" RequestedTheme="Light" Background="#FFFFFF">
+                            <GridView x:Name="RelationshipRepresentativeShapeGrid"
+                                      Tag="RelationshipRepresentative"
+                                      RequestedTheme="Light"
+                                      Background="#FFFFFF"
+                                      SelectionMode="Single"
+                                      ItemTemplate="{StaticResource ShapeOptionTemplate}"
+                                      SelectionChanged="ShapeOptionSelectionChanged"
+                                      Padding="4" />
+                          </ScrollViewer>
+                        </Flyout>
+                      </Button.Flyout>
+                      <Grid ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="44" />
+                          <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <local:SymbolGlyph x:Name="RelationshipRepresentativeShapeGlyph"
+                                           Width="38"
+                                           Height="18"
+                                           ShapeName="Ellipse"
+                                           SymbolFill="#FFFFFFFF"
+                                           SymbolStroke="#FF111827"
+                                           SymbolThickness="1"
+                                           VerticalAlignment="Center" />
+                        <TextBlock x:Name="RelationshipRepresentativeShapeText"
+                                   Grid.Column="1"
+                                   Text="Ellipse"
+                                   Foreground="#111827"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                    </Button>
+                    <ComboBox x:Name="RelationshipRepresentativeShapeComboBox" Visibility="Collapsed" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="RelationshipEditorSelectionChanged" />
+                  </Grid>
+                  <TextBlock Text="Cluster" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipClusterTextBox" Width="220" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                </StackPanel>
+              </StackPanel>
+              <StackPanel x:Name="RelationshipArrangePanel" Visibility="Collapsed" Spacing="10">
+                <CheckBox x:Name="RelationshipHasGroupRegionCheckBox" Content="Has Group Region" />
+                <CheckBox x:Name="RelationshipHasGroupLineCheckBox" Content="Has Group Line" />
+                <CheckBox x:Name="RelationshipAutoCreateRelatedCheckBox" Content="Can Automatically Create Related Concepts" />
+                <CheckBox x:Name="RelationshipCanGroupIntersectingCheckBox" Content="Can Group Intersecting Objects" />
+                <CheckBox x:Name="RelationshipAutoCreateGroupedCheckBox" Content="Can Automatically Create Grouped Concepts" />
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Automatic Grouped Concept Def." Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipAutoGroupedConceptComboBox" Width="360" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                </StackPanel>
+              </StackPanel>
+              <StackPanel x:Name="RelationshipOriginPanel" Visibility="Collapsed" Spacing="8">
+                <TextBlock Text="Origin/Participant Link-Role Def." Foreground="#111827" FontWeight="SemiBold" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Name/Title" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipOriginNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" />
+                  <TextBlock Grid.Column="2" Text="Tech-Name" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipOriginTechNameTextBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="180" /><ColumnDefinition Width="104" /><ColumnDefinition Width="180" /><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Role Type" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipOriginRoleTypeComboBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="RelationshipEditorSelectionChanged" />
+                  <TextBlock Grid.Column="2" Text="Variant" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipOriginAllowedVariantComboBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                  <TextBlock Grid.Column="4" Text="Pictogram" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipOriginPictogramTextBox" Grid.Column="5" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                </Grid>
+                <TextBox x:Name="RelationshipOriginSummaryTextBox" Height="72" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Summary" AcceptsReturn="True" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="Max Connections" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipOriginMaxConnectionsTextBox" Width="80" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                  <CheckBox x:Name="RelationshipOriginOrderedCheckBox" Content="Related Ideas Are Ordered" />
+                </StackPanel>
+                <TextBox x:Name="RelationshipOriginAllowedTextBox" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Allowed Variants (raw Tech-Names)" />
+                <TextBox x:Name="RelationshipOriginAssociableTextBox" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Associable Concept definitions" />
+              </StackPanel>
+              <StackPanel x:Name="RelationshipTargetPanel" Visibility="Collapsed" Spacing="8">
+                <TextBlock Text="Target Link-Role Def." Foreground="#111827" FontWeight="SemiBold" />
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Name/Title" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipTargetNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" />
+                  <TextBlock Grid.Column="2" Text="Tech-Name" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipTargetTechNameTextBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="180" /><ColumnDefinition Width="104" /><ColumnDefinition Width="180" /><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="Role Type" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipTargetRoleTypeComboBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="RelationshipEditorSelectionChanged" />
+                  <TextBlock Grid.Column="2" Text="Variant" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipTargetAllowedVariantComboBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                  <TextBlock Grid.Column="4" Text="Pictogram" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipTargetPictogramTextBox" Grid.Column="5" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                </Grid>
+                <TextBox x:Name="RelationshipTargetSummaryTextBox" Height="72" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Summary" AcceptsReturn="True" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="Max Connections" Foreground="#111827" VerticalAlignment="Center" />
+                  <TextBox x:Name="RelationshipTargetMaxConnectionsTextBox" Width="80" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" />
+                  <CheckBox x:Name="RelationshipTargetOrderedCheckBox" Content="Related Ideas Are Ordered" />
+                </StackPanel>
+                <TextBox x:Name="RelationshipTargetAllowedTextBox" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Allowed Variants (raw Tech-Names)" />
+                <TextBox x:Name="RelationshipTargetAssociableTextBox" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Associable Concept definitions" />
+              </StackPanel>
+              <StackPanel x:Name="RelationshipSymbolPanel" Visibility="Collapsed" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="Shape" Foreground="#111827" VerticalAlignment="Center" /><Grid Width="220"><Button x:Name="RelationshipSymbolShapeButton" Style="{StaticResource CommandButtonStyle}" Width="220" MinHeight="28" Padding="4,2" ToolTipService.ToolTip="Symbol Shape"><Button.Flyout><Flyout Placement="Bottom"><ScrollViewer Width="620" Height="340" RequestedTheme="Light" Background="#FFFFFF"><GridView x:Name="RelationshipSymbolShapeGrid" Tag="RelationshipSymbol" RequestedTheme="Light" Background="#FFFFFF" SelectionMode="Single" ItemTemplate="{StaticResource ShapeOptionTemplate}" SelectionChanged="ShapeOptionSelectionChanged" Padding="4" /></ScrollViewer></Flyout></Button.Flyout><Grid ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="44" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><local:SymbolGlyph x:Name="RelationshipSymbolShapeGlyph" Width="38" Height="18" ShapeName="Ellipse" SymbolFill="#FFFFFFFF" SymbolStroke="#FF111827" SymbolThickness="1" VerticalAlignment="Center" /><TextBlock x:Name="RelationshipSymbolShapeText" Grid.Column="1" Text="Ellipse" Foreground="#111827" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></Grid></Button><ComboBox x:Name="RelationshipSymbolShapeComboBox" Visibility="Collapsed" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="RelationshipEditorSelectionChanged" /></Grid><TextBlock Text="Fill" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipFillColorTextBox" Width="110" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" /><TextBlock Text="Stroke" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipStrokeColorTextBox" Width="110" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="Line Thickness" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipLineThicknessTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" /><TextBlock Text="Initial Width" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipInitialWidthTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /><TextBlock Text="Initial Height" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipInitialHeightTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /></StackPanel>
+              </StackPanel>
+              <StackPanel x:Name="RelationshipConnectorPanel" Visibility="Collapsed" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="Line Brush" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipConnectorColorTextBox" Width="112" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="RelationshipEditorFieldChanged" /><TextBlock Text="Main Background" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipConnectorBackgroundTextBox" Width="112" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /><TextBlock Text="Line Thickness" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="RelationshipConnectorThicknessTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="Line Dash" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipConnectorDashComboBox" Width="130" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="RelationshipEditorSelectionChanged" />
+                  <TextBlock Text="Head Plug" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipHeadPlugComboBox" Width="190" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="RelationshipEditorSelectionChanged" />
+                  <TextBlock Text="Tail Plug" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipTailPlugComboBox" Width="190" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="RelationshipEditorSelectionChanged" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="Head Variant" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipHeadVariantComboBox" Width="130" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                  <TextBlock Text="Tail Variant" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipTailVariantComboBox" Width="130" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                  <TextBlock Text="Path" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipConnectorPathStyleComboBox" Width="130" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                  <TextBlock Text="Corners" Foreground="#111827" VerticalAlignment="Center" />
+                  <ComboBox x:Name="RelationshipConnectorPathCornerComboBox" Width="120" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="14"><CheckBox x:Name="RelationshipLabelDescriptorCheckBox" Content="Link-Role Descriptor Labels" /><CheckBox x:Name="RelationshipLabelDefinitorCheckBox" Content="Link-Role Definitor Labels" /><CheckBox x:Name="RelationshipLabelVariantCheckBox" Content="Link-Role Variant Labels" /></StackPanel>
+              </StackPanel>
+              <StackPanel x:Name="RelationshipDetailsPanel" Visibility="Collapsed" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="From Definition..." Foreground="#111827" FontWeight="SemiBold" VerticalAlignment="Center" /><Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipDetailAddClicked"><TextBlock Text="Add" Foreground="#111827" /></Button><Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipDetailDeleteClicked"><TextBlock Text="Delete" Foreground="#111827" /></Button></StackPanel>
+                <ListView x:Name="RelationshipDetailsList" RequestedTheme="Light" SelectionMode="Single" Background="#EAF4F7" ItemTemplate="{StaticResource ConceptDetailEditTemplate}" />
+              </StackPanel>
+              <StackPanel x:Name="RelationshipDescriptionPanel" Visibility="Collapsed" Spacing="6"><TextBlock Text="Description" Foreground="#111827" FontWeight="SemiBold" /><TextBox x:Name="RelationshipDescriptionTextBox" Height="300" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" AcceptsReturn="True" TextWrapping="Wrap" /></StackPanel>
+              <StackPanel x:Name="RelationshipTechSpecPanel" Visibility="Collapsed" Spacing="6"><TextBlock Text="Tech-Spec" Foreground="#111827" FontWeight="SemiBold" /><TextBox x:Name="RelationshipTechSpecTextBox" Height="300" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap" /></StackPanel>
+              <StackPanel x:Name="RelationshipTemplatesPanel" Visibility="Collapsed" Spacing="8"><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="Language:" Foreground="#111827" VerticalAlignment="Center" /><ComboBox x:Name="RelationshipTemplateLanguageComboBox" Width="220" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" /><Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipTemplateInsertClicked"><TextBlock Text="Insert predefined..." Foreground="#111827" /></Button><Button Style="{StaticResource CommandButtonStyle}" Click="RelationshipTemplateTestClicked"><TextBlock Text="Test" Foreground="#111827" /></Button></StackPanel><TextBox x:Name="RelationshipTemplateTextBox" Height="280" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap" /><CheckBox x:Name="RelationshipTemplateExtendsBaseCheckBox" Content="Extends Base Template" /></StackPanel>
+            </Grid>
+          </ScrollViewer>
+          <Grid Grid.Row="4" Background="#CCF8FFFF" Padding="8" ColumnSpacing="8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBlock x:Name="RelationshipEditorValidationText" Foreground="#B91C1C" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorOkClicked"><StackPanel Orientation="Horizontal" Spacing="5"><SymbolIcon Symbol="Accept" Foreground="#16A34A" /><TextBlock Text="OK" Foreground="#111827" /></StackPanel></Button>
+            <Button Grid.Column="2" Style="{StaticResource CommandButtonStyle}" Click="RelationshipEditorCancelClicked"><StackPanel Orientation="Horizontal" Spacing="5"><SymbolIcon Symbol="Cancel" Foreground="#DC2626" /><TextBlock Text="Cancel" Foreground="#111827" /></StackPanel></Button>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid x:Name="MarkerEditorOverlay"
+          Grid.RowSpan="4"
+          RequestedTheme="Light"
+          Visibility="Collapsed"
+          Background="#66000000">
+      <Border Margin="120,80" Background="#DDF7F7" BorderBrush="#2F6F95" BorderThickness="2">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="126" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+          <Border Background="#5F99BA" Padding="6,4"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="MarkerEditorTitleText" Text="Edit Marker Definition" Foreground="#FFFFFF" FontWeight="SemiBold" /><Button Grid.Column="1" Style="{StaticResource CommandButtonStyle}" Padding="8,2" MinHeight="24" Click="MarkerEditorCancelClicked"><TextBlock Text="X" Foreground="#111827" FontWeight="SemiBold" /></Button></Grid></Border>
+          <Grid Grid.Row="1" Background="#F8FBFC" Padding="10"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="Preview" Foreground="#2F6F95" FontWeight="SemiBold" /><Border x:Name="MarkerPreviewSwatch" Grid.Row="1" Width="220" Height="46" Background="#FFFBBF24" BorderBrush="#FF111827" BorderThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock x:Name="MarkerPreviewNameText" Text="Marker" Foreground="#111827" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border></Grid>
+          <StackPanel Grid.Row="2" Background="#EAF4F7" Padding="10" Spacing="8">
+            <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="86" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions><TextBlock Text="Name/Title" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="MarkerNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="MarkerEditorFieldChanged" /><TextBlock Grid.Column="2" Text="Pictogram" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="MarkerPictogramTextBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="MarkerEditorFieldChanged" /></Grid>
+            <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Tech-Name" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="MarkerTechNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /></Grid>
+            <TextBox x:Name="MarkerSummaryTextBox" Height="96" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Summary" AcceptsReturn="True" TextWrapping="Wrap" />
+            <TextBox x:Name="MarkerGlobalIdTextBox" RequestedTheme="Light" Foreground="#475569" Background="#F8FAFC" BorderBrush="#CBD5E1" IsReadOnly="True" />
+            <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="Cluster" Foreground="#111827" VerticalAlignment="Center" /><ComboBox x:Name="MarkerClusterComboBox" Width="160" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="MarkerEditorSelectionChanged" /><TextBlock Text="Background" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="MarkerBackgroundTextBox" Width="112" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="MarkerEditorFieldChanged" /><TextBlock Text="Foreground" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="MarkerForegroundTextBox" Width="112" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="MarkerEditorFieldChanged" /></StackPanel>
+          </StackPanel>
+          <Grid Grid.Row="3" Background="#CCF8FFFF" Padding="8" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="MarkerEditorValidationText" Foreground="#B91C1C" VerticalAlignment="Center" TextWrapping="Wrap" /><Button Grid.Column="1" Style="{StaticResource CommandButtonStyle}" Click="MarkerEditorOkClicked"><StackPanel Orientation="Horizontal" Spacing="5"><SymbolIcon Symbol="Accept" Foreground="#16A34A" /><TextBlock Text="OK" Foreground="#111827" /></StackPanel></Button><Button Grid.Column="2" Style="{StaticResource CommandButtonStyle}" Click="MarkerEditorCancelClicked"><StackPanel Orientation="Horizontal" Spacing="5"><SymbolIcon Symbol="Cancel" Foreground="#DC2626" /><TextBlock Text="Cancel" Foreground="#111827" /></StackPanel></Button></Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid x:Name="ComplementEditorOverlay"
+          Grid.RowSpan="4"
+          RequestedTheme="Light"
+          Visibility="Collapsed"
+          Background="#66000000">
+      <Border Margin="88,58" Background="#DDF7F7" BorderBrush="#2F6F95" BorderThickness="2">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="126" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+          <Border Background="#5F99BA" Padding="6,4"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="ComplementEditorTitleText" Text="Edit Complement Definition" Foreground="#FFFFFF" FontWeight="SemiBold" /><Button Grid.Column="1" Style="{StaticResource CommandButtonStyle}" Padding="8,2" MinHeight="24" Click="ComplementEditorCancelClicked"><TextBlock Text="X" Foreground="#111827" FontWeight="SemiBold" /></Button></Grid></Border>
+          <Grid Grid.Row="1" Background="#F8FBFC" Padding="10"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="Preview" Foreground="#2F6F95" FontWeight="SemiBold" /><Border x:Name="ComplementPreviewBorder" Grid.Row="1" Width="240" Height="64" Background="#FFF8FAFC" BorderBrush="#FF1D4ED8" BorderThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock x:Name="ComplementPreviewNameText" Text="Complement" Foreground="#FF1D4ED8" FontWeight="SemiBold" HorizontalAlignment="Center" /><TextBlock x:Name="ComplementPreviewKindText" Text="Text" Foreground="#64748B" FontSize="11" HorizontalAlignment="Center" /></StackPanel></Border></Grid>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Background="#C7EEF2" Padding="6,5,6,0" Spacing="4"><Button Style="{StaticResource CommandButtonStyle}" Click="ComplementEditorTabClicked" Tag="General"><TextBlock Text="General" Foreground="#111827" /></Button><Button Style="{StaticResource CommandButtonStyle}" Click="ComplementEditorTabClicked" Tag="Visual"><TextBlock Text="Visual defaults" Foreground="#111827" /></Button><Button Style="{StaticResource CommandButtonStyle}" Click="ComplementEditorTabClicked" Tag="Content"><TextBlock Text="Content defaults" Foreground="#111827" /></Button></StackPanel>
+          <ScrollViewer Grid.Row="3" Background="#EAF4F7" Padding="10">
+            <Grid>
+              <StackPanel x:Name="ComplementGeneralPanel" Spacing="8">
+                <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="86" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions><TextBlock Text="Name/Title" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ComplementEditorFieldChanged" /><TextBlock Grid.Column="2" Text="Pictogram" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementPictogramTextBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ComplementEditorFieldChanged" /></Grid>
+                <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="72" /><ColumnDefinition Width="190" /></Grid.ColumnDefinitions><TextBlock Text="Tech-Name" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementTechNameTextBox" Grid.Column="1" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /><TextBlock Grid.Column="2" Text="Kind" Foreground="#111827" VerticalAlignment="Center" /><ComboBox x:Name="ComplementKindComboBox" Grid.Column="3" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" SelectionChanged="ComplementEditorSelectionChanged" /></Grid>
+                <TextBox x:Name="ComplementSummaryTextBox" Height="96" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" PlaceholderText="Summary" AcceptsReturn="True" TextWrapping="Wrap" />
+                <TextBox x:Name="ComplementGlobalIdTextBox" RequestedTheme="Light" Foreground="#475569" Background="#F8FAFC" BorderBrush="#CBD5E1" IsReadOnly="True" />
+              </StackPanel>
+              <StackPanel x:Name="ComplementVisualPanel" Visibility="Collapsed" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="Foreground" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementForegroundTextBox" Width="112" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ComplementEditorFieldChanged" /><TextBlock Text="Background" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementBackgroundTextBox" Width="112" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ComplementEditorFieldChanged" /><TextBlock Text="Line Dash" Foreground="#111827" VerticalAlignment="Center" /><ComboBox x:Name="ComplementDashComboBox" Width="130" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="Line Thickness" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementThicknessTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" TextChanged="ComplementEditorFieldChanged" /><TextBlock Text="Orientation" Foreground="#111827" VerticalAlignment="Center" /><ComboBox x:Name="ComplementOrientationComboBox" Width="140" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" /><TextBlock Text="Quadrant" Foreground="#111827" VerticalAlignment="Center" /><ComboBox x:Name="ComplementQuadrantComboBox" Width="140" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="Offset X" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementOffsetXTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /><TextBlock Text="Offset Y" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementOffsetYTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /><TextBlock Text="Initial Width" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementWidthTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /><TextBlock Text="Initial Height" Foreground="#111827" VerticalAlignment="Center" /><TextBox x:Name="ComplementHeightTextBox" Width="82" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /></StackPanel>
+              </StackPanel>
+              <StackPanel x:Name="ComplementContentPanel" Visibility="Collapsed" Spacing="8"><TextBlock Text="Text / note / stamp defaults" Foreground="#111827" FontWeight="SemiBold" /><TextBox x:Name="ComplementTextTextBox" Height="160" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" AcceptsReturn="True" TextWrapping="Wrap" /><TextBlock Text="Image asset default" Foreground="#111827" FontWeight="SemiBold" /><TextBox x:Name="ComplementImageAssetTextBox" RequestedTheme="Light" Foreground="#111827" Background="#FFFFFF" BorderBrush="#9EB5C2" /></StackPanel>
+            </Grid>
+          </ScrollViewer>
+          <Grid Grid.Row="4" Background="#CCF8FFFF" Padding="8" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="ComplementEditorValidationText" Foreground="#B91C1C" VerticalAlignment="Center" TextWrapping="Wrap" /><Button Grid.Column="1" Style="{StaticResource CommandButtonStyle}" Click="ComplementEditorOkClicked"><StackPanel Orientation="Horizontal" Spacing="5"><SymbolIcon Symbol="Accept" Foreground="#16A34A" /><TextBlock Text="OK" Foreground="#111827" /></StackPanel></Button><Button Grid.Column="2" Style="{StaticResource CommandButtonStyle}" Click="ComplementEditorCancelClicked"><StackPanel Orientation="Horizontal" Spacing="5"><SymbolIcon Symbol="Cancel" Foreground="#DC2626" /><TextBlock Text="Cancel" Foreground="#111827" /></StackPanel></Button></Grid>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Page>

@@ -1,0 +1,10 @@
+{
+  "background_color": "#ffffff",
+  "description": "Instrumind.ThinkComposer",
+  "display": "standalone",
+  "name": "Instrumind.ThinkComposer",
+  "short_name": "Instrumind.ThinkComposer",
+  "start_url": "/index.html",
+  "theme_color": "#ffffff",
+  "scope": "/"
+}

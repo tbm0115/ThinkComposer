@@ -34,6 +34,7 @@ using System.Windows.Shapes;
 using Instrumind.Common;
 using Instrumind.Common.EntityBase;
 using Instrumind.Common.EntityDefinition;
+using Microsoft.AspNetCore.Mvc;
 
 /// Library of standard Instrumind WPF custom and user controls.
 namespace Instrumind.Common.Visualization.Widgets

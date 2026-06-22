@@ -26,6 +26,7 @@ using Instrumind.Common;
 using Instrumind.Common.EntityBase;
 using Instrumind.Common.Visualization;
 using Instrumind.Common.Visualization.Widgets;
+using Microsoft.AspNetCore.Mvc;
 
 /// Provides structures, components and services for defining and exposing business entities.
 namespace Instrumind.Common.EntityDefinition

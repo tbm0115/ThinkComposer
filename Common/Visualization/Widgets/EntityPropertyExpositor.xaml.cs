@@ -37,6 +37,7 @@ using System.Windows.Shapes;
 using Instrumind.Common;
 using Instrumind.Common.EntityBase;
 using Instrumind.Common.EntityDefinition;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Instrumind.Common.Visualization.Widgets
 {

@@ -16,6 +16,8 @@ There are two current formats:
 
 Native `.tcom` and `.tdom` files remain authoritative. JSON is an interchange, patch, and merge layer only.
 
+Saved native packages may also contain AI-readable sidecar snapshots under `/Interchange/`, including `manifest.json`, Composition JSON, Domain JSON, optional template Composition JSON, and capped PNG view previews under `/Previews/views/`. When a user provides a native `.tcom` or `.tdom`, inspect those embedded sidecars first if they are present. Treat them as synchronized context snapshots, not as the authoritative persistence model; native `/Composition.bin` and `/Domain.bin` remain authoritative.
+
 ## Source-of-truth order
 
 Use the most current accessible references in this order:
@@ -25,9 +27,11 @@ Use the most current accessible references in this order:
 3. Bundled fallback references:
    - `references/thinkcomposer-json-interchange.schema.json`
    - `references/thinkcomposer-domain-json-interchange.schema.json`
+   - `references/thinkcomposer-container-manifest.schema.json`
    - `references/json-interchange.md`
    - `references/domain-json-interchange.md`
    - `references/domain-sync.md`
+   - `references/container-readable-snapshots.md`
    - `references/output-template-generation.md`
    - `references/dcom-interchange-release-notes.md`
    - `references/appearance-layout-tools.md`

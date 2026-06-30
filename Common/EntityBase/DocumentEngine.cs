@@ -103,7 +103,8 @@ namespace Instrumind.Common.EntityBase
         /// </summary>
         public static string StoreToLocation<TContent>(TContent Content, string Kind, string ContentType, Uri Location, Uri PartUri = null,
                                                        bool RegisterAsRecentDoc = true, bool SilentSave = false,
-                                                       IFormalizedRecognizableElement Descriptor = null, Visual Snapshot = null, bool SafeSaving = true)
+                                                       IFormalizedRecognizableElement Descriptor = null, Visual Snapshot = null, bool SafeSaving = true,
+                                                       Action<Package> AdditionalPackagePartsWriter = null)
         {
             if (Location == null)
                 throw new UsageAnomaly("Cannot store document without a destination location.", Location);
@@ -188,6 +189,17 @@ namespace Instrumind.Common.EntityBase
                 else
                     if (Pack.PartExists(PART_SNAPSHOT))
                         Pack.DeletePart(PART_SNAPSHOT);
+
+                if (AdditionalPackagePartsWriter != null)
+                    try
+                    {
+                        AdditionalPackagePartsWriter(Pack);
+                    }
+                    catch (Exception Problem)
+                    {
+                        AppExec.LogException(Problem, "Document package sidecar writer");
+                        Console.WriteLine("Document package sidecar warning: " + Problem.Message);
+                    }
 
                 Pack.Close();
             }

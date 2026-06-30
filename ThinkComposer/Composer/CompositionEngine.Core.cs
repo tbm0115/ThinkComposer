@@ -37,6 +37,7 @@ using Instrumind.Common.Visualization.Widgets;
 
 using Instrumind.ThinkComposer;
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.Composer.ContainerSnapshots;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
 using Instrumind.ThinkComposer.Definitor;
@@ -408,7 +409,8 @@ namespace Instrumind.ThinkComposer.Composer
             var Result = StoreToLocation<ISphereModel>(this.TargetComposition, Composition.__ClassDefinitor.Name,
                                                        this.TargetComposition.Classification.ContentTypeCode, DocumentLocation,
                                                        CompositionDocumentUri, RegisterAsRecentDoc, false,
-                                                       this.TargetComposition, Snapshot);
+                                                       this.TargetComposition, Snapshot, true,
+                                                       pack => ContainerSnapshotService.WriteCompositionSnapshot(pack, this.TargetComposition, CompositionDocumentUri));
 
             if (Result.IsAbsent() && ResetExistenceStatus)
                 this.ExistenceStatus = EExistenceStatus.NotModified;

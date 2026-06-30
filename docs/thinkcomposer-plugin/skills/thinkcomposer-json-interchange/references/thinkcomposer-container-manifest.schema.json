@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tbm0115/ThinkComposer/docs/thinkcomposer-container-manifest.schema.json",
+  "title": "ThinkComposer Container Snapshot Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "formatVersion",
+    "generatedAtUtc",
+    "application",
+    "packageKind",
+    "nativePartUri",
+    "jsonParts",
+    "previews",
+    "warnings"
+  ],
+  "properties": {
+    "format": {
+      "const": "ThinkComposer.ContainerSnapshot"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "generatedAtUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "application": {
+      "const": "ThinkComposer"
+    },
+    "applicationVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "packageKind": {
+      "enum": [
+        "composition",
+        "domain"
+      ]
+    },
+    "nativePartUri": {
+      "type": "string"
+    },
+    "nativePartSha256": {
+      "$ref": "#/$defs/sha256OrNull"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "jsonParts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/jsonPart"
+      }
+    },
+    "previews": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/preview"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "sha256OrNull": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "techName": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "versionNumber": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "versionSequence": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "lastModification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "jsonPart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "partUri",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "composition",
+            "embeddedDomain",
+            "domain",
+            "templateComposition"
+          ]
+        },
+        "partUri": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256OrNull"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height",
+        "capped",
+        "skipped"
+      ],
+      "properties": {
+        "viewId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewTechName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "partUri": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capped": {
+          "type": "boolean"
+        },
+        "skipped": {
+          "type": "boolean"
+        },
+        "warning": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256OrNull"
+        },
+        "bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

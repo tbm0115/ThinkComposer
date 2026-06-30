@@ -34,6 +34,7 @@ using Instrumind.Common.Visualization.Widgets;
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.ApplicationProduct.Widgets;
 using Instrumind.ThinkComposer.Composer;
+using Instrumind.ThinkComposer.Composer.ContainerSnapshots;
 using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -178,7 +179,8 @@ namespace Instrumind.ThinkComposer.Definitor
                     var Result = DocumentEngine.StoreToLocation<Domain>(TargetDomain, Domain.__ClassDefinitor.Name,
                                                                         TargetDomain.Classification.ContentTypeCode,
                                                                         TargetRoute, DomainDocumentUri, true, false,
-                                                                        TargetDomain, Snapshot);
+                                                                        TargetDomain, Snapshot, true,
+                                                                        pack => ContainerSnapshotService.WriteDomainSnapshot(pack, TargetDomain, DomainDocumentUri, SaveTemplate));
 
                     if (!Result.IsAbsent())
                     {

@@ -204,6 +204,7 @@
     <Compile Include="Composer\ComposerUI\Widgets\FindAndReplaceDialog.xaml.cs">
       <DependentUpon>FindAndReplaceDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Composer\ContainerSnapshots\ContainerSnapshotService.cs" />
     <Compile Include="Composer\Generation\FileGenerator.cs" />
     <Compile Include="Composer\Generation\GenerationManager.cs" />
     <Compile Include="Composer\Generation\OutputTemplateDiagnostics.cs" />

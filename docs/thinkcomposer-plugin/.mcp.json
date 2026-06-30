@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "thinkcomposer": {
+      "command": "node",
+      "args": [
+        "./scripts/thinkcomposer-mcp.mjs"
+      ]
+    }
+  }
+}

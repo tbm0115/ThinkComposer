@@ -19,6 +19,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Import GPT-generated full-state-style `.tcom` documents into blank compositions only when explicitly allowed with `importOptions.treatMissingFullStateItemsAsCreates=true` or per-item `isNew:true`.
 - Treat full-state `views[].visuals[]` for newly created ideas/relationships as safe placement requests, while grouping dependent visual skips when owners were not created.
 - Use top-level `visualStrategy` for large generated imports so GPTs can request semantic/model-only import, overview-plus-model import, optimized/deferred full visuals, or exact full visuals. Strategy deferral can suppress visual materialization, auto-fit, auto-route, and immediate view refresh to avoid out-of-memory behavior on very large models.
+- Inspect saved native `.tcom` and `.tdom` containers directly through AI-readable sidecar snapshots under `/Interchange/`, including deterministic JSON exports, a container manifest, and capped PNG view previews.
 - Preserve and import shortcut visual representations with `isShortcut:true`, including patch-style `visual.isShortcut:true`, so one semantic idea can appear in multiple places without creating duplicate concepts.
 - Correct imported visible relationship central symbols before routing with endpoint-corridor candidate scoring. Generated diagrams can use `relationshipVisualPlacementMode=auto` or `endpointCorridor` so connectors do not route through distant global relationship-label rows.
 - Express source intent through generic, explicit primitives such as top-level `groups[]`, concept `visual.role`, relationship `layoutRole`, `visual.display`, `includeInArrangement`, `includeInRouting`, and per-relationship `relationshipCenterPlacement`. The importer remains intent-agnostic and does not infer behavior from source formats, domains, concept names, or relationship names.
@@ -55,6 +56,8 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Generated visual imports should avoid exact relationship-bubble coordinates unless they are hand-curated. Prefer `importOptions.relationshipVisualPlacementMode=endpointCorridor` or `visualStrategy.relationshipVisualPlacement=endpointCorridor`.
 - Shortcut round-trip import using `samples/composition-shortcut-roundtrip.sample.json` should create one semantic concept and a second shortcut visual representation, with export/re-import preserving `isShortcut:true`.
 - Intent-agnostic visual-control samples demonstrate explicit Group Region creation, hidden membership edges, summary/deferred concepts, and visible dependency edges without source-specific importer behavior.
+- Saved `.tcom` packages should include `/Interchange/Composition.json`, `/Interchange/Domain.json`, `/Interchange/manifest.json`, and capped `/Previews/views/*.png` entries when preview rendering succeeds.
+- Saved `.tdom` packages should include `/Interchange/Domain.json` and `/Interchange/manifest.json`; template composition JSON/previews are written only when the Domain save explicitly includes a template composition.
 - Existing Appearance layout commands remain manual v1 commands and are separate from JSON import layout modes.
 
 ## Warning Model
@@ -80,6 +83,8 @@ The bundled `thinkcomposer-json-interchange` Skill is maintained with the schema
 - Live automatic `.tdom` synchronization is not implemented.
 - Custom domain shape import is not implemented.
 - Rich/binary content is summarized or preserved in native files, not fully exported/imported through JSON.
+- Embedded container JSON/previews are synchronized snapshots only. Native `/Composition.bin` and `/Domain.bin` remain authoritative until full JSON parity and recovery behavior are proven.
+- Embedded previews are PNG v1. SVG/vector previews remain backlog unless a safe WPF Drawing-to-SVG export path is added.
 - General full multi-bend connector routing and full graph crossing minimization remain backlog.
 - Spider, Hierarchy, Flowchart, and System Map are manual Appearance commands; JSON import currently integrates auto-placement, concept auto-fit, and link auto-route only.
 - `visualStrategy.overviewViewTechName` prefers an existing view but does not create new views yet; full overview grouping by `groupBy` is logged as intent and remains a future layout/materialization enhancement.

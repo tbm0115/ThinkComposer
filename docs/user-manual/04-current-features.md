@@ -9,6 +9,7 @@ Related references:
 - [ThinkComposer Domain JSON Interchange](../domain-json-interchange.md)
 - [Domain Sync](../domain-sync.md)
 - [Output Template Generation](../output-template-generation.md)
+- [Command-Line Interface](07-command-line-interface.md)
 - [Layout Services](../layout-services.md)
 
 ## Appearance And Layout Tools

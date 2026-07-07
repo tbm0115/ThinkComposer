@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------------------------------
-// Instrumind ThinkComposer CLI
+// Instrumind ThinkComposer
 //
 // Installer custom action for exposing the CLI shim from a new Command Prompt.
 // -------------------------------------------------------------------------------------------
@@ -14,7 +14,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace Instrumind.ThinkComposer.Cli
+namespace Instrumind.ThinkComposer.InstallerActions
 {
     [RunInstaller(true)]
     public sealed class PathEnvironmentInstaller : Installer
@@ -43,6 +43,10 @@ namespace Instrumind.ThinkComposer.Cli
 
         private string GetTargetDirectory()
         {
+            var TargetPath = this.Context == null ? null : this.Context.Parameters["targetpath"];
+            if (!String.IsNullOrWhiteSpace(TargetPath))
+                return NormalizeDirectory(Path.GetDirectoryName(TargetPath));
+
             var TargetDirectory = this.Context == null ? null : this.Context.Parameters["targetdir"];
             if (String.IsNullOrWhiteSpace(TargetDirectory))
                 TargetDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -50,7 +54,7 @@ namespace Instrumind.ThinkComposer.Cli
             return NormalizeDirectory(TargetDirectory);
         }
 
-        private static void UpdateMachinePath(string InstallDirectory, bool Add)
+        private void UpdateMachinePath(string InstallDirectory, bool Add)
         {
             if (String.IsNullOrWhiteSpace(InstallDirectory))
                 return;
@@ -62,20 +66,34 @@ namespace Instrumind.ThinkComposer.Cli
             if (Add)
             {
                 if (AlreadyPresent)
+                {
+                    Log("ThinkComposer CLI install folder is already present in machine Path: " + InstallDirectory);
                     return;
+                }
 
                 Entries.Add(InstallDirectory);
+                Log("Adding ThinkComposer CLI install folder to machine Path: " + InstallDirectory);
             }
             else
             {
                 if (!AlreadyPresent)
+                {
+                    Log("ThinkComposer CLI install folder is not present in machine Path: " + InstallDirectory);
                     return;
+                }
 
                 Entries = Entries.Where(Entry => !SameDirectory(Entry, InstallDirectory)).ToList();
+                Log("Removing ThinkComposer CLI install folder from machine Path: " + InstallDirectory);
             }
 
             Environment.SetEnvironmentVariable("Path", String.Join(";", Entries), EnvironmentVariableTarget.Machine);
             BroadcastEnvironmentChange();
+        }
+
+        private void Log(string Message)
+        {
+            if (this.Context != null)
+                this.Context.LogMessage(Message);
         }
 
         private static IEnumerable<string> SplitPath(string PathValue)

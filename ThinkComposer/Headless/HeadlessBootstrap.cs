@@ -7,6 +7,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -110,6 +111,7 @@ namespace Instrumind.ThinkComposer.Headless
                 new Application();
 
             Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            EnsureResourceDictionaries();
 
             try
             {
@@ -121,6 +123,25 @@ namespace Instrumind.ThinkComposer.Headless
             {
                 // Metadata can only be overridden once per AppDomain.
             }
+        }
+
+        private static void EnsureResourceDictionaries()
+        {
+            AddResourceDictionary("pack://application:,,,/Instrumind.Common;component/Themes/Generic.xaml");
+            AddResourceDictionary("pack://application:,,,/Instrumind.ThinkComposer;component/Themes/Generic.xaml");
+            AddResourceDictionary("pack://application:,,,/Instrumind.ThinkComposer;component/ApplicationProduct/Cursors/AppCursors.xaml");
+            AddResourceDictionary("pack://application:,,,/Instrumind.ThinkComposer;component/MetaModel/VisualMetaModel/DecoratorGeometries.xaml");
+            AddResourceDictionary("pack://application:,,,/Instrumind.ThinkComposer;component/MetaModel/VisualMetaModel/SymbolGeometries.xaml");
+            AddResourceDictionary("pack://application:,,,/Instrumind.ThinkComposer;component/MetaModel/VisualMetaModel/PlugGeometries.xaml");
+        }
+
+        private static void AddResourceDictionary(string Source)
+        {
+            var DictionaryUri = new Uri(Source, UriKind.Absolute);
+            if (Application.Current.Resources.MergedDictionaries.Any(Dictionary => Dictionary.Source == DictionaryUri))
+                return;
+
+            Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = DictionaryUri });
         }
 
         private static void InitializeCommonServices()

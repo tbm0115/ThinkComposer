@@ -4,7 +4,7 @@ This manual is the maintained Markdown source for the ThinkComposer user documen
 
 This source set is maintained for the `tbm0115/ThinkComposer` fork. See [Fork Maintenance](../../FORK.md) for attribution, support scope, and release policy.
 
-The original source PDF is `Installer/InstrumindThinkComposer_Manual.pdf`, document version `1.5.13.1127`, created in November 2013. The current repository release notes identify the application as `1.5.1619`, so this manual keeps the original product model and application guide while integrating the newer JSON interchange, Domain JSON, layout, and output-generation workflows.
+The original source PDF is `Installer/InstrumindThinkComposer_Manual.pdf`, document version `1.5.13.1127`, created in November 2013. The current repository release notes identify the application as `1.5.1619`, so this manual keeps the original product model and application guide while integrating the newer JSON interchange, Domain JSON, layout, output-generation, and command-line workflows.
 
 ## Manual Map
 
@@ -12,8 +12,9 @@ The original source PDF is `Installer/InstrumindThinkComposer_Manual.pdf`, docum
 2. [Base Model](02-base-model.md) explains documents, compositions, ideas, symbols, relationships, complements, domains, and definitions.
 3. [Application Guide](03-application-guide.md) describes installation, the main window, diagram editing, reporting, and everyday workflows.
 4. [Current Features](04-current-features.md) integrates the current Markdown docs for layout tools, JSON interchange, Domain JSON, embedded-domain updates, and output generation.
-5. [Template Language](05-template-language.md) documents Output Template control markup, Liquid markup, filters, tags, and ThinkComposer-specific helpers.
-6. [Composition Information Model](06-information-model.md) summarizes the model exposed to Output Templates.
+5. [Command-Line Interface](07-command-line-interface.md) explains headless automation, PATH setup, import/export safety, reports, and output generation from Command Prompt.
+6. [Template Language](05-template-language.md) documents Output Template control markup, Liquid markup, filters, tags, and ThinkComposer-specific helpers.
+7. [Composition Information Model](06-information-model.md) summarizes the model exposed to Output Templates.
 
 ## Source And Assets
 
@@ -38,6 +39,7 @@ The refreshed chapters preserve the original PDF table of contents while reorgan
 | Application Guide; Setup; Requirements; Install and Uninstall; Version Update; License Activation; User Interface; Main Window | [Application Guide](03-application-guide.md) |
 | Working with Compositions; Working with diagram Views; Editing Symbols; Creating Concepts; Creating Relationships | [Application Guide](03-application-guide.md) |
 | Extending or Modifying Relationships; Converting Ideas; Assigning Markers to Ideas; Creating Complements; Creating Shortcuts; Selection, Pan and Zoom; Reporting; Composition's Report | [Application Guide](03-application-guide.md) |
+| Headless command-line automation; PATH helper; scripted JSON import/export, reporting, and output generation | [Command-Line Interface](07-command-line-interface.md) |
 | Appendix A: Template language; Control markup; Output markup; Filters; Tag markup | [Template Language](05-template-language.md) |
 | Appendix B: Composition Information Model; Classes Diagrams; Associations; Inheritance Hierarchy; Special cases; Specification of Model Classes | [Composition Information Model](06-information-model.md) |
 

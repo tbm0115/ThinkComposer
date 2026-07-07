@@ -145,6 +145,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Headless\HeadlessBootstrap.cs" />
+    <Compile Include="Headless\HeadlessDocumentVisualizer.cs" />
+    <Compile Include="Headless\HeadlessShellProvider.cs" />
+    <Compile Include="Headless\HeadlessThinkComposerOperations.cs" />
     <Compile Include="ApplicationProduct\About.xaml.cs">
       <DependentUpon>About.xaml</DependentUpon>
     </Compile>

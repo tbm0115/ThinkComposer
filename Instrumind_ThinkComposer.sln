@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThinkComposer", "ThinkComposer\ThinkComposer.csproj", "{325A7865-E1DB-490E-97D6-C6D570BE952A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThinkComposer.Cli", "ThinkComposer.Cli\ThinkComposer.Cli.csproj", "{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{2BE2B928-B692-44AB-A90B-38BB8154BBA0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9EC3E8E8-238F-433B-BD1B-A9C92A42BD7A}"
@@ -88,6 +90,31 @@ Global
 		{325A7865-E1DB-490E-97D6-C6D570BE952A}.SingleImage|Mixed Platforms.Build.0 = Release|x86
 		{325A7865-E1DB-490E-97D6-C6D570BE952A}.SingleImage|x86.ActiveCfg = Release|x86
 		{325A7865-E1DB-490E-97D6-C6D570BE952A}.SingleImage|x86.Build.0 = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.CD_ROM|Any CPU.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.CD_ROM|Mixed Platforms.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.CD_ROM|Mixed Platforms.Build.0 = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.CD_ROM|x86.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.CD_ROM|x86.Build.0 = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Debug|Mixed Platforms.Build.0 = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Debug|x86.ActiveCfg = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Debug|x86.Build.0 = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.DVD-5|Any CPU.ActiveCfg = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.DVD-5|Mixed Platforms.ActiveCfg = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.DVD-5|Mixed Platforms.Build.0 = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.DVD-5|x86.ActiveCfg = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.DVD-5|x86.Build.0 = Debug|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Release|Any CPU.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Release|Mixed Platforms.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Release|Mixed Platforms.Build.0 = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Release|x86.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.Release|x86.Build.0 = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.SingleImage|Any CPU.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.SingleImage|Mixed Platforms.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.SingleImage|Mixed Platforms.Build.0 = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.SingleImage|x86.ActiveCfg = Release|x86
+		{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}.SingleImage|x86.Build.0 = Release|x86
 		{2BE2B928-B692-44AB-A90B-38BB8154BBA0}.CD_ROM|Any CPU.ActiveCfg = Release|x86
 		{2BE2B928-B692-44AB-A90B-38BB8154BBA0}.CD_ROM|Mixed Platforms.ActiveCfg = Release|x86
 		{2BE2B928-B692-44AB-A90B-38BB8154BBA0}.CD_ROM|Mixed Platforms.Build.0 = Release|x86

@@ -45,6 +45,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_200B8D39FFD947DBAA26A52DE3755301"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_22A838FB16354A9B8A76E62373AAB1F7"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -111,6 +117,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_4AF2E77731F84C5B85B60B8972C97AB1"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_4E239F711F544F75AC26C5C8DCCE36B6"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -159,31 +171,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_BFC0F106AEB24117988CF1E6614A51A2"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_4AF2E77731F84C5B85B60B8972C97AB1"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_7DDF978E970349BC8E03A9E0E85E7D5A"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_C8FBB7E55C4841E8A14EDC5C01EC09F6"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -267,13 +255,31 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_BFC0F106AEB24117988CF1E6614A51A2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_C43D0D99DA3F4CEFA14586FE5BBABCA9"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
+        "MsmKey" = "8:_C8FBB7E55C4841E8A14EDC5C01EC09F6"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_D0FB684977A242BA8448837550E9E9EE"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -304,19 +310,7 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_036EDFEF788E7B492C91865A90434B3D"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_245FB2D500146E5230A3E9CB62A40C95"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_FDF8CAE94A5B79E673DCD09859B6C696"
+        "OwnerKey" = "8:_5783D55CE2A73E2563F645533F32DC56"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -328,7 +322,19 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_5783D55CE2A73E2563F645533F32DC56"
+        "OwnerKey" = "8:_FDF8CAE94A5B79E673DCD09859B6C696"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_245FB2D500146E5230A3E9CB62A40C95"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_036EDFEF788E7B492C91865A90434B3D"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -405,45 +411,45 @@
         {
             "{0C86F3C9-12D8-4F06-B613-C542CEB7E67E}:_A0E9C271016D44F5A4B1A1EDB1727B43"
             {
-            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
-            "Condition" = "8:"
-            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
-            "FileType" = "3:2"
-            "InstallAction" = "3:1"
             "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_A0E9C271016D44F5A4B1A1EDB1727B43"
-            "InstallerClass" = "11:TRUE"
+            "Condition" = "8:"
             "CustomActionData" = "8:/targetpath=\"[TARGETDIR]ThinkComposer.InstallerActions.dll\""
+            "EntryPoint" = "8:"
+            "FileType" = "3:2"
+            "Identifier" = "8:_A0E9C271016D44F5A4B1A1EDB1727B43"
+            "InstallAction" = "3:1"
+            "InstallerClass" = "11:TRUE"
+            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
+            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
+            "Sequence" = "3:1"
             }
             "{0C86F3C9-12D8-4F06-B613-C542CEB7E67E}:_BD6BA13C14E74A089E5E2F16BA32FC53"
             {
-            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
-            "Condition" = "8:"
-            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
-            "FileType" = "3:2"
-            "InstallAction" = "3:3"
             "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_BD6BA13C14E74A089E5E2F16BA32FC53"
-            "InstallerClass" = "11:TRUE"
+            "Condition" = "8:"
             "CustomActionData" = "8:/targetpath=\"[TARGETDIR]ThinkComposer.InstallerActions.dll\""
+            "EntryPoint" = "8:"
+            "FileType" = "3:2"
+            "Identifier" = "8:_BD6BA13C14E74A089E5E2F16BA32FC53"
+            "InstallAction" = "3:3"
+            "InstallerClass" = "11:TRUE"
+            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
+            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
+            "Sequence" = "3:1"
             }
             "{0C86F3C9-12D8-4F06-B613-C542CEB7E67E}:_F3C5B4D854794BC8A5CC2439732E8EF7"
             {
-            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
-            "Condition" = "8:"
-            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
-            "FileType" = "3:2"
-            "InstallAction" = "3:4"
             "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_F3C5B4D854794BC8A5CC2439732E8EF7"
-            "InstallerClass" = "11:TRUE"
+            "Condition" = "8:"
             "CustomActionData" = "8:/targetpath=\"[TARGETDIR]ThinkComposer.InstallerActions.dll\""
+            "EntryPoint" = "8:"
+            "FileType" = "3:2"
+            "Identifier" = "8:_F3C5B4D854794BC8A5CC2439732E8EF7"
+            "InstallAction" = "3:4"
+            "InstallerClass" = "11:TRUE"
+            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
+            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
+            "Sequence" = "3:1"
             }
         }
         "DefaultFeature"
@@ -475,11 +481,6 @@
             "AssemblyAsmDisplayName" = "8:DotLiquid, Version=1.7.7860.8806, Culture=neutral, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
-                    "_036EDFEF788E7B492C91865A90434B3D"
-                    {
-                    "Name" = "8:DotLiquid.dll"
-                    "Attributes" = "3:512"
-                    }
                 }
             "SourcePath" = "8:DotLiquid.dll"
             "TargetName" = "8:"
@@ -579,6 +580,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_200B8D39FFD947DBAA26A52DE3755301"
+            {
+            "SourcePath" = "8:..\\PredefinedContent\\State_Chart_XML.tdom"
+            "TargetName" = "8:State_Chart_XML.tdom"
+            "Tag" = "8:"
+            "Folder" = "8:_612AE89E280743E9B28D0BBEC3A8DE48"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_22A838FB16354A9B8A76E62373AAB1F7"
             {
             "SourcePath" = "8:TC_Domain.ico"
@@ -606,11 +627,6 @@
             "AssemblyAsmDisplayName" = "8:Instrumind.Common, Version=1.0.7860.8806, Culture=neutral, processorArchitecture=x86"
                 "ScatterAssemblies"
                 {
-                    "_245FB2D500146E5230A3E9CB62A40C95"
-                    {
-                    "Name" = "8:Instrumind.Common.dll"
-                    "Attributes" = "3:512"
-                    }
                 }
             "SourcePath" = "8:Instrumind.Common.dll"
             "TargetName" = "8:"
@@ -790,6 +806,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4AF2E77731F84C5B85B60B8972C97AB1"
+            {
+            "SourcePath" = "8:thinkcomposer-path.cmd"
+            "TargetName" = "8:thinkcomposer-path.cmd"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4E239F711F544F75AC26C5C8DCCE36B6"
             {
             "SourcePath" = "8:..\\PredefinedContent\\Organizational_Chart.tdom"
@@ -817,11 +853,6 @@
             "AssemblyAsmDisplayName" = "8:PdfSharp-WPF, Version=1.32.2608.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
-                    "_5783D55CE2A73E2563F645533F32DC56"
-                    {
-                    "Name" = "8:PdfSharp-WPF.dll"
-                    "Attributes" = "3:512"
-                    }
                 }
             "SourcePath" = "8:PdfSharp-WPF.dll"
             "TargetName" = "8:"
@@ -905,6 +936,26 @@
             {
             "SourcePath" = "8:..\\ThinkComposer\\License.txt"
             "TargetName" = "8:License.txt"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7DDF978E970349BC8E03A9E0E85E7D5A"
+            {
+            "SourcePath" = "8:thinkcomposer-path.ps1"
+            "TargetName" = "8:thinkcomposer-path.ps1"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
             "Condition" = "8:"
@@ -1041,66 +1092,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BFC0F106AEB24117988CF1E6614A51A2"
-            {
-            "SourcePath" = "8:..\\Installer\\thinkcomposer.cmd"
-            "TargetName" = "8:thinkcomposer.cmd"
-            "Tag" = "8:"
-            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4AF2E77731F84C5B85B60B8972C97AB1"
-            {
-            "SourcePath" = "8:..\\Installer\\thinkcomposer-path.cmd"
-            "TargetName" = "8:thinkcomposer-path.cmd"
-            "Tag" = "8:"
-            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7DDF978E970349BC8E03A9E0E85E7D5A"
-            {
-            "SourcePath" = "8:..\\Installer\\thinkcomposer-path.ps1"
-            "TargetName" = "8:thinkcomposer-path.ps1"
-            "Tag" = "8:"
-            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A454BA28BDF541309439353916651538"
             {
             "SourcePath" = "8:..\\PredefinedContent\\Argumentative_Mapping.tdom"
@@ -1168,11 +1159,6 @@
             "AssemblyAsmDisplayName" = "8:PdfSharp.Xps, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
-                    "_AEE4A41F0B3A1A1D5469D49F1EAD25B6"
-                    {
-                    "Name" = "8:PdfSharp.Xps.dll"
-                    "Attributes" = "3:512"
-                    }
                 }
             "SourcePath" = "8:PdfSharp.Xps.dll"
             "TargetName" = "8:"
@@ -1216,6 +1202,26 @@
             {
             "SourcePath" = "8:..\\ICSharpCode.AvalonEdit\\AvalonEdit.LICENSE.txt"
             "TargetName" = "8:AvalonEdit.LICENSE.txt"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BFC0F106AEB24117988CF1E6614A51A2"
+            {
+            "SourcePath" = "8:thinkcomposer.cmd"
+            "TargetName" = "8:thinkcomposer.cmd"
             "Tag" = "8:"
             "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
             "Condition" = "8:"
@@ -1299,11 +1305,6 @@
             "AssemblyAsmDisplayName" = "8:ICSharpCode.AvalonEdit, Version=4.2.7860.8805, Culture=neutral, PublicKeyToken=9cc39be672370310, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
-                    "_FDF8CAE94A5B79E673DCD09859B6C696"
-                    {
-                    "Name" = "8:ICSharpCode.AvalonEdit.dll"
-                    "Attributes" = "3:512"
-                    }
                 }
             "SourcePath" = "8:ICSharpCode.AvalonEdit.dll"
             "TargetName" = "8:"

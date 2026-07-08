@@ -271,6 +271,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "summary", Idea.Summary);
             AddIf(Obj, "description", Idea.Description);
             AddIf(Obj, "techSpec", Idea.TechSpec);
+            AddIfNotEmpty(Obj, "pictogram", ToOrderedDictionary(Idea.Pictogram));
             AddIf(Obj, "containerId", Idea.ContainerId);
             AddIf(Obj, "containerTechName", Idea.ContainerTechName);
             AddIf(Obj, "visual", ToGraph(Idea.Visual));
@@ -296,6 +297,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "summary", Relationship.Summary);
             AddIf(Obj, "description", Relationship.Description);
             AddIf(Obj, "techSpec", Relationship.TechSpec);
+            AddIfNotEmpty(Obj, "pictogram", ToOrderedDictionary(Relationship.Pictogram));
             AddIf(Obj, "containerId", Relationship.ContainerId);
             AddIf(Obj, "containerTechName", Relationship.ContainerTechName);
             AddIf(Obj, "layoutRole", Relationship.LayoutRole);
@@ -382,6 +384,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "ownerIdeaId", View.OwnerIdeaId);
             AddIf(Obj, "ownerIdeaTechName", View.OwnerIdeaTechName);
             Add(Obj, "visuals", ToList(View.Visuals, ToGraph));
+            AddIfNotEmpty(Obj, "complements", ToList(View.Complements, ToGraph));
             return Obj;
         }
 
@@ -392,11 +395,79 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "ideaTechName", Visual.IdeaTechName);
             AddIf(Obj, "representationId", Visual.RepresentationId);
             AddIfTrue(Obj, "isShortcut", Visual.IsShortcut);
+            AddIf(Obj, "zOrder", Visual.ZOrder);
             AddIf(Obj, "x", Visual.X);
             AddIf(Obj, "y", Visual.Y);
             AddIf(Obj, "width", Visual.Width);
             AddIf(Obj, "height", Visual.Height);
+            AddIf(Obj, "areDetailsShown", Visual.AreDetailsShown);
+            AddIf(Obj, "showCompositeContentAsDetails", Visual.ShowCompositeContentAsDetails);
+            AddIf(Obj, "detailsPosterHeight", Visual.DetailsPosterHeight);
+            AddIf(Obj, "showAsMultiple", Visual.ShowAsMultiple);
+            AddIf(Obj, "isHorizontallyFlipped", Visual.IsHorizontallyFlipped);
+            AddIf(Obj, "isVerticallyFlipped", Visual.IsVerticallyFlipped);
+            AddIf(Obj, "isTilted", Visual.IsTilted);
             AddIf(Obj, "visual", ToGraph(Visual.Visual));
+            AddIfNotEmpty(Obj, "connectors", ToList(Visual.Connectors, ToGraph));
+            AddIfNotEmpty(Obj, "complements", ToList(Visual.Complements, ToGraph));
+            AddIfNotEmpty(Obj, "customFormatValues", ToOrderedDictionary(Visual.CustomFormatValues));
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonPoint Point)
+        {
+            if (Point == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "x", Point.X);
+            AddIf(Obj, "y", Point.Y);
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonConnector Connector)
+        {
+            if (Connector == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "id", Connector.Id);
+            AddIf(Obj, "linkId", Connector.LinkId);
+            AddIf(Obj, "roleType", Connector.RoleType);
+            AddIf(Obj, "roleDefinitionTechName", Connector.RoleDefinitionTechName);
+            AddIf(Obj, "roleVariantTechName", Connector.RoleVariantTechName);
+            AddIf(Obj, "associatedIdeaId", Connector.AssociatedIdeaId);
+            AddIf(Obj, "associatedIdeaTechName", Connector.AssociatedIdeaTechName);
+            AddIf(Obj, "zOrder", Connector.ZOrder);
+            AddIf(Obj, "originRepresentationId", Connector.OriginRepresentationId);
+            AddIf(Obj, "originIdeaId", Connector.OriginIdeaId);
+            AddIf(Obj, "originIdeaTechName", Connector.OriginIdeaTechName);
+            AddIf(Obj, "targetRepresentationId", Connector.TargetRepresentationId);
+            AddIf(Obj, "targetIdeaId", Connector.TargetIdeaId);
+            AddIf(Obj, "targetIdeaTechName", Connector.TargetIdeaTechName);
+            AddIf(Obj, "originPosition", ToGraph(Connector.OriginPosition));
+            AddIf(Obj, "originEdgePosition", ToGraph(Connector.OriginEdgePosition));
+            AddIf(Obj, "targetPosition", ToGraph(Connector.TargetPosition));
+            AddIf(Obj, "targetEdgePosition", ToGraph(Connector.TargetEdgePosition));
+            AddIf(Obj, "intermediatePosition", ToGraph(Connector.IntermediatePosition));
+            return Obj;
+        }
+
+        private static object ToGraph(CompositionJsonComplement Complement)
+        {
+            if (Complement == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "id", Complement.Id);
+            AddIf(Obj, "kindTechName", Complement.KindTechName);
+            AddIf(Obj, "kindName", Complement.KindName);
+            AddIf(Obj, "zOrder", Complement.ZOrder);
+            AddIf(Obj, "x", Complement.X);
+            AddIf(Obj, "y", Complement.Y);
+            AddIf(Obj, "width", Complement.Width);
+            AddIf(Obj, "height", Complement.Height);
+            AddIfNotEmpty(Obj, "set", ToOrderedDictionary(Complement.Set));
             return Obj;
         }
 
@@ -651,6 +722,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Summary = GetString(Source, "summary");
             Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
+            Result.Pictogram = GetObjectDictionary(Source, "pictogram");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
             Result.Visual = ReadVisualControl(GetDictionary(Source, "visual"));
@@ -676,6 +748,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Summary = GetString(Source, "summary");
             Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
+            Result.Pictogram = GetObjectDictionary(Source, "pictogram");
             Result.ContainerId = GetString(Source, "containerId");
             Result.ContainerTechName = GetString(Source, "containerTechName");
             Result.LayoutRole = GetString(Source, "layoutRole");
@@ -768,6 +841,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.OwnerIdeaId = GetString(Source, "ownerIdeaId");
             Result.OwnerIdeaTechName = GetString(Source, "ownerIdeaTechName");
             Result.Visuals = ReadList(Source, "visuals", ReadVisual);
+            Result.Complements = ReadList(Source, "complements", ReadComplement);
             return Result;
         }
 
@@ -778,11 +852,73 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.IdeaTechName = GetString(Source, "ideaTechName");
             Result.RepresentationId = GetString(Source, "representationId");
             Result.IsShortcut = GetBool(Source, "isShortcut", false);
+            Result.ZOrder = GetNullableInt(Source, "zOrder");
             Result.X = GetNullableDouble(Source, "x");
             Result.Y = GetNullableDouble(Source, "y");
             Result.Width = GetNullableDouble(Source, "width");
             Result.Height = GetNullableDouble(Source, "height");
+            Result.AreDetailsShown = GetNullableBool(Source, "areDetailsShown");
+            Result.ShowCompositeContentAsDetails = GetNullableBool(Source, "showCompositeContentAsDetails");
+            Result.DetailsPosterHeight = GetNullableDouble(Source, "detailsPosterHeight");
+            Result.ShowAsMultiple = GetNullableBool(Source, "showAsMultiple");
+            Result.IsHorizontallyFlipped = GetNullableBool(Source, "isHorizontallyFlipped");
+            Result.IsVerticallyFlipped = GetNullableBool(Source, "isVerticallyFlipped");
+            Result.IsTilted = GetNullableBool(Source, "isTilted");
             Result.Visual = ReadVisualControl(GetDictionary(Source, "visual"));
+            Result.Connectors = ReadList(Source, "connectors", ReadConnector);
+            Result.Complements = ReadList(Source, "complements", ReadComplement);
+            Result.CustomFormatValues = GetObjectDictionary(Source, "customFormatValues");
+            return Result;
+        }
+
+        private static CompositionJsonPoint ReadPoint(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Result = new CompositionJsonPoint();
+            Result.X = GetNullableDouble(Source, "x");
+            Result.Y = GetNullableDouble(Source, "y");
+            return Result;
+        }
+
+        private static CompositionJsonConnector ReadConnector(IDictionary<string, object> Source)
+        {
+            var Result = new CompositionJsonConnector();
+            Result.Id = GetString(Source, "id");
+            Result.LinkId = GetString(Source, "linkId");
+            Result.RoleType = GetString(Source, "roleType");
+            Result.RoleDefinitionTechName = GetString(Source, "roleDefinitionTechName");
+            Result.RoleVariantTechName = GetString(Source, "roleVariantTechName");
+            Result.AssociatedIdeaId = GetString(Source, "associatedIdeaId");
+            Result.AssociatedIdeaTechName = GetString(Source, "associatedIdeaTechName");
+            Result.ZOrder = GetNullableInt(Source, "zOrder");
+            Result.OriginRepresentationId = GetString(Source, "originRepresentationId");
+            Result.OriginIdeaId = GetString(Source, "originIdeaId");
+            Result.OriginIdeaTechName = GetString(Source, "originIdeaTechName");
+            Result.TargetRepresentationId = GetString(Source, "targetRepresentationId");
+            Result.TargetIdeaId = GetString(Source, "targetIdeaId");
+            Result.TargetIdeaTechName = GetString(Source, "targetIdeaTechName");
+            Result.OriginPosition = ReadPoint(GetDictionary(Source, "originPosition"));
+            Result.OriginEdgePosition = ReadPoint(GetDictionary(Source, "originEdgePosition"));
+            Result.TargetPosition = ReadPoint(GetDictionary(Source, "targetPosition"));
+            Result.TargetEdgePosition = ReadPoint(GetDictionary(Source, "targetEdgePosition"));
+            Result.IntermediatePosition = ReadPoint(GetDictionary(Source, "intermediatePosition"));
+            return Result;
+        }
+
+        private static CompositionJsonComplement ReadComplement(IDictionary<string, object> Source)
+        {
+            var Result = new CompositionJsonComplement();
+            Result.Id = GetString(Source, "id");
+            Result.KindTechName = GetString(Source, "kindTechName");
+            Result.KindName = GetString(Source, "kindName");
+            Result.ZOrder = GetNullableInt(Source, "zOrder");
+            Result.X = GetNullableDouble(Source, "x");
+            Result.Y = GetNullableDouble(Source, "y");
+            Result.Width = GetNullableDouble(Source, "width");
+            Result.Height = GetNullableDouble(Source, "height");
+            Result.Set = GetObjectDictionary(Source, "set");
             return Result;
         }
 
@@ -1010,6 +1146,22 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             if (Value)
                 Object.Add(Key, Value);
+        }
+
+        private static void AddIfNotEmpty(OrderedDictionary Object, string Key, object Value)
+        {
+            if (Value == null)
+                return;
+
+            var Dictionary = Value as IDictionary;
+            if (Dictionary != null && Dictionary.Count == 0)
+                return;
+
+            var Items = Value as ICollection;
+            if (Items != null && Items.Count == 0)
+                return;
+
+            Object.Add(Key, Value);
         }
 
         private static List<object> ToList<TSource>(IEnumerable<TSource> Items, Func<TSource, object> Converter)

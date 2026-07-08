@@ -10,6 +10,8 @@ using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Windows.Markup;
+using System.Windows.Media;
 
 using Instrumind.Common;
 using Instrumind.Common.Visualization;
@@ -19,6 +21,7 @@ using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
+using Instrumind.ThinkComposer.MetaModel.VisualMetaModel;
 
 namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 {
@@ -56,7 +59,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Document.RelationshipCompatibility = DomainJsonCompatibility.ExportRelationshipCompatibility(Domain);
 
             Warnings.AddRange(WarningCollector.ToWarnings());
-            Warnings.Add("Visual style details, rich style object graphs, custom domain shape resources, and binary pictogram/image content are summarized only; unsupported native-only resources are not inlined in Domain JSON or reconstructed by JSON persistence.");
+            Warnings.Add("Native visual formats, including text formats and WPF brush payloads, are exported for JSON persistence; custom domain shape resources, rich text content beyond plain text, and domain-level binary pictogram/image resources remain summarized only and are not reconstructed by JSON persistence.");
             Warnings.Add("Output templates are exported as text and are never executed by JSON import/export.");
             Document.Warnings = Warnings.OrderBy(Warning => Warning).Distinct().ToList();
             return Document;
@@ -69,13 +72,107 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.IsComposable = Domain.IsComposable;
             Result.IsVersionable = Domain.IsVersionable;
             Result.DataTypeTechName = Domain.DefaultTableDef == null ? null : Domain.DefaultTableDef.TechName;
+            Result.Set["modelRevision"] = Domain.ModelRevision;
             Result.Set["viewGridSize"] = Domain.ViewGridSize;
+            if (Domain.ReportingConfiguration != null)
+                Result.Set["reportingConfiguration"] = ExportReportConfiguration(Domain.ReportingConfiguration);
             if (Domain.Version != null)
             {
                 Result.Set["versionNumber"] = Domain.Version.VersionNumber == null ? null : Domain.Version.VersionNumber.ToString();
                 Result.Set["versionSequence"] = Domain.Version.VersionSequence;
                 Result.Set["lastModification"] = Domain.Version.LastModification.ToString("o", CultureInfo.InvariantCulture);
             }
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportReportConfiguration(ReportConfiguration Source)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Source == null)
+                return Result;
+
+            Result["documentTitle"] = Source.Document_Title;
+            Result["documentSubtitle"] = Source.Document_Subtitle;
+            Result["pageHeaderLeft"] = Source.PageHeader_Left;
+            Result["pageHeaderCenter"] = Source.PageHeader_Center;
+            Result["pageHeaderRight"] = Source.PageHeader_Right;
+            Result["pageFooterLeft"] = Source.PageFooter_Left;
+            Result["pageFooterCenter"] = Source.PageFooter_Center;
+            Result["pageFooterRight"] = Source.PageFooter_Right;
+            Result["docSectionTitlePage"] = Source.DocSection_TitlePage;
+            Result["docSectionTableOfContents"] = Source.DocSection_TableOfContents;
+            Result["docSectionComposition"] = Source.DocSection_Composition;
+            Result["docSectionDomain"] = Source.DocSection_Domain;
+            Result["compositionCard"] = ExportDisplayCard(Source.Composition_Card);
+            Result["compositeIdeaViewCard"] = ExportDisplayCard(Source.CompositeIdea_View_Card);
+            Result["compositeIdeaViewDiagram"] = Source.CompositeIdea_View_Diagram;
+            Result["compositeIdeaConceptsList"] = ExportDisplayList(Source.CompositeIdea_Concepts_List);
+            Result["compositeIdeaConceptsCard"] = ExportDisplayCard(Source.CompositeIdea_Concepts_Card);
+            Result["compositeIdeaConceptsReportCompositeContent"] = Source.CompositeIdea_Concepts_ReportCompositeContent;
+            Result["compositeIdeaRelationshipsList"] = ExportDisplayList(Source.CompositeIdea_Relationships_List);
+            Result["compositeIdeaRelationshipsCard"] = ExportDisplayCard(Source.CompositeIdea_Relationships_Card);
+            Result["compositeIdeaRelationshipsReportCompositeContent"] = Source.CompositeIdea_Relationships_ReportCompositeContent;
+            Result["compositeIdeaMarkersList"] = ExportDisplayList(Source.CompositeIdea_Markers_List);
+            Result["compositeIdeaMarkersCard"] = ExportDisplayCard(Source.CompositeIdea_Markers_Card);
+            Result["compositeIdeaComplements"] = Source.CompositeIdea_Complements;
+            Result["compositeIdeaGroupedIdeasList"] = ExportDisplayList(Source.CompositeIdea_GroupedIdeas_List);
+            Result["compositeIdeaDetails"] = Source.CompositeIdea_Details;
+            Result["compositeIdeaDetailsIncludeLinksTarget"] = Source.CompositeIdea_DetailsIncludeLinksTarget;
+            Result["compositeIdeaDetailsIncludeAttachmentsContent"] = Source.CompositeIdea_DetailsIncludeAttachmentsContent;
+            Result["compositeIdeaDetailsIncludeTablesData"] = Source.CompositeIdea_DetailsIncludeTablesData;
+            Result["compositeIdeaRelatedFromCollection"] = Source.CompositeIdea_RelatedFrom_Collection;
+            Result["compositeIdeaIncludeTargetCompanions"] = Source.CompositeIdea_IncludeTargetCompanions;
+            Result["compositeIdeaRelatedToCollection"] = Source.CompositeIdea_RelatedTo_Collection;
+            Result["compositeIdeaIncludeOriginCompanions"] = Source.CompositeIdea_IncludeOriginCompanions;
+            Result["compositeRelationshipLinksCollection"] = Source.CompositeRelationship_Links_Collection;
+            Result["compositeRelationshipLinksCard"] = ExportDisplayCard(Source.CompositeRelationship_Links_Card);
+            Result["domainConceptDefs"] = Source.Domain_Concept_Defs;
+            Result["domainConceptDefsList"] = ExportDisplayList(Source.Domain_Concept_Defs_List);
+            Result["domainConceptDefsCard"] = ExportDisplayCard(Source.Domain_Concept_Defs_Card);
+            Result["domainRelationshipDefs"] = Source.Domain_Relationship_Defs;
+            Result["domainRelationshipDefsList"] = ExportDisplayList(Source.Domain_Relationship_Defs_List);
+            Result["domainRelationshipDefsCard"] = ExportDisplayCard(Source.Domain_Relationship_Defs_Card);
+            Result["domainLinkRoleVariants"] = Source.Domain_LinkRole_Variants;
+            Result["domainMarkerDefs"] = Source.Domain_Marker_Defs;
+            Result["domainMarkerDefsList"] = ExportDisplayList(Source.Domain_Marker_Defs_List);
+            Result["domainMarkerDefsCard"] = ExportDisplayCard(Source.Domain_Marker_Defs_Card);
+            Result["domainTableStructDefs"] = Source.Domain_TableStruct_Defs;
+            Result["domainBaseTables"] = Source.Domain_BaseTables;
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportDisplayList(DisplayList Source)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Source == null)
+                return Result;
+
+            Result["show"] = Source.Show;
+            Result["propName"] = Source.PropName;
+            Result["propTechName"] = Source.PropTechName;
+            Result["propSummary"] = Source.PropSummary;
+            Result["propPictogram"] = Source.PropPictogram;
+            Result["definitor"] = Source.Definitor;
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportDisplayCard(DisplayCard Source)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Source == null)
+                return Result;
+
+            Result["show"] = Source.Show;
+            Result["route"] = Source.Route;
+            Result["definitor"] = Source.Definitor;
+            Result["propGlobalId"] = Source.PropGlobalId;
+            Result["propName"] = Source.PropName;
+            Result["propTechName"] = Source.PropTechName;
+            Result["propSummary"] = Source.PropSummary;
+            Result["propTechSpec"] = Source.PropTechSpec;
+            Result["propPictogram"] = Source.PropPictogram;
+            Result["propDescription"] = Source.PropDescription;
+            Result["propVersioning"] = Source.PropVersioning;
             return Result;
         }
 
@@ -149,6 +246,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 .ThenBy(Role => StableKey(Role))
                 .Select(ExportRelationshipRole)
                 .ToList();
+            Result.Set["visualConnectorsFormat"] = ExportConnectorsFormat(Source.DefaultConnectorsFormat);
             Result.OutputTemplates = ExportTemplates(Source.OutputTemplates, "relationshipDefinition", Source.TechName).ToList();
             return Result;
         }
@@ -162,7 +260,208 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.IsVersionable = Source.IsVersionable;
             Result.CanAutomaticallyCreateRelatedConcepts = Source.CanAutomaticallyCreateRelatedConcepts;
             Result.DataTypeTechName = Source.CustomFieldsTableDef == null ? null : Source.CustomFieldsTableDef.TechName;
+            Result.Set["visualSymbolFormat"] = ExportSymbolFormat(Source.DefaultSymbolFormat);
             return Result;
+        }
+
+        private static Dictionary<string, object> ExportSymbolFormat(VisualSymbolFormat Source)
+        {
+            var Result = ExportElementFormat(Source);
+            if (Source == null)
+                return Result;
+
+            Result["initialWidth"] = Source.InitialWidth;
+            Result["initialHeight"] = Source.InitialHeight;
+            Result["hasFixedWidth"] = Source.HasFixedWidth;
+            Result["hasFixedHeight"] = Source.HasFixedHeight;
+            Result["useNameAsMainTitle"] = Source.UseNameAsMainTitle;
+            Result["subtitleVisualDisposition"] = Source.SubtitleVisualDisposition.ToString();
+            Result["pictogramVisualDisposition"] = Source.PictogramVisualDisposition.ToString();
+            Result["useDefinitorPictogramAsNullDefault"] = Source.UseDefinitorPictogramAsNullDefault;
+            Result["usePictogramAsSymbol"] = Source.UsePictogramAsSymbol;
+            Result["detailsPosterIsHanging"] = Source.DetailsPosterIsHanging;
+            Result["includeDetailsSeparators"] = Source.IncludeDetailsSeparators;
+            Result["initiallyFlippedHorizontally"] = Source.InitiallyFlippedHorizontally;
+            Result["initiallyFlippedVertically"] = Source.InitiallyFlippedVertically;
+            Result["initiallyTilted"] = Source.InitiallyTilted;
+            Result["asMultiple"] = Source.AsMultiple;
+            Result["textFormats"] = ExportTextFormats(Source);
+            AddBrush(Result, "regionBackground", Source.RegionBackground);
+            AddBrush(Result, "regionForeground", Source.RegionForeground);
+            AddDash(Result, "regionDash", Source.RegionDash);
+            Result["regionThickness"] = Source.RegionThickness;
+            Result["initialGroupRegionPlacementHorizontal"] = Source.InitialGroupRegionPlacementHorizontal.ToString();
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportTextFormats(VisualSymbolFormat Source)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Source == null)
+                return Result;
+
+            foreach (ETextPurpose Purpose in Enum.GetValues(typeof(ETextPurpose)))
+            {
+                var Format = Source.GetTextFormat(Purpose);
+                if (Format != null)
+                    Result[Purpose.ToString()] = ExportTextFormat(Format);
+            }
+
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportTextFormat(TextFormat Format)
+        {
+            if (Format == null)
+                return null;
+
+            var Result = new Dictionary<string, object>();
+            Result["type"] = "textFormat";
+            Result["fontFamilyName"] = Format.FontFamilyName;
+            Result["fontSize"] = Format.FontSize;
+            Result["foregroundBrush"] = ExportBrush(Format.ForegroundBrush);
+            Result["isBold"] = Format.IsBold;
+            Result["isItalic"] = Format.IsItalic;
+            Result["isUnderline"] = Format.IsUnderline;
+            Result["isStrikethrough"] = Format.IsStrikethrough;
+            Result["alignment"] = Format.Alignment.ToString();
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportConnectorsFormat(VisualConnectorsFormat Source)
+        {
+            var Result = ExportElementFormat(Source);
+            if (Source == null)
+                return Result;
+
+            Result["pathStyle"] = Source.PathStyle.ToString();
+            Result["pathCorner"] = Source.PathCorner.ToString();
+            Result["labelLinkVariant"] = Source.LabelLinkVariant;
+            Result["labelLinkDefinitor"] = Source.LabelLinkDefinitor;
+            Result["labelLinkDescriptor"] = Source.LabelLinkDescriptor;
+            Result["headPlugs"] = ExportPlugMap(Source.HeadPlugs);
+            Result["tailPlugs"] = ExportPlugMap(Source.TailPlugs);
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportElementFormat(VisualElementFormat Source)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Source == null)
+                return Result;
+
+            AddBrush(Result, "mainBackground", Source.MainBackground);
+            AddBrush(Result, "lineBrush", Source.LineBrush);
+            AddDash(Result, "lineDash", Source.LineDash);
+            Result["lineCap"] = Source.LineCap.ToString();
+            Result["lineJoin"] = Source.LineJoin.ToString();
+            Result["lineThickness"] = Source.LineThickness;
+            Result["opacity"] = Source.Opacity;
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportPlugMap(IDictionary<SimplePresentationElement, string> Source)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Source == null)
+                return Result;
+
+            foreach (var Pair in Source.OrderBy(Pair => Pair.Key == null ? "" : Pair.Key.TechName))
+                if (Pair.Key != null && Pair.Value != null)
+                    Result[Pair.Key.TechName] = Pair.Value;
+
+            return Result;
+        }
+
+        private static void AddBrush(Dictionary<string, object> Target, string Key, Brush Brush)
+        {
+            Target[Key] = ExportBrush(Brush);
+        }
+
+        private static void AddDash(Dictionary<string, object> Target, string Key, DashStyle Dash)
+        {
+            var Text = ExportDashStyle(Dash);
+            if (Text != null)
+                Target[Key] = Text;
+        }
+
+        private static object ExportBrush(Brush Brush)
+        {
+            if (Brush == null)
+                return null;
+
+            var Text = default(string);
+            try
+            {
+                var Converter = new BrushConverter();
+                if (Converter.CanConvertTo(typeof(string)))
+                    Text = (string)Converter.ConvertTo(null, CultureInfo.InvariantCulture, Brush, typeof(string));
+            }
+            catch
+            {
+            }
+
+            if (!CanImportBrushText(Text))
+            {
+                var Xaml = ExportBrushXaml(Brush);
+                if (!String.IsNullOrWhiteSpace(Xaml))
+                    return new Dictionary<string, object>
+                    {
+                        { "type", "brush" },
+                        { "xaml", Xaml }
+                    };
+
+                if (String.IsNullOrWhiteSpace(Text))
+                    return null;
+            }
+
+            if (Math.Abs(Brush.Opacity - 1.0) < 0.0001)
+                return Text;
+
+            return new Dictionary<string, object>
+            {
+                { "color", Text },
+                { "opacity", Brush.Opacity }
+            };
+        }
+
+        private static bool CanImportBrushText(string Text)
+        {
+            if (String.IsNullOrWhiteSpace(Text))
+                return false;
+
+            try
+            {
+                return new BrushConverter().ConvertFromString(null, CultureInfo.InvariantCulture, Text) is Brush;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string ExportBrushXaml(Brush Brush)
+        {
+            if (Brush == null)
+                return null;
+
+            try
+            {
+                return XamlWriter.Save(Brush);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string ExportDashStyle(DashStyle Dash)
+        {
+            if (Dash == null)
+                return null;
+
+            var Declared = Display.DeclaredDashStyles.FirstOrDefault(Item => Item.Item1.IsEqual(Dash));
+            return Declared == null ? null : Declared.Item2;
         }
 
         private static DomainJsonElement ExportRelationshipRole(LinkRoleDefinition Source)

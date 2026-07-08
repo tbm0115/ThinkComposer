@@ -7,7 +7,12 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Windows;
+using System.Windows.Markup;
+using System.Windows.Media;
+using System.Xml;
 
 using Instrumind.Common;
 using Instrumind.Common.EntityDefinition;
@@ -872,6 +877,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 }
             }
 
+            Changed = ApplySymbolFormat(Target.DefaultSymbolFormat, GetSetDictionary(Source.Set, "visualSymbolFormat"), Source.Entity.NullDefault("ideaDefinition"), Target.TechName) || Changed;
+
             var ConceptTarget = Target as ConceptDefinition;
             if (ConceptTarget != null)
                 Changed = ApplyConceptDefinitionFields(ConceptTarget, Source, Changed);
@@ -1026,7 +1033,168 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 Changed = true;
             }
 
+            Changed = ApplyConnectorsFormat(Target.DefaultConnectorsFormat, GetSetDictionary(Source.Set, "visualConnectorsFormat"), Source.Entity.NullDefault("relationshipDefinition"), Target.TechName) || Changed;
+
             return Changed;
+        }
+
+        private bool ApplySymbolFormat(VisualSymbolFormat Target, IDictionary<string, object> Source, string Entity, string OwnerTechName)
+        {
+            if (Target == null || Source == null || Source.Count < 1)
+                return false;
+
+            if (this.IsPreview)
+                return true;
+
+            ApplyElementFormat(Target, Source);
+            ApplyDouble(Source, "initialWidth", delegate(double Value) { Target.InitialWidth = Value; });
+            ApplyDouble(Source, "initialHeight", delegate(double Value) { Target.InitialHeight = Value; });
+            ApplyBool(Source, "hasFixedWidth", delegate(bool Value) { Target.HasFixedWidth = Value; });
+            ApplyBool(Source, "hasFixedHeight", delegate(bool Value) { Target.HasFixedHeight = Value; });
+            ApplyBool(Source, "useNameAsMainTitle", delegate(bool Value) { Target.UseNameAsMainTitle = Value; });
+            ApplyEnum<EVisualDispositionMonodimensional>(Source, "subtitleVisualDisposition", delegate(EVisualDispositionMonodimensional Value) { Target.SubtitleVisualDisposition = Value; });
+            ApplyEnum<EVisualDispositionBidimensional>(Source, "pictogramVisualDisposition", delegate(EVisualDispositionBidimensional Value) { Target.PictogramVisualDisposition = Value; });
+            ApplyBool(Source, "useDefinitorPictogramAsNullDefault", delegate(bool Value) { Target.UseDefinitorPictogramAsNullDefault = Value; });
+            ApplyBool(Source, "usePictogramAsSymbol", delegate(bool Value) { Target.UsePictogramAsSymbol = Value; });
+            ApplyBool(Source, "detailsPosterIsHanging", delegate(bool Value) { Target.DetailsPosterIsHanging = Value; });
+            ApplyBool(Source, "includeDetailsSeparators", delegate(bool Value) { Target.IncludeDetailsSeparators = Value; });
+            ApplyBool(Source, "initiallyFlippedHorizontally", delegate(bool Value) { Target.InitiallyFlippedHorizontally = Value; });
+            ApplyBool(Source, "initiallyFlippedVertically", delegate(bool Value) { Target.InitiallyFlippedVertically = Value; });
+            ApplyBool(Source, "initiallyTilted", delegate(bool Value) { Target.InitiallyTilted = Value; });
+            ApplyBool(Source, "asMultiple", delegate(bool Value) { Target.AsMultiple = Value; });
+            ApplyTextFormats(Target, GetSetDictionary(Source, "textFormats"));
+            ApplyBrush(Source, "regionBackground", delegate(Brush Value) { Target.RegionBackground = Value; });
+            ApplyBrush(Source, "regionForeground", delegate(Brush Value) { Target.RegionForeground = Value; });
+            ApplyDash(Source, "regionDash", delegate(DashStyle Value) { Target.RegionDash = Value; });
+            ApplyDouble(Source, "regionThickness", delegate(double Value) { Target.RegionThickness = Value; });
+            ApplyEnum<EPlacementOnBorderHorizontal>(Source, "initialGroupRegionPlacementHorizontal", delegate(EPlacementOnBorderHorizontal Value) { Target.InitialGroupRegionPlacementHorizontal = Value; });
+            this.Report.Log("Domain JSON applied visualSymbolFormat for " + Entity + " '" + OwnerTechName.ToStringAlways() + "'.");
+            return true;
+        }
+
+        private bool ApplyConnectorsFormat(VisualConnectorsFormat Target, IDictionary<string, object> Source, string Entity, string OwnerTechName)
+        {
+            if (Target == null || Source == null || Source.Count < 1)
+                return false;
+
+            if (this.IsPreview)
+                return true;
+
+            ApplyElementFormat(Target, Source);
+            ApplyEnum<EPathStyle>(Source, "pathStyle", delegate(EPathStyle Value) { Target.PathStyle = Value; });
+            ApplyEnum<EPathCorner>(Source, "pathCorner", delegate(EPathCorner Value) { Target.PathCorner = Value; });
+            ApplyBool(Source, "labelLinkVariant", delegate(bool Value) { Target.LabelLinkVariant = Value; });
+            ApplyBool(Source, "labelLinkDefinitor", delegate(bool Value) { Target.LabelLinkDefinitor = Value; });
+            ApplyBool(Source, "labelLinkDescriptor", delegate(bool Value) { Target.LabelLinkDescriptor = Value; });
+            ApplyPlugMap(Target.HeadPlugs, GetSetDictionary(Source, "headPlugs"));
+            ApplyPlugMap(Target.TailPlugs, GetSetDictionary(Source, "tailPlugs"));
+            this.Report.Log("Domain JSON applied visualConnectorsFormat for " + Entity + " '" + OwnerTechName.ToStringAlways() + "'.");
+            return true;
+        }
+
+        private void ApplyElementFormat(VisualElementFormat Target, IDictionary<string, object> Source)
+        {
+            ApplyBrush(Source, "mainBackground", delegate(Brush Value) { Target.MainBackground = Value; });
+            ApplyBrush(Source, "lineBrush", delegate(Brush Value) { Target.LineBrush = Value; });
+            ApplyDash(Source, "lineDash", delegate(DashStyle Value) { Target.LineDash = Value; });
+            ApplyEnum<PenLineCap>(Source, "lineCap", delegate(PenLineCap Value) { Target.LineCap = Value; });
+            ApplyEnum<PenLineJoin>(Source, "lineJoin", delegate(PenLineJoin Value) { Target.LineJoin = Value; });
+            ApplyDouble(Source, "lineThickness", delegate(double Value) { Target.LineThickness = Value; });
+            ApplyDouble(Source, "opacity", delegate(double Value) { Target.Opacity = Value; });
+        }
+
+        private static void ApplyTextFormats(VisualSymbolFormat Target, IDictionary<string, object> Source)
+        {
+            if (Target == null || Source == null)
+                return;
+
+            foreach (var Pair in Source)
+            {
+                ETextPurpose Purpose;
+                if (!TryParseTextPurpose(Pair.Key, out Purpose))
+                    continue;
+
+                var Format = ImportTextFormat(Pair.Value);
+                if (Format != null)
+                    Target.SetTextFormat(Purpose, Format);
+            }
+        }
+
+        private static bool TryParseTextPurpose(string Text, out ETextPurpose Purpose)
+        {
+            if (Enum.TryParse<ETextPurpose>(Text, true, out Purpose))
+                return true;
+
+            var Normalized = (Text ?? "").Replace(" ", "").Replace("-", "").Replace("_", "");
+            foreach (ETextPurpose Candidate in Enum.GetValues(typeof(ETextPurpose)))
+                if (String.Equals(Candidate.ToString(), Normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    Purpose = Candidate;
+                    return true;
+                }
+
+            return false;
+        }
+
+        private void ApplyPlugMap(IDictionary<SimplePresentationElement, string> Target, IDictionary<string, object> Source)
+        {
+            if (Target == null || Source == null)
+                return;
+
+            foreach (var Pair in Source)
+            {
+                var Variant = this.Resolver.LinkRoleVariant(Pair.Key);
+                var Plug = Pair.Value == null ? null : Convert.ToString(Pair.Value, CultureInfo.InvariantCulture);
+                if (Variant != null && !String.IsNullOrWhiteSpace(Plug))
+                    Target.AddOrReplace(Variant, Plug);
+            }
+        }
+
+        private static void ApplyBrush(IDictionary<string, object> Source, string Key, Action<Brush> Setter)
+        {
+            if (Source == null || !Source.ContainsKey(Key))
+                return;
+
+            var Value = GetSetObject(Source, Key);
+            if (Value == null)
+            {
+                Setter(null);
+                return;
+            }
+
+            var Brush = ImportBrush(Value);
+            if (Brush != null)
+                Setter(Brush);
+        }
+
+        private static void ApplyDash(IDictionary<string, object> Source, string Key, Action<DashStyle> Setter)
+        {
+            var Dash = ImportDashStyle(GetSetObject(Source, Key));
+            if (Dash != null)
+                Setter(Dash);
+        }
+
+        private static void ApplyBool(IDictionary<string, object> Source, string Key, Action<bool> Setter)
+        {
+            var Value = GetSetBool(Source, Key);
+            if (Value != null)
+                Setter(Value.Value);
+        }
+
+        private static void ApplyDouble(IDictionary<string, object> Source, string Key, Action<double> Setter)
+        {
+            var Value = GetSetDouble(Source, Key);
+            if (Value != null)
+                Setter(Value.Value);
+        }
+
+        private static void ApplyEnum<TEnum>(IDictionary<string, object> Source, string Key, Action<TEnum> Setter)
+            where TEnum : struct
+        {
+            var Text = GetSetString(Source, Key);
+            TEnum Value;
+            if (!String.IsNullOrWhiteSpace(Text) && Enum.TryParse<TEnum>(Text, true, out Value))
+                Setter(Value);
         }
 
         private bool ApplyRelationshipRoleFields(LinkRoleDefinition Target, DomainJsonElement Source)
@@ -1116,6 +1284,17 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 Changed = true;
             }
 
+            var ModelRevision = GetSetInt(Source.Set, "modelRevision");
+            if (ModelRevision != null && this.TargetDomain.ModelRevision != ModelRevision.Value)
+            {
+                this.Report.LogFieldUpdate("domain", "modelRevision", Describe(this.TargetDomain), "active-domain",
+                                           this.TargetDomain.ModelRevision.ToString(CultureInfo.InvariantCulture),
+                                           ModelRevision.Value.ToString(CultureInfo.InvariantCulture), this.IsPreview);
+                if (!this.IsPreview)
+                    this.TargetDomain.ModelRevision = ModelRevision.Value;
+                Changed = true;
+            }
+
             var ViewGridSize = GetSetDouble(Source.Set, "viewGridSize");
             if (ViewGridSize != null && this.TargetDomain.ViewGridSize != ViewGridSize.Value)
             {
@@ -1127,6 +1306,147 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 Changed = true;
             }
 
+            Changed = ApplyReportConfiguration(GetSetDictionary(Source.Set, "reportingConfiguration")) || Changed;
+
+            return Changed;
+        }
+
+        private bool ApplyReportConfiguration(IDictionary<string, object> Source)
+        {
+            if (Source == null || Source.Count < 1)
+                return false;
+
+            var Target = this.TargetDomain.ReportingConfiguration ?? new ReportConfiguration();
+            var Changed = false;
+
+            Changed = ApplyReportString(Source, "documentTitle", Target.Document_Title, this.IsPreview, delegate(string Value) { Target.Document_Title = Value; }) || Changed;
+            Changed = ApplyReportString(Source, "documentSubtitle", Target.Document_Subtitle, this.IsPreview, delegate(string Value) { Target.Document_Subtitle = Value; }) || Changed;
+            Changed = ApplyReportString(Source, "pageHeaderLeft", Target.PageHeader_Left, this.IsPreview, delegate(string Value) { Target.PageHeader_Left = Value; }) || Changed;
+            Changed = ApplyReportString(Source, "pageHeaderCenter", Target.PageHeader_Center, this.IsPreview, delegate(string Value) { Target.PageHeader_Center = Value; }) || Changed;
+            Changed = ApplyReportString(Source, "pageHeaderRight", Target.PageHeader_Right, this.IsPreview, delegate(string Value) { Target.PageHeader_Right = Value; }) || Changed;
+            Changed = ApplyReportString(Source, "pageFooterLeft", Target.PageFooter_Left, this.IsPreview, delegate(string Value) { Target.PageFooter_Left = Value; }) || Changed;
+            Changed = ApplyReportString(Source, "pageFooterCenter", Target.PageFooter_Center, this.IsPreview, delegate(string Value) { Target.PageFooter_Center = Value; }) || Changed;
+            Changed = ApplyReportString(Source, "pageFooterRight", Target.PageFooter_Right, this.IsPreview, delegate(string Value) { Target.PageFooter_Right = Value; }) || Changed;
+
+            Changed = ApplyReportBool(Source, "docSectionTitlePage", Target.DocSection_TitlePage, this.IsPreview, delegate(bool Value) { Target.DocSection_TitlePage = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "docSectionTableOfContents", Target.DocSection_TableOfContents, this.IsPreview, delegate(bool Value) { Target.DocSection_TableOfContents = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "docSectionComposition", Target.DocSection_Composition, this.IsPreview, delegate(bool Value) { Target.DocSection_Composition = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "docSectionDomain", Target.DocSection_Domain, this.IsPreview, delegate(bool Value) { Target.DocSection_Domain = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "compositionCard"), Target.Composition_Card, this.IsPreview, delegate(DisplayCard Value) { Target.Composition_Card = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "compositeIdeaViewCard"), Target.CompositeIdea_View_Card, this.IsPreview, delegate(DisplayCard Value) { Target.CompositeIdea_View_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaViewDiagram", Target.CompositeIdea_View_Diagram, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_View_Diagram = Value; }) || Changed;
+            Changed = ApplyReportDisplayList(GetSetDictionary(Source, "compositeIdeaConceptsList"), Target.CompositeIdea_Concepts_List, this.IsPreview, delegate(DisplayList Value) { Target.CompositeIdea_Concepts_List = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "compositeIdeaConceptsCard"), Target.CompositeIdea_Concepts_Card, this.IsPreview, delegate(DisplayCard Value) { Target.CompositeIdea_Concepts_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaConceptsReportCompositeContent", Target.CompositeIdea_Concepts_ReportCompositeContent, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_Concepts_ReportCompositeContent = Value; }) || Changed;
+            Changed = ApplyReportDisplayList(GetSetDictionary(Source, "compositeIdeaRelationshipsList"), Target.CompositeIdea_Relationships_List, this.IsPreview, delegate(DisplayList Value) { Target.CompositeIdea_Relationships_List = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "compositeIdeaRelationshipsCard"), Target.CompositeIdea_Relationships_Card, this.IsPreview, delegate(DisplayCard Value) { Target.CompositeIdea_Relationships_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaRelationshipsReportCompositeContent", Target.CompositeIdea_Relationships_ReportCompositeContent, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_Relationships_ReportCompositeContent = Value; }) || Changed;
+            Changed = ApplyReportDisplayList(GetSetDictionary(Source, "compositeIdeaMarkersList"), Target.CompositeIdea_Markers_List, this.IsPreview, delegate(DisplayList Value) { Target.CompositeIdea_Markers_List = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "compositeIdeaMarkersCard"), Target.CompositeIdea_Markers_Card, this.IsPreview, delegate(DisplayCard Value) { Target.CompositeIdea_Markers_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaComplements", Target.CompositeIdea_Complements, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_Complements = Value; }) || Changed;
+            Changed = ApplyReportDisplayList(GetSetDictionary(Source, "compositeIdeaGroupedIdeasList"), Target.CompositeIdea_GroupedIdeas_List, this.IsPreview, delegate(DisplayList Value) { Target.CompositeIdea_GroupedIdeas_List = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaDetails", Target.CompositeIdea_Details, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_Details = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaDetailsIncludeLinksTarget", Target.CompositeIdea_DetailsIncludeLinksTarget, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_DetailsIncludeLinksTarget = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaDetailsIncludeAttachmentsContent", Target.CompositeIdea_DetailsIncludeAttachmentsContent, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_DetailsIncludeAttachmentsContent = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaDetailsIncludeTablesData", Target.CompositeIdea_DetailsIncludeTablesData, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_DetailsIncludeTablesData = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaRelatedFromCollection", Target.CompositeIdea_RelatedFrom_Collection, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_RelatedFrom_Collection = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaIncludeTargetCompanions", Target.CompositeIdea_IncludeTargetCompanions, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_IncludeTargetCompanions = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaRelatedToCollection", Target.CompositeIdea_RelatedTo_Collection, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_RelatedTo_Collection = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeIdeaIncludeOriginCompanions", Target.CompositeIdea_IncludeOriginCompanions, this.IsPreview, delegate(bool Value) { Target.CompositeIdea_IncludeOriginCompanions = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "compositeRelationshipLinksCollection", Target.CompositeRelationship_Links_Collection, this.IsPreview, delegate(bool Value) { Target.CompositeRelationship_Links_Collection = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "compositeRelationshipLinksCard"), Target.CompositeRelationship_Links_Card, this.IsPreview, delegate(DisplayCard Value) { Target.CompositeRelationship_Links_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "domainConceptDefs", Target.Domain_Concept_Defs, this.IsPreview, delegate(bool Value) { Target.Domain_Concept_Defs = Value; }) || Changed;
+            Changed = ApplyReportDisplayList(GetSetDictionary(Source, "domainConceptDefsList"), Target.Domain_Concept_Defs_List, this.IsPreview, delegate(DisplayList Value) { Target.Domain_Concept_Defs_List = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "domainConceptDefsCard"), Target.Domain_Concept_Defs_Card, this.IsPreview, delegate(DisplayCard Value) { Target.Domain_Concept_Defs_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "domainRelationshipDefs", Target.Domain_Relationship_Defs, this.IsPreview, delegate(bool Value) { Target.Domain_Relationship_Defs = Value; }) || Changed;
+            Changed = ApplyReportDisplayList(GetSetDictionary(Source, "domainRelationshipDefsList"), Target.Domain_Relationship_Defs_List, this.IsPreview, delegate(DisplayList Value) { Target.Domain_Relationship_Defs_List = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "domainRelationshipDefsCard"), Target.Domain_Relationship_Defs_Card, this.IsPreview, delegate(DisplayCard Value) { Target.Domain_Relationship_Defs_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "domainLinkRoleVariants", Target.Domain_LinkRole_Variants, this.IsPreview, delegate(bool Value) { Target.Domain_LinkRole_Variants = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "domainMarkerDefs", Target.Domain_Marker_Defs, this.IsPreview, delegate(bool Value) { Target.Domain_Marker_Defs = Value; }) || Changed;
+            Changed = ApplyReportDisplayList(GetSetDictionary(Source, "domainMarkerDefsList"), Target.Domain_Marker_Defs_List, this.IsPreview, delegate(DisplayList Value) { Target.Domain_Marker_Defs_List = Value; }) || Changed;
+            Changed = ApplyReportDisplayCard(GetSetDictionary(Source, "domainMarkerDefsCard"), Target.Domain_Marker_Defs_Card, this.IsPreview, delegate(DisplayCard Value) { Target.Domain_Marker_Defs_Card = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "domainTableStructDefs", Target.Domain_TableStruct_Defs, this.IsPreview, delegate(bool Value) { Target.Domain_TableStruct_Defs = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "domainBaseTables", Target.Domain_BaseTables, this.IsPreview, delegate(bool Value) { Target.Domain_BaseTables = Value; }) || Changed;
+
+            if (!this.IsPreview && this.TargetDomain.ReportingConfiguration == null)
+                this.TargetDomain.ReportingConfiguration = Target;
+
+            if (Changed)
+                this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") + " reportingConfiguration structural settings.");
+
+            return Changed;
+        }
+
+        private static bool ApplyReportString(IDictionary<string, object> Source, string Key, string Current, bool IsPreview, Action<string> Setter)
+        {
+            var Value = GetSetString(Source, Key);
+            if (Value == null || Current == Value)
+                return false;
+
+            if (!IsPreview)
+                Setter(Value);
+            return true;
+        }
+
+        private static bool ApplyReportBool(IDictionary<string, object> Source, string Key, bool Current, bool IsPreview, Action<bool> Setter)
+        {
+            var Value = GetSetBool(Source, Key);
+            if (Value == null || Current == Value.Value)
+                return false;
+
+            if (!IsPreview)
+                Setter(Value.Value);
+            return true;
+        }
+
+        private static bool ApplyReportDisplayList(IDictionary<string, object> Source, DisplayList Target, bool IsPreview, Action<DisplayList> Setter)
+        {
+            if (Source == null || Source.Count < 1)
+                return false;
+
+            var Changed = false;
+            if (Target == null)
+            {
+                Target = new DisplayList();
+                if (!IsPreview)
+                    Setter(Target);
+                Changed = true;
+            }
+
+            Changed = ApplyReportBool(Source, "show", Target.Show, IsPreview, delegate(bool Value) { Target.Show = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propName", Target.PropName, IsPreview, delegate(bool Value) { Target.PropName = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propTechName", Target.PropTechName, IsPreview, delegate(bool Value) { Target.PropTechName = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propSummary", Target.PropSummary, IsPreview, delegate(bool Value) { Target.PropSummary = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propPictogram", Target.PropPictogram, IsPreview, delegate(bool Value) { Target.PropPictogram = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "definitor", Target.Definitor, IsPreview, delegate(bool Value) { Target.Definitor = Value; }) || Changed;
+            return Changed;
+        }
+
+        private static bool ApplyReportDisplayCard(IDictionary<string, object> Source, DisplayCard Target, bool IsPreview, Action<DisplayCard> Setter)
+        {
+            if (Source == null || Source.Count < 1)
+                return false;
+
+            var Changed = false;
+            if (Target == null)
+            {
+                Target = new DisplayCard();
+                if (!IsPreview)
+                    Setter(Target);
+                Changed = true;
+            }
+
+            Changed = ApplyReportBool(Source, "show", Target.Show, IsPreview, delegate(bool Value) { Target.Show = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "route", Target.Route, IsPreview, delegate(bool Value) { Target.Route = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "definitor", Target.Definitor, IsPreview, delegate(bool Value) { Target.Definitor = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propGlobalId", Target.PropGlobalId, IsPreview, delegate(bool Value) { Target.PropGlobalId = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propName", Target.PropName, IsPreview, delegate(bool Value) { Target.PropName = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propTechName", Target.PropTechName, IsPreview, delegate(bool Value) { Target.PropTechName = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propSummary", Target.PropSummary, IsPreview, delegate(bool Value) { Target.PropSummary = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propTechSpec", Target.PropTechSpec, IsPreview, delegate(bool Value) { Target.PropTechSpec = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propPictogram", Target.PropPictogram, IsPreview, delegate(bool Value) { Target.PropPictogram = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propDescription", Target.PropDescription, IsPreview, delegate(bool Value) { Target.PropDescription = Value; }) || Changed;
+            Changed = ApplyReportBool(Source, "propVersioning", Target.PropVersioning, IsPreview, delegate(bool Value) { Target.PropVersioning = Value; }) || Changed;
             return Changed;
         }
 
@@ -1640,6 +1960,23 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             return Convert.ToString(Set[Key], CultureInfo.InvariantCulture);
         }
 
+        private static object GetSetObject(IDictionary<string, object> Set, string Key)
+        {
+            if (Set == null || !Set.ContainsKey(Key))
+                return null;
+            return Set[Key];
+        }
+
+        private static IDictionary<string, object> GetSetDictionary(IDictionary<string, object> Set, string Key)
+        {
+            var Value = GetSetObject(Set, Key);
+            var Dictionary = Value as IDictionary<string, object>;
+            if (Dictionary != null)
+                return Dictionary;
+
+            return new Dictionary<string, object>();
+        }
+
         private static bool? GetSetBool(IDictionary<string, object> Set, string Key)
         {
             return DomainJsonSerializer.GetNullableBool(Set, Key);
@@ -1698,6 +2035,134 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                     Result.Add(Convert.ToString(Item, CultureInfo.InvariantCulture));
 
             return Result;
+        }
+
+        private static TextFormat ImportTextFormat(object Source)
+        {
+            var SourceDictionary = Source as IDictionary<string, object>;
+            if (SourceDictionary == null)
+                return null;
+
+            var FontFamilyName = Convert.ToString(GetSetObject(SourceDictionary, "fontFamilyName")
+                                                  ?? GetSetObject(SourceDictionary, "fontFamily")
+                                                  ?? "Arial",
+                                                  CultureInfo.InvariantCulture);
+
+            var FontSize = GetSetDouble(SourceDictionary, "fontSize") ?? 12.0;
+            var ForegroundBrush = ImportBrush(GetSetObject(SourceDictionary, "foregroundBrush")
+                                              ?? GetSetObject(SourceDictionary, "foreground"));
+            var IsBold = GetSetBool(SourceDictionary, "isBold") ?? false;
+            var IsItalic = GetSetBool(SourceDictionary, "isItalic") ?? false;
+            var IsUnderline = GetSetBool(SourceDictionary, "isUnderline") ?? false;
+            var IsStrikethrough = GetSetBool(SourceDictionary, "isStrikethrough") ?? false;
+
+            var Alignment = TextAlignment.Left;
+            var AlignmentText = Convert.ToString(GetSetObject(SourceDictionary, "alignment"), CultureInfo.InvariantCulture);
+            if (!String.IsNullOrWhiteSpace(AlignmentText))
+                Enum.TryParse(AlignmentText, true, out Alignment);
+
+            return new TextFormat(FontFamilyName, FontSize, ForegroundBrush, IsBold, IsItalic, IsUnderline, Alignment, IsStrikethrough);
+        }
+
+        private static Brush ImportBrush(object Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Opacity = default(double?);
+            var SourceDictionary = Source as IDictionary<string, object>;
+            if (SourceDictionary != null)
+            {
+                var Xaml = GetSetObject(SourceDictionary, "xaml");
+                if (Xaml != null)
+                    Source = Xaml;
+                else
+                    Source = GetSetObject(SourceDictionary, "color")
+                             ?? GetSetObject(SourceDictionary, "brush")
+                             ?? GetSetObject(SourceDictionary, "value");
+                Opacity = GetSetDouble(SourceDictionary, "opacity");
+            }
+
+            var Text = Convert.ToString(Source, CultureInfo.InvariantCulture);
+            if (String.IsNullOrWhiteSpace(Text))
+                return null;
+
+            try
+            {
+                var Result = Text.TrimStart().StartsWith("<", StringComparison.Ordinal)
+                             ? ImportBrushXaml(Text)
+                             : (Brush)new BrushConverter().ConvertFromString(null, CultureInfo.InvariantCulture, Text);
+                if (Result != null && Opacity != null)
+                {
+                    Result = Result.CloneCurrentValue();
+                    Result.Opacity = Opacity.Value.EnforceRange(0.0, 1.0);
+                }
+
+                return Result;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Brush ImportBrushXaml(string Text)
+        {
+            if (!IsSupportedBrushXaml(Text))
+                return null;
+
+            return XamlReader.Parse(Text) as Brush;
+        }
+
+        private static bool IsSupportedBrushXaml(string Text)
+        {
+            try
+            {
+                var Settings = new XmlReaderSettings();
+                Settings.DtdProcessing = DtdProcessing.Prohibit;
+                Settings.XmlResolver = null;
+
+                using (var Reader = XmlReader.Create(new StringReader(Text), Settings))
+                {
+                    while (Reader.Read())
+                    {
+                        if (Reader.NodeType != XmlNodeType.Element)
+                            continue;
+
+                        if (!IsSupportedBrushXamlElement(Reader.LocalName))
+                            return false;
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsSupportedBrushXamlElement(string LocalName)
+        {
+            return LocalName == "SolidColorBrush" ||
+                   LocalName == "LinearGradientBrush" ||
+                   LocalName == "LinearGradientBrush.GradientStops" ||
+                   LocalName == "RadialGradientBrush" ||
+                   LocalName == "RadialGradientBrush.GradientStops" ||
+                   LocalName == "GradientStop";
+        }
+
+        private static DashStyle ImportDashStyle(object Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Text = Convert.ToString(Source, CultureInfo.InvariantCulture);
+            if (String.IsNullOrWhiteSpace(Text))
+                return null;
+
+            var Declared = Display.DeclaredDashStyles.FirstOrDefault(Item => String.Equals(Item.Item2, Text, StringComparison.OrdinalIgnoreCase));
+            return Declared == null ? null : Declared.Item1;
         }
 
         private static string DescribeOperation(DomainJsonOperation Operation)

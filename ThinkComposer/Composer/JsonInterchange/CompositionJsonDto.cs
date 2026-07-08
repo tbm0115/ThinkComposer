@@ -195,6 +195,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Summary { get; set; }
         public string Description { get; set; }
         public string TechSpec { get; set; }
+        public Dictionary<string, object> Pictogram { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
         public string DefinitionName { get; set; }
@@ -232,6 +233,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string Summary { get; set; }
         public string Description { get; set; }
         public string TechSpec { get; set; }
+        public Dictionary<string, object> Pictogram { get; set; }
         public string DefinitionId { get; set; }
         public string DefinitionTechName { get; set; }
         public string DefinitionName { get; set; }
@@ -314,6 +316,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public CompositionJsonView()
         {
             this.Visuals = new List<CompositionJsonVisual>();
+            this.Complements = new List<CompositionJsonComplement>();
         }
 
         public string Id { get; set; }
@@ -324,19 +327,85 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public string OwnerIdeaId { get; set; }
         public string OwnerIdeaTechName { get; set; }
         public List<CompositionJsonVisual> Visuals { get; set; }
+        public List<CompositionJsonComplement> Complements { get; set; }
     }
 
     public class CompositionJsonVisual
     {
+        public CompositionJsonVisual()
+        {
+            this.Connectors = new List<CompositionJsonConnector>();
+            this.Complements = new List<CompositionJsonComplement>();
+            this.CustomFormatValues = new Dictionary<string, object>();
+        }
+
         public string IdeaId { get; set; }
         public string IdeaTechName { get; set; }
         public string RepresentationId { get; set; }
         public bool IsShortcut { get; set; }
+        public int? ZOrder { get; set; }
         public double? X { get; set; }
         public double? Y { get; set; }
         public double? Width { get; set; }
         public double? Height { get; set; }
+        public bool? AreDetailsShown { get; set; }
+        public bool? ShowCompositeContentAsDetails { get; set; }
+        public double? DetailsPosterHeight { get; set; }
+        public bool? ShowAsMultiple { get; set; }
+        public bool? IsHorizontallyFlipped { get; set; }
+        public bool? IsVerticallyFlipped { get; set; }
+        public bool? IsTilted { get; set; }
         public CompositionJsonVisualControl Visual { get; set; }
+        public List<CompositionJsonConnector> Connectors { get; set; }
+        public List<CompositionJsonComplement> Complements { get; set; }
+        public Dictionary<string, object> CustomFormatValues { get; set; }
+    }
+
+    public class CompositionJsonPoint
+    {
+        public double? X { get; set; }
+        public double? Y { get; set; }
+    }
+
+    public class CompositionJsonConnector
+    {
+        public string Id { get; set; }
+        public string LinkId { get; set; }
+        public string RoleType { get; set; }
+        public string RoleDefinitionTechName { get; set; }
+        public string RoleVariantTechName { get; set; }
+        public string AssociatedIdeaId { get; set; }
+        public string AssociatedIdeaTechName { get; set; }
+        public int? ZOrder { get; set; }
+        public string OriginRepresentationId { get; set; }
+        public string OriginIdeaId { get; set; }
+        public string OriginIdeaTechName { get; set; }
+        public string TargetRepresentationId { get; set; }
+        public string TargetIdeaId { get; set; }
+        public string TargetIdeaTechName { get; set; }
+        public CompositionJsonPoint OriginPosition { get; set; }
+        public CompositionJsonPoint OriginEdgePosition { get; set; }
+        public CompositionJsonPoint TargetPosition { get; set; }
+        public CompositionJsonPoint TargetEdgePosition { get; set; }
+        public CompositionJsonPoint IntermediatePosition { get; set; }
+    }
+
+    public class CompositionJsonComplement
+    {
+        public CompositionJsonComplement()
+        {
+            this.Set = new Dictionary<string, object>();
+        }
+
+        public string Id { get; set; }
+        public string KindTechName { get; set; }
+        public string KindName { get; set; }
+        public int? ZOrder { get; set; }
+        public double? X { get; set; }
+        public double? Y { get; set; }
+        public double? Width { get; set; }
+        public double? Height { get; set; }
+        public Dictionary<string, object> Set { get; set; }
     }
 
     public class CompositionJsonOperation

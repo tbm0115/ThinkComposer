@@ -205,6 +205,11 @@
           "type": "string",
           "description": "Deterministic compatibility signature for domain elements that affect Composition JSON imports."
         },
+        "set": {
+          "type": "object",
+          "description": "Extensible native state bag. Root /Domain.json persistence uses this for fields such as modelRevision, viewGridSize, reportingConfiguration, visualSymbolFormat, visualConnectorsFormat, textFormats, and WPF brush payloads. Manual interchange import treats unsupported keys conservatively.",
+          "additionalProperties": true
+        },
         "order": {
           "type": "integer"
         }

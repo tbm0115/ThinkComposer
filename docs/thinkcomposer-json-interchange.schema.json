@@ -72,7 +72,7 @@
     },
     "views": {
       "type": "array",
-      "description": "View and lightweight layout information. Visual styling and binary data are intentionally omitted.",
+      "description": "View, layout, and reconstructable native visual state. Root /Composition.json persistence uses this section as authoritative for visual positions, connectors, complements, z-order, and supported symbol state; unsupported binary/image payloads remain warning-only.",
       "items": {
         "$ref": "#/$defs/view"
       },
@@ -896,6 +896,10 @@
           "$ref": "#/$defs/editableText",
           "description": "Technical specification text attached to the concept or relationship. Omission preserves the existing value; an explicit empty string clears it."
         },
+        "pictogram": {
+          "$ref": "#/$defs/imageSourcePayload",
+          "description": "Native idea pictogram ImageSource payload used by JSON-authoritative package persistence."
+        },
         "containerId": {
           "$ref": "#/$defs/guid",
           "description": "Id of the containing Composition, Concept, or Relationship."
@@ -1041,6 +1045,32 @@
           ]
         }
       ]
+    },
+    "imageSourcePayload": {
+      "type": "object",
+      "description": "Base64-encoded native ImageSource payload emitted only by JSON-authoritative package persistence for reconstructable pictograms.",
+      "required": [
+        "type",
+        "encoding",
+        "format",
+        "data"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "imageSource"
+        },
+        "encoding": {
+          "const": "base64"
+        },
+        "format": {
+          "const": "thinkComposerImageBytes"
+        },
+        "data": {
+          "type": "string",
+          "contentEncoding": "base64"
+        }
+      }
     },
     "marker": {
       "type": "object",
@@ -1236,6 +1266,14 @@
           },
           "default": []
         },
+        "complements": {
+          "type": "array",
+          "description": "Free view-owned complements such as text, notes, stamps, legends, and group regions. Image complements are not reconstructed by JSON persistence.",
+          "items": {
+            "$ref": "#/$defs/complement"
+          },
+          "default": []
+        },
         "delete": {
           "type": "boolean"
         }
@@ -1261,6 +1299,10 @@
           "type": "boolean",
           "description": "True when this exported visual representation is a Shortcut to the referenced idea."
         },
+        "zOrder": {
+          "type": "integer",
+          "description": "Native view stacking order for this visual object."
+        },
         "x": {
           "type": "number"
         },
@@ -1275,12 +1317,171 @@
           "type": "number",
           "minimum": 0
         },
+        "areDetailsShown": {
+          "type": "boolean",
+          "description": "Native symbol state indicating whether the visual shows its details poster."
+        },
+        "showCompositeContentAsDetails": {
+          "type": "boolean",
+          "description": "Native symbol state indicating whether nested composite content is shown as details."
+        },
+        "detailsPosterHeight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "showAsMultiple": {
+          "type": "boolean"
+        },
+        "isHorizontallyFlipped": {
+          "type": "boolean"
+        },
+        "isVerticallyFlipped": {
+          "type": "boolean"
+        },
+        "isTilted": {
+          "type": "boolean"
+        },
         "visual": {
           "$ref": "#/$defs/visualControl",
           "description": "Explicit visual controls for this visual representation."
         },
+        "connectors": {
+          "type": "array",
+          "description": "Native relationship connector geometry for explicit JSON persistence round-trips.",
+          "items": {
+            "$ref": "#/$defs/connector"
+          },
+          "default": []
+        },
+        "complements": {
+          "type": "array",
+          "description": "Complements attached to this visual symbol.",
+          "items": {
+            "$ref": "#/$defs/complement"
+          },
+          "default": []
+        },
+        "customFormatValues": {
+          "type": "object",
+          "description": "Native custom visual format values from VisualRepresentation.CustomFormatValues. Supported values include JSON scalars, dash names, structured textFormat objects, and structured brush objects with color/opacity or WPF XAML brush payloads.",
+          "additionalProperties": true
+        },
         "delete": {
           "type": "boolean"
+        }
+      }
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      }
+    },
+    "connector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "linkId": {
+          "$ref": "#/$defs/guid"
+        },
+        "roleType": {
+          "type": "string"
+        },
+        "roleDefinitionTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "roleVariantTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "associatedIdeaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "associatedIdeaTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "zOrder": {
+          "type": "integer"
+        },
+        "originRepresentationId": {
+          "$ref": "#/$defs/guid",
+          "description": "Visual representation id whose main symbol is the connector origin. Used by JSON persistence to preserve links to the correct shortcut instance."
+        },
+        "originIdeaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "originIdeaTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "targetRepresentationId": {
+          "$ref": "#/$defs/guid",
+          "description": "Visual representation id whose main symbol is the connector target. Used by JSON persistence to preserve links to the correct shortcut instance."
+        },
+        "targetIdeaId": {
+          "$ref": "#/$defs/guid"
+        },
+        "targetIdeaTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "originPosition": {
+          "$ref": "#/$defs/point"
+        },
+        "originEdgePosition": {
+          "$ref": "#/$defs/point"
+        },
+        "targetPosition": {
+          "$ref": "#/$defs/point"
+        },
+        "targetEdgePosition": {
+          "$ref": "#/$defs/point"
+        },
+        "intermediatePosition": {
+          "$ref": "#/$defs/point"
+        }
+      }
+    },
+    "complement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
+        "kindTechName": {
+          "$ref": "#/$defs/techName"
+        },
+        "kindName": {
+          "type": "string"
+        },
+        "zOrder": {
+          "type": "integer"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "set": {
+          "type": "object",
+          "description": "Complement-specific native fields such as TXT, foreground/background brushes, line dash/thickness, orientation, or quadrant.",
+          "additionalProperties": true
         }
       }
     },

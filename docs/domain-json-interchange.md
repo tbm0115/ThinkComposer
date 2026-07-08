@@ -47,18 +47,18 @@ The schema is maintained at `docs/thinkcomposer-domain-json-interchange.schema.j
 
 The first-pass exporter writes deterministic, pretty-printed JSON for text-safe domain content:
 
-- Domain metadata: id, name, techName, summary, description, TechSpec, version/default table references, and safe view/grid metadata.
+- Domain metadata: id, name, techName, summary, description, TechSpec, model revision, version/default table references, report configuration, and safe view/grid metadata.
 - External languages and link-role variants.
 - Concept definition, relationship definition, marker, table, and field clusters/categories.
 - Marker definitions, excluding binary image payloads.
 - Table definitions and field definitions, including data type/category references and TechSpec where available.
-- Concept definitions, including cluster, ancestor, shape/composability/versionability metadata, custom field table references, detail designator summaries, and attached output templates.
-- Relationship definitions, including cluster, ancestor, shape/simple/hidden-central metadata, role definitions, allowed/default variants, and attached output templates.
+- Concept definitions, including cluster, ancestor, shape/composability/versionability metadata, visual symbol format settings, text formats, WPF brush payloads, custom field table references, detail designator summaries, and attached output templates.
+- Relationship definitions, including cluster, ancestor, shape/simple/hidden-central metadata, visual connector format settings, text formats, role definitions, allowed/default variants, and attached output templates.
 - Output templates as text, including owner definition and external language references.
 - A deterministic domain `compatibilitySignature` for elements that affect Composition JSON import compatibility.
 - A `relationshipCompatibility` section summarizing each relationship definition's origin/target roles, allowed endpoint concept definition techNames when discoverable, allowed role variants, and simple/directional flags.
 
-The exporter intentionally reports source/export warnings instead of inlining unsupported binary, image, rich-style, or unsafe native object graph details. Repeated missing-category notices are grouped in summaries with examples so successful exports and imports do not look like failures.
+The exporter intentionally reports source/export warnings instead of inlining unsupported domain-level binary image resources, custom domain shapes, or unsafe native object graph details. Supported native visual format settings, including text formats and WPF brushes, are represented as JSON values. Repeated missing-category notices are grouped in summaries with examples so successful exports and imports do not look like failures.
 
 ## Compatibility Metadata for Composition Patches
 
@@ -223,4 +223,4 @@ For generation behavior after import, see `docs/output-template-generation.md`. 
 
 ## Limits
 
-This first pass does not import custom domain shapes, binary image resources, rich visual style object graphs, full destructive migrations, or executable behavior. JSON persistence does not reconstruct metadata-only binary domain payloads. `.tdom` JSON import/export is not live sync. Use `docs/domain-sync.md` for the explicit `.tdom` / Domain JSON to `.tcom` embedded-domain update workflow.
+This pass imports supported native visual format settings, text formats, WPF brush payloads, and report configuration needed by JSON-authoritative package persistence, but it still does not import custom domain shapes, domain-level binary image resources, arbitrary rich visual style object graphs, full destructive migrations, or executable behavior. JSON persistence does not reconstruct metadata-only binary domain payloads. `.tdom` JSON import/export is not live sync. Use `docs/domain-sync.md` for the explicit `.tdom` / Domain JSON to `.tcom` embedded-domain update workflow.

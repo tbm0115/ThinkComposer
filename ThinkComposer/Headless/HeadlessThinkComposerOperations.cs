@@ -1086,7 +1086,7 @@ namespace Instrumind.ThinkComposer.Headless
             {
                 Report = DomainJsonImporter.Apply(TargetDomain, Document, new DomainJsonImportReport());
                 TargetDomain.UpdateVersion();
-                DomainServices.UpdateDomainDependants(TargetDomain);
+                DomainServices.UpdateDomainDependants(TargetDomain, null, false);
 
                 if (Engine.IsVariating)
                     Engine.CompleteCommandVariation();

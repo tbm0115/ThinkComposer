@@ -858,7 +858,7 @@ namespace Instrumind.ThinkComposer.Definitor
         /// Returns indication of success.
         /// </summary>
         // NOTE: This must be execute inside an editing Command.
-        public static bool UpdateDomainDependants(Domain Current, Domain Previous = null)
+        public static bool UpdateDomainDependants(Domain Current, Domain Previous = null, bool UpdateUserInterface = true)
         {
             // Detect unused Idea-Def Clusters
             if (Previous != null)
@@ -873,28 +873,31 @@ namespace Instrumind.ThinkComposer.Definitor
                 AffectedRelDefClusters.ForEach(def => def.Cluster = null);
             }
 
-            // Update ideas palette
-            ProductDirector.UpdatePalettes(Current.EditEngine as DocumentEngine);
-
-            // PENDING...
-            // Things to update:
-            // - Revalidation of existent relationships vs changed relationship rules
-            // - Containment
-
-            // Update dependent views
-            var Presenters = ProductDirector.CompositionDirector.Visualizer.GetAllViews(Current.OwnerComposition)
-                                .Select(docview => (ViewPresenter)docview.PresenterControl);
-
-            var PrevAlterability = Current.EditEngine.CurrentVariatingCommand.AlterExistenceStatusWhileVariating;
-            Current.EditEngine.CurrentVariatingCommand.AlterExistenceStatusWhileVariating = false;
-
-            foreach (var Presenter in Presenters)
+            if (UpdateUserInterface)
             {
-                Presenter.OwnerView.UnselectAllObjects();   // If no called, selection indicators may remain until reopen the view
-                Presenter.OwnerView.ShowAll();
-            }
+                // Update ideas palette
+                ProductDirector.UpdatePalettes(Current.EditEngine as DocumentEngine);
 
-            Current.EditEngine.CurrentVariatingCommand.AlterExistenceStatusWhileVariating = PrevAlterability;
+                // PENDING...
+                // Things to update:
+                // - Revalidation of existent relationships vs changed relationship rules
+                // - Containment
+
+                // Update dependent views
+                var Presenters = ProductDirector.CompositionDirector.Visualizer.GetAllViews(Current.OwnerComposition)
+                                    .Select(docview => (ViewPresenter)docview.PresenterControl);
+
+                var PrevAlterability = Current.EditEngine.CurrentVariatingCommand.AlterExistenceStatusWhileVariating;
+                Current.EditEngine.CurrentVariatingCommand.AlterExistenceStatusWhileVariating = false;
+
+                foreach (var Presenter in Presenters)
+                {
+                    Presenter.OwnerView.UnselectAllObjects();   // If no called, selection indicators may remain until reopen the view
+                    Presenter.OwnerView.ShowAll();
+                }
+
+                Current.EditEngine.CurrentVariatingCommand.AlterExistenceStatusWhileVariating = PrevAlterability;
+            }
 
             return true;
         }

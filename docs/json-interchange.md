@@ -56,7 +56,7 @@ Exports include deterministic, pretty-printed DTO data rather than native binary
 - `definitions`: domain definition names, tech names, summaries, descriptions, and TechSpec where available for exported definitions referenced by ideas.
 - `ideas`: concepts with stable ids, definition references, editable text, description, TechSpec, container, markers, details, and child idea ids.
 - `relationships`: relationships with stable ids, definition references, editable text, description, TechSpec, role links, origin/target idea ids, and container.
-- `views`: view identity, summary/description, and safe layout data for visible representations.
+- `views`: view identity, summary/description, visual positions, z-order, connector paths, view-owned complements, symbol-attached complements, supported symbol state, and safe custom visual format values.
 - `operations`: optional patch instructions.
 - `warnings`: source/export notes for skipped or metadata-only native data. These are preserved as source warnings during import rather than treated as new import failures.
 
@@ -122,6 +122,8 @@ For GPT-generated full-state-style documents intended to populate a blank compos
 With this option, missing top-level concepts and relationships can be created when they include enough safe create data: definition, name or techName, container, and valid relationship endpoints. Matching existing objects are still updated/upserted rather than duplicated. A single full-state item can also opt in with `isNew: true`.
 
 Visuals in `views[].visuals[]` that refer to newly created or planned ideas are treated as placement requests. The importer uses the visual `x`, `y`, `width`, and `height` when supplied; otherwise it falls back to normal auto-placement. If a referenced idea/relationship was skipped, dependent visual skips are grouped in the log instead of flooding the dialog.
+
+For native package persistence, the same visual records also preserve reconstructable visual state from the saved `.tcom`: `zOrder`, relationship `connectors`, symbol-attached `complements`, view-owned `complements`, custom format values, and symbol state such as `areDetailsShown`, `showCompositeContentAsDetails`, `detailsPosterHeight`, flips, tilt, and multiple-symbol display. This lets root `/Composition.json` round-trip positions, colors, grouping regions, detail posters, free text labels, and connector paths without relying on `/Composition.bin`.
 
 Patch-style `operations` remain preferred for GPT-authored creation because they make intent, ordering, and safety easier to inspect.
 
@@ -659,6 +661,6 @@ On import failure, ThinkComposer logs the exception message, full exception deta
 
 ## Limits
 
-Images, attachments, styling, custom visual formatting, store-box references, and binary content are exported as metadata or warnings only unless a specific JSON field is documented above. JSON persistence does not reconstruct metadata-only binary payloads. Unsupported details are omitted from editable import behavior rather than failing export. Import does not delete by omission; deletions require explicit `delete: true` or an operation with `op: "delete"`.
+Images, attachments, rich style object graphs, store-box references, and binary content are exported as metadata or warnings only unless a specific JSON field is documented above. JSON persistence reconstructs supported visual positions, connector paths, connector endpoint visual-representation ids for shortcut-specific links, complements, `VisualRepresentation.customFormatValues`, text formats, WPF brush payloads, idea/relationship pictogram `ImageSource` payloads, brushes/dashes, z-order, and symbol state, but it does not reconstruct metadata-only binary payloads such as image complements or attachment bodies. Unsupported details are omitted from editable import behavior rather than failing export. Import does not delete by omission; deletions require explicit `delete: true` or an operation with `op: "delete"`.
 
 For details, text-like content is exported as editable text where possible. Table details are exported as arrays of field/value records when their field metadata can be represented safely. Sparse or malformed table-detail cells are exported as empty strings with source warnings instead of aborting the whole composition export. Resource links and internal links are exported as safe metadata; attachments are metadata/text-only in JSON and large binary payloads are not inlined.

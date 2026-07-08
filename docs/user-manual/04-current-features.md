@@ -73,6 +73,8 @@ Composition JSON Interchange exports an active `.tcom` composition to editable J
 
 Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. The menu commands below are still interchange commands: they preview and merge edited JSON into the active project rather than acting like normal file open.
 
+Native JSON package persistence preserves supported visual state such as positions, colors, connector paths, grouping complements, shortcut visuals, active/root view identity, and visible detail posters. Binary package parts, when present, are legacy fallback only.
+
 ### Workflow
 
 1. Open a composition in ThinkComposer.
@@ -227,6 +229,8 @@ Supported domain work includes:
 - link role definitions
 - marker definitions
 - table definitions and fields
+- visual symbol and connector formats
+- report configuration
 - base tables
 - external languages
 - output templates

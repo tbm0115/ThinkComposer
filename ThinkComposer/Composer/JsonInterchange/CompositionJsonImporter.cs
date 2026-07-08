@@ -7,9 +7,13 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows;
+using System.Windows.Markup;
+using System.Windows.Media;
+using System.Xml;
 
 using Instrumind.Common;
 using Instrumind.Common.EntityBase;
@@ -22,6 +26,7 @@ using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
+using Instrumind.ThinkComposer.MetaModel.VisualMetaModel;
 using Instrumind.ThinkComposer.Model;
 using Instrumind.ThinkComposer.Model.GraphModel;
 using Instrumind.ThinkComposer.Model.InformationModel;
@@ -58,6 +63,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool AbortOnRelationshipCompatibilityFailure = false;
         private bool StrictDetailsCompatibility = false;
         private bool AbortOnDetailCompatibilityFailure = false;
+        private bool TreatMissingComplementFieldsAsNull = false;
         private RelationshipVisualPlacementOptions RelationshipVisualPlacementOptions = new RelationshipVisualPlacementOptions();
         private VisualStrategyPlan VisualStrategy = VisualStrategyPlan.Default;
         private int VisualStrategyConceptVisualReservations = 0;
@@ -203,11 +209,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
         }
 
-        private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview)
+        private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview,
+                                        bool TreatMissingComplementFieldsAsNull = false)
         {
             this.Composition = Composition;
             this.Engine = Engine ?? Composition.Engine;
             this.IsPreview = IsPreview;
+            this.TreatMissingComplementFieldsAsNull = TreatMissingComplementFieldsAsNull;
             this.Report = new CompositionJsonImportReport();
             this.Report.IsPreview = IsPreview;
         }
@@ -326,12 +334,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Importer.Report;
         }
 
-        public static CompositionJsonImportReport RehydrateFullState(CompositionEngine Engine, CompositionJsonDocument Document)
+        public static CompositionJsonImportReport RehydrateFullState(CompositionEngine Engine, CompositionJsonDocument Document,
+                                                                     bool TreatMissingComplementFieldsAsNull = false)
         {
             General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
             CompositionJsonSerializer.Validate(Document);
 
-            var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false);
+            var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false, TreatMissingComplementFieldsAsNull);
             Importer.Report.Log("JSON persistence rehydration started for composition " + Importer.DescribeTarget(Engine.TargetComposition) + ".");
             Importer.ApplyDocument(Document);
             Importer.Report.Log("JSON persistence rehydration completed: " + Importer.Report.ToDetailedCountsString() + ".");
@@ -421,7 +430,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                             ", maxRelationshipCenterDisplacement=" + this.RelationshipVisualPlacementOptions.MaxRelationshipCenterDisplacement.ToString(CultureInfo.InvariantCulture) +
                             ", layoutMode=" + this.LayoutMode +
                             ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
-                            ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") + ".");
+                            ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") +
+                            ", treatMissingComplementFieldsAsNull=" + (this.TreatMissingComplementFieldsAsNull ? "true" : "false") + ".");
             LogVisualStrategyOptions();
 
             EvaluateCompatibilityRequirements(Document);
@@ -1286,6 +1296,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Existing != null)
             {
                 var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
+                Changed = ApplyPictogram(Existing, Source.Pictogram) || Changed;
                 CountUpdated(Changed);
                 ApplyMarkers(Existing, Source.Markers);
                 ApplyDetails(Existing, Source.Details);
@@ -1321,6 +1332,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Existing != null)
             {
                 var Changed = ApplyFormalSet(Existing, Source.Name, Source.TechName, Source.Summary, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
+                Changed = ApplyPictogram(Existing, Source.Pictogram) || Changed;
                 CountUpdated(Changed);
                 var RepairResult = RepairRelationshipLinks(Existing, BuildRelationshipLinkPlan(Existing.RelationshipDefinitor.Value, Source, "top-level"));
                 if (RepairResult.Added > 0)
@@ -1436,6 +1448,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Concept = new Concept(this.Composition, Definition, Source.Name, Source.TechName.NullDefault(Source.Name.TextToIdentifier()), Source.Summary.NullDefault(""));
             AssignImportedId(Concept, Source.Id);
             ApplyFormalSet(Concept, null, null, null, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
+            ApplyPictogram(Concept, Source.Pictogram);
 
             if (Definition.IsVersionable)
                 Concept.Version = new VersionCard();
@@ -1578,6 +1591,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Relationship = new Relationship(this.Composition, Definition, Name, Source.TechName.NullDefault(Name.TextToIdentifier()), Source.Summary.NullDefault(""));
             AssignImportedId(Relationship, Source.Id);
             ApplyFormalSet(Relationship, null, null, null, Source.Description, Source.TechSpec, (CompositionJsonVersion)null);
+            ApplyPictogram(Relationship, Source.Pictogram);
 
             if (Definition.IsVersionable)
                 Relationship.Version = new VersionCard();
@@ -2644,15 +2658,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             else
                 this.Report.Log("JSON import view fallback used only for visual placement; active view metadata was preserved.");
 
-            if (Source.Visuals == null)
-                return;
+            ApplyFreeViewComplements(Existing, Source.Complements);
 
-            var Visuals = this.TreatMissingFullStateItemsAsCreates
-                          ? Source.Visuals.OrderBy(Visual => StringEquals(GetVisualEntityKind(Visual), "relationship") ? 1 : 0).ToList()
-                          : Source.Visuals;
+            if (Source.Visuals != null)
+            {
+                var Visuals = this.TreatMissingFullStateItemsAsCreates
+                              ? Source.Visuals.OrderBy(Visual => StringEquals(GetVisualEntityKind(Visual), "relationship") ? 1 : 0).ToList()
+                              : Source.Visuals;
 
-            foreach (var Visual in Visuals)
-                ApplyVisual(Existing, Visual);
+                foreach (var Visual in Visuals)
+                    ApplyVisual(Existing, Visual);
+            }
+
+            ApplyViewZOrder(Existing, Source);
         }
 
         private View ResolveFullStateView(CompositionJsonView Source)
@@ -2782,10 +2800,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            if (Source.X == null && Source.Y == null && Source.Width == null && Source.Height == null)
-                return;
+            var HasGeometry = Source.X != null || Source.Y != null || Source.Width != null || Source.Height != null;
 
-            if (!ReserveVisualPlacementByStrategy(GetVisualEntityKind(Source), GetVisualTechName(Source), false, "full-state visual update"))
+            if (HasGeometry && !ReserveVisualPlacementByStrategy(GetVisualEntityKind(Source), GetVisualTechName(Source), false, "full-state visual update"))
                 return;
 
             if (this.IsPreview)
@@ -2794,16 +2811,137 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            var Symbol = Representation.MainSymbol;
-            var Width = Source.Width == null ? Symbol.BaseWidth : Source.Width.Value;
-            var Height = Source.Height == null ? Symbol.BaseHeight : Source.Height.Value;
-            Symbol.ResizeTo(Width, Height);
+            if (HasGeometry)
+            {
+                var Symbol = Representation.MainSymbol;
+                var Width = Source.Width == null ? Symbol.BaseWidth : Source.Width.Value;
+                var Height = Source.Height == null ? Symbol.BaseHeight : Source.Height.Value;
+                Symbol.ResizeTo(Width, Height);
 
-            var X = Source.X == null ? Symbol.BaseLeft : Source.X.Value;
-            var Y = Source.Y == null ? Symbol.BaseTop : Source.Y.Value;
-            Symbol.MoveTo(X + Symbol.BaseWidth / 2.0, Y + Symbol.BaseHeight / 2.0, true);
+                var X = Source.X == null ? Symbol.BaseLeft : Source.X.Value;
+                var Y = Source.Y == null ? Symbol.BaseTop : Source.Y.Value;
+                Symbol.MoveTo(X + Symbol.BaseWidth / 2.0, Y + Symbol.BaseHeight / 2.0, true);
+            }
 
+            var NativeChanged = ApplyNativeVisualState(View, Representation, Source);
+            if (HasGeometry || NativeChanged)
+            {
+                Representation.Render();
+                EnsureRepresentationViewChildren(Representation);
+                MarkAffectedView(View, Representation.MainSymbol);
+                View.UpdateVersion();
+                this.Report.CountUpdated();
+            }
+        }
+
+        private void ApplyViewZOrder(View View, CompositionJsonView Source)
+        {
+            if (this.IsPreview || View == null || Source == null ||
+                ((Source.Visuals == null || Source.Visuals.Count < 1) &&
+                 (Source.Complements == null || Source.Complements.Count < 1)))
+                return;
+
+            var DesiredZOrders = new Dictionary<VisualObject, int>();
+            if (Source.Complements != null)
+                foreach (var ComplementSource in Source.Complements.Where(Item => Item != null))
+                    AddDesiredZOrder(DesiredZOrders,
+                                     FindExistingFreeComplement(View, ComplementSource),
+                                     ComplementSource.ZOrder);
+
+            foreach (var Visual in (Source.Visuals ?? Enumerable.Empty<CompositionJsonVisual>()).Where(Item => Item != null))
+            {
+                var Representation = FindVisualRepresentation(View, Visual.RepresentationId, Visual.IdeaId, Visual.IdeaTechName);
+                if (Representation == null)
+                    continue;
+
+                AddDesiredZOrder(DesiredZOrders, Representation.MainSymbol, Visual.ZOrder);
+
+                if (Visual.Complements != null && Representation.MainSymbol != null)
+                    foreach (var ComplementSource in Visual.Complements.Where(Item => Item != null))
+                        AddDesiredZOrder(DesiredZOrders,
+                                         FindExistingComplement(Representation.MainSymbol, ComplementSource),
+                                         ComplementSource.ZOrder);
+
+                var RelationshipRepresentation = Representation as RelationshipVisualRepresentation;
+                if (RelationshipRepresentation != null && Visual.Connectors != null)
+                    foreach (var ConnectorSource in Visual.Connectors.Where(Item => Item != null))
+                        AddDesiredZOrder(DesiredZOrders,
+                                         FindVisualConnector(RelationshipRepresentation, ConnectorSource),
+                                         ConnectorSource.ZOrder);
+            }
+
+            if (DesiredZOrders.Count < 1)
+                return;
+
+            var OriginalChildren = View.ViewChildren
+                                       .Select((Child, Index) => new
+                                       {
+                                           Child = Child,
+                                           Index = Index,
+                                           Key = Child == null ? null : Child.Key,
+                                           ZOrder = (Child != null && Child.Key is VisualObject && DesiredZOrders.ContainsKey((VisualObject)Child.Key)
+                                                     ? DesiredZOrders[(VisualObject)Child.Key]
+                                                     : Index)
+                                       })
+                                       .ToList();
+            var ReorderedChildren = OriginalChildren
+                                    .OrderBy(Item => Item.ZOrder)
+                                    .ThenBy(Item => Item.Index)
+                                    .Select(Item => Item.Child)
+                                    .ToList();
+
+            if (OriginalChildren.Select(Item => Item.Key).SequenceEqual(ReorderedChildren.Select(Child => Child == null ? null : Child.Key)))
+                return;
+
+            View.ViewChildren.Clear();
+            foreach (var Child in ReorderedChildren)
+                View.ViewChildren.Add(ViewChild.Create(Child));
+
+            RecalculateHeadlessViewLevels(View);
+            View.UpdateVersion();
             this.Report.CountUpdated();
+        }
+
+        private static void AddDesiredZOrder(Dictionary<VisualObject, int> DesiredZOrders, VisualObject VisualObject, int? ZOrder)
+        {
+            if (DesiredZOrders == null || VisualObject == null || ZOrder == null || ZOrder.Value < 0)
+                return;
+
+            DesiredZOrders[VisualObject] = ZOrder.Value;
+        }
+
+        private static void RecalculateHeadlessViewLevels(View View)
+        {
+            if (View == null)
+                return;
+
+            View.VisualLevelForBackground = -1;
+            View.VisualLevelForRegions = -1;
+            View.VisualCountOfFloatings = 0;
+
+            for (var Index = 0; Index < View.ViewChildren.Count; Index++)
+            {
+                var Child = View.ViewChildren[Index];
+                var VisualObject = Child == null ? null : Child.Key as VisualObject;
+                if (VisualObject == null)
+                    continue;
+
+                if (VisualObject == View.BackgroundSheet || VisualObject is VisualInert)
+                {
+                    View.VisualLevelForBackground = Math.Max(View.VisualLevelForBackground, Index);
+                    View.VisualLevelForRegions = Math.Max(View.VisualLevelForRegions, Index);
+                    continue;
+                }
+
+                var Complement = VisualObject as VisualComplement;
+                if (Complement == null)
+                    continue;
+
+                if (IsFloatingComplement(Complement))
+                    View.VisualCountOfFloatings++;
+                else
+                    View.VisualLevelForRegions = Math.Max(View.VisualLevelForRegions, Index);
+            }
         }
 
         private bool TryPlaceMissingFullStateVisual(View View, CompositionJsonVisual Source)
@@ -2817,6 +2955,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     WasFullStateCreatedOrPlanned(Source.IdeaId, Source.IdeaTechName, Idea))
                 {
                     PlaceIdeaVisual(Idea, Operation, true);
+                    if (!this.IsPreview)
+                    {
+                        var Representation = FindVisualRepresentation(View, Source.RepresentationId, Source.IdeaId, Source.IdeaTechName);
+                        if (Representation != null)
+                            ApplyNativeVisualState(View, Representation, Source);
+                    }
                     return true;
                 }
 
@@ -2855,6 +2999,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Operation.Width = Source == null ? null : Source.Width;
             Operation.Height = Source == null ? null : Source.Height;
             Operation.AutoPlace = true;
+            Operation.AutoRoute = Source != null && Source.Connectors != null && Source.Connectors.Count > 0 ? (bool?)false : null;
             Operation.Visual = Source == null ? null : Source.Visual;
             if (Source != null && Source.IsShortcut)
             {
@@ -2863,6 +3008,904 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Operation.Visual.IsShortcut = true;
             }
             return Operation;
+        }
+
+        private bool ApplyNativeVisualState(View View, VisualRepresentation Representation, CompositionJsonVisual Source)
+        {
+            if (View == null || Representation == null || Source == null)
+                return false;
+
+            var Changed = false;
+            Changed = ApplyVisualCustomFormatValues(Representation, Source.CustomFormatValues) || Changed;
+            Changed = ApplyVisualSymbolState(Representation.MainSymbol, Source) || Changed;
+            Changed = ApplyVisualComplements(View, Representation.MainSymbol, Source.Complements) || Changed;
+
+            var RelationshipRepresentation = Representation as RelationshipVisualRepresentation;
+            if (RelationshipRepresentation != null)
+                Changed = ApplyVisualConnectors(RelationshipRepresentation, Source.Connectors) || Changed;
+
+            return Changed;
+        }
+
+        private static bool ApplyVisualSymbolState(VisualSymbol Symbol, CompositionJsonVisual Source)
+        {
+            if (Symbol == null || Source == null)
+                return false;
+
+            var Changed = false;
+
+            if (Source.AreDetailsShown != null && Symbol.AreDetailsShown != Source.AreDetailsShown.Value)
+            {
+                Symbol.AreDetailsShown = Source.AreDetailsShown.Value;
+                Changed = true;
+            }
+
+            if (Source.ShowCompositeContentAsDetails != null &&
+                Symbol.ShowCompositeContentAsDetails != Source.ShowCompositeContentAsDetails.Value)
+            {
+                Symbol.ShowCompositeContentAsDetails = Source.ShowCompositeContentAsDetails.Value;
+                Changed = true;
+            }
+
+            if (Source.DetailsPosterHeight != null &&
+                Source.DetailsPosterHeight.Value >= 0.0 &&
+                Math.Abs(Symbol.DetailsPosterHeight - Source.DetailsPosterHeight.Value) > Double.Epsilon)
+            {
+                Symbol.DetailsPosterHeight = Source.DetailsPosterHeight.Value;
+                Changed = true;
+            }
+
+            if (Source.ShowAsMultiple != Symbol.ShowAsMultiple)
+            {
+                Symbol.ShowAsMultiple = Source.ShowAsMultiple;
+                Changed = true;
+            }
+
+            if (Source.IsHorizontallyFlipped != Symbol.IsHorizontallyFlipped)
+            {
+                Symbol.IsHorizontallyFlipped = Source.IsHorizontallyFlipped;
+                Changed = true;
+            }
+
+            if (Source.IsVerticallyFlipped != Symbol.IsVerticallyFlipped)
+            {
+                Symbol.IsVerticallyFlipped = Source.IsVerticallyFlipped;
+                Changed = true;
+            }
+
+            if (Source.IsTilted != Symbol.IsTilted)
+            {
+                Symbol.IsTilted = Source.IsTilted;
+                Changed = true;
+            }
+
+            return Changed;
+        }
+
+        private bool ApplyVisualCustomFormatValues(VisualRepresentation Representation, IDictionary<string, object> Source)
+        {
+            if (Representation == null || Representation.CustomFormatValues == null || Source == null || Source.Count < 1)
+                return false;
+
+            var Changed = false;
+            foreach (var Pair in Source)
+            {
+                var Value = ImportCustomFormatValue(Pair.Key, Pair.Value);
+                if (Value == null)
+                    continue;
+
+                Representation.CustomFormatValues.AddOrReplace(Pair.Key, Value);
+                Changed = true;
+            }
+
+            return Changed;
+        }
+
+        private object ImportCustomFormatValue(string Key, object Source)
+        {
+            if (Source == null || String.IsNullOrWhiteSpace(Key))
+                return null;
+
+            if (Key.StartsWith(VisualElementFormat.TEXTFORMAT_PREFIX, StringComparison.Ordinal))
+                return ImportTextFormat(Source);
+
+            var FormatKey = NormalizeVisualFormatKey(Key);
+
+            if (FormatKey.IndexOf("Brush", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                FormatKey.IndexOf("Background", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                FormatKey.IndexOf("Foreground", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var Brush = ImportBrush(Source);
+                return Brush == null ? null : StoreBox.Store<Brush>(Brush);
+            }
+
+            if (FormatKey.IndexOf("Dash", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var Dash = ImportDashStyle(Source);
+                return Dash == null ? null : StoreBox.Store<DashStyle>(Dash);
+            }
+
+            object EnumValue;
+            if (TryImportVisualFormatEnum(FormatKey, Source, out EnumValue))
+                return EnumValue;
+
+            if (IsVisualFormatBooleanKey(FormatKey))
+                return ImportBoolean(Source);
+
+            if (IsVisualFormatDoubleKey(FormatKey))
+                return ConvertToDouble(Source);
+
+            if (Source is bool || Source is int || Source is double)
+                return Source;
+
+            return null;
+        }
+
+        private static string NormalizeVisualFormatKey(string Key)
+        {
+            if (String.IsNullOrWhiteSpace(Key))
+                return Key;
+
+            var DotPosition = Key.LastIndexOf('.');
+            return DotPosition < 0 ? Key : Key.Substring(DotPosition + 1);
+        }
+
+        private static bool TryImportVisualFormatEnum(string Key, object Source, out object Value)
+        {
+            Value = null;
+
+            if (StringEquals(Key, VisualElementFormat.__LineCap.TechName))
+                return TryImportEnum<PenLineCap>(Source, out Value);
+
+            if (StringEquals(Key, VisualElementFormat.__LineJoin.TechName))
+                return TryImportEnum<PenLineJoin>(Source, out Value);
+
+            if (StringEquals(Key, VisualConnectorsFormat.__PathStyle.TechName))
+                return TryImportEnum<EPathStyle>(Source, out Value);
+
+            if (StringEquals(Key, VisualConnectorsFormat.__PathCorner.TechName))
+                return TryImportEnum<EPathCorner>(Source, out Value);
+
+            if (StringEquals(Key, VisualSymbolFormat.__SubtitleVisualDisposition.TechName))
+                return TryImportEnum<EVisualDispositionMonodimensional>(Source, out Value);
+
+            if (StringEquals(Key, VisualSymbolFormat.__PictogramVisualDisposition.TechName))
+                return TryImportEnum<EVisualDispositionBidimensional>(Source, out Value);
+
+            if (StringEquals(Key, VisualSymbolFormat.__InitialGroupRegionPlacementHorizontal.TechName))
+                return TryImportEnum<EPlacementOnBorderHorizontal>(Source, out Value);
+
+            return false;
+        }
+
+        private static bool TryImportEnum<TEnum>(object Source, out object Value)
+            where TEnum : struct
+        {
+            Value = null;
+
+            if (Source is TEnum)
+            {
+                Value = Source;
+                return true;
+            }
+
+            var Text = Convert.ToString(Source, CultureInfo.InvariantCulture);
+            TEnum Result;
+            if (String.IsNullOrWhiteSpace(Text) || !Enum.TryParse(Text, true, out Result))
+                return false;
+
+            Value = Result;
+            return true;
+        }
+
+        private static bool IsVisualFormatBooleanKey(string Key)
+        {
+            return StringEquals(Key, VisualSymbolFormat.__ShowGlobalDetailsFirst.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__UseNameAsMainTitle.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__InPlaceEditingIsMultiline.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__UseDefinitorPictogramAsNullDefault.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__UsePictogramAsSymbol.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__DetailsPosterIsHanging.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__IncludeDetailsSeparators.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__HasFixedWidth.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__HasFixedHeight.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__InitiallyFlippedHorizontally.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__InitiallyFlippedVertically.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__InitiallyTilted.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__AsMultiple.TechName) ||
+                   StringEquals(Key, VisualConnectorsFormat.__LabelLinkVariant.TechName) ||
+                   StringEquals(Key, VisualConnectorsFormat.__LabelLinkDefinitor.TechName) ||
+                   StringEquals(Key, VisualConnectorsFormat.__LabelLinkDescriptor.TechName);
+        }
+
+        private static bool IsVisualFormatDoubleKey(string Key)
+        {
+            return StringEquals(Key, VisualElementFormat.__Opacity.TechName) ||
+                   StringEquals(Key, VisualElementFormat.__LineThickness.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__InitialWidth.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__InitialHeight.TechName) ||
+                   StringEquals(Key, VisualSymbolFormat.__RegionThickness.TechName);
+        }
+
+        private static object ImportBoolean(object Source)
+        {
+            if (Source is bool)
+                return Source;
+
+            if (Source is int)
+                return ((int)Source) != 0;
+
+            if (Source is double)
+                return Math.Abs((double)Source) > Double.Epsilon;
+
+            var Text = Convert.ToString(Source, CultureInfo.InvariantCulture);
+            bool Result;
+            return !String.IsNullOrWhiteSpace(Text) && Boolean.TryParse(Text, out Result) ? (object)Result : null;
+        }
+
+        private bool ApplyFreeViewComplements(View View, IEnumerable<CompositionJsonComplement> Complements)
+        {
+            if (View == null || Complements == null)
+                return false;
+
+            var Changed = false;
+            foreach (var Source in Complements.Where(Complement => Complement != null))
+            {
+                var Kind = ResolveComplementKind(Source.KindTechName);
+                if (Kind == null)
+                {
+                    this.Report.Warn("View complement kind '" + Source.KindTechName.ToStringAlways() +
+                                     "' is not reconstructable by Composition JSON persistence.");
+                    continue;
+                }
+
+                if (this.IsPreview)
+                {
+                    this.Report.CountUpdated();
+                    continue;
+                }
+
+                var Existing = FindExistingFreeComplement(View, Source);
+                if (Existing == null)
+                {
+                    var Owner = Ownership.Create<View, VisualSymbol>(View);
+                    Existing = new VisualComplement(Kind, Owner, GetComplementCenter(Source, null), Source.Width.GetValueOrDefault(0.0));
+                    AssignVisualObjectId(Existing, Source.Id);
+                    Changed = true;
+                }
+
+                Changed = ApplyComplementGeometry(Existing, Source) || Changed;
+                Changed = ApplyComplementFields(Existing, Source) || Changed;
+                ShowOrRegisterComplement(View, Existing);
+            }
+
+            if (Changed)
+            {
+                View.UpdateVersion();
+                this.Report.CountUpdated();
+            }
+
+            return Changed;
+        }
+
+        private bool ApplyVisualComplements(View View, VisualSymbol Symbol, IEnumerable<CompositionJsonComplement> Complements)
+        {
+            if (View == null || Symbol == null || Complements == null)
+                return false;
+
+            var Changed = false;
+            foreach (var Source in Complements.Where(Complement => Complement != null))
+            {
+                var Kind = ResolveComplementKind(Source.KindTechName);
+                if (Kind == null)
+                    continue;
+
+                var Existing = FindExistingComplement(Symbol, Source);
+                if (Existing == null)
+                {
+                    var Owner = Ownership.Create<View, VisualSymbol>(Symbol);
+                    Existing = new VisualComplement(Kind, Owner, GetComplementCenter(Source, Symbol), Source.Width.GetValueOrDefault(0.0));
+                    AssignVisualObjectId(Existing, Source.Id);
+                    Symbol.AddComplement(Existing);
+                    Changed = true;
+                }
+
+                Changed = ApplyComplementGeometry(Existing, Source) || Changed;
+                Changed = ApplyComplementFields(Existing, Source) || Changed;
+                ShowOrRegisterComplement(View, Existing);
+            }
+
+            return Changed;
+        }
+
+        private static void ShowOrRegisterComplement(View View, VisualComplement Complement)
+        {
+            if (View == null || Complement == null)
+                return;
+
+            if (View.Presenter != null)
+            {
+                View.PutComplement(Complement);
+                return;
+            }
+
+            RegisterHeadlessComplement(View, Complement);
+        }
+
+        private static void RegisterHeadlessComplement(View View, VisualComplement Complement)
+        {
+            var Index = View.ViewChildren.IndexOfMatch(Child => Child != null && Child.Key.IsEqual(Complement));
+            Complement.GenerateGraphic(null, false);
+            var ChildRegistration = ViewChild.Create(Complement, Complement.Graphic);
+
+            if (Index >= 0)
+            {
+                View.ViewChildren[Index] = ChildRegistration;
+                return;
+            }
+
+            var InitialLevel = IsFloatingComplement(Complement) ? EVisualLevel.Floatings : EVisualLevel.Regions;
+            var Limit = View.ViewChildren.Count - View.VisualCountOfFloatings - 1;
+
+            if (InitialLevel == EVisualLevel.Floatings)
+            {
+                View.VisualCountOfFloatings++;
+                Limit = View.ViewChildren.Count;
+            }
+            else if (InitialLevel <= EVisualLevel.Regions)
+            {
+                View.VisualLevelForRegions++;
+                Limit = View.VisualLevelForRegions;
+
+                if (InitialLevel <= EVisualLevel.Background)
+                {
+                    View.VisualLevelForBackground++;
+                    Limit = View.VisualLevelForBackground;
+                }
+            }
+            else if (InitialLevel > EVisualLevel.Regions)
+                Limit = View.VisualLevelForRegions + 1;
+            else if (InitialLevel > EVisualLevel.Background)
+                Limit = View.VisualLevelForBackground + 1;
+
+            if (Limit <= View.ViewChildren.Count - 1)
+            {
+                View.ViewChildren.Add(null);
+                for (var ShiftIndex = View.ViewChildren.Count - 1; ShiftIndex > Limit; ShiftIndex--)
+                {
+                    var Shifted = View.ViewChildren[ShiftIndex - 1];
+                    View.ViewChildren[ShiftIndex - 1] = null;
+                    View.ViewChildren[ShiftIndex] = ViewChild.Create(Shifted);
+                }
+
+                View.ViewChildren[Limit] = ChildRegistration;
+            }
+            else
+                View.ViewChildren.Add(ChildRegistration);
+
+            Complement.IsRelatedVisible = true;
+        }
+
+        private static bool IsFloatingComplement(VisualComplement Complement)
+        {
+            return Complement != null && Complement.Kind != null &&
+                   Complement.Kind.TechName.IsOneOf(Domain.ComplementDefCallout.TechName,
+                                                    Domain.ComplementDefQuote.TechName,
+                                                    Domain.ComplementDefNote.TechName,
+                                                    Domain.ComplementDefStamp.TechName);
+        }
+
+        private static SimplePresentationElement ResolveComplementKind(string KindTechName)
+        {
+            if (StringEquals(KindTechName, Domain.ComplementDefText.TechName))
+                return Domain.ComplementDefText;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefCallout.TechName))
+                return Domain.ComplementDefCallout;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefQuote.TechName))
+                return Domain.ComplementDefQuote;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefGroupRegion.TechName))
+                return Domain.ComplementDefGroupRegion;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefGroupLine.TechName))
+                return Domain.ComplementDefGroupLine;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefNote.TechName))
+                return Domain.ComplementDefNote;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefStamp.TechName))
+                return Domain.ComplementDefStamp;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefInfoCard.TechName))
+                return Domain.ComplementDefInfoCard;
+
+            if (StringEquals(KindTechName, Domain.ComplementDefLegend.TechName))
+                return Domain.ComplementDefLegend;
+
+            return null;
+        }
+
+        private static VisualComplement FindExistingFreeComplement(View View, CompositionJsonComplement Source)
+        {
+            if (View == null || Source == null)
+                return null;
+
+            Guid Parsed;
+            if (!String.IsNullOrWhiteSpace(Source.Id) && Guid.TryParse(Source.Id, out Parsed))
+            {
+                var ById = View.GetFreeComplements().FirstOrDefault(Complement => Complement.GlobalId == Parsed);
+                if (ById != null)
+                    return ById;
+            }
+
+            return View.GetFreeComplements().FirstOrDefault(Complement =>
+                   Complement.Kind != null &&
+                   StringEquals(Complement.Kind.TechName, Source.KindTechName));
+        }
+
+        private static VisualComplement FindExistingComplement(VisualSymbol Symbol, CompositionJsonComplement Source)
+        {
+            if (Symbol == null || Source == null)
+                return null;
+
+            Guid Parsed;
+            if (!String.IsNullOrWhiteSpace(Source.Id) && Guid.TryParse(Source.Id, out Parsed))
+            {
+                var ById = Symbol.AttachedComplements.FirstOrDefault(Complement => Complement.GlobalId == Parsed);
+                if (ById != null)
+                    return ById;
+            }
+
+            return Symbol.AttachedComplements.FirstOrDefault(Complement =>
+                   Complement.Kind != null &&
+                   StringEquals(Complement.Kind.TechName, Source.KindTechName));
+        }
+
+        private static Point GetComplementCenter(CompositionJsonComplement Source, VisualSymbol Symbol)
+        {
+            if (Source != null && Source.X != null && Source.Y != null && Source.Width != null && Source.Height != null)
+                return new Point(Source.X.Value + Source.Width.Value / 2.0, Source.Y.Value + Source.Height.Value / 2.0);
+
+            return Symbol == null ? Display.NULL_POINT : Symbol.BaseCenter;
+        }
+
+        private bool ApplyComplementGeometry(VisualComplement Complement, CompositionJsonComplement Source)
+        {
+            if (Complement == null || Source == null)
+                return false;
+
+            var Changed = false;
+            if (Source.Width != null && Source.Height != null)
+            {
+                Complement.ResizeTo(Source.Width.Value, Source.Height.Value);
+                Changed = true;
+            }
+
+            if (Source.X != null && Source.Y != null)
+            {
+                var Width = Source.Width.GetValueOrDefault(Complement.BaseWidth);
+                var Height = Source.Height.GetValueOrDefault(Complement.BaseHeight);
+                Complement.MoveTo(Source.X.Value + Width / 2.0, Source.Y.Value + Height / 2.0, true);
+                Changed = true;
+            }
+
+            return Changed;
+        }
+
+        private bool ApplyComplementFields(VisualComplement Complement, CompositionJsonComplement Source)
+        {
+            if (Complement == null)
+                return false;
+
+            var Set = Source == null ? null : Source.Set;
+            var Changed = false;
+            if (this.TreatMissingComplementFieldsAsNull)
+                Changed = ClearMissingComplementBrushFields(Complement, Set) || Changed;
+
+            if (Set == null || Set.Count < 1)
+                return Changed;
+
+            foreach (var Pair in Set)
+            {
+                var Value = ImportComplementField(Pair.Key, Pair.Value);
+                if (Value == null)
+                    continue;
+
+                Complement.SetPropertyField(Pair.Key, Value);
+                Changed = true;
+            }
+
+            return Changed;
+        }
+
+        private static bool ClearMissingComplementBrushFields(VisualComplement Complement, IDictionary<string, object> Set)
+        {
+            string[] Fields;
+            if (Complement == null || Complement.Kind == null ||
+                !VisualComplement.ApplicablePropertiesByKind.TryGetValue(Complement.Kind.TechName, out Fields))
+                return false;
+
+            var Changed = false;
+            foreach (var Field in Fields)
+            {
+                if (Field != VisualComplement.PROP_FIELD_FOREGROUND &&
+                    Field != VisualComplement.PROP_FIELD_BACKGROUND)
+                    continue;
+
+                if (Set != null && Set.ContainsKey(Field))
+                    continue;
+
+                Complement.SetPropertyField(Field, null);
+                Changed = true;
+            }
+
+            return Changed;
+        }
+
+        private object ImportComplementField(string Field, object Source)
+        {
+            if (Field == VisualComplement.PROP_FIELD_FOREGROUND ||
+                Field == VisualComplement.PROP_FIELD_BACKGROUND)
+                return ImportBrush(Source);
+
+            if (Field == VisualComplement.PROP_FIELD_LINEDASH)
+                return ImportDashStyle(Source);
+
+            if (Field == VisualComplement.PROP_FIELD_LINETHICK ||
+                Field == VisualComplement.PROP_FIELD_OFFSETX ||
+                Field == VisualComplement.PROP_FIELD_OFFSETY)
+                return ConvertToDouble(Source);
+
+            if (Field == VisualComplement.PROP_FIELD_TEXT)
+                return Source == null ? null : Convert.ToString(Source, CultureInfo.InvariantCulture);
+
+            if (Field == VisualComplement.PROP_FIELD_TEXTFORMAT)
+                return ImportTextFormat(Source);
+
+            if (Field == VisualComplement.PROP_FIELD_ORIENTATION)
+            {
+                System.Windows.Controls.Orientation Result;
+                return Enum.TryParse(Convert.ToString(Source, CultureInfo.InvariantCulture), true, out Result) ? (object)Result : null;
+            }
+
+            if (Field == VisualComplement.PROP_FIELD_QUADRANT)
+            {
+                EVecinityQuadrant Result;
+                return Enum.TryParse(Convert.ToString(Source, CultureInfo.InvariantCulture), true, out Result) ? (object)Result : null;
+            }
+
+            return null;
+        }
+
+        private bool ApplyPictogram(Idea Target, IDictionary<string, object> Source)
+        {
+            if (Target == null || Source == null)
+                return false;
+
+            var Image = ImportImageSource(Source);
+            if (Image == null)
+                return false;
+
+            if (!this.IsPreview)
+                Target.Pictogram = Image;
+
+            return true;
+        }
+
+        private static ImageSource ImportImageSource(IDictionary<string, object> Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Data = Convert.ToString(GetDictionaryValue(Source, "data"), CultureInfo.InvariantCulture);
+            if (String.IsNullOrWhiteSpace(Data))
+                return null;
+
+            var Encoding = Convert.ToString(GetDictionaryValue(Source, "encoding"), CultureInfo.InvariantCulture);
+            if (!String.IsNullOrWhiteSpace(Encoding) &&
+                !String.Equals(Encoding, "base64", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            try
+            {
+                var Bytes = Convert.FromBase64String(Data);
+                return Display.ConvertByteArrayToImageSource(Bytes, true);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static TextFormat ImportTextFormat(object Source)
+        {
+            var SourceDictionary = Source as IDictionary<string, object>;
+            if (SourceDictionary == null)
+                return null;
+
+            var FontFamilyName = Convert.ToString(GetDictionaryValue(SourceDictionary, "fontFamilyName")
+                                                  ?? GetDictionaryValue(SourceDictionary, "fontFamily")
+                                                  ?? "Arial",
+                                                  CultureInfo.InvariantCulture);
+
+            var FontSizeValue = ConvertToDouble(GetDictionaryValue(SourceDictionary, "fontSize"));
+            var FontSize = FontSizeValue.HasValue ? FontSizeValue.Value : 12.0;
+            var ForegroundBrush = ImportBrush(GetDictionaryValue(SourceDictionary, "foregroundBrush")
+                                              ?? GetDictionaryValue(SourceDictionary, "foreground"));
+            var IsBoldValue = ImportBoolean(GetDictionaryValue(SourceDictionary, "isBold"));
+            var IsItalicValue = ImportBoolean(GetDictionaryValue(SourceDictionary, "isItalic"));
+            var IsUnderlineValue = ImportBoolean(GetDictionaryValue(SourceDictionary, "isUnderline"));
+            var IsStrikethroughValue = ImportBoolean(GetDictionaryValue(SourceDictionary, "isStrikethrough"));
+            var IsBold = IsBoldValue is bool ? (bool)IsBoldValue : false;
+            var IsItalic = IsItalicValue is bool ? (bool)IsItalicValue : false;
+            var IsUnderline = IsUnderlineValue is bool ? (bool)IsUnderlineValue : false;
+            var IsStrikethrough = IsStrikethroughValue is bool ? (bool)IsStrikethroughValue : false;
+
+            var Alignment = TextAlignment.Left;
+            var AlignmentText = Convert.ToString(GetDictionaryValue(SourceDictionary, "alignment"), CultureInfo.InvariantCulture);
+            if (!String.IsNullOrWhiteSpace(AlignmentText))
+                Enum.TryParse(AlignmentText, true, out Alignment);
+
+            return new TextFormat(FontFamilyName, FontSize, ForegroundBrush, IsBold, IsItalic, IsUnderline, Alignment, IsStrikethrough);
+        }
+
+        private bool ApplyVisualConnectors(RelationshipVisualRepresentation Representation, IEnumerable<CompositionJsonConnector> Connectors)
+        {
+            if (Representation == null || Connectors == null)
+                return false;
+
+            var Changed = false;
+            foreach (var Source in Connectors.Where(Connector => Connector != null))
+            {
+                var Connector = FindVisualConnector(Representation, Source);
+                if (Connector == null)
+                    continue;
+
+                Changed = ApplyConnectorEndpointSymbols(Representation, Connector, Source) || Changed;
+                Changed = ApplyConnectorPoint(Source.OriginPosition, delegate(Point Point) { Connector.OriginPosition = Point; }) || Changed;
+                Changed = ApplyConnectorPoint(Source.OriginEdgePosition, delegate(Point Point) { Connector.OriginEdgePosition = Point; }) || Changed;
+                Changed = ApplyConnectorPoint(Source.TargetPosition, delegate(Point Point) { Connector.TargetPosition = Point; }) || Changed;
+                Changed = ApplyConnectorPoint(Source.TargetEdgePosition, delegate(Point Point) { Connector.TargetEdgePosition = Point; }) || Changed;
+                Changed = ApplyConnectorPoint(Source.IntermediatePosition, delegate(Point Point) { Connector.IntermediatePosition = Point; }) || Changed;
+                AssignVisualObjectId(Connector, Source.Id);
+                Connector.RenderElement();
+            }
+
+            return Changed;
+        }
+
+        private bool ApplyConnectorEndpointSymbols(RelationshipVisualRepresentation Representation, VisualConnector Connector, CompositionJsonConnector Source)
+        {
+            if (Representation == null || Connector == null || Source == null)
+                return false;
+
+            var Changed = false;
+            var View = Representation.DisplayingView;
+
+            var OriginSymbol = FindConnectorEndpointSymbol(View, Source.OriginRepresentationId, Source.OriginIdeaId, Source.OriginIdeaTechName);
+            if (OriginSymbol != null && Connector.OriginSymbol != OriginSymbol)
+                Changed = ReassignConnectorOriginSymbol(Connector, OriginSymbol) || Changed;
+
+            var TargetSymbol = FindConnectorEndpointSymbol(View, Source.TargetRepresentationId, Source.TargetIdeaId, Source.TargetIdeaTechName);
+            if (TargetSymbol != null && Connector.TargetSymbol != TargetSymbol)
+                Changed = ReassignConnectorTargetSymbol(Connector, TargetSymbol) || Changed;
+
+            return Changed;
+        }
+
+        private VisualSymbol FindConnectorEndpointSymbol(View View, string RepresentationId, string IdeaId, string IdeaTechName)
+        {
+            if (View == null ||
+                (String.IsNullOrWhiteSpace(RepresentationId) &&
+                 String.IsNullOrWhiteSpace(IdeaId) &&
+                 String.IsNullOrWhiteSpace(IdeaTechName)))
+                return null;
+
+            var Representation = FindVisualRepresentation(View, RepresentationId, IdeaId, IdeaTechName);
+            return Representation == null ? null : Representation.MainSymbol;
+        }
+
+        private static bool ReassignConnectorOriginSymbol(VisualConnector Connector, VisualSymbol OriginSymbol)
+        {
+            if (Connector == null || OriginSymbol == null || Connector.OriginSymbol == OriginSymbol)
+                return false;
+
+            if (Connector.OriginSymbol != null)
+                Connector.OriginSymbol.TargetConnections.Remove(Connector);
+
+            Connector.OriginSymbol = OriginSymbol;
+            if (!OriginSymbol.TargetConnections.Contains(Connector))
+                OriginSymbol.TargetConnections.Add(Connector);
+
+            return true;
+        }
+
+        private static bool ReassignConnectorTargetSymbol(VisualConnector Connector, VisualSymbol TargetSymbol)
+        {
+            if (Connector == null || TargetSymbol == null || Connector.TargetSymbol == TargetSymbol)
+                return false;
+
+            if (Connector.TargetSymbol != null)
+                Connector.TargetSymbol.OriginConnections.Remove(Connector);
+
+            Connector.TargetSymbol = TargetSymbol;
+            if (!TargetSymbol.OriginConnections.Contains(Connector))
+                TargetSymbol.OriginConnections.Add(Connector);
+
+            return true;
+        }
+
+        private static bool ApplyConnectorPoint(CompositionJsonPoint Source, Action<Point> Setter)
+        {
+            if (Source == null || Source.X == null || Source.Y == null)
+                return false;
+
+            Setter(new Point(Source.X.Value, Source.Y.Value));
+            return true;
+        }
+
+        private VisualConnector FindVisualConnector(RelationshipVisualRepresentation Representation, CompositionJsonConnector Source)
+        {
+            var Connectors = Representation.VisualConnectors.ToList();
+            Guid Parsed;
+            if (!String.IsNullOrWhiteSpace(Source.Id) && Guid.TryParse(Source.Id, out Parsed))
+            {
+                var ByConnectorId = Connectors.FirstOrDefault(Connector => Connector.GlobalId == Parsed);
+                if (ByConnectorId != null)
+                    return ByConnectorId;
+            }
+
+            if (!String.IsNullOrWhiteSpace(Source.LinkId) && Guid.TryParse(Source.LinkId, out Parsed))
+            {
+                var ByLinkId = Connectors.FirstOrDefault(Connector => Connector.RepresentedLink != null &&
+                                                                      Connector.RepresentedLink.GlobalId == Parsed);
+                if (ByLinkId != null)
+                    return ByLinkId;
+            }
+
+            return Connectors.FirstOrDefault(Connector =>
+                   Connector.RepresentedLink != null &&
+                   Connector.RepresentedLink.AssociatedIdea != null &&
+                   (String.IsNullOrWhiteSpace(Source.AssociatedIdeaId) ||
+                    StringEquals(Connector.RepresentedLink.AssociatedIdea.GlobalId.ToString("D"), Source.AssociatedIdeaId)) &&
+                   (String.IsNullOrWhiteSpace(Source.AssociatedIdeaTechName) ||
+                    StringEquals(Connector.RepresentedLink.AssociatedIdea.TechName, Source.AssociatedIdeaTechName)) &&
+                   (String.IsNullOrWhiteSpace(Source.RoleType) ||
+                    Connector.RepresentedLink.RoleDefinitor == null ||
+                    StringEquals(Connector.RepresentedLink.RoleDefinitor.RoleType.ToString(), Source.RoleType)));
+        }
+
+        private static void AssignVisualObjectId(VisualObject Target, string Id)
+        {
+            Guid Parsed;
+            if (Target != null && !String.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out Parsed))
+                Target.GlobalId = Parsed;
+        }
+
+        private static Brush ImportBrush(object Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Opacity = default(double?);
+            var SourceDictionary = Source as IDictionary<string, object>;
+            if (SourceDictionary != null)
+            {
+                var Xaml = GetDictionaryValue(SourceDictionary, "xaml");
+                if (Xaml != null)
+                    Source = Xaml;
+                else
+                    Source = GetDictionaryValue(SourceDictionary, "color")
+                         ?? GetDictionaryValue(SourceDictionary, "brush")
+                         ?? GetDictionaryValue(SourceDictionary, "value");
+                Opacity = ConvertToDouble(GetDictionaryValue(SourceDictionary, "opacity"));
+            }
+
+            var Text = Convert.ToString(Source, CultureInfo.InvariantCulture);
+            if (String.IsNullOrWhiteSpace(Text))
+                return null;
+
+            try
+            {
+                var Result = Text.TrimStart().StartsWith("<", StringComparison.Ordinal)
+                             ? ImportBrushXaml(Text)
+                             : (Brush)new BrushConverter().ConvertFromString(null, CultureInfo.InvariantCulture, Text);
+                if (Result != null && Opacity != null)
+                {
+                    Result = Result.CloneCurrentValue();
+                    Result.Opacity = Opacity.Value.EnforceRange(0.0, 1.0);
+                }
+
+                return Result;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Brush ImportBrushXaml(string Text)
+        {
+            if (!IsSupportedBrushXaml(Text))
+                return null;
+
+            return XamlReader.Parse(Text) as Brush;
+        }
+
+        private static bool IsSupportedBrushXaml(string Text)
+        {
+            try
+            {
+                var Settings = new XmlReaderSettings();
+                Settings.DtdProcessing = DtdProcessing.Prohibit;
+                Settings.XmlResolver = null;
+
+                using (var Reader = XmlReader.Create(new StringReader(Text), Settings))
+                {
+                    while (Reader.Read())
+                    {
+                        if (Reader.NodeType != XmlNodeType.Element)
+                            continue;
+
+                        if (!IsSupportedBrushXamlElement(Reader.LocalName))
+                            return false;
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsSupportedBrushXamlElement(string LocalName)
+        {
+            return LocalName == "SolidColorBrush" ||
+                   LocalName == "LinearGradientBrush" ||
+                   LocalName == "LinearGradientBrush.GradientStops" ||
+                   LocalName == "RadialGradientBrush" ||
+                   LocalName == "RadialGradientBrush.GradientStops" ||
+                   LocalName == "GradientStop";
+        }
+
+        private static object GetDictionaryValue(IDictionary<string, object> Source, string Key)
+        {
+            object Result;
+            return Source != null && Source.TryGetValue(Key, out Result) ? Result : null;
+        }
+
+        private static DashStyle ImportDashStyle(object Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Text = Convert.ToString(Source, CultureInfo.InvariantCulture);
+            if (String.IsNullOrWhiteSpace(Text))
+                return null;
+
+            var Declared = Display.DeclaredDashStyles.FirstOrDefault(Item => StringEquals(Item.Item2, Text));
+            return Declared == null ? null : Declared.Item1;
+        }
+
+        private static double? ConvertToDouble(object Source)
+        {
+            if (Source == null)
+                return null;
+
+            if (Source is double)
+                return (double)Source;
+
+            if (Source is int)
+                return Convert.ToDouble(Source, CultureInfo.InvariantCulture);
+
+            double Result;
+            return Double.TryParse(Convert.ToString(Source, CultureInfo.InvariantCulture),
+                                   NumberStyles.Float, CultureInfo.InvariantCulture, out Result)
+                   ? (double?)Result : null;
         }
 
         private void PlanMissingFullStateConceptVisual(View View, CompositionJsonVisual Source, PlannedConceptReference Planned, CompositionJsonOperation Operation)

@@ -161,7 +161,7 @@ namespace Instrumind.ThinkComposer.Composer
             var ImportDocument = CloneCompositionDocument(CompositionDocument);
             ImportDocument.ImportOptions = BuildPersistenceImportOptions();
 
-            var Report = CompositionJsonImporter.RehydrateFullState(Engine, ImportDocument);
+            var Report = CompositionJsonImporter.RehydrateFullState(Engine, ImportDocument, true);
             if (Report.CompatibilityBlocked || Report.HasErrors)
                 throw new InvalidOperationException("Composition JSON persistence rehydration failed." + Environment.NewLine +
                                                     Report.ToSummaryString(true));

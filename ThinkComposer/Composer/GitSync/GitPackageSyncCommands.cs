@@ -152,10 +152,12 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             if (TryReadGitLink(DomainPath) == null)
                 return CreateDomainPullStatus("Pull from Git", "This Domain package is not linked to Git.", "arrow_down.png");
 
-            EnsureDomainRemoteStatusCheck(DomainPath);
             var Entry = GetDomainGitStatus(DomainPath);
 
-            if (Entry == null || (Entry.IsChecking && Entry.Status == null && Entry.ErrorMessage.IsAbsent()))
+            if (Entry == null)
+                return CreateDomainPullStatus("Pull from Git", "Linked Domain package. Waiting to check Git for updates...", "arrow_down.png");
+
+            if (Entry.IsChecking && Entry.Status == null && Entry.ErrorMessage.IsAbsent())
                 return CreateDomainPullStatus("Pull from Git", "Checking linked Git remote for Domain updates...", "arrow_refresh.png");
 
             if (!Entry.ErrorMessage.IsAbsent())
@@ -168,6 +170,18 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 return CreateDomainPullStatus("Pull from Git *", "A newer linked Domain package is available from Git.", "bell.png");
 
             return CreateDomainPullStatus("Pull from Git", DefaultSummary + " The linked Domain package is current.", "arrow_down.png");
+        }
+
+        public static void RequestDomainPullVisualStatusRefresh(DocumentEngine Document)
+        {
+            var Engine = Document as CompositionEngine;
+            var DomainPath = GetActiveDomainPackagePath(Engine);
+            if (String.IsNullOrWhiteSpace(DomainPath) ||
+                !File.Exists(DomainPath) ||
+                TryReadGitLink(DomainPath) == null)
+                return;
+
+            EnsureDomainRemoteStatusCheck(DomainPath);
         }
 
         private static void LinkPackage(string PackagePath, bool IsComposition)
@@ -267,7 +281,13 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
                 lock (DomainStatusSync)
                 {
-                    var Entry = DomainStatusByPath[FullPath];
+                    DomainGitStatusCacheEntry Entry;
+                    if (!DomainStatusByPath.TryGetValue(FullPath, out Entry))
+                    {
+                        Entry = new DomainGitStatusCacheEntry();
+                        DomainStatusByPath[FullPath] = Entry;
+                    }
+
                     Entry.Status = Status;
                     Entry.ErrorMessage = ErrorMessage;
                     Entry.CheckedAtUtc = DateTime.UtcNow;
@@ -302,8 +322,17 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private static void NotifyCommandVisualStatusChanged()
         {
             var App = Application.Current;
-            if (App != null && App.Dispatcher != null)
+            if (App == null || App.Dispatcher == null || App.Dispatcher.HasShutdownStarted || App.Dispatcher.HasShutdownFinished)
+                return;
+
+            try
+            {
                 App.Dispatcher.BeginInvoke(new Action(CommandManager.InvalidateRequerySuggested));
+            }
+            catch (InvalidOperationException Problem)
+            {
+                Console.WriteLine("Cannot refresh Git sync command status: " + Problem.Message);
+            }
         }
 
         private static bool RequireSavedComposition(CompositionEngine Engine)

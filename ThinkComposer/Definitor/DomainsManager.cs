@@ -213,6 +213,7 @@ namespace Instrumind.ThinkComposer.Definitor
             var PullDomainGitExpositor = new WorkCommandExpositor("Pull from Git", ExposedWorkCommand.Name, "Pulls the linked Domain package from Git.", "arrow_down.png",
                                                                    EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
             PullDomainGitExpositor.VisualStatusProvider = GitPackageSyncCommands.GetDomainPullVisualStatus;
+            PullDomainGitExpositor.VisualStatusRefreshRequester = GitPackageSyncCommands.RequestDomainPullVisualStatusRefresh;
             this.CommandExpositors.Add(ExposedWorkCommand.Name, PullDomainGitExpositor);
 
             // Domain JSON import/export remains available to CLI/compatibility paths, but is

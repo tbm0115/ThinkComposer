@@ -129,6 +129,11 @@ namespace Instrumind.Common.Visualization
         public Func<DocumentEngine, WorkCommandVisualStatus> VisualStatusProvider { get; set; }
 
         /// <summary>
+        /// Requests an asynchronous refresh of the dynamic visual status. Must not block the UI thread.
+        /// </summary>
+        public Action<DocumentEngine> VisualStatusRefreshRequester { get; set; }
+
+        /// <summary>
         /// Indicates to redirect menu/command-source navigation to the root after execution.
         /// Thus, users must not to go back manually.
         /// </summary>

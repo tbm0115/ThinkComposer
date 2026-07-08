@@ -47,6 +47,7 @@ using Instrumind.ThinkComposer.Model.InformationModel;
 using Instrumind.ThinkComposer.Model.VisualModel;
 using System.Windows.Input;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
 
 /// Main manager for the Instrumind ThinkComposer product application.
 namespace Instrumind.ThinkComposer.ApplicationProduct
@@ -1575,6 +1576,11 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
                 return;
 
             Action Refresh = () => ApplyCommandVisualStatus(Expositor, Button);
+            Action RefreshAndRequest = () =>
+            {
+                Refresh();
+                RequestCommandVisualStatusRefresh(Expositor);
+            };
             EventHandler RequeryHandler = null;
             var IsSubscribed = false;
             RequeryHandler = (sender, args) => Refresh();
@@ -1582,7 +1588,7 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
             Button.Loaded +=
                 ((sender, args) =>
                 {
-                    Refresh();
+                    RefreshAndRequest();
                     if (!IsSubscribed)
                     {
                         CommandManager.RequerySuggested += RequeryHandler;
@@ -1600,11 +1606,14 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
                     }
                 });
 
-            MenuToolbarControlsUpdater.AddOrReplace(Key, Refresh);
+            MenuToolbarControlsUpdater.AddOrReplace(Key, RefreshAndRequest);
         }
 
         private static void ApplyCommandVisualStatus(WorkCommandExpositor Expositor, PaletteButton Button)
         {
+            if (Button == null || !Button.IsLoaded)
+                return;
+
             WorkCommandVisualStatus Status = null;
             try
             {
@@ -1619,6 +1628,35 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
             Button.ButtonImage = Status == null || Status.Pictogram == null ? Expositor.Pictogram : Status.Pictogram;
             Button.Summary = Status == null || Status.Summary.IsAbsent() ? Expositor.Summary : Status.Summary;
             Button.SetToolTip(Status == null || Status.ToolTip.IsAbsent() ? Button.Summary : Status.ToolTip);
+        }
+
+        private static void RequestCommandVisualStatusRefresh(WorkCommandExpositor Expositor)
+        {
+            if (Expositor == null || Expositor.VisualStatusRefreshRequester == null)
+                return;
+
+            var App = Application.Current;
+            if (App == null || App.Dispatcher == null || App.Dispatcher.HasShutdownStarted || App.Dispatcher.HasShutdownFinished)
+                return;
+
+            try
+            {
+                App.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        Expositor.VisualStatusRefreshRequester(WorkspaceDirector.ActiveDocumentEngine);
+                    }
+                    catch (Exception Problem)
+                    {
+                        Console.WriteLine("Cannot request command visual status refresh for '" + Expositor.TechName + "': " + Problem.Message);
+                    }
+                }), DispatcherPriority.ApplicationIdle);
+            }
+            catch (InvalidOperationException Problem)
+            {
+                Console.WriteLine("Cannot schedule command visual status refresh for '" + Expositor.TechName + "': " + Problem.Message);
+            }
         }
 
         public static void UpdateMenuToolbar()

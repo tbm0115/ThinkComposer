@@ -1625,7 +1625,9 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
             }
 
             Button.ButtonText = Status == null || Status.Name.IsAbsent() ? Expositor.Name : Status.Name;
-            Button.ButtonImage = Status == null || Status.Pictogram == null ? Expositor.Pictogram : Status.Pictogram;
+            // Do not replace PaletteButton images during dynamic status refresh. Some WPF
+            // ImageSource/Freezable instances cannot be reparented safely while the ribbon
+            // is loading, and text/tooltips carry the dynamic status without that risk.
             Button.Summary = Status == null || Status.Summary.IsAbsent() ? Expositor.Summary : Status.Summary;
             Button.SetToolTip(Status == null || Status.ToolTip.IsAbsent() ? Button.Summary : Status.ToolTip);
         }

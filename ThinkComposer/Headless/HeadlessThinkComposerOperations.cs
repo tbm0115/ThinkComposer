@@ -195,6 +195,135 @@ namespace Instrumind.ThinkComposer.Headless
             });
         }
 
+        public static OperationResult<string> ValidateCompositionJsonRoundTrip(string Input, string OutputDirectory)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Validation = ValidateExistingFile(Input, Composition.FILE_EXTENSION_COMPOSITION, "input");
+                if (!Validation.WasSuccessful)
+                    return Validation;
+
+                var DirectoryValidation = ValidateOutputDirectory(OutputDirectory);
+                if (!DirectoryValidation.WasSuccessful)
+                    return DirectoryValidation;
+
+                var TargetDirectory = Path.GetFullPath(OutputDirectory);
+                Directory.CreateDirectory(TargetDirectory);
+
+                var LoadResult = LoadComposition(Input);
+                if (!LoadResult.WasSuccessful)
+                    return Fail(LoadResult.Message);
+
+                var SourceComposition = LoadResult.Result.TargetComposition;
+                var SourceDomain = SourceComposition.CompositeContentDomain;
+                var SourceCompositionDocument = CompositionJsonExporter.Export(SourceComposition);
+                var SourceDomainDocument = DomainJsonExporter.Export(SourceDomain);
+
+                var CompositionOriginalPath = Path.Combine(TargetDirectory, "composition-original.json");
+                var DomainOriginalPath = Path.Combine(TargetDirectory, "domain-original.json");
+                CompositionJsonSerializer.Save(SourceCompositionDocument, CompositionOriginalPath);
+                DomainJsonSerializer.Save(SourceDomainDocument, DomainOriginalPath);
+
+                var RehydratedEngineResult = RehydrateCompositionFromJson(SourceCompositionDocument, SourceDomainDocument);
+                if (!RehydratedEngineResult.WasSuccessful)
+                    return Fail(RehydratedEngineResult.Message);
+
+                var RehydratedCompositionPath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-roundtrip.tcom");
+                SaveComposition(RehydratedEngineResult.Result.TargetComposition, RehydratedCompositionPath);
+
+                var ReexportedCompositionDocument = CompositionJsonExporter.Export(RehydratedEngineResult.Result.TargetComposition);
+                var ReexportedDomainDocument = DomainJsonExporter.Export(RehydratedEngineResult.Result.TargetComposition.CompositeContentDomain);
+                var CompositionReexportPath = Path.Combine(TargetDirectory, "composition-reexport.json");
+                var DomainReexportPath = Path.Combine(TargetDirectory, "domain-reexport.json");
+                CompositionJsonSerializer.Save(ReexportedCompositionDocument, CompositionReexportPath);
+                DomainJsonSerializer.Save(ReexportedDomainDocument, DomainReexportPath);
+
+                string CompositionMismatch;
+                string DomainMismatch;
+                var CompositionMatches = CompareCompositionDocuments(SourceCompositionDocument, ReexportedCompositionDocument,
+                                                                      Path.Combine(TargetDirectory, "composition-original.normalized.json"),
+                                                                      Path.Combine(TargetDirectory, "composition-reexport.normalized.json"),
+                                                                      out CompositionMismatch);
+                var DomainMatches = CompareDomainDocuments(SourceDomainDocument, ReexportedDomainDocument,
+                                                           Path.Combine(TargetDirectory, "domain-original.normalized.json"),
+                                                           Path.Combine(TargetDirectory, "domain-reexport.normalized.json"),
+                                                           out DomainMismatch);
+
+                if (!CompositionMatches || !DomainMatches)
+                    return Fail("Composition JSON round-trip parity failed." + Environment.NewLine +
+                                "Artifacts: " + TargetDirectory + Environment.NewLine +
+                                CompositionMismatch + Environment.NewLine +
+                                DomainMismatch);
+
+                return Succeed("Composition JSON round-trip parity passed." + Environment.NewLine +
+                               "Artifacts: " + TargetDirectory, RehydratedCompositionPath);
+            });
+        }
+
+        public static OperationResult<string> ValidateDomainJsonRoundTrip(string Input, string OutputDirectory)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Validation = ValidateDomainInput(Input);
+                if (!Validation.WasSuccessful)
+                    return Validation;
+
+                var DirectoryValidation = ValidateOutputDirectory(OutputDirectory);
+                if (!DirectoryValidation.WasSuccessful)
+                    return DirectoryValidation;
+
+                var TargetDirectory = Path.GetFullPath(OutputDirectory);
+                Directory.CreateDirectory(TargetDirectory);
+
+                Domain SourceDomain = null;
+                if (HasExtension(Input, Domain.FILE_EXTENSION_DOMAIN))
+                {
+                    var DomainResult = LoadNativeDomain(Input);
+                    if (!DomainResult.WasSuccessful)
+                        return Fail(DomainResult.Message);
+
+                    SourceDomain = DomainResult.Result;
+                }
+                else
+                {
+                    var LoadResult = LoadComposition(Input);
+                    if (!LoadResult.WasSuccessful)
+                        return Fail(LoadResult.Message);
+
+                    SourceDomain = LoadResult.Result.TargetComposition.CompositeContentDomain;
+                }
+
+                var SourceDomainDocument = DomainJsonExporter.Export(SourceDomain);
+                var DomainOriginalPath = Path.Combine(TargetDirectory, "domain-original.json");
+                DomainJsonSerializer.Save(SourceDomainDocument, DomainOriginalPath);
+
+                var RehydratedEngineResult = RehydrateDomainFromJson(SourceDomainDocument);
+                if (!RehydratedEngineResult.WasSuccessful)
+                    return Fail(RehydratedEngineResult.Message);
+
+                var RehydratedDomainPath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-roundtrip.tdom");
+                SaveDomain(RehydratedEngineResult.Result.TargetComposition.CompositeContentDomain, RehydratedDomainPath);
+
+                var ReexportedDomainDocument = DomainJsonExporter.Export(RehydratedEngineResult.Result.TargetComposition.CompositeContentDomain);
+                var DomainReexportPath = Path.Combine(TargetDirectory, "domain-reexport.json");
+                DomainJsonSerializer.Save(ReexportedDomainDocument, DomainReexportPath);
+
+                string DomainMismatch;
+                var DomainMatches = CompareDomainDocuments(SourceDomainDocument, ReexportedDomainDocument,
+                                                           Path.Combine(TargetDirectory, "domain-original.normalized.json"),
+                                                           Path.Combine(TargetDirectory, "domain-reexport.normalized.json"),
+                                                           out DomainMismatch);
+
+                if (!DomainMatches)
+                    return Fail("Domain JSON round-trip parity failed." + Environment.NewLine +
+                                "Artifacts: " + TargetDirectory + Environment.NewLine +
+                                DomainMismatch);
+
+                return Succeed("Domain JSON round-trip parity passed." + Environment.NewLine +
+                               "Artifacts: " + TargetDirectory, RehydratedDomainPath);
+            });
+        }
+
         public static OperationResult<string> GenerateReport(string Input, string Output)
         {
             return ExpectedOperation(delegate
@@ -315,6 +444,154 @@ namespace Instrumind.ThinkComposer.Headless
                     GenerationManager.SetCurrentGenerationConsumer(null);
                 }
             });
+        }
+
+        private static OperationResult<CompositionEngine> RehydrateCompositionFromJson(CompositionJsonDocument CompositionDocument,
+                                                                                       DomainJsonDocument DomainDocument)
+        {
+            var RehydratedDomain = RehydrateDomainFromJson(DomainDocument);
+            if (!RehydratedDomain.WasSuccessful)
+                return RehydratedDomain;
+
+            var ImportDocument = CloneCompositionDocument(CompositionDocument);
+            ImportDocument.ImportOptions = BuildFullStateImportOptions();
+
+            var Preview = CompositionJsonImporter.Preview(RehydratedDomain.Result.TargetComposition, ImportDocument);
+            if (Preview.CompatibilityBlocked || Preview.HasErrors)
+                return OperationResult.Failure<CompositionEngine>("Composition JSON rehydration preview failed." + Environment.NewLine +
+                                                                  Preview.ToSummaryString(true));
+
+            var ApplyReport = CompositionJsonImporter.Import(RehydratedDomain.Result, ImportDocument, Preview);
+            if (ApplyReport.CompatibilityBlocked || ApplyReport.HasErrors)
+                return OperationResult.Failure<CompositionEngine>("Composition JSON rehydration failed." + Environment.NewLine +
+                                                                  ApplyReport.ToSummaryString(true));
+
+            return OperationResult.Success(RehydratedDomain.Result);
+        }
+
+        private static OperationResult<CompositionEngine> RehydrateDomainFromJson(DomainJsonDocument Document)
+        {
+            var EngineResult = CreateBlankComposition(null, true);
+            if (!EngineResult.WasSuccessful)
+                return EngineResult;
+
+            var TargetDomain = EngineResult.Result.TargetComposition.CompositeContentDomain;
+            var Preview = DomainJsonImporter.Preview(TargetDomain, Document);
+            if (Preview.Errors.Count > 0)
+                return OperationResult.Failure<CompositionEngine>("Domain JSON rehydration preview failed." + Environment.NewLine +
+                                                                  Preview.PreviewSummary());
+
+            var ApplyReport = DomainJsonImporter.ApplyPreservingIds(TargetDomain, Document, new DomainJsonImportReport());
+            if (ApplyReport.Errors.Count > 0)
+                return OperationResult.Failure<CompositionEngine>("Domain JSON rehydration failed." + Environment.NewLine +
+                                                                  ApplyReport.ApplySummary());
+
+            return OperationResult.Success(EngineResult.Result);
+        }
+
+        private static OperationResult<CompositionEngine> CreateBlankComposition(Domain RootDomain, bool IsForEditDomain)
+        {
+            var Context = HeadlessBootstrap.Initialize();
+            CompositionEngine.CreateActiveCompositionEngine(Context.Compositions, Context.Visualizer, IsForEditDomain);
+            var Materialized = CompositionEngine.Materialize(null, RootDomain, false);
+
+            if (Materialized == null || Materialized.Item1 == null)
+                return OperationResult.Failure<CompositionEngine>("Cannot create blank composition: " +
+                                                                  (Materialized == null ? "" : Materialized.Item2));
+
+            Context.Workspace.LoadDocument(Materialized.Item1.TargetComposition);
+            return OperationResult.Success(Materialized.Item1);
+        }
+
+        private static CompositionJsonImportOptions BuildFullStateImportOptions()
+        {
+            return new CompositionJsonImportOptions
+            {
+                AutoPlaceNewItems = true,
+                AutoFitPlacedConcepts = false,
+                AutoRoutePlacedLinks = false,
+                UseActiveCompositionAsContainer = false,
+                TreatMissingFullStateItemsAsCreates = true,
+                DetailFallbackMode = "skip",
+                DomainCompatibilityPolicy = "ignore",
+                CompositionVersionPolicy = "ignore",
+                StrictRelationshipCompatibility = false,
+                AbortOnRelationshipCompatibilityFailure = false,
+                StrictDetailsCompatibility = false,
+                AbortOnDetailCompatibilityFailure = false,
+                RelationshipVisualPlacementMode = "explicit",
+                RecomputeSuspiciousRelationshipVisuals = false,
+                HideGenericRelationshipCenters = false,
+                LayoutMode = "none",
+                PreventSelfRecursiveCompositeViews = true,
+                RepairRecursiveVisuals = true
+            };
+        }
+
+        private static bool CompareCompositionDocuments(CompositionJsonDocument Original, CompositionJsonDocument Reexported,
+                                                        string OriginalNormalizedPath, string ReexportedNormalizedPath,
+                                                        out string Mismatch)
+        {
+            var NormalizedOriginal = CloneCompositionDocument(Original);
+            var NormalizedReexported = CloneCompositionDocument(Reexported);
+            NormalizeCompositionDocument(NormalizedOriginal);
+            NormalizeCompositionDocument(NormalizedReexported);
+
+            CompositionJsonSerializer.Save(NormalizedOriginal, OriginalNormalizedPath);
+            CompositionJsonSerializer.Save(NormalizedReexported, ReexportedNormalizedPath);
+
+            if (CompositionJsonSerializer.Serialize(NormalizedOriginal) == CompositionJsonSerializer.Serialize(NormalizedReexported))
+            {
+                Mismatch = "Composition JSON matched.";
+                return true;
+            }
+
+            Mismatch = "Composition JSON mismatch. Normalized files: " + OriginalNormalizedPath + " and " + ReexportedNormalizedPath + ".";
+            return false;
+        }
+
+        private static bool CompareDomainDocuments(DomainJsonDocument Original, DomainJsonDocument Reexported,
+                                                   string OriginalNormalizedPath, string ReexportedNormalizedPath,
+                                                   out string Mismatch)
+        {
+            var NormalizedOriginal = CloneDomainDocument(Original);
+            var NormalizedReexported = CloneDomainDocument(Reexported);
+            NormalizeDomainDocument(NormalizedOriginal);
+            NormalizeDomainDocument(NormalizedReexported);
+
+            DomainJsonSerializer.Save(NormalizedOriginal, OriginalNormalizedPath);
+            DomainJsonSerializer.Save(NormalizedReexported, ReexportedNormalizedPath);
+
+            if (DomainJsonSerializer.Serialize(NormalizedOriginal) == DomainJsonSerializer.Serialize(NormalizedReexported))
+            {
+                Mismatch = "Domain JSON matched.";
+                return true;
+            }
+
+            Mismatch = "Domain JSON mismatch. Normalized files: " + OriginalNormalizedPath + " and " + ReexportedNormalizedPath + ".";
+            return false;
+        }
+
+        private static CompositionJsonDocument CloneCompositionDocument(CompositionJsonDocument Source)
+        {
+            return CompositionJsonSerializer.Deserialize(CompositionJsonSerializer.Serialize(Source));
+        }
+
+        private static DomainJsonDocument CloneDomainDocument(DomainJsonDocument Source)
+        {
+            return DomainJsonSerializer.Deserialize(DomainJsonSerializer.Serialize(Source));
+        }
+
+        private static void NormalizeCompositionDocument(CompositionJsonDocument Document)
+        {
+            if (Document != null)
+                Document.ExportedAtUtc = null;
+        }
+
+        private static void NormalizeDomainDocument(DomainJsonDocument Document)
+        {
+            if (Document != null)
+                Document.ExportedAtUtc = null;
         }
 
         private static DomainJsonImportReport ApplyDomainJson(CompositionEngine Engine, Domain TargetDomain, DomainJsonDocument Document)
@@ -485,6 +762,17 @@ namespace Instrumind.ThinkComposer.Headless
 
             if (!HasExtension(Input, Domain.FILE_EXTENSION_DOMAIN) && !HasExtension(Input, Composition.FILE_EXTENSION_COMPOSITION))
                 return Fail("Input must have .tdom or .tcom extension.");
+
+            return Succeed(null, null);
+        }
+
+        private static OperationResult<string> ValidateOutputDirectory(string OutputDirectory)
+        {
+            if (String.IsNullOrWhiteSpace(OutputDirectory))
+                return Fail("Missing --output-dir.");
+
+            if (File.Exists(OutputDirectory))
+                return Fail("--output-dir points to a file: " + OutputDirectory);
 
             return Succeed(null, null);
         }

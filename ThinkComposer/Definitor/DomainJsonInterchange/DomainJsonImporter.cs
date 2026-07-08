@@ -24,13 +24,14 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 {
     public class DomainJsonImporter
     {
-        private DomainJsonImporter(Domain TargetDomain, DomainJsonDocument Document, bool IsPreview, DomainJsonImportReport Report = null)
+        private DomainJsonImporter(Domain TargetDomain, DomainJsonDocument Document, bool IsPreview, DomainJsonImportReport Report = null, bool PreserveSourceIds = false)
         {
             this.TargetDomain = TargetDomain;
             this.Document = Document;
             this.IsPreview = IsPreview;
             this.Report = Report ?? new DomainJsonImportReport();
             this.Resolver = new DomainJsonReferenceResolver(TargetDomain);
+            this.PreserveSourceIds = PreserveSourceIds;
             this.PlannedTableDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             this.PlannedConceptDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             this.PlannedRelationshipDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -42,6 +43,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         private bool IsPreview { get; set; }
         private DomainJsonImportReport Report { get; set; }
         private DomainJsonReferenceResolver Resolver { get; set; }
+        private bool PreserveSourceIds { get; set; }
         private HashSet<string> PlannedTableDefinitionTechNames { get; set; }
         private HashSet<string> PlannedConceptDefinitionTechNames { get; set; }
         private HashSet<string> PlannedRelationshipDefinitionTechNames { get; set; }
@@ -55,6 +57,11 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         public static DomainJsonImportReport Apply(Domain TargetDomain, DomainJsonDocument Document, DomainJsonImportReport ExistingReport = null)
         {
             return new DomainJsonImporter(TargetDomain, Document, false, ExistingReport).Execute();
+        }
+
+        public static DomainJsonImportReport ApplyPreservingIds(Domain TargetDomain, DomainJsonDocument Document, DomainJsonImportReport ExistingReport = null)
+        {
+            return new DomainJsonImporter(TargetDomain, Document, false, ExistingReport, true).Execute();
         }
 
         private DomainJsonImportReport Execute()
@@ -121,7 +128,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
         private void MergeDomain(DomainJsonElement Source)
         {
-            var Changed = ApplyFormalFields(this.TargetDomain, Source, "domain", "active-domain");
+            var Changed = AssignImportedId(this.TargetDomain, Source, "domain", "active-domain");
+            Changed = ApplyFormalFields(this.TargetDomain, Source, "domain", "active-domain") || Changed;
+            Changed = ApplyDomainFields(Source) || Changed;
             if (Changed)
                 this.Report.CountUpdated("domain", this.IsPreview);
         }
@@ -137,6 +146,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 if (!this.IsPreview)
                 {
                     Existing = new ExternalLanguageDeclaration(Source.Name, Source.TechName, Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, "externalLanguage", "create");
                     ApplyFormalFields(Existing, Source, "externalLanguage", "create");
                     this.TargetDomain.ExternalLanguages.Add(Existing);
                 }
@@ -147,7 +157,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             var MatchMethod = MatchMethodFor(Existing, Source);
             this.Report.Log("Domain JSON externalLanguage matched by " + MatchMethod + ": " + Describe(Existing));
-            if (ApplyFormalFields(Existing, Source, "externalLanguage", MatchMethod))
+            var Changed = AssignImportedId(Existing, Source, "externalLanguage", MatchMethod);
+            Changed = ApplyFormalFields(Existing, Source, "externalLanguage", MatchMethod) || Changed;
+            if (Changed)
                 this.Report.CountUpdated("externalLanguage", this.IsPreview);
         }
 
@@ -201,6 +213,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 if (!this.IsPreview)
                 {
                     Existing = new MetaCategory<TableDefinition>(Source.Name, Source.TechName, Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, "tableDefinitionCategory", "create");
                     ApplyFormalFields(Existing, Source);
                     this.TargetDomain.TableDefCategories.Add(Existing);
                 }
@@ -208,7 +221,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 return;
             }
 
-            if (ApplyFormalFields(Existing, Source))
+            var Changed = AssignImportedId(Existing, Source, "tableDefinitionCategory", MatchMethodFor(Existing, Source));
+            Changed = ApplyFormalFields(Existing, Source) || Changed;
+            if (Changed)
                 this.Report.CountUpdated("tableDefinitionCategory", this.IsPreview);
         }
 
@@ -223,6 +238,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 if (!this.IsPreview)
                 {
                     Existing = new MetaCategory<FieldDefinition>(Source.Name, Source.TechName, Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, "fieldDefinitionCategory", "create");
                     ApplyFormalFields(Existing, Source);
                     this.TargetDomain.FieldDefCategories.Add(Existing);
                 }
@@ -230,7 +246,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 return;
             }
 
-            if (ApplyFormalFields(Existing, Source))
+            var Changed = AssignImportedId(Existing, Source, "fieldDefinitionCategory", MatchMethodFor(Existing, Source));
+            Changed = ApplyFormalFields(Existing, Source) || Changed;
+            if (Changed)
                 this.Report.CountUpdated("fieldDefinitionCategory", this.IsPreview);
         }
 
@@ -275,6 +293,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 if (!this.IsPreview)
                 {
                     Existing = new TableDefinition(this.TargetDomain, Source.Name, Source.TechName, Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, "tableDefinition", "create");
                     ApplyFormalFields(Existing, Source);
                     this.TargetDomain.TableDefinitions.Add(Existing);
                 }
@@ -283,7 +302,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
             else
             {
-                if (ApplyFormalFields(Existing, Source))
+                var Changed = AssignImportedId(Existing, Source, "tableDefinition", MatchMethodFor(Existing, Source));
+                Changed = ApplyFormalFields(Existing, Source) || Changed;
+                if (Changed)
                     this.Report.CountUpdated("tableDefinition", this.IsPreview);
             }
 
@@ -336,6 +357,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 if (!this.IsPreview)
                 {
                     Existing = new FieldDefinition(Owner, Source.Name, Source.TechName, FieldType, Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, "fieldDefinition", "create");
                     if (Source.Order != null)
                         Existing.StorageIndex = Source.Order.Value;
                     ApplyFormalFields(Existing, Source);
@@ -346,24 +368,38 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 return;
             }
 
+            var SourceFieldType = String.IsNullOrWhiteSpace(Source.DataTypeTechName)
+                                  ? null
+                                  : this.Resolver.FindDataType(Source.DataTypeTechName);
             if (!String.IsNullOrWhiteSpace(Source.DataTypeTechName) && Existing.FieldType != null &&
-                this.Resolver.FindDataType(Source.DataTypeTechName) == null)
+                SourceFieldType == null)
             {
                 Skip("fieldDefinition", "Skipped field '" + Existing.TechName + "' because dataType '" + Source.DataTypeTechName +
                                         "' was not resolved. Valid dataType techNames: " + KnownDataTypeTechNames());
                 return;
             }
 
+            var Changed = false;
             if (!String.IsNullOrWhiteSpace(Source.DataTypeTechName) && Existing.FieldType != null &&
                 !String.Equals(Existing.FieldType.TechName, Source.DataTypeTechName, StringComparison.OrdinalIgnoreCase))
             {
-                this.Report.DangerousChangesSkipped++;
-                Skip("fieldDefinition", "Skipped incompatible field data type change for '" + Existing.TechName + "' from '" +
-                                        Existing.FieldType.TechName + "' to '" + Source.DataTypeTechName + "'.");
-                return;
+                if (!this.PreserveSourceIds)
+                {
+                    this.Report.DangerousChangesSkipped++;
+                    Skip("fieldDefinition", "Skipped incompatible field data type change for '" + Existing.TechName + "' from '" +
+                                            Existing.FieldType.TechName + "' to '" + Source.DataTypeTechName + "'.");
+                    return;
+                }
+
+                this.Report.LogFieldUpdate("fieldDefinition", "dataTypeTechName", Describe(Existing), MatchMethodFor(Existing, Source),
+                                           Existing.FieldType.TechName, SourceFieldType.TechName, this.IsPreview);
+                if (!this.IsPreview)
+                    Existing.FieldType = SourceFieldType;
+                Changed = true;
             }
 
-            var Changed = ApplyFormalFields(Existing, Source);
+            Changed = AssignImportedId(Existing, Source, "fieldDefinition", MatchMethodFor(Existing, Source)) || Changed;
+            Changed = ApplyFormalFields(Existing, Source) || Changed;
             Changed = ApplyFieldFlags(Existing, Source, Changed);
             if (Changed)
                 this.Report.CountUpdated("fieldDefinition", this.IsPreview);
@@ -379,11 +415,11 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
                 if (!this.IsPreview)
                 {
-                    var Ancestor = this.Resolver.ConceptDefinition(null, Source.AncestorTechName)
-                                   .NullDefault(this.TargetDomain.ConceptDefinitions.FirstOrDefault());
+                    var Ancestor = ResolveConceptAncestor(Source, true);
                     Existing = new ConceptDefinition(this.TargetDomain, Ancestor, Source.Name, Source.TechName,
                                                      Source.RepresentativeShape.NullDefault(Shapes.Rectangle),
                                                      Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, "conceptDefinition", "create");
                     ApplyIdeaDefinitionFields(Existing, Source);
                     this.TargetDomain.ConceptDefinitions.Add(Existing);
                 }
@@ -392,7 +428,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
             else
             {
-                if (ApplyIdeaDefinitionFields(Existing, Source))
+                var Changed = AssignImportedId(Existing, Source, "conceptDefinition", MatchMethodFor(Existing, Source));
+                Changed = ApplyIdeaDefinitionFields(Existing, Source) || Changed;
+                if (Changed)
                     this.Report.CountUpdated("conceptDefinition", this.IsPreview);
             }
 
@@ -418,11 +456,11 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
                 if (!this.IsPreview)
                 {
-                    var Ancestor = this.Resolver.RelationshipDefinition(null, Source.AncestorTechName)
-                                   .NullDefault(this.TargetDomain.RelationshipDefinitions.FirstOrDefault());
+                    var Ancestor = ResolveRelationshipAncestor(Source, true);
                     Existing = new RelationshipDefinition(this.TargetDomain, Ancestor, Source.Name, Source.TechName,
                                                           Source.RepresentativeShape.NullDefault(Shapes.Ellipse),
                                                           Source.Summary.NullDefault(""), null, OriginRole, TargetRole);
+                    AssignImportedId(Existing, Source, "relationshipDefinition", "create");
                     ApplyRelationshipDefinitionFields(Existing, Source);
                     this.TargetDomain.RelationshipDefinitions.Add(Existing);
                 }
@@ -431,7 +469,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
             else
             {
-                if (ApplyRelationshipDefinitionFields(Existing, Source))
+                var Changed = AssignImportedId(Existing, Source, "relationshipDefinition", MatchMethodFor(Existing, Source));
+                Changed = ApplyRelationshipDefinitionFields(Existing, Source) || Changed;
+                if (Changed)
                     this.Report.CountUpdated("relationshipDefinition", this.IsPreview);
             }
 
@@ -474,6 +514,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 {
                     Existing = new LinkRoleDefinition(Owner, RoleType, Source.Name.NullDefault(RoleType.ToString()),
                                                       Source.TechName.NullDefault(RoleType.ToString()), Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, "relationshipRole", "create");
                     ApplyRelationshipRoleFields(Existing, Source);
                     if (RoleType == ERoleType.Target)
                         Owner.TargetLinkRoleDef = Existing;
@@ -484,7 +525,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 return;
             }
 
-            if (ApplyRelationshipRoleFields(Existing, Source))
+            var RoleChanged = AssignImportedId(Existing, Source, "relationshipRole", MatchMethodFor(Existing, Source));
+            RoleChanged = ApplyRelationshipRoleFields(Existing, Source) || RoleChanged;
+            if (RoleChanged)
                 this.Report.CountUpdated("relationshipRole", this.IsPreview);
         }
 
@@ -829,12 +872,131 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 }
             }
 
+            var ConceptTarget = Target as ConceptDefinition;
+            if (ConceptTarget != null)
+                Changed = ApplyConceptDefinitionFields(ConceptTarget, Source, Changed);
+
+            return Changed;
+        }
+
+        private bool ApplyConceptDefinitionFields(ConceptDefinition Target, DomainJsonElement Source, bool Changed)
+        {
+            if (this.PreserveSourceIds || !String.IsNullOrWhiteSpace(Source.AncestorTechName))
+            {
+                var Ancestor = ResolveConceptAncestor(Source, false);
+                if (Target.AncestorConceptDef != Ancestor)
+                {
+                    this.Report.LogFieldUpdate(Source.Entity.NullDefault("conceptDefinition"), "ancestorTechName",
+                                               Describe(Target), MatchMethodFor(Target, Source),
+                                               TechNameOf(Target.AncestorConceptDef), TechNameOf(Ancestor), this.IsPreview);
+                    if (!this.IsPreview)
+                        Target.AncestorConceptDef = Ancestor;
+                    Changed = true;
+                }
+            }
+
+            if (HasSetKey(Source.Set, "automaticCreationConceptDefinitionTechName"))
+            {
+                var TechName = GetSetString(Source.Set, "automaticCreationConceptDefinitionTechName");
+                var ConceptDef = String.IsNullOrWhiteSpace(TechName)
+                                 ? null
+                                 : this.Resolver.ConceptDefinition(null, TechName);
+                if (ConceptDef == null && !String.IsNullOrWhiteSpace(TechName) &&
+                    String.Equals(Target.TechName, TechName, StringComparison.OrdinalIgnoreCase))
+                    ConceptDef = Target;
+
+                if (ConceptDef == null && !String.IsNullOrWhiteSpace(TechName))
+                {
+                    if (this.IsPreview && this.PlannedConceptDefinitionTechNames.Contains(TechName))
+                        Changed = true;
+                    else
+                        Skip(Source.Entity.NullDefault("conceptDefinition"), "Automatic creation concept definition '" +
+                                                                   TechName + "' was not found for definition '" + Target.TechName + "'.");
+                }
+                else if (Target.AutomaticCreationConceptDef != ConceptDef)
+                {
+                    this.Report.LogFieldUpdate(Source.Entity.NullDefault("conceptDefinition"), "automaticCreationConceptDefinitionTechName",
+                                               Describe(Target), MatchMethodFor(Target, Source),
+                                               TechNameOf(Target.AutomaticCreationConceptDef), TechNameOf(ConceptDef), this.IsPreview);
+                    if (!this.IsPreview)
+                        Target.AutomaticCreationConceptDef = ConceptDef;
+                    Changed = true;
+                }
+            }
+
+            if (HasSetKey(Source.Set, "automaticCreationRelationshipDefinitionTechName"))
+            {
+                var TechName = GetSetString(Source.Set, "automaticCreationRelationshipDefinitionTechName");
+                var RelationshipDef = String.IsNullOrWhiteSpace(TechName)
+                                      ? null
+                                      : this.Resolver.RelationshipDefinition(null, TechName);
+
+                if (RelationshipDef == null && !String.IsNullOrWhiteSpace(TechName))
+                {
+                    if (this.IsPreview && this.PlannedRelationshipDefinitionTechNames.Contains(TechName))
+                        Changed = true;
+                    else
+                        Skip(Source.Entity.NullDefault("conceptDefinition"), "Automatic creation relationship definition '" +
+                                                                   TechName + "' was not found for definition '" + Target.TechName + "'.");
+                }
+                else if (Target.AutomaticCreationRelationshipDef != RelationshipDef)
+                {
+                    this.Report.LogFieldUpdate(Source.Entity.NullDefault("conceptDefinition"), "automaticCreationRelationshipDefinitionTechName",
+                                               Describe(Target), MatchMethodFor(Target, Source),
+                                               TechNameOf(Target.AutomaticCreationRelationshipDef), TechNameOf(RelationshipDef), this.IsPreview);
+                    if (!this.IsPreview)
+                        Target.AutomaticCreationRelationshipDef = RelationshipDef;
+                    Changed = true;
+                }
+            }
+
+            var PositioningModeText = GetSetString(Source.Set, "automaticCreationPositioningMode");
+            if (PositioningModeText != null)
+            {
+                EAutoPositioningMode PositioningMode;
+                if (Enum.TryParse<EAutoPositioningMode>(PositioningModeText, out PositioningMode) &&
+                    Target.AutomaticCreationPositioningMode != PositioningMode)
+                {
+                    this.Report.LogFieldUpdate(Source.Entity.NullDefault("conceptDefinition"), "automaticCreationPositioningMode",
+                                               Describe(Target), MatchMethodFor(Target, Source),
+                                               Target.AutomaticCreationPositioningMode, PositioningMode, this.IsPreview);
+                    if (!this.IsPreview)
+                        Target.AutomaticCreationPositioningMode = PositioningMode;
+                    Changed = true;
+                }
+            }
+
+            var IsRadialized = GetSetBool(Source.Set, "automaticCreationPositioningIsRadialized");
+            if (IsRadialized != null && Target.AutomaticCreationPositioningIsRadialized != IsRadialized.Value)
+            {
+                this.Report.LogFieldUpdate(Source.Entity.NullDefault("conceptDefinition"), "automaticCreationPositioningIsRadialized",
+                                           Describe(Target), MatchMethodFor(Target, Source),
+                                           Target.AutomaticCreationPositioningIsRadialized, IsRadialized.Value, this.IsPreview);
+                if (!this.IsPreview)
+                    Target.AutomaticCreationPositioningIsRadialized = IsRadialized.Value;
+                Changed = true;
+            }
+
             return Changed;
         }
 
         private bool ApplyRelationshipDefinitionFields(RelationshipDefinition Target, DomainJsonElement Source)
         {
             var Changed = ApplyIdeaDefinitionFields(Target, Source);
+
+            if (this.PreserveSourceIds || !String.IsNullOrWhiteSpace(Source.AncestorTechName))
+            {
+                var Ancestor = ResolveRelationshipAncestor(Source, false);
+                if (Target.AncestorRelationshipDef != Ancestor)
+                {
+                    this.Report.LogFieldUpdate(Source.Entity.NullDefault("relationshipDefinition"), "ancestorTechName",
+                                               Describe(Target), MatchMethodFor(Target, Source),
+                                               TechNameOf(Target.AncestorRelationshipDef), TechNameOf(Ancestor), this.IsPreview);
+                    if (!this.IsPreview)
+                        Target.AncestorRelationshipDef = Ancestor;
+                    Changed = true;
+                }
+            }
 
             if (Source.IsDirectional != null && Target.IsDirectional != Source.IsDirectional.Value)
             {
@@ -918,6 +1080,84 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             return Changed;
+        }
+
+        private bool ApplyDomainFields(DomainJsonElement Source)
+        {
+            var Changed = false;
+
+            if (!String.IsNullOrWhiteSpace(Source.RepresentativeShape) &&
+                this.TargetDomain.RepresentativeShape != Source.RepresentativeShape)
+            {
+                this.Report.LogFieldUpdate("domain", "representativeShape", Describe(this.TargetDomain), "active-domain",
+                                           this.TargetDomain.RepresentativeShape, Source.RepresentativeShape, this.IsPreview);
+                if (!this.IsPreview)
+                    this.TargetDomain.RepresentativeShape = Source.RepresentativeShape;
+                Changed = true;
+            }
+
+            if (Source.IsComposable != null && this.TargetDomain.IsComposable != Source.IsComposable.Value)
+            {
+                this.Report.LogFieldUpdate("domain", "isComposable", Describe(this.TargetDomain), "active-domain",
+                                           this.TargetDomain.IsComposable.ToString(),
+                                           Source.IsComposable.Value.ToString(), this.IsPreview);
+                if (!this.IsPreview)
+                    this.TargetDomain.IsComposable = Source.IsComposable.Value;
+                Changed = true;
+            }
+
+            if (Source.IsVersionable != null && this.TargetDomain.IsVersionable != Source.IsVersionable.Value)
+            {
+                this.Report.LogFieldUpdate("domain", "isVersionable", Describe(this.TargetDomain), "active-domain",
+                                           this.TargetDomain.IsVersionable.ToString(),
+                                           Source.IsVersionable.Value.ToString(), this.IsPreview);
+                if (!this.IsPreview)
+                    this.TargetDomain.IsVersionable = Source.IsVersionable.Value;
+                Changed = true;
+            }
+
+            var ViewGridSize = GetSetDouble(Source.Set, "viewGridSize");
+            if (ViewGridSize != null && this.TargetDomain.ViewGridSize != ViewGridSize.Value)
+            {
+                this.Report.LogFieldUpdate("domain", "viewGridSize", Describe(this.TargetDomain), "active-domain",
+                                           this.TargetDomain.ViewGridSize.ToString(CultureInfo.InvariantCulture),
+                                           ViewGridSize.Value.ToString(CultureInfo.InvariantCulture), this.IsPreview);
+                if (!this.IsPreview)
+                    this.TargetDomain.ViewGridSize = ViewGridSize.Value;
+                Changed = true;
+            }
+
+            return Changed;
+        }
+
+        private ConceptDefinition ResolveConceptAncestor(DomainJsonElement Source, bool DefaultToBase)
+        {
+            if (!String.IsNullOrWhiteSpace(Source.AncestorTechName))
+            {
+                var Ancestor = this.Resolver.ConceptDefinition(null, Source.AncestorTechName);
+                if (Ancestor != null || this.PreserveSourceIds)
+                    return Ancestor;
+            }
+
+            if (!this.PreserveSourceIds && DefaultToBase)
+                return this.TargetDomain.ConceptDefinitions.FirstOrDefault();
+
+            return null;
+        }
+
+        private RelationshipDefinition ResolveRelationshipAncestor(DomainJsonElement Source, bool DefaultToBase)
+        {
+            if (!String.IsNullOrWhiteSpace(Source.AncestorTechName))
+            {
+                var Ancestor = this.Resolver.RelationshipDefinition(null, Source.AncestorTechName);
+                if (Ancestor != null || this.PreserveSourceIds)
+                    return Ancestor;
+            }
+
+            if (!this.PreserveSourceIds && DefaultToBase)
+                return this.TargetDomain.RelationshipDefinitions.FirstOrDefault();
+
+            return null;
         }
 
         private bool ApplyFieldFlags(FieldDefinition Target, DomainJsonElement Source, bool Changed)
@@ -1008,7 +1248,204 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 }
             }
 
+            Changed = ApplyVersionFields(Target, Source, Entity, MatchMethod) || Changed;
+
             return Changed;
+        }
+
+        private bool ApplyVersionFields(FormalElement Target, DomainJsonElement Source, string Entity, string MatchMethod)
+        {
+            if (Target == null || Source == null || Source.Set == null)
+                return false;
+
+            var VersionNumber = GetSetString(Source.Set, "versionNumber");
+            var VersionAnnotation = GetSetString(Source.Set, "versionAnnotation");
+            var VersionSequence = GetSetInt(Source.Set, "versionSequence");
+            var Creation = GetSetString(Source.Set, "creation");
+            var Creator = GetSetString(Source.Set, "creator");
+            var LastModification = GetSetString(Source.Set, "lastModification");
+            var LastModifier = GetSetString(Source.Set, "lastModifier");
+
+            var HasVersionData = VersionNumber != null ||
+                                 VersionAnnotation != null ||
+                                 VersionSequence != null ||
+                                 Creation != null ||
+                                 Creator != null ||
+                                 LastModification != null ||
+                                 LastModifier != null;
+
+            if (!HasVersionData)
+                return false;
+
+            var Changed = false;
+            if (Target.Version == null)
+            {
+                this.Report.LogFieldUpdate(Entity, "version", Describe(Target), MatchMethod, "<none>", "<present>", this.IsPreview);
+                if (!this.IsPreview)
+                    Target.Version = new VersionCard();
+                Changed = true;
+            }
+
+            if (Target.Version == null)
+                return Changed;
+
+            if (VersionNumber != null && Target.Version.VersionNumber != VersionNumber)
+            {
+                this.Report.LogFieldUpdate(Entity, "versionNumber", Describe(Target), MatchMethod, Target.Version.VersionNumber, VersionNumber, this.IsPreview);
+                if (!this.IsPreview)
+                    Target.Version.VersionNumber = VersionNumber;
+                Changed = true;
+            }
+
+            if (VersionAnnotation != null && Target.Version.Annotation != VersionAnnotation)
+            {
+                this.Report.LogFieldUpdate(Entity, "versionAnnotation", Describe(Target), MatchMethod, Target.Version.Annotation, VersionAnnotation, this.IsPreview);
+                if (!this.IsPreview)
+                    Target.Version.Annotation = VersionAnnotation;
+                Changed = true;
+            }
+
+            if (VersionSequence != null && Target.Version.VersionSequence != VersionSequence.Value)
+            {
+                this.Report.LogFieldUpdate(Entity, "versionSequence", Describe(Target), MatchMethod,
+                                           Target.Version.VersionSequence.ToString(CultureInfo.InvariantCulture),
+                                           VersionSequence.Value.ToString(CultureInfo.InvariantCulture), this.IsPreview);
+                if (!this.IsPreview)
+                    Target.Version.VersionSequence = VersionSequence.Value;
+                Changed = true;
+            }
+
+            if (Creator != null && Target.Version.Creator != Creator)
+            {
+                this.Report.LogFieldUpdate(Entity, "creator", Describe(Target), MatchMethod, Target.Version.Creator, Creator, this.IsPreview);
+                if (!this.IsPreview)
+                    Target.Version.Creator = Creator;
+                Changed = true;
+            }
+
+            if (LastModifier != null && Target.Version.LastModifier != LastModifier)
+            {
+                this.Report.LogFieldUpdate(Entity, "lastModifier", Describe(Target), MatchMethod, Target.Version.LastModifier, LastModifier, this.IsPreview);
+                if (!this.IsPreview)
+                    Target.Version.LastModifier = LastModifier;
+                Changed = true;
+            }
+
+            DateTime ParsedDate;
+            if (Creation != null)
+                if (TryParseJsonDate(Creation, out ParsedDate))
+                {
+                    if (Target.Version.Creation != ParsedDate)
+                    {
+                        this.Report.LogFieldUpdate(Entity, "creation", Describe(Target), MatchMethod,
+                                                   Target.Version.Creation.ToString("o", CultureInfo.InvariantCulture),
+                                                   Creation, this.IsPreview);
+                        if (!this.IsPreview)
+                            Target.Version.Creation = ParsedDate;
+                        Changed = true;
+                    }
+                }
+                else
+                    this.Report.ImportWarning("Invalid version creation timestamp '" + Creation + "' for " + Describe(Target) + ".");
+
+            if (LastModification != null)
+                if (TryParseJsonDate(LastModification, out ParsedDate))
+                {
+                    if (Target.Version.LastModification != ParsedDate)
+                    {
+                        this.Report.LogFieldUpdate(Entity, "lastModification", Describe(Target), MatchMethod,
+                                                   Target.Version.LastModification.ToString("o", CultureInfo.InvariantCulture),
+                                                   LastModification, this.IsPreview);
+                        if (!this.IsPreview)
+                            Target.Version.LastModification = ParsedDate;
+                        Changed = true;
+                    }
+                }
+                else
+                    this.Report.ImportWarning("Invalid version lastModification timestamp '" + LastModification + "' for " + Describe(Target) + ".");
+
+            return Changed;
+        }
+
+        private static bool TryParseJsonDate(string Text, out DateTime Result)
+        {
+            return DateTime.TryParse(Text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out Result);
+        }
+
+        private bool AssignImportedId(FormalElement Target, DomainJsonElement Source, string Entity = null, string MatchMethod = null)
+        {
+            if (!this.PreserveSourceIds || this.IsPreview || Target == null || Source == null || String.IsNullOrWhiteSpace(Source.Id))
+                return false;
+
+            Guid Parsed;
+            if (!Guid.TryParse(Source.Id, out Parsed))
+            {
+                this.Report.ImportWarning("Domain JSON id '" + Source.Id + "' for " + Entity.ToStringAlways("domainEntity") + " is not a valid GUID; preserving generated id.");
+                return false;
+            }
+
+            if (Target.GlobalId == Parsed)
+                return false;
+
+            if (KnownDomainUniqueElements().Any(Element => Element != null &&
+                                                           !Object.ReferenceEquals(Element, Target) &&
+                                                           Element.GlobalId == Parsed))
+            {
+                this.Report.ImportWarning("Domain JSON id '" + Source.Id + "' for " + Entity.ToStringAlways("domainEntity") + " already exists in the target domain; preserving generated id.");
+                return false;
+            }
+
+            this.Report.LogFieldUpdate(Entity.NullDefault(Source.Entity).NullDefault("domainEntity"),
+                                       "id",
+                                       Describe(Target),
+                                       MatchMethod.NullDefault("preserveSourceIds"),
+                                       Target.GlobalId,
+                                       Parsed,
+                                       this.IsPreview);
+            Target.GlobalId = Parsed;
+            return true;
+        }
+
+        private IEnumerable<FormalElement> KnownDomainUniqueElements()
+        {
+            yield return this.TargetDomain;
+
+            foreach (var Language in this.TargetDomain.ExternalLanguages)
+                yield return Language;
+
+            foreach (var Category in this.TargetDomain.ConceptDefClusters)
+                yield return Category;
+
+            foreach (var Category in this.TargetDomain.RelationshipDefClusters)
+                yield return Category;
+
+            foreach (var Category in this.TargetDomain.TableDefCategories)
+                yield return Category;
+
+            foreach (var Category in this.TargetDomain.FieldDefCategories)
+                yield return Category;
+
+            foreach (var Table in this.TargetDomain.TableDefinitions)
+            {
+                yield return Table;
+
+                foreach (var Field in Table.FieldDefinitions)
+                    yield return Field;
+            }
+
+            foreach (var Definition in this.TargetDomain.ConceptDefinitions)
+                yield return Definition;
+
+            foreach (var Definition in this.TargetDomain.RelationshipDefinitions)
+            {
+                yield return Definition;
+
+                if (Definition.OriginOrParticipantLinkRoleDef != null)
+                    yield return Definition.OriginOrParticipantLinkRoleDef;
+
+                if (Definition.TargetLinkRoleDef != null)
+                    yield return Definition.TargetLinkRoleDef;
+            }
         }
 
         private bool ApplySimpleFields(SimpleElement Target, DomainJsonElement Source, string Entity = null, string MatchMethod = null)
@@ -1085,6 +1522,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 if (!this.IsPreview)
                 {
                     Existing = new FormalPresentationElement(Source.Name, Source.TechName, Source.Summary.NullDefault(""));
+                    AssignImportedId(Existing, Source, Entity, "create");
                     ApplyFormalFields(Existing, Source);
                     TargetList.Add(Existing);
                 }
@@ -1092,7 +1530,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 return;
             }
 
-            if (ApplyFormalFields(Existing, Source))
+            var Changed = AssignImportedId(Existing, Source, Entity, MatchMethodFor(Existing, Source));
+            Changed = ApplyFormalFields(Existing, Source) || Changed;
+            if (Changed)
                 this.Report.CountUpdated(Entity, this.IsPreview);
         }
 
@@ -1183,6 +1623,16 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             return Language == null ? Source.ExternalLanguageTechName.ToStringAlways() : Language.TechName.ToStringAlways();
         }
 
+        private static string TechNameOf(FormalElement Element)
+        {
+            return Element == null ? null : Element.TechName;
+        }
+
+        private static bool HasSetKey(IDictionary<string, object> Set, string Key)
+        {
+            return Set != null && Set.ContainsKey(Key);
+        }
+
         private static string GetSetString(IDictionary<string, object> Set, string Key)
         {
             if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
@@ -1213,6 +1663,16 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             int Result;
             return Int32.TryParse(Convert.ToString(Set[Key], CultureInfo.InvariantCulture), NumberStyles.Integer, CultureInfo.InvariantCulture, out Result)
                    ? (int?)Result : null;
+        }
+
+        private static double? GetSetDouble(IDictionary<string, object> Set, string Key)
+        {
+            if (Set == null || !Set.ContainsKey(Key) || Set[Key] == null)
+                return null;
+
+            double Result;
+            return Double.TryParse(Convert.ToString(Set[Key], CultureInfo.InvariantCulture), NumberStyles.Float, CultureInfo.InvariantCulture, out Result)
+                   ? (double?)Result : null;
         }
 
         private static List<string> GetSetStringList(IDictionary<string, object> Set, string Key)

@@ -71,6 +71,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private int FullStateConceptCreatesDisabled = 0;
         private int FullStateRelationshipCreatesDisabled = 0;
         private int FullStateDependentVisualSkips = 0;
+        private string SourceRootViewId = null;
+        private string SourceActiveViewId = null;
         private readonly Dictionary<View, Point> AutoPlacementOrigins = new Dictionary<View, Point>();
         private readonly Dictionary<View, int> AutoPlacementIgnoredOutliers = new Dictionary<View, int>();
         private readonly Dictionary<string, PlannedConceptReference> PlannedConceptsById = new Dictionary<string, PlannedConceptReference>(StringComparer.OrdinalIgnoreCase);
@@ -98,6 +100,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private class RelationshipLinkImportSpec
         {
+            public string Id;
             public string RoleTypeName;
             public string RoleDefinitionTechName;
             public string RoleVariantTechName;
@@ -351,6 +354,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyDocument(CompositionJsonDocument Document)
         {
+            this.SourceRootViewId = Document == null || Document.Composition == null ? null : Document.Composition.RootViewId;
+            this.SourceActiveViewId = Document == null || Document.Composition == null ? null : Document.Composition.ActiveViewId;
+
             this.AutoPlaceNewItems = Document.ImportOptions == null ||
                                      Document.ImportOptions.AutoPlaceNewItems == null ||
                                      Document.ImportOptions.AutoPlaceNewItems.Value;
@@ -453,6 +459,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Document.Groups != null && Document.Groups.Count > 0)
                 ApplyGroups(Document.Groups);
 
+            RestoreCompositionViewReferences();
+
             if (this.RepairRecursiveVisuals && !this.IsPreview)
                 RepairRecursiveVisualsAfterImport();
 
@@ -464,6 +472,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (!this.IsPreview)
                 ApplyQueuedAutoRoutes();
+
+            RestoreCompositionVersion(Document.Composition == null ? null : Document.Composition.Version);
 
             EmitMissingContainerSkipNotes();
             EmitAllCreateSkippedNote(Document);
@@ -1235,6 +1245,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyComposition(CompositionJsonComposition Source)
         {
+            if (this.TreatMissingFullStateItemsAsCreates)
+                AssignImportedId(this.Composition, Source.Id);
+
             var Changed = ApplyFormalSet(this.Composition, Source.Name, Source.TechName, Source.Summary, Source.Description, Source.TechSpec, Source.Version);
 
             if (!String.IsNullOrEmpty(Source.ViewsPrefix) && this.Composition.ViewsPrefix != Source.ViewsPrefix)
@@ -1620,6 +1633,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (Existing != null)
                 {
                     Result.Duplicate++;
+                    AssignImportedId(Existing, Spec.Id);
                     if (ApplyRelationshipLinkMetadata(Existing, Spec))
                         Result.Updated++;
                     continue;
@@ -1636,6 +1650,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     Variant = this.Composition.CompositeContentDomain.LinkRoleVariants.FirstOrDefault();
 
                 var NewLink = new RoleBasedLink(Relationship, Spec.ResolvedIdea, Spec.ResolvedRole, Variant);
+                AssignImportedId(NewLink, Spec.Id);
                 ApplyRelationshipLinkMetadata(NewLink, Spec);
                 Relationship.AddLink(NewLink);
                 Result.Added++;
@@ -1716,7 +1731,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Source.Links != null && Source.Links.Count > 0)
                 foreach (var Link in Source.Links)
-                    AddRelationshipLinkSpec(Plan, Link.RoleType, Link.RoleDefinitionTechName,
+                    AddRelationshipLinkSpec(Plan, Link.Id, Link.RoleType, Link.RoleDefinitionTechName,
                                             Link.RoleVariantTechName, Link.RoleVariantName,
                                             Link.DescriptorName, Link.DescriptorTechName, Link.DescriptorSummary,
                                             Link.IdeaId, Link.IdeaTechName);
@@ -1736,11 +1751,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 var IdeaId = IdeaIds != null && Index < IdeaIds.Count ? IdeaIds[Index] : null;
                 var IdeaTechName = IdeaTechNames != null && Index < IdeaTechNames.Count ? IdeaTechNames[Index] : null;
-                AddRelationshipLinkSpec(Plan, RoleTypeName, null, null, null, null, null, null, IdeaId, IdeaTechName);
+                AddRelationshipLinkSpec(Plan, null, RoleTypeName, null, null, null, null, null, null, IdeaId, IdeaTechName);
             }
         }
 
-        private void AddRelationshipLinkSpec(RelationshipLinkImportPlan Plan, string RoleTypeName, string RoleDefinitionTechName,
+        private void AddRelationshipLinkSpec(RelationshipLinkImportPlan Plan, string Id, string RoleTypeName, string RoleDefinitionTechName,
                                              string RoleVariantTechName, string RoleVariantName,
                                              string DescriptorName, string DescriptorTechName, string DescriptorSummary,
                                              string IdeaId, string IdeaTechName)
@@ -1750,6 +1765,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             Plan.Specs.Add(new RelationshipLinkImportSpec
             {
+                Id = Id,
                 RoleTypeName = RoleTypeName,
                 RoleDefinitionTechName = RoleDefinitionTechName,
                 RoleVariantTechName = RoleVariantTechName,
@@ -1992,6 +2008,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 var FallbackSpec = new RelationshipLinkImportSpec
                 {
+                    Id = Spec.Id,
                     RoleTypeName = Spec.ResolvedRole.RoleType == ERoleType.Target ? "Target" : "Origin",
                     IdeaId = Spec.IdeaId,
                     IdeaTechName = Spec.IdeaTechName
@@ -2580,7 +2597,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var ApplyViewMetadata = true;
             if (Existing == null)
             {
-                if (IsActiveViewSentinel(Source.TechName))
+                if (this.TreatMissingFullStateItemsAsCreates)
+                {
+                    Existing = ResolveFullStateView(Source);
+                    if (Existing == null)
+                        return;
+                }
+                else if (IsActiveViewSentinel(Source.TechName))
                 {
                     Existing = GetPreferredActiveView();
                     ApplyViewMetadata = false;
@@ -2612,8 +2635,125 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Source.Visuals == null)
                 return;
 
-            foreach (var Visual in Source.Visuals)
+            var Visuals = this.TreatMissingFullStateItemsAsCreates
+                          ? Source.Visuals.OrderBy(Visual => StringEquals(GetVisualEntityKind(Visual), "relationship") ? 1 : 0).ToList()
+                          : Source.Visuals;
+
+            foreach (var Visual in Visuals)
                 ApplyVisual(Existing, Visual);
+        }
+
+        private View ResolveFullStateView(CompositionJsonView Source)
+        {
+            var Owner = ResolveViewOwner(Source);
+            if (Owner == null)
+            {
+                Skip("View '" + Describe(Source.Id, Source.TechName) + "' was not found and owner idea '" +
+                     Describe(Source.OwnerIdeaId, Source.OwnerIdeaTechName) + "' could not be resolved for full-state view creation.");
+                return null;
+            }
+
+            if (IsSourceRootView(Source) && this.Composition.RootView != null)
+            {
+                var RootView = this.Composition.RootView;
+                if (!this.IsPreview)
+                    AssignImportedId(RootView, Source.Id);
+
+                this.Report.Log("JSON import full-state view reuse: source root view '" +
+                                Describe(Source.Id, Source.TechName) + "' mapped to existing active/root view " +
+                                DescribeView(RootView) + ".");
+                return RootView;
+            }
+
+            if (this.IsPreview)
+            {
+                this.Report.CountCreated();
+                this.Report.Log("JSON import full-state planned view create: " + Describe(Source.Id, Source.TechName) +
+                                " owner=" + DescribeTarget(Owner) + ".");
+                return Owner.CompositeActiveView.NullDefault(this.Composition.RootView).NullDefault(GetPreferredActiveView());
+            }
+
+            var Name = Source.Name.NullDefault(Source.TechName).NullDefault("View");
+            var TechName = Source.TechName.NullDefault(Name.TextToIdentifier());
+            var Created = new View(Owner, Name, TechName, Source.Summary.NullDefault(""));
+            AssignImportedId(Created, Source.Id);
+            ApplyFormalSet(Created, null, null, null, Source.Description, null, (CompositionJsonVersion)null);
+            Owner.CompositeViews.Add(Created);
+
+            if (Owner.CompositeActiveView == null)
+                Owner.CompositeActiveView = Created;
+
+            this.Report.CountCreated();
+            this.Report.Log("JSON import full-state created view: " + DescribeView(Created) +
+                            " owner=" + DescribeTarget(Owner) + ".");
+            return Created;
+        }
+
+        private Idea ResolveViewOwner(CompositionJsonView Source)
+        {
+            if (Source == null)
+                return null;
+
+            var Owner = FindIdea(Source.OwnerIdeaId, Source.OwnerIdeaTechName);
+            if (Owner != null)
+                return Owner;
+
+            if (IsSourceRootView(Source))
+                return this.Composition;
+
+            return null;
+        }
+
+        private bool IsSourceRootView(CompositionJsonView Source)
+        {
+            if (Source == null)
+                return false;
+
+            if (!String.IsNullOrEmpty(this.SourceRootViewId) &&
+                String.Equals(Source.Id, this.SourceRootViewId, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (!String.IsNullOrEmpty(Source.OwnerIdeaId) &&
+                String.Equals(Source.OwnerIdeaId, this.Composition.GlobalId.ToString("D"), StringComparison.OrdinalIgnoreCase) &&
+                this.Composition.RootView != null &&
+                (String.IsNullOrEmpty(Source.Id) || this.Composition.CompositeViews.Count <= 1))
+                return true;
+
+            return false;
+        }
+
+        private void RestoreCompositionViewReferences()
+        {
+            if (this.IsPreview)
+                return;
+
+            var RootView = FindView(this.SourceRootViewId, null);
+            if (RootView != null && this.Composition.RootView != RootView)
+            {
+                this.Composition.RootView = RootView;
+                this.Report.CountUpdated();
+                this.Report.Log("JSON import restored composition root view: " + DescribeView(RootView) + ".");
+            }
+
+            var ActiveView = FindView(this.SourceActiveViewId, null).NullDefault(RootView);
+            if (ActiveView != null && this.Composition.ActiveView != ActiveView)
+            {
+                this.Composition.ActiveView = ActiveView;
+                this.Report.CountUpdated();
+                this.Report.Log("JSON import restored composition active view: " + DescribeView(ActiveView) + ".");
+            }
+        }
+
+        private void RestoreCompositionVersion(CompositionJsonVersion SourceVersion)
+        {
+            if (this.IsPreview || SourceVersion == null)
+                return;
+
+            if (ApplyVersionFields(this.Composition, SourceVersion))
+            {
+                this.Report.CountUpdated();
+                this.Report.Log("JSON import restored composition version metadata: " + DescribeVersion(this.Composition) + ".");
+            }
         }
 
         private void ApplyVisual(View View, CompositionJsonVisual Source)
@@ -3327,6 +3467,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (ById != null)
                 return ById;
 
+            if (this.TreatMissingFullStateItemsAsCreates &&
+                Operation != null &&
+                !String.IsNullOrWhiteSpace(Operation.RepresentationId))
+                return null;
+
             if (ShortcutRequest != null)
                 return Representations.FirstOrDefault(Representation => Representation.IsShortcut == ShortcutRequest.Value);
 
@@ -3344,6 +3489,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var ById = FindVisualRepresentationById(Representations, Operation == null ? null : Operation.RepresentationId);
             if (ById != null)
                 return ById;
+
+            if (this.TreatMissingFullStateItemsAsCreates &&
+                Operation != null &&
+                !String.IsNullOrWhiteSpace(Operation.RepresentationId))
+                return null;
 
             if (ShortcutRequest != null)
                 return Representations.FirstOrDefault(Representation => Representation.IsShortcut == ShortcutRequest.Value);
@@ -3418,23 +3568,29 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 var AsShortcut = ShortcutRequest.IsTrue() || Concept.OwnerContainer != View.OwnerCompositeContainer;
                 TargetRepresentation = ConceptCreationCommand.CreateConceptVisualRepresentation(Concept, View, Center, AsShortcut, true, Width, Height);
+                if (this.TreatMissingFullStateItemsAsCreates)
+                    AssignImportedId(TargetRepresentation, Operation == null ? null : Operation.RepresentationId);
                 Changed = true;
                 CreatedVisualRepresentation = true;
             }
             else
             {
+                if (this.TreatMissingFullStateItemsAsCreates)
+                    AssignImportedId(TargetRepresentation, Operation == null ? null : Operation.RepresentationId);
+
                 if (ShortcutRequest != null && TargetRepresentation.IsShortcut != ShortcutRequest.Value)
                 {
                     TargetRepresentation.IsShortcut = ShortcutRequest.Value;
                     Changed = true;
                 }
 
-                if (HasExplicitGeometry(Operation))
-                {
-                    TargetRepresentation.MainSymbol.ResizeTo(Width, Height);
-                    TargetRepresentation.MainSymbol.MoveTo(Center.X, Center.Y, true);
-                    Changed = true;
-                }
+            }
+
+            if (HasExplicitGeometry(Operation) && TargetRepresentation.MainSymbol != null)
+            {
+                TargetRepresentation.MainSymbol.ResizeTo(Width, Height);
+                TargetRepresentation.MainSymbol.MoveTo(Center.X, Center.Y, true);
+                Changed = true;
             }
 
             if (Changed)
@@ -3529,14 +3685,21 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 var AsShortcut = ShortcutRequest.IsTrue() || Relationship.OwnerContainer != View.OwnerCompositeContainer;
                 TargetRepresentation = RelationshipCreationCommand.CreateRelationshipVisualRepresentation(Relationship, View, Center, AsShortcut);
+                if (this.TreatMissingFullStateItemsAsCreates)
+                    AssignImportedId(TargetRepresentation, Operation == null ? null : Operation.RepresentationId);
                 Changed = true;
             }
             else
+            {
+                if (this.TreatMissingFullStateItemsAsCreates)
+                    AssignImportedId(TargetRepresentation, Operation == null ? null : Operation.RepresentationId);
+
                 if (ShortcutRequest != null && TargetRepresentation.IsShortcut != ShortcutRequest.Value)
                 {
                     TargetRepresentation.IsShortcut = ShortcutRequest.Value;
                     Changed = true;
                 }
+            }
 
             if (HasExplicitGeometry(Operation) && TargetRepresentation.MainSymbol != null)
             {
@@ -4963,12 +5126,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string TechSpec, CompositionJsonVersion Version)
         {
-            return ApplyFormalSet(Target, Name, TechName, Summary, null, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
+            var Changed = ApplyFormalSet(Target, Name, TechName, Summary, null, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
+            return ApplyVersionFields(Target, Version) || Changed;
         }
 
         private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string Description, string TechSpec, CompositionJsonVersion Version)
         {
-            return ApplyFormalSet(Target, Name, TechName, Summary, Description, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
+            var Changed = ApplyFormalSet(Target, Name, TechName, Summary, Description, TechSpec, Version == null ? null : Version.Annotation, Version == null ? null : Version.VersionNumber);
+            return ApplyVersionFields(Target, Version) || Changed;
         }
 
         private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string TechSpec, string VersionAnnotation, string VersionNumber = null)
@@ -5051,6 +5216,89 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Changed;
         }
 
+        private bool ApplyVersionFields(FormalElement Target, CompositionJsonVersion Source)
+        {
+            if (Target == null || Source == null)
+                return false;
+
+            var HasVersionData = Source.VersionSequence != null ||
+                                 Source.VersionNumber != null ||
+                                 Source.Annotation != null ||
+                                 Source.Creator != null ||
+                                 Source.LastModifier != null ||
+                                 Source.Creation != null ||
+                                 Source.LastModification != null;
+
+            if (!HasVersionData)
+                return false;
+
+            var Changed = false;
+            if (Target.Version == null)
+            {
+                if (!this.IsPreview)
+                    Target.Version = new VersionCard();
+                Changed = true;
+            }
+
+            if (Target.Version == null)
+                return Changed;
+
+            if (Source.VersionSequence != null && Target.Version.VersionSequence != Source.VersionSequence.Value)
+            {
+                if (!this.IsPreview)
+                    Target.Version.VersionSequence = Source.VersionSequence.Value;
+                Changed = true;
+            }
+
+            if (Source.Creator != null && Target.Version.Creator != Source.Creator)
+            {
+                if (!this.IsPreview)
+                    Target.Version.Creator = Source.Creator;
+                Changed = true;
+            }
+
+            if (Source.LastModifier != null && Target.Version.LastModifier != Source.LastModifier)
+            {
+                if (!this.IsPreview)
+                    Target.Version.LastModifier = Source.LastModifier;
+                Changed = true;
+            }
+
+            DateTime ParsedDate;
+            if (Source.Creation != null)
+                if (TryParseJsonDate(Source.Creation, out ParsedDate))
+                {
+                    if (Target.Version.Creation != ParsedDate)
+                    {
+                        if (!this.IsPreview)
+                            Target.Version.Creation = ParsedDate;
+                        Changed = true;
+                    }
+                }
+                else
+                    this.Report.ImportWarning("Invalid version creation timestamp '" + Source.Creation + "' for " + DescribeTarget(Target) + ".");
+
+            if (Source.LastModification != null)
+                if (TryParseJsonDate(Source.LastModification, out ParsedDate))
+                {
+                    if (Target.Version.LastModification != ParsedDate)
+                    {
+                        if (!this.IsPreview)
+                            Target.Version.LastModification = ParsedDate;
+                        Changed = true;
+                    }
+                }
+                else
+                    this.Report.ImportWarning("Invalid version lastModification timestamp '" + Source.LastModification + "' for " + DescribeTarget(Target) + ".");
+
+            return Changed;
+        }
+
+        private static bool TryParseJsonDate(string Text, out DateTime Result)
+        {
+            return DateTime.TryParse(Text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out Result);
+        }
+
         private static string ImportDescription(string Description)
         {
             return Display.PlainTextToXamlRichText(Description);
@@ -5108,13 +5356,36 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            if (this.Composition.DeclaredIdeas.Any(Idea => Idea.GlobalId == Parsed) || this.Composition.GlobalId == Parsed)
+            if (KnownUniqueElements().Any(Element => Element != null &&
+                                                     !Object.ReferenceEquals(Element, Target) &&
+                                                     Element.GlobalId == Parsed))
             {
                 this.Report.Warn("Imported id '" + Id + "' already exists in the composition; a new id was assigned.");
                 return;
             }
 
             Target.GlobalId = Parsed;
+        }
+
+        private IEnumerable<UniqueElement> KnownUniqueElements()
+        {
+            yield return this.Composition;
+
+            foreach (var Idea in this.Composition.DeclaredIdeas)
+            {
+                yield return Idea;
+
+                var Relationship = Idea as Relationship;
+                if (Relationship != null)
+                    foreach (var Link in Relationship.Links)
+                        yield return Link;
+
+                foreach (var Representation in Idea.VisualRepresentators)
+                    yield return Representation;
+            }
+
+            foreach (var View in this.Composition.GetSubgraphChildren().SelectMany(Idea => Idea.CompositeViews).Distinct())
+                yield return View;
         }
 
         private Idea ResolveContainer(string ContainerId, string ContainerTechName, Domain ExpectedDomain)
@@ -5401,6 +5672,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Match = FindById<VisualRepresentation>(Representations, RepresentationId);
             if (Match != null)
                 return Match;
+
+            if (this.TreatMissingFullStateItemsAsCreates && !String.IsNullOrWhiteSpace(RepresentationId))
+                return null;
 
             var Idea = FindIdea(IdeaId, IdeaTechName);
             if (Idea == null)

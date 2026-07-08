@@ -102,6 +102,11 @@ namespace Instrumind.ThinkComposer.Cli
                     Options.Has("in-place"),
                     Options.Has("preview-only")));
 
+            if (Command == "validate-json-roundtrip")
+                return Finish(HeadlessThinkComposerOperations.ValidateCompositionJsonRoundTrip(
+                    Options.Required("input"),
+                    Options.Required("output-dir")));
+
             throw new UsageException("Unknown composition command: " + Args[0]);
         }
 
@@ -134,6 +139,11 @@ namespace Instrumind.ThinkComposer.Cli
                     Options.Required("output"),
                     Options.Has("in-place"),
                     Options.Has("preview-only")));
+
+            if (Command == "validate-json-roundtrip")
+                return Finish(HeadlessThinkComposerOperations.ValidateDomainJsonRoundTrip(
+                    Options.Required("input"),
+                    Options.Required("output-dir")));
 
             throw new UsageException("Unknown domain command: " + Args[0]);
         }
@@ -233,8 +243,10 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("Usage:");
             Console.WriteLine("  thinkcomposer composition export-json --input <file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]");
+            Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]");
+            Console.WriteLine("  thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>");
             Console.WriteLine("  thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id>]");
             Console.WriteLine();
@@ -246,8 +258,10 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("Composition commands:");
             Console.WriteLine("  thinkcomposer composition export-json --input <file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]");
+            Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
             Console.WriteLine();
             Console.WriteLine("Imports require --output. To overwrite --input, set --output to the input path and pass --in-place.");
+            Console.WriteLine("Round-trip validation rebuilds Domain and Composition from JSON and compares normalized re-exported JSON.");
         }
 
         private static void PrintDomainHelp()
@@ -255,8 +269,10 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("Domain commands:");
             Console.WriteLine("  thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]");
+            Console.WriteLine("  thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>");
             Console.WriteLine();
             Console.WriteLine("For .tcom input, domain import updates the embedded domain and writes a .tcom output.");
+            Console.WriteLine("Round-trip validation rebuilds a Domain from JSON and compares normalized re-exported JSON.");
         }
 
         private static void PrintReportHelp()

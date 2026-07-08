@@ -130,9 +130,20 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (SourceLocation == null)
                 return;
 
+            UpdateEmbeddedDomainFromFile(Engine, SourceLocation.LocalPath);
+        }
+
+        public static void UpdateEmbeddedDomainFromFile(CompositionEngine Engine, string SourceRoute)
+        {
+            var TargetDomain = ActiveDomain(Engine);
+            if (TargetDomain == null)
+                return;
+
+            if (String.IsNullOrWhiteSpace(SourceRoute))
+                return;
+
             try
             {
-                var SourceRoute = SourceLocation.LocalPath;
                 Console.WriteLine("Embedded Domain update started. source='" + SourceRoute + "' target composition='" +
                                   Engine.TargetComposition.TechName + "' target domain='" + TargetDomain.TechName + "'");
 

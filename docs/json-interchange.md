@@ -12,7 +12,7 @@ Saved `.tcom` and `.tdom` packages can also contain AI-readable sidecar snapshot
 
 Modern composition packages use this root-level contract:
 
-- `/manifest.json`: package metadata with `format: "ThinkComposer.Package"`, `packageKind: "composition"`, `persistenceFormat: "json"`, `persistenceFormatVersion`, application version, UTC save timestamp, authoritative part hashes, and legacy fallback metadata.
+- `/manifest.json`: package metadata with `format: "ThinkComposer.Package"`, `packageKind: "composition"`, `persistenceFormat: "json"`, `persistenceFormatVersion`, application version, UTC save timestamp, authoritative part hashes, legacy fallback metadata, and optional `gitSync` linkage.
 - `/Composition.json`: authoritative `ThinkComposer.JsonInterchange` full-state composition payload.
 - `/Domain.json`: authoritative `ThinkComposer.DomainJsonInterchange` embedded-domain payload required by `/Composition.json`.
 - `/Composition.bin`: optional legacy binary fallback retained in transitional packages for recovery and backwards compatibility.
@@ -22,7 +22,7 @@ When both JSON and binary payloads exist, ThinkComposer opens the root JSON payl
 
 Opening an older binary-only `.tcom` still works. Saving it again writes the JSON-authoritative package contract above, so normal save acts as the migration step.
 
-The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. The root JSON payload still validates against this interchange schema; there is no separate Composition persistence payload schema in v1.
+The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. Optional `gitSync` metadata records a generic Git remote, branch, and repo-relative baseline paths for the linked `.tcom` and optional `.tdom` source. It does not store credentials, tokens, last-sync commits, or package hashes; those are machine-local sync state. The root JSON payload still validates against this interchange schema; there is no separate Composition persistence payload schema in v1.
 
 ## Workflow
 

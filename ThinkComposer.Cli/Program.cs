@@ -66,6 +66,9 @@ namespace Instrumind.ThinkComposer.Cli
             if (Area == "package")
                 return ExecutePackage(Args.Skip(1).ToArray());
 
+            if (Area == "git")
+                return ExecuteGit(Args.Skip(1).ToArray());
+
             if (Area == "report")
                 return ExecuteReport(Args.Skip(1).ToArray());
 
@@ -203,6 +206,58 @@ namespace Instrumind.ThinkComposer.Cli
             throw new UsageException("Unknown package command: " + Args[0]);
         }
 
+        private static int ExecuteGit(string[] Args)
+        {
+            if (Args.Length == 0 || IsHelp(Args[0]))
+            {
+                PrintGitHelp();
+                return ExitSuccess;
+            }
+
+            var Command = Args[0].ToLowerInvariant();
+            var Options = OptionSet.Parse(Args.Skip(1).ToArray());
+
+            if (Options.HelpRequested)
+            {
+                PrintGitHelp();
+                return ExitSuccess;
+            }
+
+            if (Command == "link")
+                return Finish(HeadlessThinkComposerOperations.LinkPackageToGit(
+                    Options.Required("input"),
+                    Options.Required("remote"),
+                    Options.Required("branch"),
+                    Options.Required("path"),
+                    Options.Optional("domain-path"),
+                    Options.Optional("output"),
+                    Options.Has("in-place")));
+
+            if (Command == "unlink")
+                return Finish(HeadlessThinkComposerOperations.UnlinkPackageFromGit(
+                    Options.Required("input"),
+                    Options.Optional("output"),
+                    Options.Has("in-place")));
+
+            if (Command == "status")
+                return Finish(HeadlessThinkComposerOperations.GitPackageStatus(
+                    Options.Required("input")));
+
+            if (Command == "pull")
+                return Finish(HeadlessThinkComposerOperations.PullPackageFromGit(
+                    Options.Required("input"),
+                    Options.Optional("output"),
+                    Options.Has("in-place"),
+                    Options.Optional("backup-dir")));
+
+            if (Command == "push")
+                return Finish(HeadlessThinkComposerOperations.PushCompositionToGit(
+                    Options.Required("input"),
+                    Options.Optional("message")));
+
+            throw new UsageException("Unknown git command: " + Args[0]);
+        }
+
         private static int ExecuteReport(string[] Args)
         {
             if (Args.Length == 0 || IsHelp(Args[0]))
@@ -308,6 +363,11 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>");
             Console.WriteLine("  thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer package inspect --input <file.tcom|file.tdom>");
+            Console.WriteLine("  thinkcomposer git link --input <file.tcom|file.tdom> --remote <url> --branch <branch> --path <repo-path> [--domain-path <repo-tdom-path>] --output <file> [--in-place]");
+            Console.WriteLine("  thinkcomposer git unlink --input <file.tcom|file.tdom> --output <file> [--in-place]");
+            Console.WriteLine("  thinkcomposer git status --input <file.tcom|file.tdom>");
+            Console.WriteLine("  thinkcomposer git pull --input <file.tcom|file.tdom> --output <file> [--in-place] [--backup-dir <dir>]");
+            Console.WriteLine("  thinkcomposer git push --input <file.tcom> --message <message>");
             Console.WriteLine("  thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>");
             Console.WriteLine("  thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id>]");
             Console.WriteLine();
@@ -350,6 +410,19 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer package inspect --input <file.tcom|file.tdom>");
             Console.WriteLine();
             Console.WriteLine("Reports whether a native package is JSON-authoritative, transitional with binary fallback, or legacy binary-only.");
+        }
+
+        private static void PrintGitHelp()
+        {
+            Console.WriteLine("Git sync commands:");
+            Console.WriteLine("  thinkcomposer git link --input <file.tcom|file.tdom> --remote <url> --branch <branch> --path <repo-path> [--domain-path <repo-tdom-path>] --output <file> [--in-place]");
+            Console.WriteLine("  thinkcomposer git unlink --input <file.tcom|file.tdom> --output <file> [--in-place]");
+            Console.WriteLine("  thinkcomposer git status --input <file.tcom|file.tdom>");
+            Console.WriteLine("  thinkcomposer git pull --input <file.tcom|file.tdom> --output <file> [--in-place] [--backup-dir <dir>]");
+            Console.WriteLine("  thinkcomposer git push --input <file.tcom> --message <message>");
+            Console.WriteLine();
+            Console.WriteLine("Git sync stores remote/branch/path linkage in /manifest.json and uses installed git.exe for remote operations.");
+            Console.WriteLine("Domains are pull-only in this version. Composition push commits and pushes the linked .tcom path.");
         }
 
         private static void PrintReportHelp()

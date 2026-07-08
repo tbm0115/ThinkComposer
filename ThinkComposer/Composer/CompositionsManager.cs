@@ -194,6 +194,27 @@ namespace Instrumind.ThinkComposer.Composer
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Export Image", ExposedWorkCommand.Name, "Exports the current document view as an Image (press [Ctrl] to use Transparency in .PNG format).", "diagram_export.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
+            ExposedGroup = new SimpleElement("Git", "Git");
+            this.CommandGroups_.PutIntoSublist(ExposedArea.TechName, ExposedGroup);
+
+            ExposedWorkCommand = new GenericCommand("LinkGitRemote");
+            ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.LinkActiveComposition(this.WorkspaceDirector));
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Link Git Remote...", ExposedWorkCommand.Name, "Links the current Composition package to a Git remote path.", "link.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("PullFromGit");
+            ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PullActiveComposition(this.WorkspaceDirector));
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Pull from Git", ExposedWorkCommand.Name, "Pulls the linked Composition package from Git.", "arrow_down.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("CommitPushToGit");
+            ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PushActiveComposition(this.WorkspaceDirector));
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Commit and Push to Git", ExposedWorkCommand.Name, "Commits and pushes the linked Composition package to Git.", "arrow_up.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
             // Composition JSON import/export remains implemented for compatibility and CLI use,
             // but is no longer exposed as a primary desktop command now that package JSON is authoritative.
 
@@ -213,6 +234,12 @@ namespace Instrumind.ThinkComposer.Composer
                 });
             ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Update Embedded Domain...", ExposedWorkCommand.Name, "Safely previews and merges a newer Domain into the active Composition's embedded Domain snapshot.", "book_refresh.png",
+                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+
+            ExposedWorkCommand = new GenericCommand("PullLinkedEmbeddedDomain");
+            ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PullLinkedEmbeddedDomain(this.WorkspaceDirector));
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Pull Linked Domain from Git", ExposedWorkCommand.Name, "Pulls the linked .tdom baseline and safely merges it into the active Composition's embedded Domain.", "book_refresh.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedGroup = new SimpleElement("File", "File");

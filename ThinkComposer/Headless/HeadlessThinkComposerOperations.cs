@@ -19,6 +19,7 @@ using Instrumind.Common.Visualization;
 using Instrumind.ThinkComposer.Composer;
 using Instrumind.ThinkComposer.Composer.ContainerSnapshots;
 using Instrumind.ThinkComposer.Composer.Generation;
+using Instrumind.ThinkComposer.Composer.GitSync;
 using Instrumind.ThinkComposer.Composer.JsonInterchange;
 using Instrumind.ThinkComposer.Composer.Reporting;
 using Instrumind.ThinkComposer.Definitor;
@@ -382,6 +383,50 @@ namespace Instrumind.ThinkComposer.Headless
 
                 var Inspection = JsonPackagePersistence.Inspect(Input);
                 return Succeed(JsonPackagePersistence.DescribeInspection(Inspection), Path.GetFullPath(Input));
+            });
+        }
+
+        public static OperationResult<string> LinkPackageToGit(string Input, string Remote, string Branch, string RepositoryPath,
+                                                               string DomainPath, string Output, bool InPlace)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Message = GitPackageSyncService.LinkPackage(Input, Output, InPlace, Remote, Branch, RepositoryPath, DomainPath);
+                return Succeed(Message, String.IsNullOrWhiteSpace(Output) ? Path.GetFullPath(Input) : Path.GetFullPath(Output));
+            });
+        }
+
+        public static OperationResult<string> UnlinkPackageFromGit(string Input, string Output, bool InPlace)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Message = GitPackageSyncService.UnlinkPackage(Input, Output, InPlace);
+                return Succeed(Message, String.IsNullOrWhiteSpace(Output) ? Path.GetFullPath(Input) : Path.GetFullPath(Output));
+            });
+        }
+
+        public static OperationResult<string> GitPackageStatus(string Input)
+        {
+            return ExpectedOperation(delegate
+            {
+                return Succeed(GitPackageSyncService.StatusPackage(Input), Path.GetFullPath(Input));
+            });
+        }
+
+        public static OperationResult<string> PullPackageFromGit(string Input, string Output, bool InPlace, string BackupDirectory)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Result = GitPackageSyncService.PullPackage(Input, Output, InPlace, BackupDirectory);
+                return Succeed(Result.Message, Result.OutputPath);
+            });
+        }
+
+        public static OperationResult<string> PushCompositionToGit(string Input, string Message)
+        {
+            return ExpectedOperation(delegate
+            {
+                return Succeed(GitPackageSyncService.PushComposition(Input, Message), Path.GetFullPath(Input));
             });
         }
 

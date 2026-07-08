@@ -447,11 +447,14 @@ namespace Instrumind.ThinkComposer.Composer
             if (!ProductDirector.ValidateEditionLimit(CompoLevels, MaxQuota, "save", "Composability Depth Levels"))
                 return "This product edition cannot save a Composition with more than " + MaxQuota.ToString() + " composability depth levels.";
 
+            var PreviousLocation = this.Location;
             if (DocumentLocation == null)
                 DocumentLocation = this.Location;
-            else
-                if (UpdateLocation)
-                    this.Location = DocumentLocation;
+
+            var GitSyncLink = PreserveGitSyncLinkOnSave(PreviousLocation, DocumentLocation);
+
+            if (DocumentLocation != null && UpdateLocation)
+                this.Location = DocumentLocation;
 
             var Snapshot = (this.TargetComposition.ActiveView == null
                             ? null
@@ -459,12 +462,36 @@ namespace Instrumind.ThinkComposer.Composer
 
             var Result = JsonPackagePersistence.StoreComposition(this.TargetComposition, DocumentLocation,
                                                                  RegisterAsRecentDoc, false,
-                                                                 Snapshot, true);
+                                                                 Snapshot, true,
+                                                                 GitSyncLink);
 
             if (Result.IsAbsent() && ResetExistenceStatus)
                 this.ExistenceStatus = EExistenceStatus.NotModified;
 
             return Result;
+        }
+
+        private static GitSync.GitPackageLink PreserveGitSyncLinkOnSave(Uri PreviousLocation, Uri TargetLocation)
+        {
+            try
+            {
+                if (PreviousLocation == null || TargetLocation == null ||
+                    String.IsNullOrWhiteSpace(PreviousLocation.LocalPath) ||
+                    String.IsNullOrWhiteSpace(TargetLocation.LocalPath))
+                    return null;
+
+                var PreviousPath = Path.GetFullPath(PreviousLocation.LocalPath);
+                var TargetPath = Path.GetFullPath(TargetLocation.LocalPath);
+                if (!String.Equals(PreviousPath, TargetPath, StringComparison.OrdinalIgnoreCase) || !File.Exists(PreviousPath))
+                    return null;
+
+                return JsonPackagePersistence.ReadGitSyncLink(PreviousPath);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Cannot preserve gitSync link on save: " + Problem.Message);
+                return null;
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------

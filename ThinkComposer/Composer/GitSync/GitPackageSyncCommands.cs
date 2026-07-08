@@ -24,6 +24,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private static readonly object DomainStatusSync = new object();
         private static readonly Dictionary<string, DomainGitStatusCacheEntry> DomainStatusByPath = new Dictionary<string, DomainGitStatusCacheEntry>(StringComparer.OrdinalIgnoreCase);
         private static readonly TimeSpan DomainStatusRefreshInterval = TimeSpan.FromMinutes(15);
+        private const string DomainGitCredentialsUnavailableMessage = "Cannot check remote updates without cached Git credentials. Use Pull from Git to authenticate, or configure Git Credential Manager/SSH.";
 
         public static void LinkActiveComposition(WorkspaceManager WorkspaceDirector)
         {
@@ -201,7 +202,12 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 return CreateDomainPullStatus("Pull from Git", "Checking linked Git remote for Domain updates...", "arrow_refresh.png");
 
             if (!Entry.ErrorMessage.IsAbsent())
+            {
+                if (IsDomainGitCredentialsUnavailable(Entry.ErrorMessage))
+                    return CreateDomainPullStatus("Pull from Git", Entry.ErrorMessage, "arrow_down.png");
+
                 return CreateDomainPullStatus("Pull from Git !", "Cannot check linked Git remote: " + Entry.ErrorMessage, "exclamation.png");
+            }
 
             if (Entry.Status != null && !Entry.Status.BaselineExists)
                 return CreateDomainPullStatus("Pull from Git !", "Linked Domain baseline was not found in the Git repository.", "exclamation.png");
@@ -375,7 +381,9 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 catch (Exception Problem)
                 {
                     ErrorMessage = CreateDomainStatusErrorMessage(Problem);
-                    Console.WriteLine("Cannot check linked Domain Git remote: " + ErrorMessage);
+                    Console.WriteLine((IsDomainGitCredentialsUnavailable(ErrorMessage)
+                                      ? "Linked Domain Git remote check skipped: "
+                                      : "Cannot check linked Domain Git remote: ") + ErrorMessage);
                 }
 
                 lock (DomainStatusSync)
@@ -424,11 +432,20 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             if (String.IsNullOrWhiteSpace(Message))
                 return "Unknown Git status check failure.";
 
-            if (Message.IndexOf("Cannot prompt because user interactivity has been disabled", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                Message.IndexOf("could not read Username", StringComparison.OrdinalIgnoreCase) >= 0)
-                return "Cannot check remote updates without cached Git credentials. Use Pull from Git to authenticate, or configure Git Credential Manager/SSH.";
+            if (IsDomainGitCredentialsUnavailable(Message))
+                return DomainGitCredentialsUnavailableMessage;
 
             return Message.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault().ToStringAlways(Message);
+        }
+
+        private static bool IsDomainGitCredentialsUnavailable(string Message)
+        {
+            if (String.IsNullOrWhiteSpace(Message))
+                return false;
+
+            return String.Equals(Message, DomainGitCredentialsUnavailableMessage, StringComparison.Ordinal) ||
+                   Message.IndexOf("Cannot prompt because user interactivity has been disabled", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("could not read Username", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static void NotifyCommandVisualStatusChanged()

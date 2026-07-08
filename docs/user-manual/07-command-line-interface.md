@@ -215,7 +215,7 @@ The validation commands save a modern package, reopen it through normal load, fa
 
 ## Git Sync
 
-Git sync requires `git.exe` to be installed and available on `Path`. ThinkComposer uses normal Git remotes and your existing Git credentials or SSH configuration. It does not store passwords, tokens, GitHub credentials, or Bitbucket credentials.
+Git sync requires `git.exe` to be installed and available on `Path`. ThinkComposer uses normal Git remotes and your existing Git credentials or SSH configuration. It does not store passwords, tokens, GitHub credentials, or Bitbucket credentials. Package-level links are stored as `gitSync`; Composition packages can also store `embeddedDomainGitSync` for the source `.tdom` link copied from a Git-linked Domain.
 
 Link a composition to a Git remote and repo-relative `.tcom` path:
 
@@ -253,7 +253,7 @@ Push is supported for Composition packages:
 thinkcomposer git push --input "Models\ServiceMap.tcom" --message "Update service map"
 ```
 
-Domain packages are pull-only in this version. To update a Composition's embedded Domain after pulling a `.tdom`, use `thinkcomposer domain update-embedded`.
+Domain packages are pull-only in this version. To update a Composition's embedded Domain after pulling a `.tdom`, use `thinkcomposer domain update-embedded`. In the desktop UI, Domain `Pull from Git` can use a Composition package's `embeddedDomainGitSync` link to pull and merge the embedded Domain source directly.
 
 ## Reports
 

@@ -77,14 +77,25 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         public static void PullActiveDomain(WorkspaceManager WorkspaceDirector)
         {
             var Engine = ActiveCompositionEngine(WorkspaceDirector);
-            if (Engine == null || !RequireSavedDomain(Engine) || !RequireUnmodified(Engine))
+            var Target = GetActiveDomainGitTarget(Engine);
+            if (Engine == null || Target == null || !RequireUnmodified(Engine))
                 return;
 
             Run("Pull Domain from Git", delegate
             {
-                var Result = GitPackageSyncService.PullPackage(Engine.DomainLocation.LocalPath, Engine.DomainLocation.LocalPath, true, null);
-                ClearDomainGitStatus(Engine.DomainLocation.LocalPath);
-                Display.DialogMessage("Git Pull", Result.Message + "\n\nClose and reopen the Domain to load the pulled package.", EMessageType.Information);
+                if (Target.IsEmbeddedDomain)
+                {
+                    var DomainPath = GitPackageSyncService.PullEmbeddedDomainBaseline(Target.PackagePath, null);
+                    DomainJsonInterchangeCommands.UpdateEmbeddedDomainFromFile(Engine, DomainPath);
+                    ClearDomainGitStatus(Target.PackagePath);
+                    Display.DialogMessage("Git Pull", "Linked Domain pulled from Git and merged into the active Composition.", EMessageType.Information);
+                }
+                else
+                {
+                    var Result = GitPackageSyncService.PullPackage(Target.PackagePath, Target.PackagePath, true, null);
+                    ClearDomainGitStatus(Target.PackagePath);
+                    Display.DialogMessage("Git Pull", Result.Message + "\n\nClose and reopen the Domain to load the pulled package.", EMessageType.Information);
+                }
             });
         }
 
@@ -127,10 +138,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         public static bool CanPullActiveDomain(WorkspaceManager WorkspaceDirector)
         {
             var Engine = ActiveCompositionEngine(WorkspaceDirector);
-            var DomainPath = GetActiveDomainPackagePath(Engine);
-            return !String.IsNullOrWhiteSpace(DomainPath) &&
-                   File.Exists(DomainPath) &&
-                   TryReadGitLink(DomainPath) != null;
+            return GetActiveDomainGitTarget(Engine) != null;
         }
 
         public static WorkCommandVisualStatus GetDomainLinkVisualStatus(DocumentEngine Document)
@@ -140,7 +148,14 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             var Summary = "Links the current Domain package to a Git remote path.";
 
             if (String.IsNullOrWhiteSpace(DomainPath) || !File.Exists(DomainPath))
-                Summary = "Save the Domain package before linking it to Git.";
+            {
+                var CompositionPath = GetActiveCompositionPackagePath(Engine);
+                Summary = !String.IsNullOrWhiteSpace(CompositionPath) &&
+                          File.Exists(CompositionPath) &&
+                          HasEmbeddedDomainGitLink(CompositionPath)
+                          ? "This embedded Domain is already linked to Git through the Composition package."
+                          : "Save the Domain package before linking it to Git.";
+            }
             else
                 if (TryReadGitLink(DomainPath) != null)
                     Summary = "This Domain package is already linked to Git. Use Pull from Git to update it.";
@@ -157,16 +172,15 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         public static WorkCommandVisualStatus GetDomainPullVisualStatus(DocumentEngine Document)
         {
             var Engine = Document as CompositionEngine;
-            var DomainPath = GetActiveDomainPackagePath(Engine);
-            var DefaultSummary = "Pulls the linked Domain package from Git.";
+            var Target = GetActiveDomainGitTarget(Engine);
+            var DefaultSummary = Target != null && Target.IsEmbeddedDomain
+                                 ? "Pulls and merges the linked embedded Domain from Git."
+                                 : "Pulls the linked Domain package from Git.";
 
-            if (String.IsNullOrWhiteSpace(DomainPath) || !File.Exists(DomainPath))
-                return CreateDomainPullStatus("Pull from Git", "Save the Domain package before pulling from Git.", "arrow_down.png");
+            if (Target == null)
+                return CreateDomainPullStatus("Pull from Git", "This Domain is not linked to Git.", "arrow_down.png");
 
-            if (TryReadGitLink(DomainPath) == null)
-                return CreateDomainPullStatus("Pull from Git", "This Domain package is not linked to Git.", "arrow_down.png");
-
-            var Entry = GetDomainGitStatus(DomainPath);
+            var Entry = GetDomainGitStatus(Target.PackagePath);
 
             if (Entry == null)
                 return CreateDomainPullStatus("Pull from Git", "Linked Domain package. Waiting to check Git for updates...", "arrow_down.png");
@@ -189,13 +203,11 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         public static void RequestDomainPullVisualStatusRefresh(DocumentEngine Document)
         {
             var Engine = Document as CompositionEngine;
-            var DomainPath = GetActiveDomainPackagePath(Engine);
-            if (String.IsNullOrWhiteSpace(DomainPath) ||
-                !File.Exists(DomainPath) ||
-                TryReadGitLink(DomainPath) == null)
+            var Target = GetActiveDomainGitTarget(Engine);
+            if (Target == null)
                 return;
 
-            EnsureDomainRemoteStatusCheck(DomainPath);
+            EnsureDomainRemoteStatusCheck(Target.PackagePath, Target.IsEmbeddedDomain);
         }
 
         private static void LinkPackage(string PackagePath, bool IsComposition)
@@ -237,6 +249,23 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             return Engine.DomainLocation.LocalPath;
         }
 
+        private static DomainGitTarget GetActiveDomainGitTarget(CompositionEngine Engine)
+        {
+            var DomainPath = GetActiveDomainPackagePath(Engine);
+            if (!String.IsNullOrWhiteSpace(DomainPath) &&
+                File.Exists(DomainPath) &&
+                TryReadGitLink(DomainPath) != null)
+                return new DomainGitTarget { PackagePath = Path.GetFullPath(DomainPath), IsEmbeddedDomain = false };
+
+            var CompositionPath = GetActiveCompositionPackagePath(Engine);
+            if (!String.IsNullOrWhiteSpace(CompositionPath) &&
+                File.Exists(CompositionPath) &&
+                HasEmbeddedDomainGitLink(CompositionPath))
+                return new DomainGitTarget { PackagePath = Path.GetFullPath(CompositionPath), IsEmbeddedDomain = true };
+
+            return null;
+        }
+
         private static GitPackageLink TryReadGitLink(string PackagePath)
         {
             try
@@ -250,6 +279,31 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             }
         }
 
+        private static GitPackageLink TryReadEmbeddedDomainGitLink(string PackagePath)
+        {
+            try
+            {
+                return JsonPackagePersistence.ReadEmbeddedDomainGitSyncLink(PackagePath);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Cannot read embeddedDomainGitSync link from '" + PackagePath + "': " + Problem.Message);
+                return null;
+            }
+        }
+
+        private static bool HasEmbeddedDomainGitLink(string CompositionPath)
+        {
+            var EmbeddedLink = TryReadEmbeddedDomainGitLink(CompositionPath);
+            if (EmbeddedLink != null &&
+                EmbeddedLink.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleSelf) != null)
+                return true;
+
+            var PackageLink = TryReadGitLink(CompositionPath);
+            return PackageLink != null &&
+                   PackageLink.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleEmbeddedDomainSource) != null;
+        }
+
         private static WorkCommandVisualStatus CreateDomainPullStatus(string Name, string Summary, string Pictogram)
         {
             return new WorkCommandVisualStatus
@@ -261,7 +315,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             };
         }
 
-        private static void EnsureDomainRemoteStatusCheck(string DomainPath)
+        private static void EnsureDomainRemoteStatusCheck(string DomainPath, bool IsEmbeddedDomain)
         {
             if (String.IsNullOrWhiteSpace(DomainPath))
                 return;
@@ -293,7 +347,9 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 string ErrorMessage = null;
                 try
                 {
-                    Status = GitPackageSyncService.GetRemoteStatus(FullPath);
+                    Status = IsEmbeddedDomain
+                             ? GitPackageSyncService.GetEmbeddedDomainRemoteStatus(FullPath)
+                             : GitPackageSyncService.GetRemoteStatus(FullPath);
                 }
                 catch (Exception Problem)
                 {
@@ -415,6 +471,12 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                     ErrorMessage = this.ErrorMessage
                 };
             }
+        }
+
+        private sealed class DomainGitTarget
+        {
+            public string PackagePath;
+            public bool IsEmbeddedDomain;
         }
     }
 }

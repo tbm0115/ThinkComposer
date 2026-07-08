@@ -37,7 +37,7 @@ When a `.tdom` save includes a template composition, it can also write:
 - `/Interchange/TemplateComposition.json`
 - `/Previews/views/*.png`
 
-The root manifest uses `format: "ThinkComposer.Package"` and `formatVersion: 1`; its schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. It may also contain optional `gitSync` metadata with `version: 1`, a generic Git remote URL, branch, and repo-relative baseline package paths. The sidecar manifest uses `format: "ThinkComposer.ContainerSnapshot"` and `formatVersion: 1`; its schema is maintained at `docs/thinkcomposer-container-manifest.schema.json`.
+The root manifest uses `format: "ThinkComposer.Package"` and `formatVersion: 1`; its schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. It may also contain optional `gitSync` metadata with `version: 1`, a generic Git remote URL, branch, and repo-relative baseline package paths. Composition packages may additionally contain optional `embeddedDomainGitSync` metadata for the embedded Domain's source `.tdom` link. The sidecar manifest uses `format: "ThinkComposer.ContainerSnapshot"` and `formatVersion: 1`; its schema is maintained at `docs/thinkcomposer-container-manifest.schema.json`.
 
 ## Behavior
 
@@ -47,7 +47,7 @@ Preview images are PNG v1. They are capped to keep saves safe and predictable. I
 
 Sidecar generation is non-blocking. A failure to write JSON or previews should not prevent a normal `.tcom` or `.tdom` save.
 
-Git synchronization is metadata-driven and optional. `gitSync` does not make Git or `/Interchange/*` authoritative; normal Open/Save still reads root `/Composition.json`, `/Domain.json`, and `/TemplateComposition.json`. Commit hashes and package hashes are stored in machine-local ThinkComposer Git sync state so the package does not try to embed the commit that contains itself.
+Git synchronization is metadata-driven and optional. `gitSync` and `embeddedDomainGitSync` do not make Git or `/Interchange/*` authoritative; normal Open/Save still reads root `/Composition.json`, `/Domain.json`, and `/TemplateComposition.json`. Commit hashes and package hashes are stored in machine-local ThinkComposer Git sync state so the package does not try to embed the commit that contains itself.
 
 ## AI Workflow
 

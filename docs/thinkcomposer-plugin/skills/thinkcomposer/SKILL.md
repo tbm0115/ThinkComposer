@@ -11,13 +11,13 @@ Use this skill when Codex is helping with a ThinkComposer `.tcom` composition/co
 
 ThinkComposer native `.tcom` and `.tdom` packages remain the source of truth, with modern packages using root JSON persistence payloads. Codex should work through the package root JSON first:
 
-- Modern `.tcom` context: root `manifest.json`, optional `manifest.json` `gitSync`, authoritative `Composition.json`, authoritative embedded `Domain.json`, optional legacy fallback `Composition.bin`, non-authoritative `Interchange/*` sidecars, and `Previews/views/*.png`.
+- Modern `.tcom` context: root `manifest.json`, optional package-level `manifest.json` `gitSync`, optional embedded Domain `manifest.json` `embeddedDomainGitSync`, authoritative `Composition.json`, authoritative embedded `Domain.json`, optional legacy fallback `Composition.bin`, non-authoritative `Interchange/*` sidecars, and `Previews/views/*.png`.
 - Modern `.tdom` context: root `manifest.json`, optional `manifest.json` `gitSync`, authoritative `Domain.json`, optional authoritative `TemplateComposition.json`, optional legacy fallback `Domain.bin`, non-authoritative `Interchange/*` sidecars, and optional previews.
 - Composition edits: patch root `/Composition.json` inside the `.tcom`, and update `/manifest.json` authoritative part metadata.
 - Domain edits: patch root `/Domain.json` inside the `.tdom` or `.tcom`, and update `/manifest.json` authoritative part metadata.
 - Compatibility CLI paths: use `thinkcomposer composition export-json/import-json`, `thinkcomposer domain export-json/import-json`, `package inspect`, and `validate-json-persistence` for migration, validation, or preview/merge diagnostics when needed.
 - Embedded-domain refresh: use `Composition -> Domain -> Update Embedded Domain...` or `thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <updated-file.tcom>` when a `.tcom` should pick up safe domain changes from a `.tdom`.
-- Git sync: use `thinkcomposer git link/status/pull/push` for package-level synchronization. Composition push is supported; Domain packages are link/pull only. `gitSync` stores remote/branch/path metadata only; commit/hash state is machine-local.
+- Git sync: use `thinkcomposer git link/status/pull/push` for package-level synchronization. Composition push is supported; Domain packages are link/pull only. `gitSync` stores package remote/branch/path metadata only; `.tcom` `embeddedDomainGitSync` stores the embedded Domain source link separately. Commit/hash state is machine-local.
 - Visual verification: run `Export Image` on the active view, preferably PNG. Hold Ctrl while exporting when a transparent PNG is useful.
 - Diagnostics: inspect the lower-left application log. If it is not persisted to disk, ask the user to copy the relevant log lines into a `.log` or `.txt` file.
 
@@ -39,7 +39,7 @@ For detailed Composition JSON, Domain JSON, package manifest, schema, sample, an
 When the user provides a modern `.tcom` or `.tdom`, inspect it before asking for separate exports. Treat root JSON as authoritative and sidecars/previews as context:
 
 - `manifest.json`: root package metadata, persistence format, authoritative JSON part hashes, and legacy fallback metadata.
-- `manifest.json` optional `gitSync`: generic Git remote URL, branch, and repo-relative baseline package paths. Do not add credentials or tokens.
+- `manifest.json` optional `gitSync`: generic Git remote URL, branch, and repo-relative baseline package paths for the package itself. Optional `.tcom` `embeddedDomainGitSync` carries the embedded Domain source `.tdom` link. Do not add credentials or tokens.
 - `Composition.json`: authoritative Composition JSON payload in `.tcom`.
 - `Domain.json`: authoritative Domain JSON payload in `.tdom` or embedded-domain payload in `.tcom`.
 - `TemplateComposition.json`: optional authoritative template composition payload in `.tdom`.
@@ -81,7 +81,7 @@ Use `containerTechName: "Active_Composition_Root"` for new root-level concepts a
 2. Summarize the current model before changing it: composition/domain tech names, active/root view, definitions, idea/relationship counts, operation groups, warnings, and compatibility metadata.
 3. Write the smallest safe root JSON update that satisfies the request.
 4. Update the package root JSON and refresh root `manifest.json` authoritative metadata for changed parts.
-5. Validate the package with `package inspect` and `validate-json-persistence`; use CLI import/export compatibility paths only when preview/merge diagnostics are needed. If the package is Git-linked, preserve or deliberately update `gitSync` in `/manifest.json`.
+5. Validate the package with `package inspect` and `validate-json-persistence`; use CLI import/export compatibility paths only when preview/merge diagnostics are needed. If the package is Git-linked, preserve or deliberately update `gitSync` and `embeddedDomainGitSync` in `/manifest.json`.
 6. Inspect the validation output and lower-left log for `warning`, `skipped`, `error`, `failed`, `blocked`, compatibility, rollback, and affected-view lines.
 7. Ask for or find a fresh exported image, then visually inspect it before declaring the diagram done.
 8. Iterate by patching the authoritative root JSON, not sidecars or legacy binaries.

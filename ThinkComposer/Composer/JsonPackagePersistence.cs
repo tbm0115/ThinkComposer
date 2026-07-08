@@ -49,12 +49,15 @@ namespace Instrumind.ThinkComposer.Composer
         private const string JsonContentType = "application/json";
         private const string CompositionKind = "composition";
         private const string DomainKind = "domain";
+        private const string GitSyncManifestKey = "gitSync";
+        private const string EmbeddedDomainGitSyncManifestKey = "embeddedDomainGitSync";
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false);
 
         public static string StoreComposition(Composition SourceComposition, Uri Location,
                                               bool RegisterAsRecentDoc, bool SilentSave,
                                               Visual Snapshot, bool SafeSaving,
-                                              GitPackageLink GitSyncLink = null)
+                                              GitPackageLink GitSyncLink = null,
+                                              GitPackageLink EmbeddedDomainGitSyncLink = null)
         {
             return DocumentEngine.StoreToLocation<ISphereModel>(
                 SourceComposition,
@@ -69,7 +72,7 @@ namespace Instrumind.ThinkComposer.Composer
                 SafeSaving,
                 delegate(Package Package)
                 {
-                    WriteCompositionPersistenceParts(Package, SourceComposition, GitSyncLink);
+                    WriteCompositionPersistenceParts(Package, SourceComposition, GitSyncLink, EmbeddedDomainGitSyncLink);
                     ContainerSnapshotService.WriteCompositionSnapshot(Package, SourceComposition, CompositionEngine.CompositionDocumentUri);
                 });
         }
@@ -210,6 +213,16 @@ namespace Instrumind.ThinkComposer.Composer
 
         public static GitPackageLink ReadGitSyncLink(string FilePath)
         {
+            return ReadGitSyncLink(FilePath, GitSyncManifestKey);
+        }
+
+        public static GitPackageLink ReadEmbeddedDomainGitSyncLink(string FilePath)
+        {
+            return ReadGitSyncLink(FilePath, EmbeddedDomainGitSyncManifestKey);
+        }
+
+        private static GitPackageLink ReadGitSyncLink(string FilePath, string ManifestKey)
+        {
             if (String.IsNullOrWhiteSpace(FilePath) || !File.Exists(FilePath))
                 return null;
 
@@ -223,7 +236,7 @@ namespace Instrumind.ThinkComposer.Composer
                 Serializer.MaxJsonLength = Int32.MaxValue;
                 var Root = Serializer.DeserializeObject(ManifestJson) as IDictionary<string, object>;
                 object GitSyncGraph;
-                if (Root == null || !Root.TryGetValue("gitSync", out GitSyncGraph) || GitSyncGraph == null)
+                if (Root == null || !Root.TryGetValue(ManifestKey, out GitSyncGraph) || GitSyncGraph == null)
                     return null;
 
                 return GitPackageLink.FromGraph(GitSyncGraph);
@@ -277,6 +290,20 @@ namespace Instrumind.ThinkComposer.Composer
             }
         }
 
+        public static string ComputeDomainJsonHash(string FilePath)
+        {
+            if (String.IsNullOrWhiteSpace(FilePath) || !File.Exists(FilePath))
+                throw new FileNotFoundException("Package file not found.", FilePath);
+
+            using (var Pack = Package.Open(Path.GetFullPath(FilePath), FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                if (!Pack.PartExists(DomainJsonPartUri))
+                    throw new InvalidDataException("Package is missing authoritative JSON part: " + DomainJsonPartUri);
+
+                return HashPart(Pack, DomainJsonPartUri);
+            }
+        }
+
         public static void WriteGitSyncLink(string FilePath, GitPackageLink GitSyncLink)
         {
             if (String.IsNullOrWhiteSpace(FilePath) || !File.Exists(FilePath))
@@ -297,7 +324,8 @@ namespace Instrumind.ThinkComposer.Composer
                 if (Root == null)
                     throw new InvalidDataException("Cannot parse package manifest.");
 
-                var Graph = RebuildManifestGraph(Root, GitSyncLink);
+                var ExistingEmbeddedDomainGitSyncLink = ReadGitSyncLinkFromManifestRoot(Root, EmbeddedDomainGitSyncManifestKey);
+                var Graph = RebuildManifestGraph(Root, GitSyncLink, ExistingEmbeddedDomainGitSyncLink);
                 WriteTextPart(Pack, ManifestPartUri, SerializeGraph(Graph));
             }
         }
@@ -336,10 +364,21 @@ namespace Instrumind.ThinkComposer.Composer
                 foreach (var Baseline in Inspection.GitSyncBaselines)
                     Builder.AppendLine("      " + Baseline);
             }
+            Builder.AppendLine("  embeddedDomainGitSync: " + Inspection.EmbeddedDomainGitSyncPresent.ToString().ToLowerInvariant());
+            if (Inspection.EmbeddedDomainGitSyncPresent)
+            {
+                Builder.AppendLine("    remote: " + Inspection.EmbeddedDomainGitSyncRemoteDisplayUrl.ToStringAlways("<missing>"));
+                Builder.AppendLine("    branch: " + Inspection.EmbeddedDomainGitSyncBranch.ToStringAlways("<missing>"));
+                Builder.AppendLine("    baselines:");
+                foreach (var Baseline in Inspection.EmbeddedDomainGitSyncBaselines)
+                    Builder.AppendLine("      " + Baseline);
+            }
             return Builder.ToString().TrimEnd();
         }
 
-        private static void WriteCompositionPersistenceParts(Package Package, Composition Composition, GitPackageLink GitSyncLink)
+        private static void WriteCompositionPersistenceParts(Package Package, Composition Composition,
+                                                             GitPackageLink GitSyncLink,
+                                                             GitPackageLink EmbeddedDomainGitSyncLink)
         {
             var Parts = new List<PersistenceJsonPart>();
             var Warnings = new List<string>();
@@ -361,7 +400,7 @@ namespace Instrumind.ThinkComposer.Composer
             else
                 Warnings.Add("Composition has no embedded Domain; /Domain.json was not written.");
 
-            var Manifest = CreateManifest(CompositionKind, Composition, LegacyCompositionBinaryPartUri, Package, Parts, Warnings, GitSyncLink);
+            var Manifest = CreateManifest(CompositionKind, Composition, LegacyCompositionBinaryPartUri, Package, Parts, Warnings, GitSyncLink, EmbeddedDomainGitSyncLink);
             WriteTextPart(Package, ManifestPartUri, SerializeManifest(Manifest));
             Console.WriteLine("JSON persistence package wrote /Composition.json as authoritative composition payload.");
         }
@@ -392,7 +431,7 @@ namespace Instrumind.ThinkComposer.Composer
                     Warnings.Add("Domain template composition was requested but no owner composition was available.");
             }
 
-            var Manifest = CreateManifest(DomainKind, Domain, LegacyDomainBinaryPartUri, Package, Parts, Warnings, GitSyncLink);
+            var Manifest = CreateManifest(DomainKind, Domain, LegacyDomainBinaryPartUri, Package, Parts, Warnings, GitSyncLink, null);
             WriteTextPart(Package, ManifestPartUri, SerializeManifest(Manifest));
             Console.WriteLine("JSON persistence package wrote /Domain.json as authoritative domain payload.");
         }
@@ -412,7 +451,8 @@ namespace Instrumind.ThinkComposer.Composer
                                                           Package Package,
                                                           List<PersistenceJsonPart> Parts,
                                                           List<string> Warnings,
-                                                          GitPackageLink GitSyncLink)
+                                                          GitPackageLink GitSyncLink,
+                                                          GitPackageLink EmbeddedDomainGitSyncLink)
         {
             var Manifest = new PersistenceManifest();
             Manifest.Format = ManifestFormat;
@@ -427,6 +467,7 @@ namespace Instrumind.ThinkComposer.Composer
             Manifest.LegacyBinaryFallback = CreateLegacyFallback(Package, LegacyBinaryPartUri);
             Manifest.Source = CreateSource(Source);
             Manifest.GitSync = GitSyncLink;
+            Manifest.EmbeddedDomainGitSync = EmbeddedDomainGitSyncLink;
             Manifest.Sidecars = new PersistenceSidecars();
             Manifest.Sidecars.InterchangeManifestUri = ContainerSnapshotService.ManifestPartUri.ToString();
             Manifest.Warnings = Warnings ?? new List<string>();
@@ -492,22 +533,44 @@ namespace Instrumind.ThinkComposer.Composer
                 Inspection.SavedAtUtc = GetString(Root, "savedAtUtc");
 
                 object GitSyncGraph;
-                if (Root.TryGetValue("gitSync", out GitSyncGraph) && GitSyncGraph != null)
-                {
-                    var Link = GitPackageLink.FromGraph(GitSyncGraph);
-                    Inspection.GitSyncPresent = true;
-                    Inspection.GitSyncRemoteUrl = Link.Remote == null ? null : Link.Remote.Url;
-                    Inspection.GitSyncRemoteDisplayUrl = GitPackageLink.RedactRemoteUrl(Inspection.GitSyncRemoteUrl);
-                    Inspection.GitSyncBranch = Link.Remote == null ? null : Link.Remote.Branch;
-                    Inspection.GitSyncBaselines = Link.Baselines
-                                                     .Select(Baseline => Baseline.Kind + " " + Baseline.Role + ": " + Baseline.Path)
-                                                     .ToList();
-                }
+                if (Root.TryGetValue(GitSyncManifestKey, out GitSyncGraph) && GitSyncGraph != null)
+                    PopulateGitSyncInspection(Link: GitPackageLink.FromGraph(GitSyncGraph),
+                                              PresentSetter: Value => Inspection.GitSyncPresent = Value,
+                                              RemoteUrlSetter: Value => Inspection.GitSyncRemoteUrl = Value,
+                                              RemoteDisplayUrlSetter: Value => Inspection.GitSyncRemoteDisplayUrl = Value,
+                                              BranchSetter: Value => Inspection.GitSyncBranch = Value,
+                                              BaselinesSetter: Value => Inspection.GitSyncBaselines = Value);
+
+                object EmbeddedDomainGitSyncGraph;
+                if (Root.TryGetValue(EmbeddedDomainGitSyncManifestKey, out EmbeddedDomainGitSyncGraph) && EmbeddedDomainGitSyncGraph != null)
+                    PopulateGitSyncInspection(Link: GitPackageLink.FromGraph(EmbeddedDomainGitSyncGraph),
+                                              PresentSetter: Value => Inspection.EmbeddedDomainGitSyncPresent = Value,
+                                              RemoteUrlSetter: Value => Inspection.EmbeddedDomainGitSyncRemoteUrl = Value,
+                                              RemoteDisplayUrlSetter: Value => Inspection.EmbeddedDomainGitSyncRemoteDisplayUrl = Value,
+                                              BranchSetter: Value => Inspection.EmbeddedDomainGitSyncBranch = Value,
+                                              BaselinesSetter: Value => Inspection.EmbeddedDomainGitSyncBaselines = Value);
             }
             catch (Exception Problem)
             {
                 Inspection.ManifestReadWarning = Problem.Message;
             }
+        }
+
+        private static void PopulateGitSyncInspection(GitPackageLink Link,
+                                                      Action<bool> PresentSetter,
+                                                      Action<string> RemoteUrlSetter,
+                                                      Action<string> RemoteDisplayUrlSetter,
+                                                      Action<string> BranchSetter,
+                                                      Action<List<string>> BaselinesSetter)
+        {
+            PresentSetter(true);
+            var RemoteUrl = Link.Remote == null ? null : Link.Remote.Url;
+            RemoteUrlSetter(RemoteUrl);
+            RemoteDisplayUrlSetter(GitPackageLink.RedactRemoteUrl(RemoteUrl));
+            BranchSetter(Link.Remote == null ? null : Link.Remote.Branch);
+            BaselinesSetter(Link.Baselines
+                                .Select(Baseline => Baseline.Kind + " " + Baseline.Role + ": " + Baseline.Path)
+                                .ToList());
         }
 
         private static string GetString(IDictionary<string, object> Source, string Key)
@@ -530,6 +593,15 @@ namespace Instrumind.ThinkComposer.Composer
                 return Parsed;
 
             return null;
+        }
+
+        private static GitPackageLink ReadGitSyncLinkFromManifestRoot(IDictionary<string, object> Root, string ManifestKey)
+        {
+            object Graph;
+            if (Root == null || !Root.TryGetValue(ManifestKey, out Graph) || Graph == null)
+                return null;
+
+            return GitPackageLink.FromGraph(Graph);
         }
 
         private static string ReadTextPart(Package Package, Uri PartUri)
@@ -615,13 +687,16 @@ namespace Instrumind.ThinkComposer.Composer
             Add(Obj, "authoritativeParts", Manifest.AuthoritativeParts.Select(ToGraph).ToList());
             Add(Obj, "legacyBinaryFallback", ToGraph(Manifest.LegacyBinaryFallback));
             AddIf(Obj, "source", ToGraph(Manifest.Source));
-            AddIf(Obj, "gitSync", Manifest.GitSync == null ? null : Manifest.GitSync.ToGraph());
+            AddIf(Obj, GitSyncManifestKey, Manifest.GitSync == null ? null : Manifest.GitSync.ToGraph());
+            AddIf(Obj, EmbeddedDomainGitSyncManifestKey, Manifest.EmbeddedDomainGitSync == null ? null : Manifest.EmbeddedDomainGitSync.ToGraph());
             Add(Obj, "sidecars", ToGraph(Manifest.Sidecars));
             Add(Obj, "warnings", Manifest.Warnings);
             return Obj;
         }
 
-        private static OrderedDictionary RebuildManifestGraph(IDictionary<string, object> Root, GitPackageLink GitSyncLink)
+        private static OrderedDictionary RebuildManifestGraph(IDictionary<string, object> Root,
+                                                              GitPackageLink GitSyncLink,
+                                                              GitPackageLink EmbeddedDomainGitSyncLink)
         {
             var Obj = NewObject();
             CopyIfPresent(Root, Obj, "format");
@@ -635,12 +710,15 @@ namespace Instrumind.ThinkComposer.Composer
             CopyIfPresent(Root, Obj, "authoritativeParts");
             CopyIfPresent(Root, Obj, "legacyBinaryFallback");
             CopyIfPresent(Root, Obj, "source");
-            AddIf(Obj, "gitSync", GitSyncLink == null ? null : GitSyncLink.ToGraph());
+            AddIf(Obj, GitSyncManifestKey, GitSyncLink == null ? null : GitSyncLink.ToGraph());
+            AddIf(Obj, EmbeddedDomainGitSyncManifestKey, EmbeddedDomainGitSyncLink == null ? null : EmbeddedDomainGitSyncLink.ToGraph());
             CopyIfPresent(Root, Obj, "sidecars");
             CopyIfPresent(Root, Obj, "warnings");
 
             foreach (var Entry in Root)
-                if (!Obj.Contains(Entry.Key) && !String.Equals(Entry.Key, "gitSync", StringComparison.Ordinal))
+                if (!Obj.Contains(Entry.Key) &&
+                    !String.Equals(Entry.Key, GitSyncManifestKey, StringComparison.Ordinal) &&
+                    !String.Equals(Entry.Key, EmbeddedDomainGitSyncManifestKey, StringComparison.Ordinal))
                     Obj.Add(Entry.Key, Entry.Value);
 
             return Obj;
@@ -884,6 +962,11 @@ namespace Instrumind.ThinkComposer.Composer
             public string GitSyncRemoteDisplayUrl;
             public string GitSyncBranch;
             public List<string> GitSyncBaselines = new List<string>();
+            public bool EmbeddedDomainGitSyncPresent;
+            public string EmbeddedDomainGitSyncRemoteUrl;
+            public string EmbeddedDomainGitSyncRemoteDisplayUrl;
+            public string EmbeddedDomainGitSyncBranch;
+            public List<string> EmbeddedDomainGitSyncBaselines = new List<string>();
         }
 
         private sealed class PersistenceManifest
@@ -900,6 +983,7 @@ namespace Instrumind.ThinkComposer.Composer
             public PersistenceLegacyBinaryFallback LegacyBinaryFallback;
             public PersistenceSource Source;
             public GitPackageLink GitSync;
+            public GitPackageLink EmbeddedDomainGitSync;
             public PersistenceSidecars Sidecars;
             public List<string> Warnings = new List<string>();
         }

@@ -64,6 +64,10 @@
     "gitSync": {
       "$ref": "#/$defs/gitSync"
     },
+    "embeddedDomainGitSync": {
+      "$ref": "#/$defs/gitSync",
+      "description": "Optional .tcom-only Git linkage for the embedded Domain source. This is separate from package-level gitSync so a Composition and its base Domain can come from different remotes or paths."
+    },
     "sidecars": {
       "$ref": "#/$defs/sidecars"
     },

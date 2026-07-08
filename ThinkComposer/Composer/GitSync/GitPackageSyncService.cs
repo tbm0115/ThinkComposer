@@ -130,6 +130,48 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             };
         }
 
+        public static GitPackageRemoteStatus GetEmbeddedDomainRemoteStatus(string CompositionPackagePath)
+        {
+            ValidateInputFile(CompositionPackagePath);
+
+            var InputPath = Path.GetFullPath(CompositionPackagePath);
+            var Inspection = JsonPackagePersistence.Inspect(InputPath);
+            var PackageKind = RequirePackageKind(Inspection);
+            if (!String.Equals(PackageKind, GitPackageLink.KindComposition, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Embedded Domain Git status requires a .tcom composition package.");
+
+            var Link = RequireEmbeddedDomainGitLink(InputPath);
+            var Baseline = RequireEmbeddedDomainBaseline(Link);
+            var Repository = EnsureRepository(Link, true);
+            var RemoteHead = GetHeadCommit(Repository);
+            var SourcePath = ResolveRepositoryFile(Repository, Baseline.Path);
+            var SourceExists = File.Exists(SourcePath);
+            var LocalHash = JsonPackagePersistence.ComputeDomainJsonHash(InputPath);
+            var RemoteHash = SourceExists
+                             ? JsonPackagePersistence.ComputeDomainJsonHash(SourcePath)
+                             : null;
+            var State = LoadState();
+            var Entry = State.Get(EntryKey(Link, Baseline));
+
+            return new GitPackageRemoteStatus
+            {
+                PackagePath = InputPath,
+                PackageKind = GitPackageLink.KindDomain,
+                RemoteDisplayUrl = GitPackageLink.RedactRemoteUrl(Link.Remote.Url),
+                Branch = Link.Remote.Branch,
+                BaselinePath = Baseline.Path,
+                RemoteHead = RemoteHead,
+                PreviousSeenHead = Entry == null ? null : Entry.RemoteCommit,
+                BaselineExists = SourceExists,
+                LocalAuthoritativeJsonHash = LocalHash,
+                RemoteAuthoritativeJsonHash = RemoteHash,
+                HasRemoteUpdate = SourceExists &&
+                                  !String.IsNullOrWhiteSpace(LocalHash) &&
+                                  !String.IsNullOrWhiteSpace(RemoteHash) &&
+                                  !String.Equals(LocalHash, RemoteHash, StringComparison.OrdinalIgnoreCase)
+            };
+        }
+
         public static GitPackagePullResult PullPackage(string Input, string Output, bool InPlace, string BackupDirectory)
         {
             ValidateInputFile(Input);
@@ -240,10 +282,8 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             ValidateInputFile(CompositionPackagePath);
 
             var InputPath = Path.GetFullPath(CompositionPackagePath);
-            var Link = RequireGitLink(InputPath);
-            var Baseline = Link.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleEmbeddedDomainSource);
-            if (Baseline == null)
-                throw new InvalidOperationException("This composition is not linked to an embedded Domain baseline.");
+            var Link = RequireEmbeddedDomainGitLink(InputPath);
+            var Baseline = RequireEmbeddedDomainBaseline(Link);
 
             var Repository = EnsureRepository(Link);
             var SourcePath = ResolveRepositoryFile(Repository, Baseline.Path);
@@ -364,6 +404,36 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
             Link.Validate();
             return Link;
+        }
+
+        private static GitPackageLink RequireEmbeddedDomainGitLink(string CompositionPackagePath)
+        {
+            var Link = JsonPackagePersistence.ReadEmbeddedDomainGitSyncLink(CompositionPackagePath);
+            if (Link != null)
+            {
+                Link.Validate();
+                return Link;
+            }
+
+            Link = JsonPackagePersistence.ReadGitSyncLink(CompositionPackagePath);
+            if (Link != null &&
+                Link.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleEmbeddedDomainSource) != null)
+            {
+                Link.Validate();
+                return Link;
+            }
+
+            throw new InvalidOperationException("Composition is not linked to a Git-backed embedded Domain source.");
+        }
+
+        private static GitPackageBaseline RequireEmbeddedDomainBaseline(GitPackageLink Link)
+        {
+            var Baseline = Link.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleSelf) ??
+                           Link.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleEmbeddedDomainSource);
+            if (Baseline == null)
+                throw new InvalidOperationException("gitSync does not define an embedded Domain baseline.");
+
+            return Baseline;
         }
 
         private static string RequirePackageKind(JsonPackagePersistence.PackagePersistenceInspection Inspection)

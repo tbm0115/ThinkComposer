@@ -71,11 +71,11 @@ Git sync links a JSON-authoritative `.tcom` or `.tdom` package to a normal Git r
 thinkcomposer git link --input model.tcom --remote https://example.com/repo.git --branch main --path diagrams/model.tcom --domain-path domains/base.tdom --output model.tcom --in-place
 ```
 
-The manifest stores only `remote.url`, `remote.branch`, and `baselines[]` entries. Last-seen commit and package hash state is machine-local under the ThinkComposer user application data folder, not inside the package.
+The manifest stores only `remote.url`, `remote.branch`, and `baselines[]` entries. Package-level Composition or Domain links live in `gitSync`. A `.tcom` may also carry `embeddedDomainGitSync`, copied from a linked source `.tdom`, so the embedded Domain can be pulled from its own Git remote independently of the Composition package link. Last-seen commit and package hash state is machine-local under the ThinkComposer user application data folder, not inside the package.
 
 `git pull` fetches the linked branch, validates the linked package as JSON-authoritative, creates a backup for in-place updates, replaces the output package, and preserves the local `gitSync` manifest link. Pull is a whole-package operation; it does not perform a JSON semantic merge. When `--backup-dir` is omitted, in-place pull backups are stored under the ThinkComposer user application data folder in `GitSync\backups`; temporary pull staging files are stored in `GitSync\temp`, not beside the `.tcom` or `.tdom`.
 
-`git push` is supported for `.tcom` compositions only. It validates the package, refuses to push when the remote branch advanced since local sync state, commits the linked `.tcom` path, and pushes. `.tdom` packages are link/pull only in this version; update a Composition from a pulled Domain with `domain update-embedded`.
+`git push` is supported for `.tcom` compositions only. It validates the package, refuses to push when the remote branch advanced since local sync state, commits the linked `.tcom` path, and pushes. `.tdom` packages are link/pull only in this version; update a Composition from a pulled Domain with `domain update-embedded`. In the desktop UI, Domain `Pull from Git` can also use a `.tcom` package's `embeddedDomainGitSync` link to pull the source `.tdom` and run the embedded-domain update flow.
 
 ## Exit Codes
 

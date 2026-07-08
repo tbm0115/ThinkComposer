@@ -214,14 +214,14 @@ Strict relationship/detail compatibility options can block partial imports befor
 
 ## Git Sync
 
-Modern `.tcom` and `.tdom` packages can store optional Git linkage in root `/manifest.json`. This links the package to a generic Git remote, branch, and repo-relative baseline path. ThinkComposer uses installed `git.exe`; it does not store passwords, tokens, GitHub API credentials, or Bitbucket API credentials.
+Modern `.tcom` and `.tdom` packages can store optional Git linkage in root `/manifest.json`. Package-level links use `gitSync` to connect the package to a generic Git remote, branch, and repo-relative baseline path. A `.tcom` can also store `embeddedDomainGitSync`, copied from a linked source `.tdom`, so the Composition and its base Domain can be updated from separate Git locations. ThinkComposer uses installed `git.exe`; it does not store passwords, tokens, GitHub API credentials, or Bitbucket API credentials.
 
 Composition Git sync supports:
 
 - linking the current `.tcom` to a remote path
 - pulling the linked `.tcom` as a whole-package replacement after validation
 - saving, committing, and pushing the linked `.tcom`
-- optionally pulling a linked `.tdom` baseline and applying it through the existing embedded-domain update workflow
+- pulling a linked embedded Domain source and applying it through the existing embedded-domain update workflow
 
 Domain Git sync supports linking and pulling `.tdom` packages. Domain push is not exposed in this version.
 

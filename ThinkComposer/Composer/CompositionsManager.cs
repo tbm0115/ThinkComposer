@@ -205,13 +205,13 @@ namespace Instrumind.ThinkComposer.Composer
 
             ExposedWorkCommand = new GenericCommand("PullFromGit");
             ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PullActiveComposition(this.WorkspaceDirector));
-            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            ExposedWorkCommand.CanApply = (par => GitSync.GitPackageSyncCommands.CanPullActiveComposition(this.WorkspaceDirector));
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Pull from Git", ExposedWorkCommand.Name, "Pulls the linked Composition package from Git.", "arrow_down.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedWorkCommand = new GenericCommand("CommitPushToGit");
             ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PushActiveComposition(this.WorkspaceDirector));
-            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            ExposedWorkCommand.CanApply = (par => GitSync.GitPackageSyncCommands.CanPushActiveComposition(this.WorkspaceDirector));
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Commit and Push to Git", ExposedWorkCommand.Name, "Commits and pushes the linked Composition package to Git.", "arrow_up.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
@@ -234,12 +234,6 @@ namespace Instrumind.ThinkComposer.Composer
                 });
             ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Update Embedded Domain...", ExposedWorkCommand.Name, "Safely previews and merges a newer Domain into the active Composition's embedded Domain snapshot.", "book_refresh.png",
-                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
-
-            ExposedWorkCommand = new GenericCommand("PullLinkedEmbeddedDomain");
-            ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PullLinkedEmbeddedDomain(this.WorkspaceDirector));
-            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
-            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Pull Linked Domain from Git", ExposedWorkCommand.Name, "Pulls the linked .tdom baseline and safely merges it into the active Composition's embedded Domain.", "book_refresh.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
             ExposedGroup = new SimpleElement("File", "File");

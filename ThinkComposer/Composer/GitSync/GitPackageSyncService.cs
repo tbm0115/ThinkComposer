@@ -100,7 +100,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             var PackageKind = RequirePackageKind(Inspection);
             var Link = RequireGitLink(InputPath);
             var Baseline = RequireSelfBaseline(Link, PackageKind);
-            var Repository = EnsureRepository(Link);
+            var Repository = EnsureRepository(Link, true);
             var RemoteHead = GetHeadCommit(Repository);
             var SourcePath = ResolveRepositoryFile(Repository, Baseline.Path);
             var SourceExists = File.Exists(SourcePath);
@@ -303,6 +303,11 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
         private static string EnsureRepository(GitPackageLink Link)
         {
+            return EnsureRepository(Link, false);
+        }
+
+        private static string EnsureRepository(GitPackageLink Link, bool NonInteractive)
+        {
             Link.Validate();
             Directory.CreateDirectory(RepositoriesRoot);
 
@@ -314,14 +319,14 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 if (Directory.Exists(Repository) && Directory.EnumerateFileSystemEntries(Repository).Any())
                     throw new InvalidOperationException("Git sync cache directory exists but is not a Git repository: " + Repository);
 
-                RunGit(null, "clone", "--branch", Link.Remote.Branch, "--single-branch", Link.Remote.Url, Repository);
+                RunGit(null, NonInteractive, "clone", "--branch", Link.Remote.Branch, "--single-branch", Link.Remote.Url, Repository);
             }
             else
             {
-                RunGit(Repository, "fetch", "origin", Link.Remote.Branch);
-                RunGit(Repository, "checkout", Link.Remote.Branch);
-                RunGit(Repository, "reset", "--hard", "origin/" + Link.Remote.Branch);
-                RunGit(Repository, "clean", "-fd");
+                RunGit(Repository, NonInteractive, "fetch", "origin", Link.Remote.Branch);
+                RunGit(Repository, NonInteractive, "checkout", Link.Remote.Branch);
+                RunGit(Repository, NonInteractive, "reset", "--hard", "origin/" + Link.Remote.Branch);
+                RunGit(Repository, NonInteractive, "clean", "-fd");
             }
 
             return Repository;
@@ -392,6 +397,11 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
         private static GitProcessResult RunGit(string WorkingDirectory, params string[] Arguments)
         {
+            return RunGit(WorkingDirectory, false, Arguments);
+        }
+
+        private static GitProcessResult RunGit(string WorkingDirectory, bool NonInteractive, params string[] Arguments)
+        {
             var Start = new ProcessStartInfo();
             Start.FileName = "git.exe";
             Start.Arguments = String.Join(" ", Arguments.Select(QuoteArgument).ToArray());
@@ -400,6 +410,12 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             Start.RedirectStandardOutput = true;
             Start.RedirectStandardError = true;
             Start.CreateNoWindow = true;
+            if (NonInteractive)
+            {
+                Start.EnvironmentVariables["GIT_TERMINAL_PROMPT"] = "0";
+                Start.EnvironmentVariables["GCM_INTERACTIVE"] = "Never";
+                Start.EnvironmentVariables["GCM_MODAL_PROMPT"] = "false";
+            }
 
             using (var Process = new Process())
             {

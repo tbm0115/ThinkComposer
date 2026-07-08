@@ -22,7 +22,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
     {
         private static readonly object DomainStatusSync = new object();
         private static readonly Dictionary<string, DomainGitStatusCacheEntry> DomainStatusByPath = new Dictionary<string, DomainGitStatusCacheEntry>(StringComparer.OrdinalIgnoreCase);
-        private static readonly TimeSpan DomainStatusRefreshInterval = TimeSpan.FromMinutes(2);
+        private static readonly TimeSpan DomainStatusRefreshInterval = TimeSpan.FromMinutes(15);
 
         public static void LinkActiveComposition(WorkspaceManager WorkspaceDirector)
         {
@@ -108,6 +108,20 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             return !String.IsNullOrWhiteSpace(DomainPath) &&
                    File.Exists(DomainPath) &&
                    TryReadGitLink(DomainPath) == null;
+        }
+
+        public static bool CanPullActiveComposition(WorkspaceManager WorkspaceDirector)
+        {
+            var Engine = ActiveCompositionEngine(WorkspaceDirector);
+            var CompositionPath = GetActiveCompositionPackagePath(Engine);
+            return !String.IsNullOrWhiteSpace(CompositionPath) &&
+                   File.Exists(CompositionPath) &&
+                   TryReadGitLink(CompositionPath) != null;
+        }
+
+        public static bool CanPushActiveComposition(WorkspaceManager WorkspaceDirector)
+        {
+            return CanPullActiveComposition(WorkspaceDirector);
         }
 
         public static bool CanPullActiveDomain(WorkspaceManager WorkspaceDirector)
@@ -205,6 +219,14 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private static CompositionEngine ActiveCompositionEngine(WorkspaceManager WorkspaceDirector)
         {
             return WorkspaceDirector == null ? null : WorkspaceDirector.ActiveDocumentEngine as CompositionEngine;
+        }
+
+        private static string GetActiveCompositionPackagePath(CompositionEngine Engine)
+        {
+            if (Engine == null || Engine.FullLocation == null || String.IsNullOrWhiteSpace(Engine.FullLocation.LocalPath))
+                return null;
+
+            return Engine.FullLocation.LocalPath;
         }
 
         private static string GetActiveDomainPackagePath(CompositionEngine Engine)

@@ -1,6 +1,6 @@
 ---
 name: thinkcomposer
-description: Work directly with ThinkComposer diagrams and domains using modern .tcom containers with embedded interchange/previews, Composition JSON export/import, Domain JSON export/import, application log diagnostics, and exported view images. Use when the user asks Codex to inspect, edit, generate, repair, or verify ThinkComposer projects.
+description: Work directly with ThinkComposer diagrams and domains using modern .tcom containers with root JSON persistence, embedded interchange/previews, CLI Composition JSON export/import, Domain JSON export/import, application log diagnostics, and exported view images. Use when the user asks Codex to inspect, edit, generate, repair, or verify ThinkComposer projects.
 ---
 
 # ThinkComposer Direct Workflow
@@ -12,8 +12,8 @@ Use this skill when Codex is helping with a ThinkComposer `.tcom` composition/co
 ThinkComposer native `.tcom` and `.tdom` packages remain the source of truth, with modern packages using root JSON persistence payloads. Codex should work through high-fidelity package and interchange artifacts:
 
 - Modern container context: a `.tcom` can be a ZIP package containing root `manifest.json`, `Composition.json`, `Domain.json`, optional legacy fallback binaries, `Interchange/manifest.json`, sidecar JSON, and `Previews/views/*.png`. Prefer root JSON when available because it is the native persistence payload; sidecars and previews add AI-readable context.
-- Composition context: `Composition > File > Export JSON...`, usually saved as `*.tc.json`.
-- Composition edits: create a JSON import patch, then have the user run `Composition > File > Import JSON...`.
+- Composition context: prefer root `Composition.json` from a modern `.tcom`; when standalone interchange is needed, run `thinkcomposer composition export-json --input <file.tcom> --output <file.json>`.
+- Composition edits: create a JSON import patch, then apply it with `thinkcomposer composition import-json --input <file.tcom> --json <patch.json> --output <updated-file.tcom>`.
 - Domain context or edits: `Domain > Export Domain JSON...` and `Domain > Import/Update Domain JSON...`, usually `*.tdom.json`.
 - Visual verification: run `Export Image` on the active view, preferably PNG. Hold Ctrl while exporting when a transparent PNG is useful.
 - Diagnostics: inspect the lower-left application log. If it is not persisted to disk, ask the user to copy the relevant log lines into a `.log` or `.txt` file.

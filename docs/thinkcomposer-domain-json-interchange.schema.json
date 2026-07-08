@@ -207,7 +207,7 @@
         },
         "set": {
           "type": "object",
-          "description": "Extensible native state bag. Root /Domain.json persistence uses this for fields such as modelRevision, viewGridSize, reportingConfiguration, visualSymbolFormat, visualConnectorsFormat, textFormats, and WPF brush payloads. Manual interchange import treats unsupported keys conservatively.",
+          "description": "Extensible native state bag. Root /Domain.json persistence uses this for fields such as modelRevision, viewGridSize, reportingConfiguration, versionNumber, versionAnnotation, versionSequence, creation/creator, lastModification/lastModifier, visualSymbolFormat, visualConnectorsFormat, textFormats, and WPF brush payloads. Manual interchange import treats unsupported keys conservatively.",
           "additionalProperties": true
         },
         "order": {

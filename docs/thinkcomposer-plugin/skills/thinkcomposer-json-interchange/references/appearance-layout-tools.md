@@ -8,7 +8,7 @@ These commands are intended to make imported or hand-authored diagrams readable 
 
 ## Recommended Workflow
 
-1. Import JSON with `Composition > File > Import JSON...`.
+1. Apply a Composition JSON patch with `thinkcomposer composition import-json --input <file.tcom> --json <patch.json> --output <updated-file.tcom>`.
 2. Let JSON import auto-place, auto-fit, and auto-route new items when those options are enabled.
 3. Apply one manual layout command from `Edit -> Appearance` that matches the diagram intent.
 4. Manually polish dense or domain-specific areas.

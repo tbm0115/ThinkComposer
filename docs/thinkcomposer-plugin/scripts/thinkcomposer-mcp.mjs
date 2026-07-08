@@ -553,7 +553,7 @@ async function validateJsonFile(rawPath, kind) {
     errors,
     warnings,
     summary,
-    importMenu: detectedKind === "domain" ? "Domain > Import/Update Domain JSON..." : "Composition > File > Import JSON..."
+    importMenu: detectedKind === "domain" ? "Domain > Import/Update Domain JSON..." : "thinkcomposer composition import-json --input <file.tcom> --json <patch.json> --output <updated-file.tcom>"
   };
 }
 
@@ -623,7 +623,7 @@ async function writePatch(args) {
     path: target,
     bytesWritten: Buffer.byteLength(JSON.stringify(document, null, 2), "utf8") + 1,
     validation,
-    importMenu: kind === "domain" ? "Domain > Import/Update Domain JSON..." : "Composition > File > Import JSON..."
+    importMenu: kind === "domain" ? "Domain > Import/Update Domain JSON..." : "thinkcomposer composition import-json --input <file.tcom> --json <patch.json> --output <updated-file.tcom>"
   };
 }
 

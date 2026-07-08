@@ -67,7 +67,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
         private static DomainJsonElement ExportDomain(Domain Domain)
         {
-            var Result = ExportFormal(Domain, "domain");
+            var Result = ExportFormal(Domain, "domain", true);
             Result.RepresentativeShape = Domain.RepresentativeShape;
             Result.IsComposable = Domain.IsComposable;
             Result.IsVersionable = Domain.IsVersionable;
@@ -76,12 +76,6 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.Set["viewGridSize"] = Domain.ViewGridSize;
             if (Domain.ReportingConfiguration != null)
                 Result.Set["reportingConfiguration"] = ExportReportConfiguration(Domain.ReportingConfiguration);
-            if (Domain.Version != null)
-            {
-                Result.Set["versionNumber"] = Domain.Version.VersionNumber == null ? null : Domain.Version.VersionNumber.ToString();
-                Result.Set["versionSequence"] = Domain.Version.VersionSequence;
-                Result.Set["lastModification"] = Domain.Version.LastModification.ToString("o", CultureInfo.InvariantCulture);
-            }
             return Result;
         }
 
@@ -507,7 +501,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
         }
 
-        private static DomainJsonElement ExportFormal(FormalElement Source, string Entity)
+        private static DomainJsonElement ExportFormal(FormalElement Source, string Entity, bool ForceVersionExport = false)
         {
             var Result = new DomainJsonElement();
             Result.Entity = Entity;
@@ -517,7 +511,38 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.Summary = Source.Summary;
             Result.Description = Display.XamlRichTextToPlainTextOrSelf(Source.Description);
             Result.TechSpec = Source.TechSpec;
+            ExportVersion(Result.Set, Source.Version, ForceVersionExport);
             return Result;
+        }
+
+        private static void ExportVersion(Dictionary<string, object> Target, VersionCard Version, bool Force = false)
+        {
+            if (Target == null || Version == null)
+                return;
+
+            if (!Force && IsDefaultTransientVersion(Version))
+                return;
+
+            Target["versionNumber"] = Version.VersionNumber == null ? null : Version.VersionNumber.ToString();
+            Target["versionAnnotation"] = Version.Annotation;
+            Target["versionSequence"] = Version.VersionSequence;
+            Target["creation"] = Version.Creation.ToString("o", CultureInfo.InvariantCulture);
+            Target["creator"] = Version.Creator;
+            Target["lastModification"] = Version.LastModification.ToString("o", CultureInfo.InvariantCulture);
+            Target["lastModifier"] = Version.LastModifier;
+        }
+
+        private static bool IsDefaultTransientVersion(VersionCard Version)
+        {
+            if (Version == null)
+                return true;
+
+            return Version.VersionSequence == 1 &&
+                   Version.VersionNumber == VersionCard.DEFAULT_VERSION &&
+                   Version.Annotation.IsAbsent() &&
+                   Version.Creator == AppExec.SessionUserName &&
+                   Version.LastModifier == Version.Creator &&
+                   Version.Creation == Version.LastModification;
         }
 
         private static DomainJsonElement ExportSimple(SimpleElement Source, string Entity)

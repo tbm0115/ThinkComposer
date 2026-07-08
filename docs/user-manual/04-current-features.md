@@ -69,22 +69,20 @@ The Group Region is visual only. It does not change semantic containment, compos
 
 ## Composition JSON Interchange
 
-Composition JSON Interchange exports an active `.tcom` composition to editable JSON and safely merges edited JSON back into the active project.
+Composition JSON Interchange exports a `.tcom` composition to editable JSON and safely applies edited JSON into an updated package.
 
-Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. The menu commands below are still interchange commands: they preview and merge edited JSON into the active project rather than acting like normal file open.
+Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. Desktop Composition JSON import/export buttons are deprecated; use package root JSON for native persistence review and the command-line interface for explicit Composition JSON interchange.
 
 Native JSON package persistence preserves supported visual state such as positions, colors, connector paths, grouping complements, shortcut visuals, active/root view identity, and visible detail posters. Binary package parts, when present, are legacy fallback only.
 
 ### Workflow
 
 1. Open a composition in ThinkComposer.
-2. Run `Composition -> File -> Export JSON...`.
+2. Run `thinkcomposer composition export-json --input <file.tcom> --output <file.json>`.
 3. Edit the JSON manually, with tools, or with AI assistance.
-4. Keep or reopen the original `.tcom` composition.
-5. Run `Composition -> File -> Import JSON...`.
-6. Review the preview summary and diagnostics.
-7. Confirm the merge.
-8. Save the `.tcom` file when the result is correct.
+4. Run `thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <updated-file.tcom>`.
+5. Review the diagnostics.
+6. Open the updated `.tcom` file when the result is correct.
 
 Every supported document starts with:
 

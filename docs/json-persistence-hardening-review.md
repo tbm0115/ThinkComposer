@@ -89,8 +89,8 @@ Codex did not have a reliable WPF desktop UI automation surface for Open/Save di
 - [ ] Save As a new `.tcom` package.
 - [ ] Reopen the new `.tcom` in the desktop app.
 - [ ] Confirm model metadata, embedded domain, active/root view, visual bounds, colored grouping regions, relationships, shortcuts, free complements, detail posters, and connector paths are intact.
-- [ ] Run `Composition > File > Export JSON...` and confirm export still works as interchange.
-- [ ] Run `Composition > File > Import JSON...` into an active composition and confirm it previews/merges into the open model rather than replacing the native package load path.
+- [ ] Run `thinkcomposer composition export-json --input <saved-file.tcom> --output <composition.json>` and confirm export still works as interchange.
+- [ ] Run `thinkcomposer composition import-json --input <saved-file.tcom> --json <composition.json> --output <imported-file.tcom> --preview-only`, then without `--preview-only` if needed, and confirm interchange remains separate from the native package load path. Desktop Composition JSON buttons are deprecated.
 - [ ] Save the migrated `.tcom` again and confirm `ThinkComposer.Cli\bin\Debug\ThinkComposer.Cli.exe package inspect --input <saved-file.tcom>` reports `jsonAuthoritative: true`.
 - [ ] Open legacy `PredefinedContent\All-Purpose.tdom` in the desktop app.
 - [ ] Save As a new `.tdom` package.

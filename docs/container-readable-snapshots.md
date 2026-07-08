@@ -57,9 +57,9 @@ An AI tool can inspect a saved package by opening it as a zip/OPC package and re
 4. the listed sidecar JSON parts
 5. the listed preview PNGs
 
-If embedded sidecars are missing or stale, use the normal manual commands:
+If embedded sidecars are missing or stale, inspect the authoritative root JSON first. For explicit interchange exports, use the CLI for Composition JSON and the desktop command for Domain JSON:
 
-- `Composition > File > Export JSON...`
+- `thinkcomposer composition export-json --input <file.tcom> --output <file.json>`
 - `Domain > Export Domain JSON...`
 - `Export Image`
 

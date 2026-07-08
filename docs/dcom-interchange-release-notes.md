@@ -4,7 +4,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 
 ## New Commands
 
-- `Composition -> File -> Export JSON...` and `Composition -> File -> Import JSON...` now include TechSpec-aware composition interchange and clearer source/import warning reporting.
+- Composition JSON interchange includes TechSpec-aware composition payloads and clearer source/import warning reporting. The earlier desktop `Composition -> File -> Export JSON...` and `Composition -> File -> Import JSON...` buttons are now deprecated in favor of CLI `thinkcomposer composition export-json` and `thinkcomposer composition import-json`.
 - `Domain -> Export Domain JSON...` exports text-safe Domain JSON using `format: "ThinkComposer.DomainJsonInterchange"`.
 - `Domain -> Import/Update Domain JSON...` previews and applies safe additive domain merges.
 - `Composition -> Domain -> Update Embedded Domain...` safely updates an active `.tcom` composition's embedded domain snapshot from a native `.tdom` or Domain JSON file.

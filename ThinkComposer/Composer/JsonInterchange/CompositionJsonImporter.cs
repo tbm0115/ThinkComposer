@@ -6305,6 +6305,20 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Changed = true;
             }
 
+            if (Source.VersionNumber != null && Target.Version.VersionNumber != Source.VersionNumber)
+            {
+                if (!this.IsPreview)
+                    Target.Version.VersionNumber = Source.VersionNumber;
+                Changed = true;
+            }
+
+            if (Source.Annotation != null && Target.Version.Annotation != Source.Annotation)
+            {
+                if (!this.IsPreview)
+                    Target.Version.Annotation = Source.Annotation;
+                Changed = true;
+            }
+
             if (Source.Creator != null && Target.Version.Creator != Source.Creator)
             {
                 if (!this.IsPreview)

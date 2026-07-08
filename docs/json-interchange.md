@@ -1,10 +1,10 @@
 # ThinkComposer JSON Interchange
 
-ThinkComposer JSON interchange exports the active `.tcom` composition to an editable text file, then safely merges edited JSON back into the currently open project.
+ThinkComposer JSON interchange exports a `.tcom` composition to an editable text file, then safely applies edited JSON into an updated package.
 
 The same full-state JSON DTO is also used by modern native `.tcom` persistence. A newly saved `.tcom` package writes `/Composition.json` as the authoritative composition payload and `/Domain.json` as the authoritative embedded-domain payload. Normal Open/Save uses those root JSON parts first.
 
-Manual `Composition > File > Export JSON...` and `Composition > File > Import JSON...` remain explicit interchange workflows. Import still previews and merges into the active composition; it is not the same code path as normal package load.
+Desktop Composition JSON import/export buttons are deprecated. Use root package JSON for native persistence review, or use the CLI `thinkcomposer composition export-json` and `thinkcomposer composition import-json` commands for explicit interchange workflows. CLI import/export is still separate from normal package Open/Save.
 
 Saved `.tcom` and `.tdom` packages can also contain AI-readable sidecar snapshots under `/Interchange/`. Those sidecars are inspection/context snapshots only. They are not the source of truth for native load; modern packages load root `/Composition.json` and `/Domain.json`, while legacy binary-only packages still load `/Composition.bin` as a compatibility path.
 
@@ -27,12 +27,10 @@ The root package manifest schema is maintained at `docs/thinkcomposer-package-ma
 ## Workflow
 
 1. Open a composition in ThinkComposer.
-2. Use `Composition > File > Export JSON...`.
+2. Run `thinkcomposer composition export-json --input <file.tcom> --output <file.json>`.
 3. Edit the `.json` file manually or with GPT assistance.
-4. Reopen or keep the original `.tcom` composition active.
-5. Use `Composition > File > Import JSON...`.
-6. Review the preview summary and confirm the merge.
-7. Save the `.tcom` normally when you want to keep the imported changes.
+4. Run `thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <updated-file.tcom>`.
+5. Review the import diagnostics, then open the updated `.tcom` normally when you want to inspect or continue editing the result.
 
 ## Format
 
@@ -602,31 +600,28 @@ When an embedded Domain update adds or changes output templates, ThinkComposer s
 ## Manual Regression
 
 1. Open `MTConnect_Endless_Forge_and_LOTAR.tcom` or another composition with the same exported structure.
-2. Use `Composition > File > Import JSON...`.
-3. Select `deployment_manager_thinkcomposer_patch.json`, or use `samples/json-interchange-regression.sample.json` after replacing placeholder ids/tech names with values from your composition.
-4. Confirm the import.
-5. Verify the lower-left log contains parse, planning, per-operation, and final summary lines.
-6. Confirm the final dialog lists affected views when visuals were placed.
-7. Verify new concepts appear in the requested view or in the auto-placement area without toggling Show/Hide Details.
-8. Verify imported concepts may appear in nested composite views, not only the root view.
-9. Verify relationships have origin/target links and are visible when both endpoints are visible in the same view.
-10. Find `Deployment Manager Web App`, then right-click and toggle Display/Hide Composite-Content as Detail.
-11. Verify no `StackOverflowException` occurs; nested content either appears safely or an import warning explains why it cannot be shown.
-12. Re-import the same patch and verify it does not duplicate concepts, relationships, links, visual representations, connectors, or recursive self-visuals.
-13. Right-click imported concepts and relationships/links and verify no runtime exception appears.
-14. Save, close, reopen, and verify imported visuals and relationship links persist.
-15. Repeat the nested-content toggle after reopen.
-16. Verify source warnings and import warnings are shown separately and object-valued warnings are readable.
-17. Verify no `Put-visual must be applied within a Command` error appears.
-18. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
-19. Import `samples/composition-active-root-fallback.sample.json` into a fresh blank composition and confirm the preview/apply summary creates two concepts and one relationship with zero skipped operations.
-20. For generated MTConnect patches such as `machine_monitoring_utilization_productivity_composition.json`, import/update the required MTConnect Domain JSON first, then import the composition patch. Expected result after active-root fallback is fixed: the preview plans 20 concept creates and 34 relationship creates, missing-container skips are zero, auto-fit and auto-route run for newly placed items, and save/reopen preserves the created ideas and relationships.
-21. Import `samples/composition-strict-domain-compatibility.sample.json` into an All-Purpose composition and confirm strict relationship compatibility passes with zero compatibility skips. Change `requires.domain.techName` to a non-active domain and confirm the preview blocks before apply.
-22. Add strict options to a known partially compatible generated patch. Expected result: preview reports compatibility failures and apply is blocked before creating concepts.
-23. Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition. Expected result: two concepts created, one relationship created, visuals placed, skipped zero.
-24. Import a full-state-style generated file without `treatMissingFullStateItemsAsCreates`. Expected result: the dialog/log notes that missing full-state ids were treated as updates and explains how to enable full-state-create mode.
-25. Import `samples/composition-shortcut-roundtrip.sample.json`. Expected result: one shared semantic concept is visible twice in the same view, with the second representation marked as a Shortcut; export/re-import should preserve `isShortcut:true`.
-26. Import `samples/composition-description-details-regression.sample.json`. Expected result: description and TechSpec fields apply with line breaks preserved; known-field Text details update Description; unsupported free-form details append to Description when fallback mode requests it.
+2. Run `thinkcomposer composition import-json --input <composition.tcom> --json deployment_manager_thinkcomposer_patch.json --output <updated-composition.tcom> --preview-only`, or use `samples/json-interchange-regression.sample.json` after replacing placeholder ids/tech names with values from your composition.
+3. Repeat without `--preview-only` when the diagnostics look correct.
+4. Open the updated composition and verify new concepts appear in the requested view or in the auto-placement area without toggling Show/Hide Details.
+5. Verify imported concepts may appear in nested composite views, not only the root view.
+6. Verify relationships have origin/target links and are visible when both endpoints are visible in the same view.
+7. Find `Deployment Manager Web App`, then right-click and toggle Display/Hide Composite-Content as Detail.
+8. Verify no `StackOverflowException` occurs; nested content either appears safely or an import warning explains why it cannot be shown.
+9. Re-import the same patch and verify it does not duplicate concepts, relationships, links, visual representations, connectors, or recursive self-visuals.
+10. Right-click imported concepts and relationships/links and verify no runtime exception appears.
+11. Save, close, reopen, and verify imported visuals and relationship links persist.
+12. Repeat the nested-content toggle after reopen.
+13. Verify source warnings and import warnings are shown separately and object-valued warnings are readable.
+14. Verify no `Put-visual must be applied within a Command` error appears.
+15. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
+16. Import `samples/composition-active-root-fallback.sample.json` into a fresh blank composition and confirm the preview/apply summary creates two concepts and one relationship with zero skipped operations.
+17. For generated MTConnect patches such as `machine_monitoring_utilization_productivity_composition.json`, import/update the required MTConnect Domain JSON first, then import the composition patch. Expected result after active-root fallback is fixed: the preview plans 20 concept creates and 34 relationship creates, missing-container skips are zero, auto-fit and auto-route run for newly placed items, and save/reopen preserves the created ideas and relationships.
+18. Import `samples/composition-strict-domain-compatibility.sample.json` into an All-Purpose composition and confirm strict relationship compatibility passes with zero compatibility skips. Change `requires.domain.techName` to a non-active domain and confirm the preview blocks before apply.
+19. Add strict options to a known partially compatible generated patch. Expected result: preview reports compatibility failures and apply is blocked before creating concepts.
+20. Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition. Expected result: two concepts created, one relationship created, visuals placed, skipped zero.
+21. Import a full-state-style generated file without `treatMissingFullStateItemsAsCreates`. Expected result: the dialog/log notes that missing full-state ids were treated as updates and explains how to enable full-state-create mode.
+22. Import `samples/composition-shortcut-roundtrip.sample.json`. Expected result: one shared semantic concept is visible twice in the same view, with the second representation marked as a Shortcut; export/re-import should preserve `isShortcut:true`.
+23. Import `samples/composition-description-details-regression.sample.json`. Expected result: description and TechSpec fields apply with line breaks preserved; known-field Text details update Description; unsupported free-form details append to Description when fallback mode requests it.
 
 ## Troubleshooting
 

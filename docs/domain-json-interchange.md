@@ -47,7 +47,7 @@ The schema is maintained at `docs/thinkcomposer-domain-json-interchange.schema.j
 
 The first-pass exporter writes deterministic, pretty-printed JSON for text-safe domain content:
 
-- Domain metadata: id, name, techName, summary, description, TechSpec, model revision, version/default table references, report configuration, and safe view/grid metadata.
+- Domain metadata: id, name, techName, summary, description, TechSpec, model revision, version number, version annotation, version sequence, creator/modifier timestamps, default table references, report configuration, and safe view/grid metadata.
 - External languages and link-role variants.
 - Concept definition, relationship definition, marker, table, and field clusters/categories.
 - Marker definitions, excluding binary image payloads.

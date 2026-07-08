@@ -12,6 +12,8 @@ ThinkComposer is a Windows desktop application. It is designed for modern deskto
 
 Install ThinkComposer through the provided installer. The installer includes the application, predefined domains, runtime assets, and the local PDF manual artifact used by older releases.
 
+The installer also includes the headless command-line interface and PATH helper described in [Command-Line Interface](07-command-line-interface.md).
+
 Use Windows application management or the installed uninstaller to remove the product.
 
 ### Version Update
@@ -47,7 +49,7 @@ Current import, layout, and output-generation commands log detailed diagnostics 
 
 Create a composition when you need a new knowledge document. Choose an appropriate domain at creation time. The domain determines what concept and relationship definitions are available, how symbols look, and what details or templates can be used.
 
-Save the native `.tcom` file as the source of truth. Exported JSON, reports, PDFs, images, and generated files are exchange or publication artifacts.
+Save the native `.tcom` package as the source of truth. Modern packages persist their authoritative content in root JSON payloads; manual JSON exports, reports, PDFs, images, and generated files are exchange or publication artifacts.
 
 ## Working With Diagram Views
 
@@ -134,5 +136,7 @@ ThinkComposer can generate reports from a composition and export views as images
 ![Report preview](assets/manual/page-48-application-guide-01.png)
 
 Composition reports are publication artifacts. The `.tcom` file remains the authoritative source.
+
+For scripted report generation, see [Reports](07-command-line-interface.md#reports).
 
 For more controlled text or code output, use Output Templates through `Tools -> Output -> Generation Preview` and `Tools -> Output -> Generate Files...`.

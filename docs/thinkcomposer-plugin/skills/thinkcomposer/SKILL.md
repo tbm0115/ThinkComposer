@@ -1,20 +1,22 @@
 ---
 name: thinkcomposer
-description: Work directly with ThinkComposer diagrams and domains using modern .tcom containers with embedded interchange/previews, Composition JSON export/import, Domain JSON export/import, application log diagnostics, and exported view images. Use when the user asks Codex to inspect, edit, generate, repair, or verify ThinkComposer projects.
+description: Work directly with ThinkComposer diagrams and domains using modern .tcom/.tdom containers with authoritative root JSON persistence, package JSON patching, embedded previews, CLI validation, application log diagnostics, and exported view images. Use when the user asks Codex to inspect, edit, generate, repair, or verify ThinkComposer projects.
 ---
 
 # ThinkComposer Direct Workflow
 
-Use this skill when Codex is helping with a ThinkComposer `.tcom` composition/container, `.tdom` domain, exported Composition JSON, exported Domain JSON, import patch, lower-left application log, or embedded/exported view image.
+Use this skill when Codex is helping with a ThinkComposer `.tcom` composition/container, `.tdom` domain, authoritative package JSON, compatibility Composition/Domain JSON export, lower-left application log, or embedded/exported view image.
 
 ## Operating Model
 
-ThinkComposer remains the source of truth for native `.tcom` and `.tdom` files. Codex should work through high-fidelity interchange artifacts:
+ThinkComposer native `.tcom` and `.tdom` packages remain the source of truth, with modern packages using root JSON persistence payloads. Codex should work through the package root JSON first:
 
-- Modern container context: a `.tcom` can be a ZIP package containing `Interchange/manifest.json`, `Interchange/Composition.json`, `Interchange/Domain.json`, and `Previews/views/*.png`. Prefer this when available because it gives Codex model context and visual screenshots together.
-- Composition context: `Composition > File > Export JSON...`, usually saved as `*.tc.json`.
-- Composition edits: create a JSON import patch, then have the user run `Composition > File > Import JSON...`.
-- Domain context or edits: `Domain > Export Domain JSON...` and `Domain > Import/Update Domain JSON...`, usually `*.tdom.json`.
+- Modern `.tcom` context: root `manifest.json`, authoritative `Composition.json`, authoritative embedded `Domain.json`, optional legacy fallback `Composition.bin`, non-authoritative `Interchange/*` sidecars, and `Previews/views/*.png`.
+- Modern `.tdom` context: root `manifest.json`, authoritative `Domain.json`, optional authoritative `TemplateComposition.json`, optional legacy fallback `Domain.bin`, non-authoritative `Interchange/*` sidecars, and optional previews.
+- Composition edits: patch root `/Composition.json` inside the `.tcom`, and update `/manifest.json` authoritative part metadata.
+- Domain edits: patch root `/Domain.json` inside the `.tdom` or `.tcom`, and update `/manifest.json` authoritative part metadata.
+- Compatibility CLI paths: use `thinkcomposer composition export-json/import-json`, `thinkcomposer domain export-json/import-json`, `package inspect`, and `validate-json-persistence` for migration, validation, or preview/merge diagnostics when needed.
+- Embedded-domain refresh: use `Composition -> Domain -> Update Embedded Domain...` or `thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <updated-file.tcom>` when a `.tcom` should pick up safe domain changes from a `.tdom`.
 - Visual verification: run `Export Image` on the active view, preferably PNG. Hold Ctrl while exporting when a transparent PNG is useful.
 - Diagnostics: inspect the lower-left application log. If it is not persisted to disk, ask the user to copy the relevant log lines into a `.log` or `.txt` file.
 
@@ -29,18 +31,22 @@ If the plugin MCP tools are available, prefer them for artifact discovery, JSON 
 - `thinkcomposer_analyze_log`
 - `thinkcomposer_latest_image`
 
-For detailed Composition JSON, Domain JSON, container manifest, schema, sample, and import-troubleshooting guidance, use the sibling `thinkcomposer-json-interchange` skill in `../thinkcomposer-json-interchange/`. Keep this skill focused on the direct ThinkComposer workflow and use the sibling skill as the authoritative JSON interchange reference.
+For detailed Composition JSON, Domain JSON, package manifest, schema, sample, and import-troubleshooting guidance, use the sibling `thinkcomposer-json-interchange` skill in `../thinkcomposer-json-interchange/`. Keep this skill focused on the direct ThinkComposer workflow and use the sibling skill as the authoritative JSON reference.
 
-## Modern `.tcom` Containers
+## Modern Containers
 
-When the user provides a modern `.tcom`, inspect it before asking for separate exports. Treat these parts as read-only context:
+When the user provides a modern `.tcom` or `.tdom`, inspect it before asking for separate exports. Treat root JSON as authoritative and sidecars/previews as context:
 
-- `Interchange/manifest.json`: package metadata, source composition identity/version, embedded JSON part metadata, preview metadata, warnings, and hashes.
-- `Interchange/Composition.json`: full Composition JSON context.
-- `Interchange/Domain.json`: embedded Domain JSON context when present.
+- `manifest.json`: root package metadata, persistence format, authoritative JSON part hashes, and legacy fallback metadata.
+- `Composition.json`: authoritative Composition JSON payload in `.tcom`.
+- `Domain.json`: authoritative Domain JSON payload in `.tdom` or embedded-domain payload in `.tcom`.
+- `TemplateComposition.json`: optional authoritative template composition payload in `.tdom`.
+- `Interchange/manifest.json`: sidecar metadata, source composition identity/version, preview metadata, warnings, and hashes.
+- `Interchange/Composition.json`: sidecar Composition JSON context.
+- `Interchange/Domain.json`: sidecar embedded Domain JSON context when present.
 - `Previews/views/*.png`: view screenshots keyed by `viewName`, `viewTechName`, `viewId`, width, height, skipped state, and part URI.
 
-Use embedded previews as Codex's first visual pass. Extract previews only when a local image file path is needed for direct visual inspection. Do not modify the `.tcom` package directly; still write separate JSON patches and import them through ThinkComposer.
+Use embedded previews as Codex's first visual pass. Extract previews only when a local image file path is needed for direct visual inspection. When editing a package, patch the root JSON and refresh `manifest.json`; do not edit `/Composition.bin`, `/Domain.bin`, or `/Interchange/*` as if they were authoritative.
 
 ## Safe JSON Rules
 
@@ -65,18 +71,18 @@ Use `containerTechName: "Active_Composition_Root"` for new root-level concepts a
 - Re-imported relationship creates are upserts when `id` or `techName` matches; use stable `techName` values to avoid duplicates.
 - For generated diagrams, use `importOptions.relationshipVisualPlacementMode: "endpointCorridor"` or `"auto"` unless coordinates are hand-curated.
 - For large models, use top-level `visualStrategy.mode: "modelOnly"` or `"overviewAndModel"` with deferred routing, auto-fit, and refresh instead of placing every visual by hand.
-- Use Domain JSON first when a Composition JSON patch depends on new or changed concept definitions, relationship definitions, roles, details, fields, output templates, or compatibility signatures.
+- Update or inspect root `Domain.json` first when a Composition JSON patch depends on new or changed concept definitions, relationship definitions, roles, details, fields, output templates, or compatibility signatures.
 
 ## Iteration Loop
 
-1. Discover or request current artifacts: modern `.tcom` container if available, otherwise composition JSON, domain JSON when relevant, latest exported PNG/image, and log text.
+1. Discover or request current artifacts: modern `.tcom`/`.tdom` container if available, otherwise compatibility composition/domain JSON, latest exported PNG/image, and log text.
 2. Summarize the current model before changing it: composition/domain tech names, active/root view, definitions, idea/relationship counts, operation groups, warnings, and compatibility metadata.
-3. Write the smallest safe import patch that satisfies the request.
-4. Validate the patch structurally and inspect risky items such as deletes, unresolved placeholders, missing links, or large exact visuals.
-5. Give the user the patch path and exact ThinkComposer menu command to import it.
-6. After import, inspect the preview/apply summary and lower-left log for `warning`, `skipped`, `error`, `failed`, `blocked`, compatibility, rollback, and affected-view lines.
+3. Write the smallest safe root JSON update that satisfies the request.
+4. Update the package root JSON and refresh root `manifest.json` authoritative metadata for changed parts.
+5. Validate the package with `package inspect` and `validate-json-persistence`; use CLI import/export compatibility paths only when preview/merge diagnostics are needed.
+6. Inspect the validation output and lower-left log for `warning`, `skipped`, `error`, `failed`, `blocked`, compatibility, rollback, and affected-view lines.
 7. Ask for or find a fresh exported image, then visually inspect it before declaring the diagram done.
-8. Iterate with follow-up patches rather than editing native `.tcom`/`.tdom` files directly.
+8. Iterate by patching the authoritative root JSON, not sidecars or legacy binaries.
 
 ## Useful Log Prefixes
 
@@ -94,7 +100,7 @@ Composition JSON import/export writes lines such as:
 - `JSON import error`
 - `JSON import affected views`
 
-Domain JSON import/export writes lines such as:
+Domain JSON compatibility import/export writes lines such as:
 
 - `Domain JSON export started`
 - `Domain JSON export summary`

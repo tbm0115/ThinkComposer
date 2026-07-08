@@ -15,13 +15,13 @@ const PLUGIN_ROOT = path.resolve(SCRIPT_DIR, "..");
 const DEFAULT_ROOT = process.env.THINKCOMPOSER_ROOT || findThinkComposerRoot(PLUGIN_ROOT) || process.cwd();
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".xps", ".pdf"]);
 const LOG_EXTENSIONS = new Set([".log", ".txt"]);
-const CONTAINER_EXTENSIONS = new Set([".tcom"]);
+const CONTAINER_EXTENSIONS = new Set([".tcom", ".tdom"]);
 const SKIP_DIRS = new Set([".git", ".vs", "bin", "obj", "node_modules", "packages", ".cache", "TestResults"]);
 
 const tools = [
   {
     name: "thinkcomposer_discover",
-    description: "Find recent ThinkComposer .tcom containers, JSON, image, and log artifacts under a root directory.",
+    description: "Find recent ThinkComposer .tcom/.tdom containers, JSON, image, and log artifacts under a root directory.",
     inputSchema: {
       type: "object",
       properties: {
@@ -33,7 +33,7 @@ const tools = [
   },
   {
     name: "thinkcomposer_read_json_summary",
-    description: "Read a Composition JSON, Domain JSON, or modern .tcom container and return high-signal counts and metadata.",
+    description: "Read a Composition JSON, Domain JSON, or modern .tcom/.tdom container and return high-signal counts and metadata.",
     inputSchema: {
       type: "object",
       required: ["path"],
@@ -44,7 +44,7 @@ const tools = [
   },
   {
     name: "thinkcomposer_read_container_summary",
-    description: "Read a modern .tcom container manifest plus embedded interchange JSON and preview screenshot metadata.",
+    description: "Read a modern .tcom/.tdom container manifest plus authoritative root JSON, sidecar JSON, and preview screenshot metadata.",
     inputSchema: {
       type: "object",
       required: ["path"],
@@ -56,7 +56,7 @@ const tools = [
   },
   {
     name: "thinkcomposer_validate_json",
-    description: "Parse and lightly validate a ThinkComposer JSON interchange file or embedded JSON parts in a modern .tcom container.",
+    description: "Parse and lightly validate a ThinkComposer JSON file or embedded JSON parts in a modern .tcom/.tdom container.",
     inputSchema: {
       type: "object",
       required: ["path"],
@@ -68,7 +68,7 @@ const tools = [
   },
   {
     name: "thinkcomposer_write_patch",
-    description: "Write a safe patch-style Composition JSON or Domain JSON file for the user to import in ThinkComposer.",
+    description: "Write a safe patch-style Composition JSON or Domain JSON document for compatibility imports or package-root JSON update planning.",
     inputSchema: {
       type: "object",
       required: ["path", "kind", "operations"],
@@ -86,7 +86,7 @@ const tools = [
   },
   {
     name: "thinkcomposer_extract_container_artifacts",
-    description: "Extract embedded interchange JSON and preview screenshots from a modern .tcom container into a working directory.",
+    description: "Extract authoritative root JSON, sidecar JSON, and preview screenshots from a modern .tcom/.tdom container into a working directory.",
     inputSchema: {
       type: "object",
       required: ["path", "outputDir"],
@@ -309,8 +309,11 @@ async function summarizeContainer(file, options = {}) {
   const stats = await fs.stat(file);
   const zip = await readZip(file);
   const manifest = await readContainerManifest(zip);
-  const jsonParts = Array.isArray(manifest.jsonParts) ? manifest.jsonParts : [];
-  const previews = Array.isArray(manifest.previews) ? manifest.previews : [];
+  const sidecarManifest = manifest.format === "ThinkComposer.Package" ? tryReadJsonZipPart(zip, "Interchange/manifest.json") : null;
+  const authoritativeParts = Array.isArray(manifest.authoritativeParts) ? manifest.authoritativeParts : [];
+  const sidecarJsonParts = Array.isArray(manifest.jsonParts) ? manifest.jsonParts : Array.isArray(sidecarManifest?.jsonParts) ? sidecarManifest.jsonParts : [];
+  const jsonParts = authoritativeParts.length > 0 ? authoritativeParts : sidecarJsonParts;
+  const previews = Array.isArray(manifest.previews) ? manifest.previews : Array.isArray(sidecarManifest?.previews) ? sidecarManifest.previews : [];
   const embedded = {};
 
   if (options.includeEmbedded !== false) {
@@ -319,7 +322,7 @@ async function summarizeContainer(file, options = {}) {
       const entry = findZipEntry(zip, partName);
       if (!entry) continue;
       const document = JSON.parse(readZipEntry(zip, entry).toString("utf8"));
-      const key = part.kind === "embeddedDomain" ? "domain" : part.kind || path.basename(partName, ".json");
+      const key = embeddedKeyForPart(part, partName);
       embedded[key] = {
         partUri: part.partUri,
         sha256: part.sha256 || null,
@@ -336,8 +339,12 @@ async function summarizeContainer(file, options = {}) {
     kind: "container",
     format: manifest.format || null,
     formatVersion: manifest.formatVersion ?? null,
+    manifestPartUri: manifest._partUri || null,
     packageKind: manifest.packageKind || null,
+    persistenceFormat: manifest.persistenceFormat || null,
+    persistenceFormatVersion: manifest.persistenceFormatVersion ?? null,
     generatedAtUtc: manifest.generatedAtUtc || null,
+    savedAtUtc: manifest.savedAtUtc || null,
     application: manifest.application || null,
     applicationVersion: manifest.applicationVersion || null,
     mtimeUtc: stats.mtime.toISOString(),
@@ -345,14 +352,19 @@ async function summarizeContainer(file, options = {}) {
     source: manifest.source || null,
     nativePartUri: manifest.nativePartUri || null,
     nativePartSha256: manifest.nativePartSha256 || null,
+    legacyBinaryFallback: manifest.legacyBinaryFallback || null,
+    sidecars: manifest.sidecars || null,
     counts: {
       entries: zip.entries.length,
       jsonParts: jsonParts.length,
+      authoritativeParts: authoritativeParts.length,
+      sidecarJsonParts: sidecarJsonParts.length,
       previews: previews.length,
       renderablePreviews: previews.filter((preview) => !preview.skipped && preview.partUri).length,
       skippedPreviews: previews.filter((preview) => preview.skipped).length,
       warnings: Array.isArray(manifest.warnings) ? manifest.warnings.length : 0
     },
+    authoritativeParts,
     jsonParts,
     previews,
     warnings: manifest.warnings || [],
@@ -389,21 +401,46 @@ async function validateContainerFile(file) {
     };
   }
 
-  if (summary.format !== "ThinkComposer.ContainerSnapshot") {
-    errors.push("Container manifest format must be ThinkComposer.ContainerSnapshot.");
-  }
-  if (summary.formatVersion !== 1) {
-    errors.push("Container manifest formatVersion must be 1.");
-  }
-  if (!summary.embedded.composition) {
-    errors.push("Container is missing embedded composition JSON.");
-  }
-  if (!summary.embedded.domain) {
-    warnings.push("Container has no embedded Domain JSON part.");
+  if (summary.format === "ThinkComposer.Package") {
+    if (summary.formatVersion !== 1) {
+      errors.push("Package manifest formatVersion must be 1.");
+    }
+    if (summary.persistenceFormat !== "json") {
+      errors.push("Package persistenceFormat must be json.");
+    }
+    if (summary.packageKind === "composition") {
+      if (!summary.embedded.composition) {
+        errors.push("Composition package is missing authoritative /Composition.json.");
+      }
+      if (!summary.embedded.domain) {
+        errors.push("Composition package is missing authoritative embedded /Domain.json.");
+      }
+    } else if (summary.packageKind === "domain") {
+      if (!summary.embedded.domain) {
+        errors.push("Domain package is missing authoritative /Domain.json.");
+      }
+    } else {
+      errors.push("Package manifest packageKind must be composition or domain.");
+    }
+  } else if (summary.format === "ThinkComposer.ContainerSnapshot") {
+    if (summary.formatVersion !== 1) {
+      errors.push("Container manifest formatVersion must be 1.");
+    }
+    if (!summary.embedded.composition) {
+      errors.push("Container is missing embedded composition JSON.");
+    }
+    if (!summary.embedded.domain) {
+      warnings.push("Container has no embedded Domain JSON part.");
+    }
+  } else {
+    errors.push("Container manifest format must be ThinkComposer.Package or ThinkComposer.ContainerSnapshot.");
   }
   for (const [key, embedded] of Object.entries(summary.embedded)) {
     if (key === "composition" && embedded.format !== "ThinkComposer.JsonInterchange") {
       errors.push("Embedded composition JSON format must be ThinkComposer.JsonInterchange.");
+    }
+    if (key === "templateComposition" && embedded.format !== "ThinkComposer.JsonInterchange") {
+      errors.push("Embedded template composition JSON format must be ThinkComposer.JsonInterchange.");
     }
     if (key === "domain" && embedded.format !== "ThinkComposer.DomainJsonInterchange") {
       errors.push("Embedded Domain JSON format must be ThinkComposer.DomainJsonInterchange.");
@@ -429,7 +466,7 @@ async function validateContainerFile(file) {
     errors,
     warnings,
     summary,
-    importMenu: "Open the .tcom in ThinkComposer for native editing; use embedded JSON/previews as Codex context and write JSON patches separately."
+    importMenu: "Patch authoritative root JSON in the .tcom/.tdom package, refresh /manifest.json authoritative part metadata, then validate with package inspect and validate-json-persistence."
   };
 }
 
@@ -444,10 +481,19 @@ async function extractContainerArtifacts(args) {
   const extracted = [];
   const entriesToExtract = new Map();
 
-  entriesToExtract.set("Interchange/manifest.json", "Interchange/manifest.json");
+  entriesToExtract.set("manifest.json", "manifest.json");
+  if (findZipEntry(zip, "Interchange/manifest.json")) {
+    entriesToExtract.set("Interchange/manifest.json", "Interchange/manifest.json");
+  }
 
-  if (includeJson && Array.isArray(manifest.jsonParts)) {
-    for (const part of manifest.jsonParts) {
+  if (includeJson) {
+    const sidecarManifest = manifest.format === "ThinkComposer.Package" ? tryReadJsonZipPart(zip, "Interchange/manifest.json") : null;
+    const jsonParts = [
+      ...(Array.isArray(manifest.authoritativeParts) ? manifest.authoritativeParts : []),
+      ...(Array.isArray(manifest.jsonParts) ? manifest.jsonParts : []),
+      ...(Array.isArray(sidecarManifest?.jsonParts) ? sidecarManifest.jsonParts : [])
+    ];
+    for (const part of jsonParts) {
       const partName = normalizePartUri(part.partUri);
       if (partName) entriesToExtract.set(partName, partName);
     }
@@ -553,7 +599,9 @@ async function validateJsonFile(rawPath, kind) {
     errors,
     warnings,
     summary,
-    importMenu: detectedKind === "domain" ? "Domain > Import/Update Domain JSON..." : "Composition > File > Import JSON..."
+    importMenu: detectedKind === "domain"
+      ? "Patch root /Domain.json in the target .tdom/.tcom package and refresh /manifest.json; use thinkcomposer domain import-json only for compatibility previews."
+      : "Patch root /Composition.json in the target .tcom package and refresh /manifest.json; use thinkcomposer composition import-json only for compatibility previews."
   };
 }
 
@@ -623,7 +671,9 @@ async function writePatch(args) {
     path: target,
     bytesWritten: Buffer.byteLength(JSON.stringify(document, null, 2), "utf8") + 1,
     validation,
-    importMenu: kind === "domain" ? "Domain > Import/Update Domain JSON..." : "Composition > File > Import JSON..."
+    importMenu: kind === "domain"
+      ? "Use this document to plan a root /Domain.json package update; CLI domain import-json remains a compatibility preview path."
+      : "Use this document to plan a root /Composition.json package update; CLI composition import-json remains a compatibility preview path."
   };
 }
 
@@ -778,16 +828,41 @@ function findEndOfCentralDirectory(buffer) {
 }
 
 async function readContainerManifest(zip) {
-  const entry = findZipEntry(zip, "Interchange/manifest.json");
-  if (!entry) {
-    throw new Error("Missing Interchange/manifest.json in .tcom container.");
+  const rootManifest = tryReadJsonZipPart(zip, "manifest.json");
+  if (rootManifest) {
+    rootManifest._partUri = "/manifest.json";
+    return rootManifest;
   }
-  return JSON.parse(readZipEntry(zip, entry).toString("utf8"));
+
+  const sidecarManifest = tryReadJsonZipPart(zip, "Interchange/manifest.json");
+  if (sidecarManifest) {
+    sidecarManifest._partUri = "/Interchange/manifest.json";
+    return sidecarManifest;
+  }
+
+  throw new Error("Missing /manifest.json or /Interchange/manifest.json in ThinkComposer container.");
 }
 
 function findZipEntry(zip, rawName) {
   const normalized = normalizePartUri(rawName);
   return zip.entries.find((entry) => entry.name === normalized) || null;
+}
+
+function tryReadJsonZipPart(zip, rawName) {
+  const entry = findZipEntry(zip, rawName);
+  if (!entry) return null;
+  return JSON.parse(readZipEntry(zip, entry).toString("utf8"));
+}
+
+function embeddedKeyForPart(part, partName) {
+  if (part?.kind === "embeddedDomain" || part?.kind === "domain") return "domain";
+  if (part?.kind === "templateComposition") return "templateComposition";
+  if (part?.kind === "composition") return "composition";
+  const baseName = path.basename(partName, ".json");
+  if (/^domain$/i.test(baseName)) return "domain";
+  if (/^composition$/i.test(baseName)) return "composition";
+  if (/^templatecomposition$/i.test(baseName)) return "templateComposition";
+  return part?.kind || baseName;
 }
 
 function readZipEntry(zip, entry) {

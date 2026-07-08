@@ -148,7 +148,9 @@ namespace Instrumind.ThinkComposer.Composer
             if (InitialRevision >= Target.ModelRevision && InvalidVisualRepairs < 1)
                 return false;
 
-            Target.EditEngine.ExistenceStatus = EExistenceStatus.Modified;
+            if (Target.EditEngine != null)
+                Target.EditEngine.ExistenceStatus = EExistenceStatus.Modified;
+
             Console.WriteLine(InvalidVisualRepairs > 0
                               ? "Document structure updated. Invalid visual representations repaired: " + InvalidVisualRepairs.ToString()
                               : "Document structure updated.");

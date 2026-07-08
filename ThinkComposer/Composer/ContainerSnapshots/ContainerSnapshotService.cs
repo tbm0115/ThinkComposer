@@ -2,7 +2,7 @@
 // Instrumind ThinkComposer
 //
 // Writes AI-readable JSON and preview sidecar parts into native .tcom/.tdom packages.
-// Native binary package parts remain authoritative.
+// Root JSON persistence parts are authoritative for modern packages; these sidecars are context snapshots.
 // -------------------------------------------------------------------------------------------
 
 using System;

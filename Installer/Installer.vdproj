@@ -159,6 +159,36 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_BFC0F106AEB24117988CF1E6614A51A2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_4AF2E77731F84C5B85B60B8972C97AB1"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_7DDF978E970349BC8E03A9E0E85E7D5A"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_C8FBB7E55C4841E8A14EDC5C01EC09F6"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_7F19EE65CB3441D581D24861CC12997F"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -373,6 +403,48 @@
     {
         "CustomAction"
         {
+            "{0C86F3C9-12D8-4F06-B613-C542CEB7E67E}:_A0E9C271016D44F5A4B1A1EDB1727B43"
+            {
+            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
+            "Condition" = "8:"
+            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
+            "FileType" = "3:2"
+            "InstallAction" = "3:1"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_A0E9C271016D44F5A4B1A1EDB1727B43"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:/targetpath=\"[TARGETDIR]ThinkComposer.InstallerActions.dll\""
+            }
+            "{0C86F3C9-12D8-4F06-B613-C542CEB7E67E}:_BD6BA13C14E74A089E5E2F16BA32FC53"
+            {
+            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
+            "Condition" = "8:"
+            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
+            "FileType" = "3:2"
+            "InstallAction" = "3:3"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_BD6BA13C14E74A089E5E2F16BA32FC53"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:/targetpath=\"[TARGETDIR]ThinkComposer.InstallerActions.dll\""
+            }
+            "{0C86F3C9-12D8-4F06-B613-C542CEB7E67E}:_F3C5B4D854794BC8A5CC2439732E8EF7"
+            {
+            "Name" = "8:Primary output from ThinkComposer.InstallerActions (Active)"
+            "Condition" = "8:"
+            "Object" = "8:_D7ED94F156254F00B0C840DE44F9F96C"
+            "FileType" = "3:2"
+            "InstallAction" = "3:4"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_F3C5B4D854794BC8A5CC2439732E8EF7"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:/targetpath=\"[TARGETDIR]ThinkComposer.InstallerActions.dll\""
+            }
         }
         "DefaultFeature"
         {
@@ -969,6 +1041,66 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BFC0F106AEB24117988CF1E6614A51A2"
+            {
+            "SourcePath" = "8:..\\Installer\\thinkcomposer.cmd"
+            "TargetName" = "8:thinkcomposer.cmd"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4AF2E77731F84C5B85B60B8972C97AB1"
+            {
+            "SourcePath" = "8:..\\Installer\\thinkcomposer-path.cmd"
+            "TargetName" = "8:thinkcomposer-path.cmd"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7DDF978E970349BC8E03A9E0E85E7D5A"
+            {
+            "SourcePath" = "8:..\\Installer\\thinkcomposer-path.ps1"
+            "TargetName" = "8:thinkcomposer-path.ps1"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A454BA28BDF541309439353916651538"
             {
             "SourcePath" = "8:..\\PredefinedContent\\Argumentative_Mapping.tdom"
@@ -1332,7 +1464,7 @@
         "MsiBootstrapper"
         {
         "LangId" = "3:1033"
-        "RequiresElevation" = "11:FALSE"
+        "RequiresElevation" = "11:TRUE"
         }
         "Product"
         {
@@ -1527,6 +1659,20 @@
             "Folder" = "8:_06515B6C048945FDA1D684C010246BCD"
             "WorkingFolder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
             "Icon" = "8:_03DD7C9D46CC47CE9E0FC04D0B9BAC9C"
+            "Feature" = "8:"
+            }
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_6D5F1143A1514B3BB35D8E28C0474B36"
+            {
+            "Name" = "8:Add ThinkComposer to PATH"
+            "Arguments" = "8:add"
+            "Description" = "8:Add the ThinkComposer CLI install folder to the machine PATH."
+            "ShowCmd" = "3:1"
+            "IconIndex" = "3:0"
+            "Transitive" = "11:FALSE"
+            "Target" = "8:_4AF2E77731F84C5B85B60B8972C97AB1"
+            "Folder" = "8:_472157AF28E6426CA61AFF5528944BBA"
+            "WorkingFolder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Icon" = "8:_384904FFDFE14F55BF2AA6FD45759F97"
             "Feature" = "8:"
             }
         }
@@ -1961,6 +2107,62 @@
             "OutputConfiguration" = "8:"
             "OutputGroupCanonicalName" = "8:Built"
             "OutputProjectGuid" = "8:{325A7865-E1DB-490E-97D6-C6D570BE952A}"
+            "ShowKeyOutput" = "11:TRUE"
+                "ExcludeFilters"
+                {
+                }
+            }
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_C8FBB7E55C4841E8A14EDC5C01EC09F6"
+            {
+            "SourcePath" = "8:..\\ThinkComposer.Cli\\obj\\x86\\Debug\\ThinkComposer.Cli.exe"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            "ProjectOutputGroupRegister" = "3:1"
+            "OutputConfiguration" = "8:"
+            "OutputGroupCanonicalName" = "8:Built"
+            "OutputProjectGuid" = "8:{E35BA9C3-42F1-4A9E-A11D-B0EBA347DD1F}"
+            "ShowKeyOutput" = "11:TRUE"
+                "ExcludeFilters"
+                {
+                }
+            }
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_D7ED94F156254F00B0C840DE44F9F96C"
+            {
+            "SourcePath" = "8:..\\ThinkComposer.InstallerActions\\obj\\x86\\Debug\\ThinkComposer.InstallerActions.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_20559035084C4D5BAB6232B8CE3FB285"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            "ProjectOutputGroupRegister" = "3:1"
+            "OutputConfiguration" = "8:"
+            "OutputGroupCanonicalName" = "8:Built"
+            "OutputProjectGuid" = "8:{5EA4FE04-8327-4F38-A8D0-0A50AF349C91}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"
                 {

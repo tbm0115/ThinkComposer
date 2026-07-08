@@ -140,15 +140,15 @@ Use these helpers for XML attributes/elements, JSON string values, fallback text
 
 ## Domain JSON Interchange
 
-Domain JSON import/export preserves output templates as text only. It also logs template owner scope, language resolution, old/new text length, old/new hash, extends-base flag, role, and target filename/extension hints when templates are created or updated.
+Domain JSON package updates and compatibility import/export preserve output templates as text only. Compatibility imports also log template owner scope, language resolution, old/new text length, old/new hash, extends-base flag, role, and target filename/extension hints when templates are created or updated.
 
-After Domain JSON import or embedded-domain update, generation treats template resolution as dirty and rebuilds preparation/subtemplate state on the next preview or generation run. Users should not need to open every definition's Output-Templates tab after import/update.
+After a root Domain JSON update or embedded-domain update, generation treats template resolution as dirty and rebuilds preparation/subtemplate state on the next preview or generation run. Users should not need to open every definition's Output-Templates tab after update.
 
 ## Troubleshooting
 
 If generated output comes from an unexpected template, open `Generation Preview` and inspect the `Resolution` and `Effective Template` tabs. Confirm the owner scope, owner techName, language, template hash, and source collection.
 
-If old/fallback/native templates appear to be used, update the embedded Domain from the intended `.tdom` or Domain JSON source, then preview again and compare template hashes in the log.
+If old/fallback/native templates appear to be used, update the embedded Domain from the intended `.tdom` source, then preview again and compare template hashes in the log.
 
 If fragment files are being produced unexpectedly in an older domain, add explicit `%%:TemplateRole=SubTemplate` or `%%:TemplateRole=Fragment` directives.
 
@@ -161,7 +161,7 @@ If a subtemplate is missing, check spelling and confirm the template belongs to 
 - This is a deterministic v1 diagnostic/lint layer, not a full static analyzer for DotLiquid.
 - Mermaid and Markdown validation are not implemented.
 - Scope isolation for injected templates is not changed in this pass; recursion is guarded and obvious cycles are linted.
-- There is no full embedded-domain output-template diff UI yet. Use Domain JSON export and template hashes as a practical comparison path.
+- There is no full embedded-domain output-template diff UI yet. Use root `/Domain.json`, CLI compatibility export, and template hashes as a practical comparison path.
 
 ## Manual Validation
 
@@ -186,7 +186,7 @@ Generate files:
 
 MTConnect regression:
 
-1. Import/update the MTConnect Domain JSON patch.
-2. Import the matching composition patch.
+1. Update the MTConnect Domain in the target package or from the intended `.tdom`.
+2. Apply the matching composition patch.
 3. Generate `Devices_Response_Document`.
 4. Confirm root/subtemplate roles are explicit in diagnostics, XML validation runs for `.xml` output, and fragment/subtemplates are not emitted as standalone deliverables unless intentionally configured.

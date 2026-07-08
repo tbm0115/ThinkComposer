@@ -28,6 +28,7 @@ try {
         "02-base-model.md",
         "03-application-guide.md",
         "04-current-features.md",
+        "07-command-line-interface.md",
         "05-template-language.md",
         "06-information-model.md"
     )

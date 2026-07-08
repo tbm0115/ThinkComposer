@@ -8,6 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Windows;
+using System.Windows.Markup;
+using System.Windows.Media;
 
 using Instrumind.Common;
 using Instrumind.Common.EntityBase;
@@ -16,6 +19,7 @@ using Instrumind.Common.Visualization;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
+using Instrumind.ThinkComposer.MetaModel.VisualMetaModel;
 using Instrumind.ThinkComposer.Model;
 using Instrumind.ThinkComposer.Model.GraphModel;
 using Instrumind.ThinkComposer.Model.InformationModel;
@@ -31,6 +35,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             General.ContractRequiresNotNull(Composition);
 
             var Warnings = new List<string>();
+            Warnings.Add("Custom visual formatting, store-box references, and native/binary-only content are exported only when represented by documented JSON fields; JSON persistence reconstructs documented visual formats and pictograms but does not reconstruct unsupported native-only payloads.");
             var Document = new CompositionJsonDocument();
             Document.ExportedAtUtc = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
             Document.Composition = ExportComposition(Composition);
@@ -172,6 +177,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Summary = Source.Summary;
             Target.Description = ExportDescription(Source.Description);
             Target.TechSpec = Source.TechSpec;
+            Target.Pictogram = ExportImageSource(Source.Pictogram);
             FillDefinition(Target, Source.IdeaDefinitor);
             Target.ContainerId = IdOf(Source.OwnerContainer);
             Target.ContainerTechName = Source.OwnerContainer == null ? null : Source.OwnerContainer.TechName;
@@ -190,6 +196,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Summary = Source.Summary;
             Target.Description = ExportDescription(Source.Description);
             Target.TechSpec = Source.TechSpec;
+            Target.Pictogram = ExportImageSource(Source.Pictogram);
             Target.DefinitionId = IdOf(Source.IdeaDefinitor);
             Target.DefinitionTechName = Source.IdeaDefinitor == null ? null : Source.IdeaDefinitor.TechName;
             Target.DefinitionName = Source.IdeaDefinitor == null ? null : Source.IdeaDefinitor.Name;
@@ -282,7 +289,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                         else
                         {
                             Exported.Text = Detail.ToStringAlways();
-                            Warnings.Add("Detail '" + DetailSortKey(Detail) + "' on idea '" + Idea.TechName + "' was exported as text only; import will preserve the native detail.");
+                            Warnings.Add("Detail '" + DetailSortKey(Detail) + "' on idea '" + Idea.TechName + "' was exported as text only; JSON persistence rehydrates only the exported text representation.");
                         }
                     }
                 }
@@ -388,7 +395,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Source = Attachment.Source;
             Target.MimeType = Attachment.MimeType;
             Target.Text = Attachment.ToString();
-            Warnings.Add("Attachment '" + Attachment.Source.ToStringAlways() + "' was exported as metadata only; binary content is preserved only in the native .tcom file.");
+            Warnings.Add("Attachment '" + Attachment.Source.ToStringAlways() + "' was exported as metadata only; binary content is not inlined in Composition JSON and is not reconstructed by JSON persistence.");
         }
 
         private static CompositionJsonView ExportView(View View, Composition Composition, List<string> Warnings)
@@ -401,13 +408,27 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Description = ExportDescription(View.Description);
             Result.OwnerIdeaId = IdOf(View.OwnerCompositeContainer);
             Result.OwnerIdeaTechName = View.OwnerCompositeContainer == null ? null : View.OwnerCompositeContainer.TechName;
-            Result.Visuals = Composition.DeclaredIdeas
+            var Representations = Composition.DeclaredIdeas
                                 .SelectMany(Idea => Idea.VisualRepresentators)
                                 .Where(Representation => Representation.DisplayingView == View)
                                 .OrderBy(Representation => Representation.RepresentedIdea == null ? "" : Representation.RepresentedIdea.TechName)
                                 .ThenBy(Representation => IdOf(Representation))
-                                .Select(ExportVisual)
                                 .ToList();
+
+            var FreeComplements = View.GetFreeComplements()
+                                     .Where(Complement => IsExportableComplement(Complement, Warnings))
+                                     .OrderBy(Complement => Complement.ZOrder)
+                                     .ThenBy(Complement => Complement.GlobalId.ToString("D"))
+                                     .ToList();
+            var ZOrders = BuildExportedZOrderMap(View, Representations, FreeComplements);
+
+            Result.Visuals = Representations
+                                .Select(Representation => ExportVisual(Representation, Warnings, ZOrders))
+                                .ToList();
+            Result.Complements = FreeComplements
+                                     .Select(Complement => ExportComplement(Complement, ZOrders))
+                                     .Where(Complement => Complement != null)
+                                     .ToList();
 
             var Children = View.ViewChildren == null ? Enumerable.Empty<ViewChild>() : View.ViewChildren;
             foreach (var Child in Children)
@@ -417,12 +438,54 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Result;
         }
 
+        private static Dictionary<VisualObject, int> BuildExportedZOrderMap(View View,
+                                                                            IEnumerable<VisualRepresentation> Representations,
+                                                                            IEnumerable<VisualComplement> FreeComplements)
+        {
+            var ExportedObjects = new HashSet<VisualObject>();
+            foreach (var Representation in Representations ?? Enumerable.Empty<VisualRepresentation>())
+            {
+                if (Representation == null)
+                    continue;
+
+                if (Representation.MainSymbol != null)
+                    ExportedObjects.Add(Representation.MainSymbol);
+
+                var RelationshipRepresentation = Representation as RelationshipVisualRepresentation;
+                if (RelationshipRepresentation != null)
+                    foreach (var Connector in RelationshipRepresentation.VisualConnectors.Where(Connector => Connector != null))
+                        ExportedObjects.Add(Connector);
+
+                if (Representation.MainSymbol != null)
+                    foreach (var Complement in Representation.MainSymbol.AttachedComplements.Where(Complement => IsExportableComplement(Complement, null)))
+                        ExportedObjects.Add(Complement);
+            }
+
+            foreach (var Complement in FreeComplements ?? Enumerable.Empty<VisualComplement>())
+                if (Complement != null)
+                    ExportedObjects.Add(Complement);
+
+            var Result = new Dictionary<VisualObject, int>();
+            if (View == null || View.ViewChildren == null || ExportedObjects.Count < 1)
+                return Result;
+
+            var Order = 0;
+            foreach (var Child in View.ViewChildren)
+            {
+                var VisualObject = Child == null ? null : Child.Key as VisualObject;
+                if (VisualObject != null && ExportedObjects.Contains(VisualObject))
+                    Result[VisualObject] = Order++;
+            }
+
+            return Result;
+        }
+
         private static string ExportDescription(string Description)
         {
             return Display.XamlRichTextToPlainTextOrSelf(Description);
         }
 
-        private static CompositionJsonVisual ExportVisual(VisualRepresentation Representation)
+        private static CompositionJsonVisual ExportVisual(VisualRepresentation Representation, List<string> Warnings, IDictionary<VisualObject, int> ZOrders)
         {
             var Result = new CompositionJsonVisual();
             Result.IdeaId = IdOf(Representation.RepresentedIdea);
@@ -433,13 +496,394 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Symbol = Representation.MainSymbol;
             if (Symbol != null)
             {
+                Result.ZOrder = ExportZOrder(Symbol, ZOrders);
                 Result.X = Symbol.BaseLeft;
                 Result.Y = Symbol.BaseTop;
                 Result.Width = Symbol.BaseWidth;
                 Result.Height = Symbol.BaseHeight;
+                Result.AreDetailsShown = Symbol.AreDetailsShown;
+                Result.ShowCompositeContentAsDetails = Symbol.ShowCompositeContentAsDetails;
+                Result.DetailsPosterHeight = Symbol.DetailsPosterHeight;
+                Result.ShowAsMultiple = Symbol.ShowAsMultiple;
+                Result.IsHorizontallyFlipped = Symbol.IsHorizontallyFlipped;
+                Result.IsVerticallyFlipped = Symbol.IsVerticallyFlipped;
+                Result.IsTilted = Symbol.IsTilted;
+                Result.Complements = Symbol.AttachedComplements
+                                           .Where(Complement => IsExportableComplement(Complement, Warnings))
+                                           .OrderBy(Complement => Complement.ZOrder)
+                                           .ThenBy(Complement => Complement.GlobalId.ToString("D"))
+                                           .Select(Complement => ExportComplement(Complement, ZOrders))
+                                           .Where(Complement => Complement != null)
+                                           .ToList();
+            }
+
+            var RelationshipRepresentation = Representation as RelationshipVisualRepresentation;
+            if (RelationshipRepresentation != null)
+                Result.Connectors = RelationshipRepresentation.VisualConnectors
+                                      .Where(Connector => Connector != null)
+                                      .OrderBy(Connector => Connector.ZOrder)
+                                      .ThenBy(Connector => Connector.GlobalId.ToString("D"))
+                                      .Select(Connector => ExportConnector(Connector, ZOrders))
+                                      .Where(Connector => Connector != null)
+                                      .ToList();
+
+            Result.CustomFormatValues = ExportCustomFormatValues(Representation);
+            return Result;
+        }
+
+        private static bool IsExportableComplement(VisualComplement Complement, List<string> Warnings)
+        {
+            if (Complement == null || Complement.Kind == null)
+                return false;
+
+            if (Complement.IsComplementImage)
+            {
+                if (Warnings != null)
+                    Warnings.Add("Image complement '" + Complement.GlobalId.ToString("D") + "' was not exported as native persistence JSON because image payloads remain binary-only.");
+
+                return false;
+            }
+
+            return VisualComplement.ApplicablePropertiesByKind.ContainsKey(Complement.Kind.TechName);
+        }
+
+        private static CompositionJsonConnector ExportConnector(VisualConnector Connector, IDictionary<VisualObject, int> ZOrders)
+        {
+            var Result = new CompositionJsonConnector();
+            Result.Id = IdOf(Connector);
+            Result.LinkId = IdOf(Connector.RepresentedLink);
+            Result.RoleType = Connector.RepresentedLink == null || Connector.RepresentedLink.RoleDefinitor == null
+                              ? null : Connector.RepresentedLink.RoleDefinitor.RoleType.ToString();
+            Result.RoleDefinitionTechName = Connector.RepresentedLink == null || Connector.RepresentedLink.RoleDefinitor == null
+                                            ? null : Connector.RepresentedLink.RoleDefinitor.TechName;
+            Result.RoleVariantTechName = Connector.RepresentedLink == null || Connector.RepresentedLink.RoleVariant == null
+                                         ? null : Connector.RepresentedLink.RoleVariant.TechName;
+            Result.AssociatedIdeaId = Connector.RepresentedLink == null ? null : IdOf(Connector.RepresentedLink.AssociatedIdea);
+            Result.AssociatedIdeaTechName = Connector.RepresentedLink == null || Connector.RepresentedLink.AssociatedIdea == null
+                                            ? null : Connector.RepresentedLink.AssociatedIdea.TechName;
+            Result.ZOrder = ExportZOrder(Connector, ZOrders);
+            FillConnectorEndpoint(Result, Connector.OriginSymbol, true);
+            FillConnectorEndpoint(Result, Connector.TargetSymbol, false);
+            Result.OriginPosition = ExportPoint(Connector.OriginPosition);
+            Result.OriginEdgePosition = ExportPoint(Connector.OriginEdgePosition);
+            Result.TargetPosition = ExportPoint(Connector.TargetPosition);
+            Result.TargetEdgePosition = ExportPoint(Connector.TargetEdgePosition);
+            Result.IntermediatePosition = ExportPoint(Connector.IntermediatePosition);
+            return Result;
+        }
+
+        private static void FillConnectorEndpoint(CompositionJsonConnector Target, VisualSymbol Symbol, bool IsOrigin)
+        {
+            var Representation = Symbol == null ? null : Symbol.OwnerRepresentation;
+            var Idea = Representation == null ? null : Representation.RepresentedIdea;
+
+            if (IsOrigin)
+            {
+                Target.OriginRepresentationId = IdOf(Representation);
+                Target.OriginIdeaId = IdOf(Idea);
+                Target.OriginIdeaTechName = Idea == null ? null : Idea.TechName;
+            }
+            else
+            {
+                Target.TargetRepresentationId = IdOf(Representation);
+                Target.TargetIdeaId = IdOf(Idea);
+                Target.TargetIdeaTechName = Idea == null ? null : Idea.TechName;
+            }
+        }
+
+        private static CompositionJsonComplement ExportComplement(VisualComplement Complement, IDictionary<VisualObject, int> ZOrders)
+        {
+            if (Complement == null || Complement.Kind == null)
+                return null;
+
+            var Result = new CompositionJsonComplement();
+            Result.Id = IdOf(Complement);
+            Result.KindTechName = Complement.Kind.TechName;
+            Result.KindName = Complement.Kind.Name;
+            Result.ZOrder = ExportZOrder(Complement, ZOrders);
+            Result.X = Complement.BaseLeft;
+            Result.Y = Complement.BaseTop;
+            Result.Width = Complement.BaseWidth;
+            Result.Height = Complement.BaseHeight;
+            Result.Set = ExportComplementFields(Complement);
+            return Result;
+        }
+
+        private static int? ExportZOrder(VisualObject VisualObject, IDictionary<VisualObject, int> ZOrders)
+        {
+            if (VisualObject == null)
+                return null;
+
+            int NormalizedZOrder;
+            if (ZOrders != null && ZOrders.TryGetValue(VisualObject, out NormalizedZOrder))
+                return NormalizedZOrder;
+
+            var ZOrder = VisualObject.ZOrder;
+            return ZOrder < 0 ? (int?)null : ZOrder;
+        }
+
+        private static CompositionJsonPoint ExportPoint(Point Point)
+        {
+            if (Point == Display.NULL_POINT)
+                return null;
+
+            return new CompositionJsonPoint { X = Point.X, Y = Point.Y };
+        }
+
+        private static Dictionary<string, object> ExportComplementFields(VisualComplement Complement)
+        {
+            var Result = new Dictionary<string, object>();
+            string[] Fields;
+            if (Complement == null || Complement.Kind == null ||
+                !VisualComplement.ApplicablePropertiesByKind.TryGetValue(Complement.Kind.TechName, out Fields))
+                return Result;
+
+            foreach (var Field in Fields)
+            {
+                var Value = ExportComplementField(Complement, Field);
+                if (Value != null)
+                    Result[Field] = Value;
             }
 
             return Result;
+        }
+
+        private static object ExportComplementField(VisualComplement Complement, string Field)
+        {
+            if (Field == VisualComplement.PROP_FIELD_FOREGROUND ||
+                Field == VisualComplement.PROP_FIELD_BACKGROUND)
+            {
+                Brush Value;
+                return TryGetComplementField(Complement, Field, out Value) ? ExportBrush(Value) : null;
+            }
+
+            if (Field == VisualComplement.PROP_FIELD_LINEDASH)
+                return ExportDashStyle(Complement.GetPropertyField<DashStyle>(Field));
+
+            if (Field == VisualComplement.PROP_FIELD_LINETHICK)
+                return Complement.GetPropertyField<double>(Field);
+
+            if (Field == VisualComplement.PROP_FIELD_OFFSETX ||
+                Field == VisualComplement.PROP_FIELD_OFFSETY)
+            {
+                double Value;
+                return TryGetComplementField(Complement, Field, out Value) ? (object)Value : null;
+            }
+
+            if (Field == VisualComplement.PROP_FIELD_TEXT)
+            {
+                string Value;
+                return TryGetComplementField(Complement, Field, out Value) ? Value : null;
+            }
+
+            if (Field == VisualComplement.PROP_FIELD_TEXTFORMAT)
+            {
+                TextFormat Value;
+                return TryGetComplementField(Complement, Field, out Value) ? ExportTextFormat(Value) : null;
+            }
+
+            if (Field == VisualComplement.PROP_FIELD_ORIENTATION)
+            {
+                System.Windows.Controls.Orientation Value;
+                return TryGetComplementField(Complement, Field, out Value) ? Value.ToString() : null;
+            }
+
+            if (Field == VisualComplement.PROP_FIELD_QUADRANT)
+            {
+                EVecinityQuadrant Value;
+                return TryGetComplementField(Complement, Field, out Value) ? Value.ToString() : null;
+            }
+
+            return null;
+        }
+
+        private static bool TryGetComplementField<TField>(VisualComplement Complement, string Field, out TField Value)
+        {
+            Value = default(TField);
+
+            if (Complement == null)
+                return false;
+
+            try
+            {
+                Value = Complement.GetPropertyField<TField>(Field, false);
+                return true;
+            }
+            catch (UsageAnomaly Problem)
+            {
+                if (Problem.Message != null &&
+                    Problem.Message.StartsWith("Property field not assigned:", StringComparison.Ordinal))
+                    return false;
+
+                throw;
+            }
+        }
+
+        private static Dictionary<string, object> ExportCustomFormatValues(VisualRepresentation Representation)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Representation == null || Representation.CustomFormatValues == null)
+                return Result;
+
+            foreach (var Pair in Representation.CustomFormatValues.OrderBy(Pair => Pair.Key))
+            {
+                var Value = ExportFormatValue(Pair.Value);
+                if (Value != null)
+                    Result[Pair.Key] = Value;
+            }
+
+            return Result;
+        }
+
+        private static object ExportFormatValue(object Value)
+        {
+            if (Value == null)
+                return null;
+
+            var StoreBox = Value as StoreBoxBase;
+            if (StoreBox != null)
+                Value = StoreBox.StoredObject;
+
+            var Brush = Value as Brush;
+            if (Brush != null)
+                return ExportBrush(Brush);
+
+            var Dash = Value as DashStyle;
+            if (Dash != null)
+                return ExportDashStyle(Dash);
+
+            var TextFormat = Value as TextFormat;
+            if (TextFormat != null)
+                return ExportTextFormat(TextFormat);
+
+            if (Value is bool || Value is int || Value is double || Value is string)
+                return Value;
+
+            if (Value.GetType().IsEnum)
+                return Value.ToString();
+
+            return null;
+        }
+
+        private static Dictionary<string, object> ExportTextFormat(TextFormat Format)
+        {
+            if (Format == null)
+                return null;
+
+            var Result = new Dictionary<string, object>();
+            Result["type"] = "textFormat";
+            Result["fontFamilyName"] = Format.FontFamilyName;
+            Result["fontSize"] = Format.FontSize;
+            Result["foregroundBrush"] = ExportBrush(Format.ForegroundBrush);
+            Result["isBold"] = Format.IsBold;
+            Result["isItalic"] = Format.IsItalic;
+            Result["isUnderline"] = Format.IsUnderline;
+            Result["isStrikethrough"] = Format.IsStrikethrough;
+            Result["alignment"] = Format.Alignment.ToString();
+            return Result;
+        }
+
+        private static Dictionary<string, object> ExportImageSource(ImageSource Image)
+        {
+            if (Image == null)
+                return null;
+
+            try
+            {
+                var Bytes = Image.ToBytes(true);
+                if (Bytes == null || Bytes.Length < 1)
+                    return null;
+
+                var Result = new Dictionary<string, object>();
+                Result["type"] = "imageSource";
+                Result["encoding"] = "base64";
+                Result["format"] = "thinkComposerImageBytes";
+                Result["data"] = Convert.ToBase64String(Bytes);
+                return Result;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static object ExportBrush(Brush Brush)
+        {
+            if (Brush == null)
+                return null;
+
+            var Text = default(string);
+            try
+            {
+                var Converter = new BrushConverter();
+                if (Converter.CanConvertTo(typeof(string)))
+                    Text = (string)Converter.ConvertTo(null, CultureInfo.InvariantCulture, Brush, typeof(string));
+            }
+            catch
+            {
+            }
+
+            if (!CanImportBrushText(Text))
+            {
+                var Xaml = ExportBrushXaml(Brush);
+                if (!String.IsNullOrWhiteSpace(Xaml))
+                    return new Dictionary<string, object>
+                    {
+                        { "type", "brush" },
+                        { "xaml", Xaml }
+                    };
+
+                if (String.IsNullOrWhiteSpace(Text))
+                    return null;
+            }
+
+            if (Math.Abs(Brush.Opacity - 1.0) < 0.0001)
+                return Text;
+
+            return new Dictionary<string, object>
+            {
+                { "color", Text },
+                { "opacity", Brush.Opacity }
+            };
+        }
+
+        private static bool CanImportBrushText(string Text)
+        {
+            if (String.IsNullOrWhiteSpace(Text))
+                return false;
+
+            try
+            {
+                return new BrushConverter().ConvertFromString(null, CultureInfo.InvariantCulture, Text) is Brush;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string ExportBrushXaml(Brush Brush)
+        {
+            if (Brush == null)
+                return null;
+
+            try
+            {
+                return XamlWriter.Save(Brush);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string ExportDashStyle(DashStyle Dash)
+        {
+            if (Dash == null)
+                return null;
+
+            var Declared = Display.DeclaredDashStyles.FirstOrDefault(Item => Item.Item1.IsEqual(Dash));
+            return Declared == null ? null : Declared.Item2;
         }
 
         private static CompositionJsonVersion ExportVersion(VersionCard Version)

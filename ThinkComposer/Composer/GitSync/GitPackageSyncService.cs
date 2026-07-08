@@ -303,6 +303,23 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             return TargetPath;
         }
 
+        public static string PullDomainPackageToTemporaryFile(string DomainPackagePath, string OutputDirectory)
+        {
+            ValidateInputFile(DomainPackagePath);
+
+            var TargetDirectory = String.IsNullOrWhiteSpace(OutputDirectory)
+                                  ? Path.Combine(GitSyncRoot, "pulled-domains")
+                                  : Path.GetFullPath(OutputDirectory);
+            Directory.CreateDirectory(TargetDirectory);
+
+            var TargetPath = Path.Combine(TargetDirectory,
+                                          Path.GetFileNameWithoutExtension(DomainPackagePath) + "." +
+                                          DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) + ".tdom");
+            PullPackage(DomainPackagePath, TargetPath, false, null);
+            ValidateJsonAuthoritativePackage(TargetPath, GitPackageLink.KindDomain);
+            return TargetPath;
+        }
+
         public static string DescribeLink(GitPackageLink Link)
         {
             if (Link == null)

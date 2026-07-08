@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -83,9 +84,16 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
             Run("Pull Domain from Git", delegate
             {
-                if (Target.IsEmbeddedDomain)
+                if (Target.Kind == DomainGitTargetKind.EmbeddedCompositionPackage)
                 {
                     var DomainPath = GitPackageSyncService.PullEmbeddedDomainBaseline(Target.PackagePath, null);
+                    DomainJsonInterchangeCommands.UpdateEmbeddedDomainFromFile(Engine, DomainPath);
+                    ClearDomainGitStatus(Target.PackagePath);
+                    Display.DialogMessage("Git Pull", "Linked Domain pulled from Git and merged into the active Composition.", EMessageType.Information);
+                }
+                else if (Target.Kind == DomainGitTargetKind.SourceDomainPackageForComposition)
+                {
+                    var DomainPath = GitPackageSyncService.PullDomainPackageToTemporaryFile(Target.PackagePath, null);
                     DomainJsonInterchangeCommands.UpdateEmbeddedDomainFromFile(Engine, DomainPath);
                     ClearDomainGitStatus(Target.PackagePath);
                     Display.DialogMessage("Git Pull", "Linked Domain pulled from Git and merged into the active Composition.", EMessageType.Information);
@@ -115,6 +123,9 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         public static bool CanLinkActiveDomain(WorkspaceManager WorkspaceDirector)
         {
             var Engine = ActiveCompositionEngine(WorkspaceDirector);
+            if (Engine == null || !Engine.IsForEditDomain)
+                return false;
+
             var DomainPath = GetActiveDomainPackagePath(Engine);
             return !String.IsNullOrWhiteSpace(DomainPath) &&
                    File.Exists(DomainPath) &&
@@ -147,18 +158,19 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             var DomainPath = GetActiveDomainPackagePath(Engine);
             var Summary = "Links the current Domain package to a Git remote path.";
 
-            if (String.IsNullOrWhiteSpace(DomainPath) || !File.Exists(DomainPath))
+            if (Engine == null || !Engine.IsForEditDomain)
             {
                 var CompositionPath = GetActiveCompositionPackagePath(Engine);
                 Summary = !String.IsNullOrWhiteSpace(CompositionPath) &&
                           File.Exists(CompositionPath) &&
                           HasEmbeddedDomainGitLink(CompositionPath)
                           ? "This embedded Domain is already linked to Git through the Composition package."
-                          : "Save the Domain package before linking it to Git.";
+                          : "Open the Domain package for editing before linking it to Git.";
             }
-            else
-                if (TryReadGitLink(DomainPath) != null)
-                    Summary = "This Domain package is already linked to Git. Use Pull from Git to update it.";
+            else if (String.IsNullOrWhiteSpace(DomainPath) || !File.Exists(DomainPath))
+                Summary = "Save the Domain package before linking it to Git.";
+            else if (TryReadGitLink(DomainPath) != null)
+                Summary = "This Domain package is already linked to Git. Use Pull from Git to update it.";
 
             return new WorkCommandVisualStatus
             {
@@ -173,7 +185,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         {
             var Engine = Document as CompositionEngine;
             var Target = GetActiveDomainGitTarget(Engine);
-            var DefaultSummary = Target != null && Target.IsEmbeddedDomain
+            var DefaultSummary = Target != null && Target.PullsIntoEmbeddedDomain
                                  ? "Pulls and merges the linked embedded Domain from Git."
                                  : "Pulls the linked Domain package from Git.";
 
@@ -207,7 +219,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             if (Target == null)
                 return;
 
-            EnsureDomainRemoteStatusCheck(Target.PackagePath, Target.IsEmbeddedDomain);
+            EnsureDomainRemoteStatusCheck(Target.PackagePath, Target.Kind);
         }
 
         private static void LinkPackage(string PackagePath, bool IsComposition)
@@ -251,17 +263,26 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
         private static DomainGitTarget GetActiveDomainGitTarget(CompositionEngine Engine)
         {
+            var CompositionPath = GetActiveCompositionPackagePath(Engine);
+            if (Engine != null && !Engine.IsForEditDomain)
+            {
+                if (!String.IsNullOrWhiteSpace(CompositionPath) &&
+                    File.Exists(CompositionPath) &&
+                    HasEmbeddedDomainGitLink(CompositionPath))
+                    return new DomainGitTarget { PackagePath = Path.GetFullPath(CompositionPath), Kind = DomainGitTargetKind.EmbeddedCompositionPackage };
+            }
+
             var DomainPath = GetActiveDomainPackagePath(Engine);
             if (!String.IsNullOrWhiteSpace(DomainPath) &&
                 File.Exists(DomainPath) &&
                 TryReadGitLink(DomainPath) != null)
-                return new DomainGitTarget { PackagePath = Path.GetFullPath(DomainPath), IsEmbeddedDomain = false };
-
-            var CompositionPath = GetActiveCompositionPackagePath(Engine);
-            if (!String.IsNullOrWhiteSpace(CompositionPath) &&
-                File.Exists(CompositionPath) &&
-                HasEmbeddedDomainGitLink(CompositionPath))
-                return new DomainGitTarget { PackagePath = Path.GetFullPath(CompositionPath), IsEmbeddedDomain = true };
+                return new DomainGitTarget
+                {
+                    PackagePath = Path.GetFullPath(DomainPath),
+                    Kind = Engine != null && Engine.IsForEditDomain
+                           ? DomainGitTargetKind.ExternalDomainPackage
+                           : DomainGitTargetKind.SourceDomainPackageForComposition
+                };
 
             return null;
         }
@@ -315,7 +336,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             };
         }
 
-        private static void EnsureDomainRemoteStatusCheck(string DomainPath, bool IsEmbeddedDomain)
+        private static void EnsureDomainRemoteStatusCheck(string DomainPath, DomainGitTargetKind TargetKind)
         {
             if (String.IsNullOrWhiteSpace(DomainPath))
                 return;
@@ -347,14 +368,14 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 string ErrorMessage = null;
                 try
                 {
-                    Status = IsEmbeddedDomain
+                    Status = TargetKind == DomainGitTargetKind.EmbeddedCompositionPackage
                              ? GitPackageSyncService.GetEmbeddedDomainRemoteStatus(FullPath)
                              : GitPackageSyncService.GetRemoteStatus(FullPath);
                 }
                 catch (Exception Problem)
                 {
-                    ErrorMessage = Problem.Message;
-                    Console.WriteLine("Cannot check linked Domain Git remote: " + Problem.Message);
+                    ErrorMessage = CreateDomainStatusErrorMessage(Problem);
+                    Console.WriteLine("Cannot check linked Domain Git remote: " + ErrorMessage);
                 }
 
                 lock (DomainStatusSync)
@@ -395,6 +416,19 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 DomainStatusByPath.Remove(Path.GetFullPath(DomainPath));
 
             NotifyCommandVisualStatusChanged();
+        }
+
+        private static string CreateDomainStatusErrorMessage(Exception Problem)
+        {
+            var Message = Problem == null ? null : Problem.Message;
+            if (String.IsNullOrWhiteSpace(Message))
+                return "Unknown Git status check failure.";
+
+            if (Message.IndexOf("Cannot prompt because user interactivity has been disabled", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                Message.IndexOf("could not read Username", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Cannot check remote updates without cached Git credentials. Use Pull from Git to authenticate, or configure Git Credential Manager/SSH.";
+
+            return Message.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault().ToStringAlways(Message);
         }
 
         private static void NotifyCommandVisualStatusChanged()
@@ -476,7 +510,19 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private sealed class DomainGitTarget
         {
             public string PackagePath;
-            public bool IsEmbeddedDomain;
+            public DomainGitTargetKind Kind;
+
+            public bool PullsIntoEmbeddedDomain
+            {
+                get { return this.Kind != DomainGitTargetKind.ExternalDomainPackage; }
+            }
+        }
+
+        private enum DomainGitTargetKind
+        {
+            ExternalDomainPackage,
+            SourceDomainPackageForComposition,
+            EmbeddedCompositionPackage
         }
     }
 }

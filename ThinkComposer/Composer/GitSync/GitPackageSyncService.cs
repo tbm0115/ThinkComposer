@@ -111,23 +111,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             var State = LoadState();
             var Entry = State.Get(EntryKey(Link, Baseline));
 
-            return new GitPackageRemoteStatus
-            {
-                PackagePath = InputPath,
-                PackageKind = PackageKind,
-                RemoteDisplayUrl = GitPackageLink.RedactRemoteUrl(Link.Remote.Url),
-                Branch = Link.Remote.Branch,
-                BaselinePath = Baseline.Path,
-                RemoteHead = RemoteHead,
-                PreviousSeenHead = Entry == null ? null : Entry.RemoteCommit,
-                BaselineExists = SourceExists,
-                LocalAuthoritativeJsonHash = LocalHash,
-                RemoteAuthoritativeJsonHash = RemoteHash,
-                HasRemoteUpdate = SourceExists &&
-                                  !String.IsNullOrWhiteSpace(LocalHash) &&
-                                  !String.IsNullOrWhiteSpace(RemoteHash) &&
-                                  !String.Equals(LocalHash, RemoteHash, StringComparison.OrdinalIgnoreCase)
-            };
+            return CreateRemoteStatus(InputPath, PackageKind, Link, Baseline, RemoteHead, SourceExists, LocalHash, RemoteHash, Entry);
         }
 
         public static GitPackageRemoteStatus GetEmbeddedDomainRemoteStatus(string CompositionPackagePath)
@@ -153,23 +137,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             var State = LoadState();
             var Entry = State.Get(EntryKey(Link, Baseline));
 
-            return new GitPackageRemoteStatus
-            {
-                PackagePath = InputPath,
-                PackageKind = GitPackageLink.KindDomain,
-                RemoteDisplayUrl = GitPackageLink.RedactRemoteUrl(Link.Remote.Url),
-                Branch = Link.Remote.Branch,
-                BaselinePath = Baseline.Path,
-                RemoteHead = RemoteHead,
-                PreviousSeenHead = Entry == null ? null : Entry.RemoteCommit,
-                BaselineExists = SourceExists,
-                LocalAuthoritativeJsonHash = LocalHash,
-                RemoteAuthoritativeJsonHash = RemoteHash,
-                HasRemoteUpdate = SourceExists &&
-                                  !String.IsNullOrWhiteSpace(LocalHash) &&
-                                  !String.IsNullOrWhiteSpace(RemoteHash) &&
-                                  !String.Equals(LocalHash, RemoteHash, StringComparison.OrdinalIgnoreCase)
-            };
+            return CreateRemoteStatus(InputPath, GitPackageLink.KindDomain, Link, Baseline, RemoteHead, SourceExists, LocalHash, RemoteHash, Entry);
         }
 
         public static GitPackagePullResult PullPackage(string Input, string Output, bool InPlace, string BackupDirectory)
@@ -435,6 +403,42 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private static string GetHeadCommit(string Repository)
         {
             return RunGit(Repository, "rev-parse", "HEAD").Output.Trim();
+        }
+
+        private static GitPackageRemoteStatus CreateRemoteStatus(string InputPath, string PackageKind,
+                                                                 GitPackageLink Link, GitPackageBaseline Baseline,
+                                                                 string RemoteHead, bool SourceExists,
+                                                                 string LocalHash, string RemoteHash,
+                                                                 GitSyncStateEntry Entry)
+        {
+            var PreviousSeenHead = Entry == null ? null : Entry.RemoteCommit;
+            var HasHashComparison = SourceExists &&
+                                    !String.IsNullOrWhiteSpace(LocalHash) &&
+                                    !String.IsNullOrWhiteSpace(RemoteHash);
+            var PackageDiffers = HasHashComparison &&
+                                 !String.Equals(LocalHash, RemoteHash, StringComparison.OrdinalIgnoreCase);
+            var HasKnownPreviousRemote = !String.IsNullOrWhiteSpace(PreviousSeenHead);
+            var RemoteBranchAdvanced = HasKnownPreviousRemote &&
+                                       !String.IsNullOrWhiteSpace(RemoteHead) &&
+                                       !String.Equals(PreviousSeenHead, RemoteHead, StringComparison.OrdinalIgnoreCase);
+
+            return new GitPackageRemoteStatus
+            {
+                PackagePath = InputPath,
+                PackageKind = PackageKind,
+                RemoteDisplayUrl = GitPackageLink.RedactRemoteUrl(Link.Remote.Url),
+                Branch = Link.Remote.Branch,
+                BaselinePath = Baseline.Path,
+                RemoteHead = RemoteHead,
+                PreviousSeenHead = PreviousSeenHead,
+                BaselineExists = SourceExists,
+                LocalAuthoritativeJsonHash = LocalHash,
+                RemoteAuthoritativeJsonHash = RemoteHash,
+                PackageDiffersFromRemote = PackageDiffers,
+                RemoteBranchAdvanced = RemoteBranchAdvanced,
+                HasRemoteUpdate = PackageDiffers && (!HasKnownPreviousRemote || RemoteBranchAdvanced),
+                HasLocalChangesToPush = PackageDiffers && HasKnownPreviousRemote && !RemoteBranchAdvanced
+            };
         }
 
         private static string TryGetHeadCommit(string Repository)
@@ -932,6 +936,9 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         public bool BaselineExists;
         public string LocalAuthoritativeJsonHash;
         public string RemoteAuthoritativeJsonHash;
+        public bool PackageDiffersFromRemote;
+        public bool RemoteBranchAdvanced;
         public bool HasRemoteUpdate;
+        public bool HasLocalChangesToPush;
     }
 }

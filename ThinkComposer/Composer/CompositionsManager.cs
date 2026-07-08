@@ -206,14 +206,20 @@ namespace Instrumind.ThinkComposer.Composer
             ExposedWorkCommand = new GenericCommand("PullFromGit");
             ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PullActiveComposition(this.WorkspaceDirector));
             ExposedWorkCommand.CanApply = (par => GitSync.GitPackageSyncCommands.CanPullActiveComposition(this.WorkspaceDirector));
-            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Pull from Git", ExposedWorkCommand.Name, "Pulls the linked Composition package from Git.", "arrow_down.png",
-                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+            var PullCompositionGitExpositor = new WorkCommandExpositor("Pull from Git", ExposedWorkCommand.Name, "Pulls the linked Composition package from Git.", "arrow_down.png",
+                                                                        EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
+            PullCompositionGitExpositor.VisualStatusProvider = GitSync.GitPackageSyncCommands.GetCompositionPullVisualStatus;
+            PullCompositionGitExpositor.VisualStatusRefreshRequester = GitSync.GitPackageSyncCommands.RequestCompositionGitVisualStatusRefresh;
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, PullCompositionGitExpositor);
 
             ExposedWorkCommand = new GenericCommand("CommitPushToGit");
             ExposedWorkCommand.Apply = (par => GitSync.GitPackageSyncCommands.PushActiveComposition(this.WorkspaceDirector));
             ExposedWorkCommand.CanApply = (par => GitSync.GitPackageSyncCommands.CanPushActiveComposition(this.WorkspaceDirector));
-            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Commit and Push to Git", ExposedWorkCommand.Name, "Commits and pushes the linked Composition package to Git.", "arrow_up.png",
-                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+            var PushCompositionGitExpositor = new WorkCommandExpositor("Commit and Push to Git", ExposedWorkCommand.Name, "Commits and pushes the linked Composition package to Git.", "arrow_up.png",
+                                                                        EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
+            PushCompositionGitExpositor.VisualStatusProvider = GitSync.GitPackageSyncCommands.GetCompositionPushVisualStatus;
+            PushCompositionGitExpositor.VisualStatusRefreshRequester = GitSync.GitPackageSyncCommands.RequestCompositionGitVisualStatusRefresh;
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, PushCompositionGitExpositor);
 
             // Composition JSON import/export remains implemented for compatibility and CLI use,
             // but is no longer exposed as a primary desktop command now that package JSON is authoritative.

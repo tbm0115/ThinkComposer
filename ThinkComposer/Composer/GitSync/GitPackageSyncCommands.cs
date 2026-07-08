@@ -21,9 +21,11 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 {
     public static class GitPackageSyncCommands
     {
+        private static readonly object CompositionStatusSync = new object();
+        private static readonly Dictionary<string, GitStatusCacheEntry> CompositionStatusByPath = new Dictionary<string, GitStatusCacheEntry>(StringComparer.OrdinalIgnoreCase);
         private static readonly object DomainStatusSync = new object();
-        private static readonly Dictionary<string, DomainGitStatusCacheEntry> DomainStatusByPath = new Dictionary<string, DomainGitStatusCacheEntry>(StringComparer.OrdinalIgnoreCase);
-        private static readonly TimeSpan DomainStatusRefreshInterval = TimeSpan.FromMinutes(15);
+        private static readonly Dictionary<string, GitStatusCacheEntry> DomainStatusByPath = new Dictionary<string, GitStatusCacheEntry>(StringComparer.OrdinalIgnoreCase);
+        private static readonly TimeSpan GitStatusRefreshInterval = TimeSpan.FromMinutes(15);
         private const string DomainGitCredentialsUnavailableMessage = "Cannot check remote updates without cached Git credentials. Use Pull from Git to authenticate, or configure Git Credential Manager/SSH.";
 
         public static void LinkActiveComposition(WorkspaceManager WorkspaceDirector)
@@ -33,6 +35,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 return;
 
             LinkPackage(Engine.FullLocation.LocalPath, true);
+            ClearCompositionGitStatus(Engine.FullLocation.LocalPath);
         }
 
         public static void PullActiveComposition(WorkspaceManager WorkspaceDirector)
@@ -44,6 +47,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             Run("Pull Composition from Git", delegate
             {
                 var Result = GitPackageSyncService.PullPackage(Engine.FullLocation.LocalPath, Engine.FullLocation.LocalPath, true, null);
+                ClearCompositionGitStatus(Engine.FullLocation.LocalPath);
                 Display.DialogMessage("Git Pull", Result.Message + "\n\nClose and reopen the Composition to load the pulled package.", EMessageType.Information);
             });
         }
@@ -62,6 +66,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
                 var Message = "Update " + Path.GetFileName(Engine.FullLocation.LocalPath);
                 var Result = GitPackageSyncService.PushComposition(Engine.FullLocation.LocalPath, Message);
+                ClearCompositionGitStatus(Engine.FullLocation.LocalPath);
                 Display.DialogMessage("Git Push", Result, EMessageType.Information);
             });
         }
@@ -137,14 +142,45 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         {
             var Engine = ActiveCompositionEngine(WorkspaceDirector);
             var CompositionPath = GetActiveCompositionPackagePath(Engine);
-            return !String.IsNullOrWhiteSpace(CompositionPath) &&
-                   File.Exists(CompositionPath) &&
-                   TryReadGitLink(CompositionPath) != null;
+            if (String.IsNullOrWhiteSpace(CompositionPath) ||
+                !File.Exists(CompositionPath) ||
+                TryReadGitLink(CompositionPath) == null ||
+                Engine.ExistenceStatus == EExistenceStatus.Modified)
+                return false;
+
+            var Entry = GetCompositionGitStatus(CompositionPath);
+            if (Entry == null || Entry.IsChecking)
+                return true;
+
+            if (!Entry.ErrorMessage.IsAbsent())
+                return !IsMissingRemoteBaselineOrBranch(Entry.ErrorMessage);
+
+            if (Entry.Status == null)
+                return true;
+
+            return Entry.Status.BaselineExists && Entry.Status.HasRemoteUpdate;
         }
 
         public static bool CanPushActiveComposition(WorkspaceManager WorkspaceDirector)
         {
-            return CanPullActiveComposition(WorkspaceDirector);
+            var Engine = ActiveCompositionEngine(WorkspaceDirector);
+            var CompositionPath = GetActiveCompositionPackagePath(Engine);
+            if (String.IsNullOrWhiteSpace(CompositionPath) ||
+                !File.Exists(CompositionPath) ||
+                TryReadGitLink(CompositionPath) == null)
+                return false;
+
+            var Entry = GetCompositionGitStatus(CompositionPath);
+            if (Engine.ExistenceStatus == EExistenceStatus.Modified)
+                return Entry == null || Entry.Status == null || !Entry.Status.HasRemoteUpdate;
+
+            if (Entry == null || Entry.IsChecking || !Entry.ErrorMessage.IsAbsent() || Entry.Status == null)
+                return true;
+
+            if (!Entry.Status.BaselineExists)
+                return true;
+
+            return Entry.Status.HasLocalChangesToPush;
         }
 
         public static bool CanPullActiveDomain(WorkspaceManager WorkspaceDirector)
@@ -216,6 +252,96 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 return CreateDomainPullStatus("Pull from Git *", "A newer linked Domain package is available from Git.", "bell.png");
 
             return CreateDomainPullStatus("Pull from Git", DefaultSummary + " The linked Domain package is current.", "arrow_down.png");
+        }
+
+        public static WorkCommandVisualStatus GetCompositionPullVisualStatus(DocumentEngine Document)
+        {
+            var Engine = Document as CompositionEngine;
+            var CompositionPath = GetActiveCompositionPackagePath(Engine);
+            if (String.IsNullOrWhiteSpace(CompositionPath) ||
+                !File.Exists(CompositionPath) ||
+                TryReadGitLink(CompositionPath) == null)
+                return CreateGitStatus("Pull from Git", "This Composition is not linked to Git.", "arrow_down.png");
+
+            if (Engine.ExistenceStatus == EExistenceStatus.Modified)
+                return CreateGitStatus("Pull from Git", "Save or discard pending Composition changes before pulling from Git.", "arrow_down.png");
+
+            var Entry = GetCompositionGitStatus(CompositionPath);
+            if (Entry == null)
+                return CreateGitStatus("Pull from Git", "Linked Composition package. Waiting to check Git for updates...", "arrow_down.png");
+
+            if (Entry.IsChecking && Entry.Status == null && Entry.ErrorMessage.IsAbsent())
+                return CreateGitStatus("Pull from Git", "Checking linked Git remote for Composition updates...", "arrow_refresh.png");
+
+            if (!Entry.ErrorMessage.IsAbsent())
+            {
+                if (IsMissingRemoteBaselineOrBranch(Entry.ErrorMessage))
+                    return CreateGitStatus("Pull from Git", "No remote Composition baseline exists yet. Use Commit and Push to Git first.", "arrow_down.png");
+
+                return CreateGitStatus("Pull from Git !", "Cannot check linked Git remote: " + Entry.ErrorMessage, "exclamation.png");
+            }
+
+            if (Entry.Status != null && !Entry.Status.BaselineExists)
+                return CreateGitStatus("Pull from Git", "No remote Composition baseline exists yet. Use Commit and Push to Git first.", "arrow_down.png");
+
+            if (Entry.Status != null && Entry.Status.HasRemoteUpdate)
+                return CreateGitStatus("Pull from Git *", "A newer linked Composition package is available from Git.", "bell.png");
+
+            if (Entry.Status != null && Entry.Status.HasLocalChangesToPush)
+                return CreateGitStatus("Pull from Git", "Local Composition changes are ready to push; no remote update is available.", "arrow_down.png");
+
+            return CreateGitStatus("Pull from Git", "The linked Composition package is current.", "arrow_down.png");
+        }
+
+        public static WorkCommandVisualStatus GetCompositionPushVisualStatus(DocumentEngine Document)
+        {
+            var Engine = Document as CompositionEngine;
+            var CompositionPath = GetActiveCompositionPackagePath(Engine);
+            if (String.IsNullOrWhiteSpace(CompositionPath) ||
+                !File.Exists(CompositionPath) ||
+                TryReadGitLink(CompositionPath) == null)
+                return CreateGitStatus("Commit and Push to Git", "This Composition is not linked to Git.", "arrow_up.png");
+
+            var Entry = GetCompositionGitStatus(CompositionPath);
+            if (Entry != null && Entry.Status != null && Entry.Status.HasRemoteUpdate)
+                return CreateGitStatus("Commit and Push to Git", "Remote Composition changes are available. Pull from Git before pushing.", "arrow_up.png");
+
+            if (Engine.ExistenceStatus == EExistenceStatus.Modified)
+                return CreateGitStatus("Commit and Push to Git *", "Unsaved Composition changes will be saved, committed, and pushed to Git.", "bell.png");
+
+            if (Entry == null)
+                return CreateGitStatus("Commit and Push to Git", "Linked Composition package. Waiting to check Git before enabling push state...", "arrow_up.png");
+
+            if (Entry.IsChecking && Entry.Status == null && Entry.ErrorMessage.IsAbsent())
+                return CreateGitStatus("Commit and Push to Git", "Checking linked Git remote before push...", "arrow_refresh.png");
+
+            if (!Entry.ErrorMessage.IsAbsent())
+            {
+                if (IsMissingRemoteBaselineOrBranch(Entry.ErrorMessage))
+                    return CreateGitStatus("Commit and Push to Git", "Publishes this Composition to the linked Git path for the first time.", "arrow_up.png");
+
+                return CreateGitStatus("Commit and Push to Git !", "Cannot check linked Git remote: " + Entry.ErrorMessage, "exclamation.png");
+            }
+
+            if (Entry.Status != null && !Entry.Status.BaselineExists)
+                return CreateGitStatus("Commit and Push to Git", "Publishes this Composition to the linked Git path for the first time.", "arrow_up.png");
+
+            if (Entry.Status != null && Entry.Status.HasLocalChangesToPush)
+                return CreateGitStatus("Commit and Push to Git *", "Local Composition package changes are ready to commit and push.", "bell.png");
+
+            return CreateGitStatus("Commit and Push to Git", "The linked Composition package has no local changes to push.", "arrow_up.png");
+        }
+
+        public static void RequestCompositionGitVisualStatusRefresh(DocumentEngine Document)
+        {
+            var Engine = Document as CompositionEngine;
+            var CompositionPath = GetActiveCompositionPackagePath(Engine);
+            if (String.IsNullOrWhiteSpace(CompositionPath) ||
+                !File.Exists(CompositionPath) ||
+                TryReadGitLink(CompositionPath) == null)
+                return;
+
+            EnsureCompositionRemoteStatusCheck(CompositionPath);
         }
 
         public static void RequestDomainPullVisualStatusRefresh(DocumentEngine Document)
@@ -333,6 +459,11 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
         private static WorkCommandVisualStatus CreateDomainPullStatus(string Name, string Summary, string Pictogram)
         {
+            return CreateGitStatus(Name, Summary, Pictogram);
+        }
+
+        private static WorkCommandVisualStatus CreateGitStatus(string Name, string Summary, string Pictogram)
+        {
             return new WorkCommandVisualStatus
             {
                 Name = Name,
@@ -340,6 +471,86 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 ToolTip = Summary,
                 Pictogram = Display.GetAppImage(Pictogram)
             };
+        }
+
+        private static void EnsureCompositionRemoteStatusCheck(string CompositionPath)
+        {
+            if (String.IsNullOrWhiteSpace(CompositionPath))
+                return;
+
+            var FullPath = Path.GetFullPath(CompositionPath);
+            lock (CompositionStatusSync)
+            {
+                GitStatusCacheEntry Entry;
+                if (!CompositionStatusByPath.TryGetValue(FullPath, out Entry))
+                {
+                    Entry = new GitStatusCacheEntry();
+                    CompositionStatusByPath[FullPath] = Entry;
+                }
+
+                if (Entry.IsChecking)
+                    return;
+
+                if (Entry.CheckedAtUtc != DateTime.MinValue &&
+                    DateTime.UtcNow - Entry.CheckedAtUtc < GitStatusRefreshInterval)
+                    return;
+
+                Entry.IsChecking = true;
+                Entry.ErrorMessage = null;
+            }
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                GitPackageRemoteStatus Status = null;
+                string ErrorMessage = null;
+                try
+                {
+                    Status = GitPackageSyncService.GetRemoteStatus(FullPath);
+                }
+                catch (Exception Problem)
+                {
+                    ErrorMessage = CreateGitStatusErrorMessage(Problem);
+                    Console.WriteLine("Cannot check linked Composition Git remote: " + ErrorMessage);
+                }
+
+                lock (CompositionStatusSync)
+                {
+                    GitStatusCacheEntry Entry;
+                    if (!CompositionStatusByPath.TryGetValue(FullPath, out Entry))
+                    {
+                        Entry = new GitStatusCacheEntry();
+                        CompositionStatusByPath[FullPath] = Entry;
+                    }
+
+                    Entry.Status = Status;
+                    Entry.ErrorMessage = ErrorMessage;
+                    Entry.CheckedAtUtc = DateTime.UtcNow;
+                    Entry.IsChecking = false;
+                }
+
+                NotifyCommandVisualStatusChanged();
+            });
+        }
+
+        private static GitStatusCacheEntry GetCompositionGitStatus(string CompositionPath)
+        {
+            var FullPath = Path.GetFullPath(CompositionPath);
+            lock (CompositionStatusSync)
+            {
+                GitStatusCacheEntry Entry;
+                return CompositionStatusByPath.TryGetValue(FullPath, out Entry) ? Entry.CreateSnapshot() : null;
+            }
+        }
+
+        private static void ClearCompositionGitStatus(string CompositionPath)
+        {
+            if (String.IsNullOrWhiteSpace(CompositionPath))
+                return;
+
+            lock (CompositionStatusSync)
+                CompositionStatusByPath.Remove(Path.GetFullPath(CompositionPath));
+
+            NotifyCommandVisualStatusChanged();
         }
 
         private static void EnsureDomainRemoteStatusCheck(string DomainPath, DomainGitTargetKind TargetKind)
@@ -350,10 +561,10 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             var FullPath = Path.GetFullPath(DomainPath);
             lock (DomainStatusSync)
             {
-                DomainGitStatusCacheEntry Entry;
+                GitStatusCacheEntry Entry;
                 if (!DomainStatusByPath.TryGetValue(FullPath, out Entry))
                 {
-                    Entry = new DomainGitStatusCacheEntry();
+                    Entry = new GitStatusCacheEntry();
                     DomainStatusByPath[FullPath] = Entry;
                 }
 
@@ -361,7 +572,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                     return;
 
                 if (Entry.CheckedAtUtc != DateTime.MinValue &&
-                    DateTime.UtcNow - Entry.CheckedAtUtc < DomainStatusRefreshInterval)
+                    DateTime.UtcNow - Entry.CheckedAtUtc < GitStatusRefreshInterval)
                     return;
 
                 Entry.IsChecking = true;
@@ -388,10 +599,10 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
                 lock (DomainStatusSync)
                 {
-                    DomainGitStatusCacheEntry Entry;
+                    GitStatusCacheEntry Entry;
                     if (!DomainStatusByPath.TryGetValue(FullPath, out Entry))
                     {
-                        Entry = new DomainGitStatusCacheEntry();
+                        Entry = new GitStatusCacheEntry();
                         DomainStatusByPath[FullPath] = Entry;
                     }
 
@@ -405,12 +616,12 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             });
         }
 
-        private static DomainGitStatusCacheEntry GetDomainGitStatus(string DomainPath)
+        private static GitStatusCacheEntry GetDomainGitStatus(string DomainPath)
         {
             var FullPath = Path.GetFullPath(DomainPath);
             lock (DomainStatusSync)
             {
-                DomainGitStatusCacheEntry Entry;
+                GitStatusCacheEntry Entry;
                 return DomainStatusByPath.TryGetValue(FullPath, out Entry) ? Entry.CreateSnapshot() : null;
             }
         }
@@ -428,14 +639,31 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
         private static string CreateDomainStatusErrorMessage(Exception Problem)
         {
+            var Message = CreateGitStatusErrorMessage(Problem);
+            if (IsDomainGitCredentialsUnavailable(Message))
+                return DomainGitCredentialsUnavailableMessage;
+
+            return Message;
+        }
+
+        private static string CreateGitStatusErrorMessage(Exception Problem)
+        {
             var Message = Problem == null ? null : Problem.Message;
             if (String.IsNullOrWhiteSpace(Message))
                 return "Unknown Git status check failure.";
 
-            if (IsDomainGitCredentialsUnavailable(Message))
-                return DomainGitCredentialsUnavailableMessage;
-
             return Message.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault().ToStringAlways(Message);
+        }
+
+        private static bool IsMissingRemoteBaselineOrBranch(string Message)
+        {
+            if (String.IsNullOrWhiteSpace(Message))
+                return false;
+
+            return Message.IndexOf("Linked Git branch", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("blank repository", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("baseline was not found", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("package was not found", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool IsDomainGitCredentialsUnavailable(string Message)
@@ -505,16 +733,16 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             }
         }
 
-        private sealed class DomainGitStatusCacheEntry
+        private sealed class GitStatusCacheEntry
         {
             public bool IsChecking;
             public DateTime CheckedAtUtc;
             public GitPackageRemoteStatus Status;
             public string ErrorMessage;
 
-            public DomainGitStatusCacheEntry CreateSnapshot()
+            public GitStatusCacheEntry CreateSnapshot()
             {
-                return new DomainGitStatusCacheEntry
+                return new GitStatusCacheEntry
                 {
                     IsChecking = this.IsChecking,
                     CheckedAtUtc = this.CheckedAtUtc,

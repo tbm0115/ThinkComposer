@@ -236,10 +236,15 @@ namespace Instrumind.ThinkComposer.Headless
                     return Succeed("Embedded Domain update preview completed." + Environment.NewLine + Preview.PreviewSummary(), null);
 
                 var ApplyReport = ApplyDomainJson(LoadResult.Result, TargetDomain, Document);
-                SaveComposition(LoadResult.Result.TargetComposition, Output);
+                var GitSyncLink = SamePath(Input, Output) ? ReadPackageGitSyncLink(Input, GitPackageLink.KindComposition) : null;
+                var EmbeddedDomainGitSyncLink = ReadDomainGitSyncLink(DomainInput) ?? ReadEmbeddedDomainGitSyncLink(Input);
+                SaveComposition(LoadResult.Result.TargetComposition, Output, GitSyncLink, EmbeddedDomainGitSyncLink);
 
                 return Succeed("Embedded Domain updated from: " + Path.GetFullPath(DomainInput) + Environment.NewLine +
                                "Output: " + Path.GetFullPath(Output) + Environment.NewLine +
+                               (EmbeddedDomainGitSyncLink == null
+                                ? ""
+                                : "Embedded Domain gitSync link copied from Domain source." + Environment.NewLine) +
                                ApplyReport.ApplySummary(), Path.GetFullPath(Output));
             });
         }
@@ -1240,17 +1245,64 @@ namespace Instrumind.ThinkComposer.Headless
             return OperationResult.Success(Materialized.Item1);
         }
 
-        private static void SaveComposition(Composition SourceComposition, string Output)
+        private static void SaveComposition(Composition SourceComposition, string Output,
+                                            GitPackageLink GitSyncLink = null,
+                                            GitPackageLink EmbeddedDomainGitSyncLink = null)
         {
             EnsureParentDirectory(Output);
             var Location = new Uri(Path.GetFullPath(Output), UriKind.Absolute);
 
             var Error = JsonPackagePersistence.StoreComposition(SourceComposition, Location,
                                                                 false, false,
-                                                                null, true);
+                                                                null, true,
+                                                                GitSyncLink,
+                                                                EmbeddedDomainGitSyncLink);
 
             if (!String.IsNullOrEmpty(Error))
                 throw new InvalidOperationException(Error);
+        }
+
+        private static GitPackageLink ReadDomainGitSyncLink(string DomainPackagePath)
+        {
+            return ReadPackageGitSyncLink(DomainPackagePath, GitPackageLink.KindDomain);
+        }
+
+        private static GitPackageLink ReadPackageGitSyncLink(string PackagePath, string PackageKind)
+        {
+            if (String.IsNullOrWhiteSpace(PackagePath) || !File.Exists(PackagePath))
+                return null;
+
+            try
+            {
+                var Link = JsonPackagePersistence.ReadGitSyncLink(PackagePath);
+                return Link != null &&
+                       Link.FindBaseline(PackageKind, GitPackageLink.RoleSelf) != null
+                       ? Link
+                       : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static GitPackageLink ReadEmbeddedDomainGitSyncLink(string CompositionPackagePath)
+        {
+            if (String.IsNullOrWhiteSpace(CompositionPackagePath) || !File.Exists(CompositionPackagePath))
+                return null;
+
+            try
+            {
+                var Link = JsonPackagePersistence.ReadEmbeddedDomainGitSyncLink(CompositionPackagePath);
+                return Link != null &&
+                       Link.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleSelf) != null
+                       ? Link
+                       : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static void SaveDomain(Domain SourceDomain, string Output, bool IncludeTemplateComposition = false)

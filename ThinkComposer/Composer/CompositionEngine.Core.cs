@@ -496,10 +496,13 @@ namespace Instrumind.ThinkComposer.Composer
             }
         }
 
-        private static GitSync.GitPackageLink ResolveEmbeddedDomainGitSyncLinkOnSave(Uri PreviousCompositionLocation, Uri DomainLocation)
+        private GitSync.GitPackageLink ResolveEmbeddedDomainGitSyncLinkOnSave(Uri PreviousCompositionLocation, Uri DomainLocation)
         {
             try
             {
+                if (HasDomainSelfBaseline(this.PendingEmbeddedDomainGitSyncLink))
+                    return this.PendingEmbeddedDomainGitSyncLink;
+
                 if (DomainLocation != null &&
                     !String.IsNullOrWhiteSpace(DomainLocation.LocalPath) &&
                     File.Exists(DomainLocation.LocalPath))
@@ -531,6 +534,17 @@ namespace Instrumind.ThinkComposer.Composer
             return Link != null &&
                    Link.FindBaseline(GitSync.GitPackageLink.KindDomain, GitSync.GitPackageLink.RoleSelf) != null;
         }
+
+        public bool RememberEmbeddedDomainGitSyncLink(GitSync.GitPackageLink Link)
+        {
+            if (!HasDomainSelfBaseline(Link))
+                return false;
+
+            this.PendingEmbeddedDomainGitSyncLink = Link;
+            return true;
+        }
+
+        private GitSync.GitPackageLink PendingEmbeddedDomainGitSyncLink = null;
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
         /// <summary>

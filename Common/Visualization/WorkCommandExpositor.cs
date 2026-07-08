@@ -124,6 +124,11 @@ namespace Instrumind.Common.Visualization
         public Func<DocumentEngine, Tuple<double, double, double, double>> RangeInitializer { get; set; }
 
         /// <summary>
+        /// Provides dynamic button text, pictogram, and tooltip state for commands backed by external state.
+        /// </summary>
+        public Func<DocumentEngine, WorkCommandVisualStatus> VisualStatusProvider { get; set; }
+
+        /// <summary>
         /// Indicates to redirect menu/command-source navigation to the root after execution.
         /// Thus, users must not to go back manually.
         /// </summary>
@@ -156,5 +161,13 @@ namespace Instrumind.Common.Visualization
         }
 
         #endregion
+    }
+
+    public sealed class WorkCommandVisualStatus
+    {
+        public string Name { get; set; }
+        public string Summary { get; set; }
+        public string ToolTip { get; set; }
+        public ImageSource Pictogram { get; set; }
     }
 }

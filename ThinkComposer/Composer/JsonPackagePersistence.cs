@@ -230,6 +230,53 @@ namespace Instrumind.ThinkComposer.Composer
             }
         }
 
+        public static string ComputeAuthoritativeJsonHash(string FilePath, string PackageKind = null)
+        {
+            if (String.IsNullOrWhiteSpace(FilePath) || !File.Exists(FilePath))
+                throw new FileNotFoundException("Package file not found.", FilePath);
+
+            using (var Pack = Package.Open(Path.GetFullPath(FilePath), FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                var Kind = PackageKind;
+                if (String.IsNullOrWhiteSpace(Kind))
+                    Kind = Pack.PartExists(CompositionJsonPartUri) ? CompositionKind
+                         : Pack.PartExists(DomainJsonPartUri) ? DomainKind
+                         : null;
+
+                var Parts = new List<Tuple<Uri, bool>>();
+                if (String.Equals(Kind, CompositionKind, StringComparison.OrdinalIgnoreCase))
+                {
+                    Parts.Add(Tuple.Create(CompositionJsonPartUri, true));
+                    Parts.Add(Tuple.Create(DomainJsonPartUri, true));
+                }
+                else
+                    if (String.Equals(Kind, DomainKind, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Parts.Add(Tuple.Create(DomainJsonPartUri, true));
+                        Parts.Add(Tuple.Create(TemplateCompositionJsonPartUri, false));
+                    }
+                    else
+                        throw new InvalidDataException("Cannot determine package kind for authoritative JSON hash.");
+
+                var Builder = new StringBuilder();
+                foreach (var Part in Parts)
+                {
+                    if (!Pack.PartExists(Part.Item1))
+                    {
+                        if (Part.Item2)
+                            throw new InvalidDataException("Package is missing authoritative JSON part: " + Part.Item1);
+
+                        Builder.Append(Part.Item1).Append("=<missing>\n");
+                        continue;
+                    }
+
+                    Builder.Append(Part.Item1).Append("=").Append(HashPart(Pack, Part.Item1)).Append("\n");
+                }
+
+                return HashBytes(Utf8NoBom.GetBytes(Builder.ToString()));
+            }
+        }
+
         public static void WriteGitSyncLink(string FilePath, GitPackageLink GitSyncLink)
         {
             if (String.IsNullOrWhiteSpace(FilePath) || !File.Exists(FilePath))

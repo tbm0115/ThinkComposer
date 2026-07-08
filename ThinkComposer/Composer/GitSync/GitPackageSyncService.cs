@@ -91,6 +91,45 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
             return Builder.ToString().TrimEnd();
         }
 
+        public static GitPackageRemoteStatus GetRemoteStatus(string Input)
+        {
+            ValidateInputFile(Input);
+
+            var InputPath = Path.GetFullPath(Input);
+            var Inspection = JsonPackagePersistence.Inspect(InputPath);
+            var PackageKind = RequirePackageKind(Inspection);
+            var Link = RequireGitLink(InputPath);
+            var Baseline = RequireSelfBaseline(Link, PackageKind);
+            var Repository = EnsureRepository(Link);
+            var RemoteHead = GetHeadCommit(Repository);
+            var SourcePath = ResolveRepositoryFile(Repository, Baseline.Path);
+            var SourceExists = File.Exists(SourcePath);
+            var LocalHash = JsonPackagePersistence.ComputeAuthoritativeJsonHash(InputPath, PackageKind);
+            var RemoteHash = SourceExists
+                             ? JsonPackagePersistence.ComputeAuthoritativeJsonHash(SourcePath, PackageKind)
+                             : null;
+            var State = LoadState();
+            var Entry = State.Get(EntryKey(Link, Baseline));
+
+            return new GitPackageRemoteStatus
+            {
+                PackagePath = InputPath,
+                PackageKind = PackageKind,
+                RemoteDisplayUrl = GitPackageLink.RedactRemoteUrl(Link.Remote.Url),
+                Branch = Link.Remote.Branch,
+                BaselinePath = Baseline.Path,
+                RemoteHead = RemoteHead,
+                PreviousSeenHead = Entry == null ? null : Entry.RemoteCommit,
+                BaselineExists = SourceExists,
+                LocalAuthoritativeJsonHash = LocalHash,
+                RemoteAuthoritativeJsonHash = RemoteHash,
+                HasRemoteUpdate = SourceExists &&
+                                  !String.IsNullOrWhiteSpace(LocalHash) &&
+                                  !String.IsNullOrWhiteSpace(RemoteHash) &&
+                                  !String.Equals(LocalHash, RemoteHash, StringComparison.OrdinalIgnoreCase)
+            };
+        }
+
         public static GitPackagePullResult PullPackage(string Input, string Output, bool InPlace, string BackupDirectory)
         {
             ValidateInputFile(Input);
@@ -648,5 +687,20 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         public string BackupPath;
         public string RemoteHead;
         public string Message;
+    }
+
+    public sealed class GitPackageRemoteStatus
+    {
+        public string PackagePath;
+        public string PackageKind;
+        public string RemoteDisplayUrl;
+        public string Branch;
+        public string BaselinePath;
+        public string RemoteHead;
+        public string PreviousSeenHead;
+        public bool BaselineExists;
+        public string LocalAuthoritativeJsonHash;
+        public string RemoteAuthoritativeJsonHash;
+        public bool HasRemoteUpdate;
     }
 }

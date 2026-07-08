@@ -1195,7 +1195,13 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
                             }
                             else
                                 if (Expositor.Value.OptionsGetter == null)
-                                    NewControl = new PaletteButton(Expositor.Value);
+                                {
+                                    var CommandButton = new PaletteButton(Expositor.Value);
+                                    AttachCommandVisualStatus(Area.TechName + "." + Group.TechName + "." + ExpositorReg.Key,
+                                                              Expositor.Value,
+                                                              CommandButton);
+                                    NewControl = CommandButton;
+                                }
                                 else
                                     if (Expositor.Value.MultiOptionSelectorStyle == ECommandExpositorStyle.ComboBox)
                                     {
@@ -1562,6 +1568,58 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
         *********************************************************************************/
 
         private static Dictionary<string, Action> MenuToolbarControlsUpdater = new Dictionary<string, Action>();
+
+        private static void AttachCommandVisualStatus(string Key, WorkCommandExpositor Expositor, PaletteButton Button)
+        {
+            if (Expositor == null || Button == null || Expositor.VisualStatusProvider == null)
+                return;
+
+            Action Refresh = () => ApplyCommandVisualStatus(Expositor, Button);
+            EventHandler RequeryHandler = null;
+            var IsSubscribed = false;
+            RequeryHandler = (sender, args) => Refresh();
+
+            Button.Loaded +=
+                ((sender, args) =>
+                {
+                    Refresh();
+                    if (!IsSubscribed)
+                    {
+                        CommandManager.RequerySuggested += RequeryHandler;
+                        IsSubscribed = true;
+                    }
+                });
+
+            Button.Unloaded +=
+                ((sender, args) =>
+                {
+                    if (IsSubscribed)
+                    {
+                        CommandManager.RequerySuggested -= RequeryHandler;
+                        IsSubscribed = false;
+                    }
+                });
+
+            MenuToolbarControlsUpdater.AddOrReplace(Key, Refresh);
+        }
+
+        private static void ApplyCommandVisualStatus(WorkCommandExpositor Expositor, PaletteButton Button)
+        {
+            WorkCommandVisualStatus Status = null;
+            try
+            {
+                Status = Expositor.VisualStatusProvider(WorkspaceDirector.ActiveDocumentEngine);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Cannot update command visual status for '" + Expositor.TechName + "': " + Problem.Message);
+            }
+
+            Button.ButtonText = Status == null || Status.Name.IsAbsent() ? Expositor.Name : Status.Name;
+            Button.ButtonImage = Status == null || Status.Pictogram == null ? Expositor.Pictogram : Status.Pictogram;
+            Button.Summary = Status == null || Status.Summary.IsAbsent() ? Expositor.Summary : Status.Summary;
+            Button.SetToolTip(Status == null || Status.ToolTip.IsAbsent() ? Button.Summary : Status.ToolTip);
+        }
 
         public static void UpdateMenuToolbar()
         {

@@ -148,7 +148,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 throw new FileNotFoundException("Linked package was not found in the Git repository: " + Baseline.Path, SourcePath);
 
             EnsureParentDirectory(OutputPath);
-            var TempPath = Path.Combine(Path.GetDirectoryName(OutputPath), Path.GetFileName(OutputPath) + ".gitsync.tmp");
+            var TempPath = CreatePackageTempPath(OutputPath);
             File.Copy(SourcePath, TempPath, true);
 
             try
@@ -299,6 +299,16 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private static string StatePath
         {
             get { return Path.Combine(GitSyncRoot, StateFileName); }
+        }
+
+        private static string BackupsRoot
+        {
+            get { return Path.Combine(GitSyncRoot, "backups"); }
+        }
+
+        private static string TempRoot
+        {
+            get { return Path.Combine(GitSyncRoot, "temp"); }
         }
 
         private static string EnsureRepository(GitPackageLink Link)
@@ -514,16 +524,25 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private static string CreateBackup(string InputPath, string BackupDirectory)
         {
             var DirectoryPath = String.IsNullOrWhiteSpace(BackupDirectory)
-                                ? Path.GetDirectoryName(InputPath)
+                                ? BackupsRoot
                                 : Path.GetFullPath(BackupDirectory);
             Directory.CreateDirectory(DirectoryPath);
 
             var BackupPath = Path.Combine(DirectoryPath,
                                           Path.GetFileName(InputPath) + "." +
-                                          DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) +
+                                          DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture) +
                                           ".gitsync.bak");
             File.Copy(InputPath, BackupPath, true);
             return BackupPath;
+        }
+
+        private static string CreatePackageTempPath(string OutputPath)
+        {
+            Directory.CreateDirectory(TempRoot);
+            return Path.Combine(TempRoot,
+                                Path.GetFileName(OutputPath) + "." +
+                                Guid.NewGuid().ToString("N") +
+                                ".gitsync.tmp");
         }
 
         private static void EnsureParentDirectory(string FilePath)

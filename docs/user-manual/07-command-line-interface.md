@@ -241,10 +241,10 @@ Inspect the link and remote status:
 thinkcomposer git status --input "Models\ServiceMap.tcom"
 ```
 
-Pull a linked package. In-place pull creates a backup before replacing the package:
+Pull a linked package. In-place pull creates a backup before replacing the package. If `--backup-dir` is omitted, the backup is stored in the ThinkComposer user application data folder under `GitSync\backups`; temporary pull staging files are stored under `GitSync\temp`, not beside the `.tcom` or `.tdom`.
 
 ```cmd
-thinkcomposer git pull --input "Models\ServiceMap.tcom" --output "Models\ServiceMap.tcom" --in-place --backup-dir "Backups"
+thinkcomposer git pull --input "Models\ServiceMap.tcom" --output "Models\ServiceMap.tcom" --in-place
 ```
 
 Push is supported for Composition packages:

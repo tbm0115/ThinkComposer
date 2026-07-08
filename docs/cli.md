@@ -77,6 +77,8 @@ The manifest stores only `remote.url`, `remote.branch`, and `baselines[]` entrie
 
 `git push` is supported for `.tcom` compositions only. It validates the package, refuses to push when the remote branch advanced since local sync state, commits the linked `.tcom` path, and pushes. `.tdom` packages are link/pull only in this version; update a Composition from a pulled Domain with `domain update-embedded`. In the desktop UI, Domain `Pull from Git` can also use a `.tcom` package's `embeddedDomainGitSync` link to pull the source `.tdom` and run the embedded-domain update flow.
 
+For a new blank remote repository, link the package and run `git push` first; ThinkComposer creates the linked branch and baseline package path during that first push. `git pull` requires the linked branch and package path to exist already, and reports a clear warning when the remote is still empty.
+
 ## Exit Codes
 
 `0` means success. `1` means usage, validation, or expected operation failure. `2` means an unexpected exception escaped the operation wrapper.

@@ -253,6 +253,8 @@ Push is supported for Composition packages:
 thinkcomposer git push --input "Models\ServiceMap.tcom" --message "Update service map"
 ```
 
+For a new blank remote repository, link the package and push first. ThinkComposer creates the linked branch and baseline package path during the first push. Pull requires the linked branch and package path to exist already, and reports a warning when the remote is still empty.
+
 Domain packages are pull-only in this version. To update a Composition's embedded Domain after pulling a `.tdom`, use `thinkcomposer domain update-embedded`. In the desktop UI, Domain `Pull from Git` can use a Composition package's `embeddedDomainGitSync` link to pull and merge the embedded Domain source directly.
 
 ## Reports

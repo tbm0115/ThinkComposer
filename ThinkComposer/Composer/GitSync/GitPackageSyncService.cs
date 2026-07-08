@@ -239,13 +239,14 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
             var Link = RequireGitLink(InputPath);
             var Baseline = RequireSelfBaseline(Link, GitPackageLink.KindComposition);
-            var Repository = EnsureRepository(Link);
-            var RemoteHead = GetHeadCommit(Repository);
+            var Repository = EnsureRepository(Link, false, true);
+            var RemoteHead = TryGetHeadCommit(Repository);
             var State = LoadState();
             var Existing = State.Get(EntryKey(Link, Baseline));
 
             if (Existing != null &&
                 !String.IsNullOrWhiteSpace(Existing.RemoteCommit) &&
+                !String.IsNullOrWhiteSpace(RemoteHead) &&
                 !String.Equals(Existing.RemoteCommit, RemoteHead, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Remote branch advanced since the last local sync. Pull from Git before pushing.");
 
@@ -264,7 +265,7 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
             RunGit(Repository, "add", "--", RelativePath);
             RunGit(Repository, "commit", "-m", String.IsNullOrWhiteSpace(Message) ? "Update ThinkComposer composition" : Message, "--", RelativePath);
-            RunGit(Repository, "push", "origin", Link.Remote.Branch);
+            RunGit(Repository, "push", "-u", "origin", Link.Remote.Branch);
 
             var NewHead = GetHeadCommit(Repository);
             State.Put(CreateStateEntry(Link, Baseline, NewHead, InputPath));
@@ -370,10 +371,15 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
 
         private static string EnsureRepository(GitPackageLink Link)
         {
-            return EnsureRepository(Link, false);
+            return EnsureRepository(Link, false, false);
         }
 
         private static string EnsureRepository(GitPackageLink Link, bool NonInteractive)
+        {
+            return EnsureRepository(Link, NonInteractive, false);
+        }
+
+        private static string EnsureRepository(GitPackageLink Link, bool NonInteractive, bool AllowUnbornRemote)
         {
             Link.Validate();
             Directory.CreateDirectory(RepositoriesRoot);
@@ -386,14 +392,41 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
                 if (Directory.Exists(Repository) && Directory.EnumerateFileSystemEntries(Repository).Any())
                     throw new InvalidOperationException("Git sync cache directory exists but is not a Git repository: " + Repository);
 
-                RunGit(null, NonInteractive, "clone", "--branch", Link.Remote.Branch, "--single-branch", Link.Remote.Url, Repository);
+                try
+                {
+                    RunGit(null, NonInteractive, "clone", "--branch", Link.Remote.Branch, "--single-branch", Link.Remote.Url, Repository);
+                }
+                catch (InvalidOperationException Problem)
+                {
+                    if (!IsMissingRemoteBranchFailure(Problem.Message))
+                        throw;
+
+                    if (!AllowUnbornRemote)
+                        throw CreateMissingRemoteBranchException(Link, Problem);
+
+                    PrepareUnbornRepository(Repository, Link, NonInteractive);
+                }
             }
             else
             {
-                RunGit(Repository, NonInteractive, "fetch", "origin", Link.Remote.Branch);
-                RunGit(Repository, NonInteractive, "checkout", Link.Remote.Branch);
-                RunGit(Repository, NonInteractive, "reset", "--hard", "origin/" + Link.Remote.Branch);
-                RunGit(Repository, NonInteractive, "clean", "-fd");
+                try
+                {
+                    RunGit(Repository, NonInteractive, "fetch", "origin", Link.Remote.Branch);
+                    RunGit(Repository, NonInteractive, "checkout", Link.Remote.Branch);
+                    RunGit(Repository, NonInteractive, "reset", "--hard", "origin/" + Link.Remote.Branch);
+                    RunGit(Repository, NonInteractive, "clean", "-fd");
+                }
+                catch (InvalidOperationException Problem)
+                {
+                    if (!IsMissingRemoteBranchFailure(Problem.Message))
+                        throw;
+
+                    if (!AllowUnbornRemote)
+                        throw CreateMissingRemoteBranchException(Link, Problem);
+
+                    RunGit(Repository, NonInteractive, "checkout", "-B", Link.Remote.Branch);
+                    RunGit(Repository, NonInteractive, "clean", "-fd");
+                }
             }
 
             return Repository;
@@ -402,6 +435,82 @@ namespace Instrumind.ThinkComposer.Composer.GitSync
         private static string GetHeadCommit(string Repository)
         {
             return RunGit(Repository, "rev-parse", "HEAD").Output.Trim();
+        }
+
+        private static string TryGetHeadCommit(string Repository)
+        {
+            try
+            {
+                return GetHeadCommit(Repository);
+            }
+            catch (InvalidOperationException Problem)
+            {
+                if (IsUnbornHeadFailure(Problem.Message))
+                    return null;
+
+                throw;
+            }
+        }
+
+        private static void PrepareUnbornRepository(string Repository, GitPackageLink Link, bool NonInteractive)
+        {
+            Directory.CreateDirectory(Repository);
+
+            if (!Directory.Exists(Path.Combine(Repository, ".git")))
+            {
+                RunGit(Repository, NonInteractive, "init");
+                EnsureOriginRemote(Repository, Link, NonInteractive);
+            }
+            else
+            {
+                EnsureOriginRemote(Repository, Link, NonInteractive);
+            }
+
+            RunGit(Repository, NonInteractive, "checkout", "-B", Link.Remote.Branch);
+            RunGit(Repository, NonInteractive, "clean", "-fd");
+        }
+
+        private static void EnsureOriginRemote(string Repository, GitPackageLink Link, bool NonInteractive)
+        {
+            var Remotes = RunGit(Repository, NonInteractive, "remote").Output
+                          .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (Remotes.Any(Remote => String.Equals(Remote.Trim(), "origin", StringComparison.OrdinalIgnoreCase)))
+                RunGit(Repository, NonInteractive, "remote", "set-url", "origin", Link.Remote.Url);
+            else
+                RunGit(Repository, NonInteractive, "remote", "add", "origin", Link.Remote.Url);
+        }
+
+        private static InvalidOperationException CreateMissingRemoteBranchException(GitPackageLink Link, Exception Problem)
+        {
+            return new InvalidOperationException("Linked Git branch '" + Link.Remote.Branch + "' was not found at " +
+                                                GitPackageLink.RedactRemoteUrl(Link.Remote.Url) + "." +
+                                                " If this is a blank repository, use Commit and Push to Git first." +
+                                                " Otherwise relink the package to an existing branch.", Problem);
+        }
+
+        private static bool IsMissingRemoteBranchFailure(string Message)
+        {
+            if (String.IsNullOrWhiteSpace(Message))
+                return false;
+
+            return (Message.IndexOf("Remote branch", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    Message.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0) ||
+                   Message.IndexOf("couldn't find remote ref", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("could not find remote ref", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("repository is empty", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("empty repository", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsUnbornHeadFailure(string Message)
+        {
+            if (String.IsNullOrWhiteSpace(Message))
+                return false;
+
+            return Message.IndexOf("ambiguous argument 'HEAD'", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("unknown revision or path not in the working tree", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("needed a single revision", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   Message.IndexOf("not a valid object name", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static GitPackageBaseline RequireSelfBaseline(GitPackageLink Link, string PackageKind)

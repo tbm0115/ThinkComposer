@@ -199,10 +199,11 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 ## AI-Readable Container Snapshots
 
 - [ ] Save a `.tcom` and inspect it as a package/zip.
-- [ ] Confirm `/Composition.bin`, `/Interchange/Composition.json`, `/Interchange/Domain.json`, `/Interchange/manifest.json`, and one or more `/Previews/views/*.png` entries exist when the composition has renderable views.
+- [ ] Confirm `/manifest.json`, `/Composition.json`, `/Domain.json`, optional `/Composition.bin`, `/Interchange/Composition.json`, `/Interchange/Domain.json`, `/Interchange/manifest.json`, and one or more `/Previews/views/*.png` entries exist when the composition has renderable views.
+- [ ] Parse `/manifest.json` and confirm `packageKind: composition`, `persistenceFormat: json`, authoritative part metadata, and legacy fallback metadata.
 - [ ] Parse `/Interchange/manifest.json`, `/Interchange/Composition.json`, and `/Interchange/Domain.json` with `ConvertFrom-Json`.
-- [ ] Open the saved `.tcom` normally and confirm load behavior still uses the native binary document without requiring the sidecar JSON.
-- [ ] Save a `.tdom` without a template composition and confirm `/Domain.bin`, `/Interchange/Domain.json`, and `/Interchange/manifest.json` exist, with template composition sidecars skipped as a manifest/log warning.
+- [ ] Open the saved `.tcom` normally and confirm load behavior uses root `/Composition.json` without requiring the sidecar JSON or binary fallback.
+- [ ] Save a `.tdom` without a template composition and confirm `/manifest.json`, `/Domain.json`, optional `/Domain.bin`, `/Interchange/Domain.json`, and `/Interchange/manifest.json` exist, with template composition sidecars skipped as a manifest/log warning.
 - [ ] Save a `.tdom` with the template composition option enabled and confirm `/Interchange/TemplateComposition.json` and any safe template view previews are present.
 - [ ] For a large composition, confirm preview generation is capped/skipped safely and save still succeeds with sidecar warnings rather than failing the native save.
 
@@ -210,6 +211,7 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 
 - [ ] Parse `docs/thinkcomposer-json-interchange.schema.json` with `ConvertFrom-Json`.
 - [ ] Parse `docs/thinkcomposer-domain-json-interchange.schema.json` with `ConvertFrom-Json`.
+- [ ] Parse `docs/thinkcomposer-package-manifest.schema.json` with `ConvertFrom-Json`.
 - [ ] Parse `docs/thinkcomposer-container-manifest.schema.json` with `ConvertFrom-Json`.
 - [ ] Parse every `samples/*.sample.json` file with `ConvertFrom-Json`.
 - [ ] Sync the bundled skill references under `docs/thinkcomposer-plugin/skills/thinkcomposer-json-interchange/references/`.

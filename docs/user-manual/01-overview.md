@@ -33,9 +33,9 @@ It can be used for:
 - knowledge bases with attached details
 - structured reports
 - code or text generation from model data
-- JSON-assisted interchange with external tools and AI workflows
+- JSON-backed native persistence and JSON-assisted interchange with external tools and AI workflows
 
-The application remains a native Windows desktop tool built with Windows Presentation Foundation. The native `.tcom` and `.tdom` files are still the authoritative project formats; JSON interchange is an editable exchange layer layered on top of those native formats.
+The application remains a native Windows desktop tool built with Windows Presentation Foundation. Modern `.tcom` and `.tdom` files are package containers whose authoritative saved payloads are JSON. The explicit JSON import/export commands remain editable exchange workflows layered on top of normal Open/Save.
 
 ## How ThinkComposer Thinks About Work
 

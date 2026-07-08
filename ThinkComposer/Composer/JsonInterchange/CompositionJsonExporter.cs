@@ -31,6 +31,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             General.ContractRequiresNotNull(Composition);
 
             var Warnings = new List<string>();
+            Warnings.Add("Custom visual formatting, store-box references, and native/binary-only content are exported only when represented by documented JSON fields; JSON persistence does not reconstruct unsupported native-only payloads.");
             var Document = new CompositionJsonDocument();
             Document.ExportedAtUtc = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
             Document.Composition = ExportComposition(Composition);
@@ -282,7 +283,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                         else
                         {
                             Exported.Text = Detail.ToStringAlways();
-                            Warnings.Add("Detail '" + DetailSortKey(Detail) + "' on idea '" + Idea.TechName + "' was exported as text only; import will preserve the native detail.");
+                            Warnings.Add("Detail '" + DetailSortKey(Detail) + "' on idea '" + Idea.TechName + "' was exported as text only; JSON persistence rehydrates only the exported text representation.");
                         }
                     }
                 }
@@ -388,7 +389,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Target.Source = Attachment.Source;
             Target.MimeType = Attachment.MimeType;
             Target.Text = Attachment.ToString();
-            Warnings.Add("Attachment '" + Attachment.Source.ToStringAlways() + "' was exported as metadata only; binary content is preserved only in the native .tcom file.");
+            Warnings.Add("Attachment '" + Attachment.Source.ToStringAlways() + "' was exported as metadata only; binary content is not inlined in Composition JSON and is not reconstructed by JSON persistence.");
         }
 
         private static CompositionJsonView ExportView(View View, Composition Composition, List<string> Warnings)

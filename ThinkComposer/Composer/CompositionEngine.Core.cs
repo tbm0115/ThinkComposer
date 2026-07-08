@@ -104,19 +104,45 @@ namespace Instrumind.ThinkComposer.Composer
 
                 try
                 {
-                    // Load Composition's document package from Uri
-                    var LoadResult = LoadFromLocation<ISphereModel>(FileDataType.FileTypeComposition.Name, SourceLocation, CompositionDocumentUri);
-                    var Content = LoadResult.Item1;
+                    ResetJsonPersistenceLoadDiagnostics();
+                    var JsonLoad = TryLoadCompositionFromJsonPackage(Engine, SourceLocation);
+                    if (JsonLoad.Loaded)
+                    {
+                        TargetComposition = JsonLoad.Content;
+                        MarkJsonPersistenceLoad(true, false, "Loaded composition from /Composition.json.");
+                    }
+                    else
+                    {
+                        if (JsonLoad.HasAuthoritativeJson && !JsonLoad.HasLegacyBinaryFallback)
+                            throw new ExternalAnomaly(JsonLoad.Error, JsonLoad.Exception);
 
-                    if (Content == null)
-                        return Tuple.Create<CompositionEngine, string>(null, LoadResult.Item2);
+                        if (JsonLoad.HasAuthoritativeJson && JsonLoad.HasLegacyBinaryFallback)
+                        {
+                            Console.WriteLine("JSON persistence warning: {0} Falling back to legacy /Composition.bin.", JsonLoad.Error);
+                            MarkJsonPersistenceLoad(false, true, JsonLoad.Error);
+                        }
 
-                    TargetComposition = Content as Composition;
+                        if (!JsonLoad.HasAuthoritativeJson)
+                        {
+                            Console.WriteLine("Legacy binary-backed composition package loaded; saving will migrate it to JSON-authoritative persistence.");
+                            MarkJsonPersistenceLoad(false, false, "Loaded legacy binary-only composition package.");
+                        }
+
+                        // Load Composition's legacy document package from Uri
+                        var LoadResult = LoadFromLocation<ISphereModel>(FileDataType.FileTypeComposition.Name, SourceLocation, CompositionDocumentUri);
+                        var Content = LoadResult.Item1;
+
+                        if (Content == null)
+                            return Tuple.Create<CompositionEngine, string>(null, LoadResult.Item2);
+
+                        TargetComposition = Content as Composition;
+                    }
 
                     if (TargetComposition == null)
                         throw new ExternalAnomaly("Cannot load Composition from the specified location.", SourceLocation);
 
-                    Engine.TargetComposition = TargetComposition;
+                    if (!Object.ReferenceEquals(Engine.TargetComposition, TargetComposition))
+                        Engine.TargetComposition = TargetComposition;
                     Engine.Location = SourceLocation;
 
                     // IMPORTANT: This Engine will overwrite its Global-ID with that of the loaded Compositon.
@@ -198,7 +224,32 @@ namespace Instrumind.ThinkComposer.Composer
 
             try
             {
-                Result = LoadFromLocation<ISphereModel>(FileDataType.FileTypeDomain.Name, DomainLocation, DomainsManager.DomainDocumentUri);
+                ResetJsonPersistenceLoadDiagnostics();
+                var JsonLoad = TryLoadDomainFromJsonPackage(DomainLocation);
+                if (JsonLoad.Loaded)
+                {
+                    Result = Tuple.Create<ISphereModel, string>(JsonLoad.Content, "");
+                    MarkJsonPersistenceLoad(true, false, "Loaded domain from /Domain.json.");
+                }
+                else
+                {
+                    if (JsonLoad.HasAuthoritativeJson && !JsonLoad.HasLegacyBinaryFallback)
+                        throw new ExternalAnomaly(JsonLoad.Error, JsonLoad.Exception);
+
+                    if (JsonLoad.HasAuthoritativeJson && JsonLoad.HasLegacyBinaryFallback)
+                    {
+                        Console.WriteLine("JSON persistence warning: {0} Falling back to legacy /Domain.bin.", JsonLoad.Error);
+                        MarkJsonPersistenceLoad(false, true, JsonLoad.Error);
+                    }
+
+                    if (!JsonLoad.HasAuthoritativeJson)
+                    {
+                        Console.WriteLine("Legacy binary-backed domain package loaded; saving will migrate it to JSON-authoritative persistence.");
+                        MarkJsonPersistenceLoad(false, false, "Loaded legacy binary-only domain package.");
+                    }
+
+                    Result = LoadFromLocation<ISphereModel>(FileDataType.FileTypeDomain.Name, DomainLocation, DomainsManager.DomainDocumentUri);
+                }
             }
             catch (Exception Problem)
             {
@@ -406,11 +457,9 @@ namespace Instrumind.ThinkComposer.Composer
                             ? null
                             : this.TargetComposition.ActiveView.ToVisualSnapshot(PART_SNAPSHOT_WIDTH, PART_SNAPSHOT_HEIGHT));
 
-            var Result = StoreToLocation<ISphereModel>(this.TargetComposition, Composition.__ClassDefinitor.Name,
-                                                       this.TargetComposition.Classification.ContentTypeCode, DocumentLocation,
-                                                       CompositionDocumentUri, RegisterAsRecentDoc, false,
-                                                       this.TargetComposition, Snapshot, true,
-                                                       pack => ContainerSnapshotService.WriteCompositionSnapshot(pack, this.TargetComposition, CompositionDocumentUri));
+            var Result = JsonPackagePersistence.StoreComposition(this.TargetComposition, DocumentLocation,
+                                                                 RegisterAsRecentDoc, false,
+                                                                 Snapshot, true);
 
             if (Result.IsAbsent() && ResetExistenceStatus)
                 this.ExistenceStatus = EExistenceStatus.NotModified;

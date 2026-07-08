@@ -1,8 +1,8 @@
 # Command-Line Interface
 
-ThinkComposer includes a headless command-line interface for repeatable import, export, report, and output-generation work. The desktop application remains the primary visual editor. Use the CLI when you want the same operations available from Command Prompt, scripts, build jobs, or other automation.
+ThinkComposer includes a headless command-line interface for repeatable import, export, package persistence validation, report, and output-generation work. The desktop application remains the primary visual editor. Use the CLI when you want the same operations available from Command Prompt, scripts, build jobs, or other automation.
 
-The native `.tcom` and `.tdom` files remain the source of truth. JSON, PDF, XPS, and generated files are exchange or publication artifacts.
+Modern `.tcom` and `.tdom` files use root JSON payloads as their native persistence source of truth. Manual JSON exports are still exchange artifacts, while PDF, XPS, and generated files are publication/output artifacts.
 
 Related manual topics:
 
@@ -22,6 +22,7 @@ Use the CLI for:
 - importing reviewed Composition JSON back into a saved `.tcom`
 - exporting a native `.tdom` domain or a composition's embedded domain to JSON
 - importing Domain JSON into a `.tdom` or into the embedded domain of a `.tcom`
+- inspecting, converting, and validating JSON-authoritative `.tcom` and `.tdom` packages
 - generating a standard composition report as PDF or XPS
 - generating files from output templates without opening the desktop shell
 
@@ -173,6 +174,30 @@ thinkcomposer domain import-json --input "Domains\ServiceDesign.tdom" --json "Pa
 ```
 
 For domain concepts, see [Domains](02-base-model.md#domains), [Output Templates](02-base-model.md#output-templates), and [External Languages](02-base-model.md#external-languages). For merge behavior, see [Domain JSON Interchange](04-current-features.md#domain-json-interchange), [Embedded Domain Updates](04-current-features.md#embedded-domain-updates), and the detailed [Domain JSON Interchange reference](../domain-json-interchange.md).
+
+## Package Persistence
+
+Inspect a native package:
+
+```cmd
+thinkcomposer package inspect --input "Models\ServiceMap.tcom"
+```
+
+Convert a legacy binary-backed composition or domain to the JSON-authoritative package format:
+
+```cmd
+thinkcomposer composition convert-json-persistence --input "Models\LegacyMap.tcom" --output "Models\LegacyMap.json-persistence.tcom"
+thinkcomposer domain convert-json-persistence --input "Domains\LegacyDomain.tdom" --output "Domains\LegacyDomain.json-persistence.tdom"
+```
+
+Validate normal JSON-first load/save behavior:
+
+```cmd
+thinkcomposer composition validate-json-persistence --input "Models\ServiceMap.tcom" --output-dir "Validation\ServiceMap"
+thinkcomposer domain validate-json-persistence --input "Domains\ServiceDesign.tdom" --output-dir "Validation\ServiceDesign"
+```
+
+The validation commands save a modern package, reopen it through normal load, fail if binary fallback was used, save again, and compare canonical root JSON payloads.
 
 ## Reports
 

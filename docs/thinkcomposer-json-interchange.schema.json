@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://thinkcomposer.local/schemas/thinkcomposer-json-interchange-1.schema.json",
   "title": "ThinkComposer JSON Interchange",
-  "description": "Schema for ThinkComposer.JsonInterchange formatVersion 1. Use this schema to validate full-state exports/merges and GPT-authored patch-operation documents. Native .tcom remains the authoritative ThinkComposer file format; this JSON format is an editable interchange layer.",
+  "description": "Schema for ThinkComposer.JsonInterchange formatVersion 1. Use this schema to validate full-state composition payloads stored at /Composition.json in modern .tcom packages, manual full-state exports/merges, and GPT-authored patch-operation documents.",
   "type": "object",
   "required": [
     "format",

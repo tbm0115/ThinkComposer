@@ -176,11 +176,10 @@ namespace Instrumind.ThinkComposer.Definitor
 
                     TargetDomain.SetTemplateSaving(SaveTemplate);
 
-                    var Result = DocumentEngine.StoreToLocation<Domain>(TargetDomain, Domain.__ClassDefinitor.Name,
-                                                                        TargetDomain.Classification.ContentTypeCode,
-                                                                        TargetRoute, DomainDocumentUri, true, false,
-                                                                        TargetDomain, Snapshot, true,
-                                                                        pack => ContainerSnapshotService.WriteDomainSnapshot(pack, TargetDomain, DomainDocumentUri, SaveTemplate));
+                    var Result = JsonPackagePersistence.StoreDomain(TargetDomain, TargetRoute,
+                                                                    true, false,
+                                                                    Snapshot, true,
+                                                                    SaveTemplate);
 
                     if (!Result.IsAbsent())
                     {

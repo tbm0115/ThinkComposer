@@ -14,9 +14,9 @@ There are two current formats:
 - Composition JSON: `format: "ThinkComposer.JsonInterchange"` for active `.tcom` composition imports/exports.
 - Domain JSON: `format: "ThinkComposer.DomainJsonInterchange"` for `.tdom` domain imports/exports and safe embedded-domain updates into an active `.tcom`.
 
-Native `.tcom` and `.tdom` files remain authoritative. JSON is an interchange, patch, and merge layer only.
+Modern native `.tcom` and `.tdom` packages use root JSON payloads as authoritative persistence. The manual JSON commands still behave as interchange, patch, and merge workflows.
 
-Saved native packages may also contain AI-readable sidecar snapshots under `/Interchange/`, including `manifest.json`, Composition JSON, Domain JSON, optional template Composition JSON, and capped PNG view previews under `/Previews/views/`. When a user provides a native `.tcom` or `.tdom`, inspect those embedded sidecars first if they are present. Treat them as synchronized context snapshots, not as the authoritative persistence model; native `/Composition.bin` and `/Domain.bin` remain authoritative.
+Saved native packages may contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. When a user provides a native `.tcom` or `.tdom`, inspect root JSON first when present; treat `/Interchange/` as synchronized context snapshots. `/Composition.bin` and `/Domain.bin` are legacy fallback/recovery payloads.
 
 ## Source-of-truth order
 
@@ -27,6 +27,7 @@ Use the most current accessible references in this order:
 3. Bundled fallback references:
    - `references/thinkcomposer-json-interchange.schema.json`
    - `references/thinkcomposer-domain-json-interchange.schema.json`
+   - `references/thinkcomposer-package-manifest.schema.json`
    - `references/thinkcomposer-container-manifest.schema.json`
    - `references/json-interchange.md`
    - `references/domain-json-interchange.md`

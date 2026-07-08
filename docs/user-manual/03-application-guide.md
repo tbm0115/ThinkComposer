@@ -49,7 +49,7 @@ Current import, layout, and output-generation commands log detailed diagnostics 
 
 Create a composition when you need a new knowledge document. Choose an appropriate domain at creation time. The domain determines what concept and relationship definitions are available, how symbols look, and what details or templates can be used.
 
-Save the native `.tcom` file as the source of truth. Exported JSON, reports, PDFs, images, and generated files are exchange or publication artifacts.
+Save the native `.tcom` package as the source of truth. Modern packages persist their authoritative content in root JSON payloads; manual JSON exports, reports, PDFs, images, and generated files are exchange or publication artifacts.
 
 ## Working With Diagram Views
 

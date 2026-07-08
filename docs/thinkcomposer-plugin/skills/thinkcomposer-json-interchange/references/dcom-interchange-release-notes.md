@@ -1,6 +1,6 @@
 # Dcom Interchange Release Notes
 
-This branch consolidates the first Domain/Composition JSON Interchange pass for ThinkComposer. Native `.tcom` and `.tdom` files remain authoritative; JSON is an explicit export, patch, import, and safe merge workflow.
+This branch consolidates the first Domain/Composition JSON Interchange pass for ThinkComposer. Modern `.tcom` and `.tdom` packages now use root JSON as authoritative persistence; the explicit JSON commands remain export, patch, import, and safe merge workflows.
 
 ## New Commands
 
@@ -82,8 +82,8 @@ The bundled `thinkcomposer-json-interchange` Skill is maintained with the schema
 - Destructive domain cleanup and migrations are skipped by default.
 - Live automatic `.tdom` synchronization is not implemented.
 - Custom domain shape import is not implemented.
-- Rich/binary content is summarized or preserved in native files, not fully exported/imported through JSON.
-- Embedded container JSON/previews are synchronized snapshots only. Native `/Composition.bin` and `/Domain.bin` remain authoritative until full JSON parity and recovery behavior are proven.
+- Rich/binary content is summarized as metadata and warnings unless a JSON field explicitly covers it; binary attachment/image payloads are not reconstructed by JSON persistence.
+- Embedded container JSON/previews are synchronized snapshots only. Modern native packages use root `/Composition.json` and `/Domain.json`; `/Composition.bin` and `/Domain.bin` are retained only as legacy fallback/recovery payloads during the transition.
 - Embedded previews are PNG v1. SVG/vector previews remain backlog unless a safe WPF Drawing-to-SVG export path is added.
 - General full multi-bend connector routing and full graph crossing minimization remain backlog.
 - Spider, Hierarchy, Flowchart, and System Map are manual Appearance commands; JSON import currently integrates auto-placement, concept auto-fit, and link auto-route only.

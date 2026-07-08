@@ -71,7 +71,7 @@ The Group Region is visual only. It does not change semantic containment, compos
 
 Composition JSON Interchange exports an active `.tcom` composition to editable JSON and safely merges edited JSON back into the active project.
 
-The native `.tcom` package remains authoritative. JSON is an interchange workflow, not a replacement persistence format.
+Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. The menu commands below are still interchange commands: they preview and merge edited JSON into the active project rather than acting like normal file open.
 
 ### Workflow
 
@@ -215,6 +215,8 @@ Strict relationship/detail compatibility options can block partial imports befor
 ## Domain JSON Interchange
 
 Domain JSON Interchange exports a `.tdom` domain to editable JSON and merges edited JSON back into an open domain. It is also the merge source for updating an existing composition's embedded domain snapshot.
+
+Modern `.tdom` packages use root `/Domain.json` as their authoritative Open/Save payload. The Domain JSON menu commands remain explicit interchange commands with preview and merge behavior.
 
 Supported domain work includes:
 

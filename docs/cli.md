@@ -9,8 +9,15 @@ For user-facing installation, PATH, safety, and workflow guidance, see [Command-
 ```cmd
 thinkcomposer composition export-json --input <file.tcom> --output <file.json>
 thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]
+thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>
+thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>
+thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>
 thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>
 thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]
+thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>
+thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>
+thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>
+thinkcomposer package inspect --input <file.tcom|file.tdom>
 thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>
 thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id-or-tech-name>]
 ```
@@ -37,6 +44,14 @@ Pass `-User` after any helper command to update or check only the current user's
 ## Import Safety
 
 Imports always require `--output`. The CLI refuses to overwrite the input path unless `--in-place` is also present and `--output` matches `--input`. `--preview-only` validates the input JSON and prints the planned import summary without saving any document.
+
+## Package Persistence
+
+`package inspect` reports whether a `.tcom` or `.tdom` is JSON-authoritative, transitional with a binary fallback, or legacy binary-only.
+
+`composition convert-json-persistence` and `domain convert-json-persistence` open legacy packages through the normal loader and save a modern JSON-authoritative package.
+
+`composition validate-json-persistence` and `domain validate-json-persistence` save a JSON-authoritative package, reopen it through normal load, assert that JSON was used instead of binary fallback, save again, and compare canonical root JSON payloads.
 
 ## Exit Codes
 

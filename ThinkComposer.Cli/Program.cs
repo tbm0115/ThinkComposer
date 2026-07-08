@@ -63,6 +63,9 @@ namespace Instrumind.ThinkComposer.Cli
             if (Area == "domain")
                 return ExecuteDomain(Args.Skip(1).ToArray());
 
+            if (Area == "package")
+                return ExecutePackage(Args.Skip(1).ToArray());
+
             if (Area == "report")
                 return ExecuteReport(Args.Skip(1).ToArray());
 
@@ -107,6 +110,16 @@ namespace Instrumind.ThinkComposer.Cli
                     Options.Required("input"),
                     Options.Required("output-dir")));
 
+            if (Command == "convert-json-persistence")
+                return Finish(HeadlessThinkComposerOperations.ConvertCompositionToJsonPersistence(
+                    Options.Required("input"),
+                    Options.Required("output")));
+
+            if (Command == "validate-json-persistence")
+                return Finish(HeadlessThinkComposerOperations.ValidateCompositionJsonPersistence(
+                    Options.Required("input"),
+                    Options.Required("output-dir")));
+
             throw new UsageException("Unknown composition command: " + Args[0]);
         }
 
@@ -145,7 +158,41 @@ namespace Instrumind.ThinkComposer.Cli
                     Options.Required("input"),
                     Options.Required("output-dir")));
 
+            if (Command == "convert-json-persistence")
+                return Finish(HeadlessThinkComposerOperations.ConvertDomainToJsonPersistence(
+                    Options.Required("input"),
+                    Options.Required("output")));
+
+            if (Command == "validate-json-persistence")
+                return Finish(HeadlessThinkComposerOperations.ValidateDomainJsonPersistence(
+                    Options.Required("input"),
+                    Options.Required("output-dir")));
+
             throw new UsageException("Unknown domain command: " + Args[0]);
+        }
+
+        private static int ExecutePackage(string[] Args)
+        {
+            if (Args.Length == 0 || IsHelp(Args[0]))
+            {
+                PrintPackageHelp();
+                return ExitSuccess;
+            }
+
+            var Command = Args[0].ToLowerInvariant();
+            var Options = OptionSet.Parse(Args.Skip(1).ToArray());
+
+            if (Options.HelpRequested)
+            {
+                PrintPackageHelp();
+                return ExitSuccess;
+            }
+
+            if (Command == "inspect")
+                return Finish(HeadlessThinkComposerOperations.InspectPackagePersistence(
+                    Options.Required("input")));
+
+            throw new UsageException("Unknown package command: " + Args[0]);
         }
 
         private static int ExecuteReport(string[] Args)
@@ -244,9 +291,14 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer composition export-json --input <file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
+            Console.WriteLine("  thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>");
+            Console.WriteLine("  thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>");
+            Console.WriteLine("  thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>");
+            Console.WriteLine("  thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>");
+            Console.WriteLine("  thinkcomposer package inspect --input <file.tcom|file.tdom>");
             Console.WriteLine("  thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>");
             Console.WriteLine("  thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id>]");
             Console.WriteLine();
@@ -259,9 +311,12 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer composition export-json --input <file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
+            Console.WriteLine("  thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>");
+            Console.WriteLine("  thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>");
             Console.WriteLine();
             Console.WriteLine("Imports require --output. To overwrite --input, set --output to the input path and pass --in-place.");
             Console.WriteLine("Round-trip validation rebuilds Domain and Composition from JSON and compares normalized re-exported JSON.");
+            Console.WriteLine("Persistence validation saves a JSON-authoritative package, reopens it through normal load, saves again, and compares canonical root JSON payloads.");
         }
 
         private static void PrintDomainHelp()
@@ -270,9 +325,20 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>");
+            Console.WriteLine("  thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>");
+            Console.WriteLine("  thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>");
             Console.WriteLine();
             Console.WriteLine("For .tcom input, domain import updates the embedded domain and writes a .tcom output.");
             Console.WriteLine("Round-trip validation rebuilds a Domain from JSON and compares normalized re-exported JSON.");
+            Console.WriteLine("Persistence validation saves a JSON-authoritative .tdom, reopens it through normal load, saves again, and compares canonical root JSON payloads.");
+        }
+
+        private static void PrintPackageHelp()
+        {
+            Console.WriteLine("Package commands:");
+            Console.WriteLine("  thinkcomposer package inspect --input <file.tcom|file.tdom>");
+            Console.WriteLine();
+            Console.WriteLine("Reports whether a native package is JSON-authoritative, transitional with binary fallback, or legacy binary-only.");
         }
 
         private static void PrintReportHelp()

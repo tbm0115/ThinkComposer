@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://thinkcomposer.local/schemas/thinkcomposer-domain-json-interchange-1.schema.json",
   "title": "ThinkComposer Domain JSON Interchange",
-  "description": "Schema for ThinkComposer.DomainJsonInterchange formatVersion 1. Native .tdom remains the authoritative Domain file format; this JSON format is an editable export, patch, and safe merge layer.",
+  "description": "Schema for ThinkComposer.DomainJsonInterchange formatVersion 1. Use this schema to validate full-state domain payloads stored at /Domain.json in modern .tdom/.tcom packages, manual exports/merges, and GPT-authored patch-operation documents.",
   "type": "object",
   "required": [
     "format",

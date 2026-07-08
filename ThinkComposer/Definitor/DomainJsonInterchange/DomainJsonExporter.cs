@@ -56,7 +56,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Document.RelationshipCompatibility = DomainJsonCompatibility.ExportRelationshipCompatibility(Domain);
 
             Warnings.AddRange(WarningCollector.ToWarnings());
-            Warnings.Add("Visual style details are summarized only; binary pictogram/image content is not inlined in Domain JSON.");
+            Warnings.Add("Visual style details, rich style object graphs, custom domain shape resources, and binary pictogram/image content are summarized only; unsupported native-only resources are not inlined in Domain JSON or reconstructed by JSON persistence.");
             Warnings.Add("Output templates are exported as text and are never executed by JSON import/export.");
             Document.Warnings = Warnings.OrderBy(Warning => Warning).Distinct().ToList();
             return Document;

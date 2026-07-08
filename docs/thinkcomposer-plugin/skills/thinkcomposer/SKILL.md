@@ -9,9 +9,9 @@ Use this skill when Codex is helping with a ThinkComposer `.tcom` composition/co
 
 ## Operating Model
 
-ThinkComposer remains the source of truth for native `.tcom` and `.tdom` files. Codex should work through high-fidelity interchange artifacts:
+ThinkComposer native `.tcom` and `.tdom` packages remain the source of truth, with modern packages using root JSON persistence payloads. Codex should work through high-fidelity package and interchange artifacts:
 
-- Modern container context: a `.tcom` can be a ZIP package containing `Interchange/manifest.json`, `Interchange/Composition.json`, `Interchange/Domain.json`, and `Previews/views/*.png`. Prefer this when available because it gives Codex model context and visual screenshots together.
+- Modern container context: a `.tcom` can be a ZIP package containing root `manifest.json`, `Composition.json`, `Domain.json`, optional legacy fallback binaries, `Interchange/manifest.json`, sidecar JSON, and `Previews/views/*.png`. Prefer root JSON when available because it is the native persistence payload; sidecars and previews add AI-readable context.
 - Composition context: `Composition > File > Export JSON...`, usually saved as `*.tc.json`.
 - Composition edits: create a JSON import patch, then have the user run `Composition > File > Import JSON...`.
 - Domain context or edits: `Domain > Export Domain JSON...` and `Domain > Import/Update Domain JSON...`, usually `*.tdom.json`.
@@ -35,9 +35,12 @@ For detailed Composition JSON, Domain JSON, container manifest, schema, sample, 
 
 When the user provides a modern `.tcom`, inspect it before asking for separate exports. Treat these parts as read-only context:
 
-- `Interchange/manifest.json`: package metadata, source composition identity/version, embedded JSON part metadata, preview metadata, warnings, and hashes.
-- `Interchange/Composition.json`: full Composition JSON context.
-- `Interchange/Domain.json`: embedded Domain JSON context when present.
+- `manifest.json`: root package metadata, persistence format, authoritative JSON part hashes, and legacy fallback metadata.
+- `Composition.json`: authoritative Composition JSON payload.
+- `Domain.json`: authoritative embedded Domain JSON payload when present.
+- `Interchange/manifest.json`: sidecar metadata, source composition identity/version, preview metadata, warnings, and hashes.
+- `Interchange/Composition.json`: sidecar Composition JSON context.
+- `Interchange/Domain.json`: sidecar embedded Domain JSON context when present.
 - `Previews/views/*.png`: view screenshots keyed by `viewName`, `viewTechName`, `viewId`, width, height, skipped state, and part URI.
 
 Use embedded previews as Codex's first visual pass. Extract previews only when a local image file path is needed for direct visual inspection. Do not modify the `.tcom` package directly; still write separate JSON patches and import them through ThinkComposer.

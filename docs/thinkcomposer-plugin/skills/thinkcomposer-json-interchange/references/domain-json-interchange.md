@@ -2,7 +2,25 @@
 
 Domain JSON Interchange exports a ThinkComposer `.tdom` domain to editable JSON and merges edited JSON back into an open domain. It is also the merge source used when updating an existing `.tcom` composition's embedded domain snapshot.
 
-Native `.tdom` files remain authoritative. JSON is a safe interchange and patch format only; it does not replace ThinkComposer native persistence.
+The same full-state Domain JSON DTO is also used by modern native `.tdom` persistence. A newly saved `.tdom` package writes root `/Domain.json` as the authoritative domain payload. Normal domain Open/Save uses that root JSON first.
+
+Manual `Domain > Export Domain JSON...` and `Domain > Import/Update Domain JSON...` remain explicit interchange workflows. Import still previews and merges into the open domain or embedded domain; it is not the same code path as normal package load.
+
+## Native Package Persistence
+
+Modern domain packages use this root-level contract:
+
+- `/manifest.json`: package metadata with `format: "ThinkComposer.Package"`, `packageKind: "domain"`, `persistenceFormat: "json"`, `persistenceFormatVersion`, application version, UTC save timestamp, authoritative part hashes, and legacy fallback metadata.
+- `/Domain.json`: authoritative `ThinkComposer.DomainJsonInterchange` full-state domain payload.
+- `/TemplateComposition.json`: optional authoritative template composition payload when the domain is saved with a template composition.
+- `/Domain.bin`: optional legacy binary fallback retained in transitional packages for recovery and backwards compatibility.
+- `/Interchange/*` and `/Previews/views/*.png`: optional AI-readable sidecars generated from the same exporters, never authoritative.
+
+When both JSON and binary payloads exist, ThinkComposer opens the root JSON payload first. If root JSON loading fails and a binary fallback is present, the loader logs a JSON persistence warning and falls back to `/Domain.bin` as a recovery path. If root JSON loading fails with no fallback, open fails with the JSON diagnostic.
+
+Opening an older binary-only `.tdom` still works. Saving it again writes the JSON-authoritative package contract above, so normal save acts as the migration step.
+
+The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. The root domain payload still validates against this interchange schema; there is no separate Domain persistence payload schema in v1.
 
 ## Workflow
 
@@ -205,4 +223,4 @@ For generation behavior after import, see `docs/output-template-generation.md`. 
 
 ## Limits
 
-This first pass does not import custom domain shapes, binary image resources, rich visual style object graphs, full destructive migrations, or executable behavior. `.tdom` JSON import/export is not live sync. Use `docs/domain-sync.md` for the explicit `.tdom` / Domain JSON to `.tcom` embedded-domain update workflow.
+This first pass does not import custom domain shapes, binary image resources, rich visual style object graphs, full destructive migrations, or executable behavior. JSON persistence does not reconstruct metadata-only binary domain payloads. `.tdom` JSON import/export is not live sync. Use `docs/domain-sync.md` for the explicit `.tdom` / Domain JSON to `.tcom` embedded-domain update workflow.

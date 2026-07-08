@@ -326,6 +326,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Importer.Report;
         }
 
+        public static CompositionJsonImportReport RehydrateFullState(CompositionEngine Engine, CompositionJsonDocument Document)
+        {
+            General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
+            CompositionJsonSerializer.Validate(Document);
+
+            var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false);
+            Importer.Report.Log("JSON persistence rehydration started for composition " + Importer.DescribeTarget(Engine.TargetComposition) + ".");
+            Importer.ApplyDocument(Document);
+            Importer.Report.Log("JSON persistence rehydration completed: " + Importer.Report.ToDetailedCountsString() + ".");
+            return Importer.Report;
+        }
+
         private bool ShouldDeferViewRefreshByStrategy()
         {
             return this.VisualStrategy != null && this.VisualStrategy.IsActive && this.VisualStrategy.DeferViewRefresh;

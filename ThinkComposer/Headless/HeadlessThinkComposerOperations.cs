@@ -196,6 +196,53 @@ namespace Instrumind.ThinkComposer.Headless
             });
         }
 
+        public static OperationResult<string> UpdateEmbeddedDomainFromNativeDomain(string Input, string DomainInput, string Output, bool InPlace, bool PreviewOnly)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Validation = ValidateInputOutput(Input, Output, Composition.FILE_EXTENSION_COMPOSITION, Composition.FILE_EXTENSION_COMPOSITION, true);
+                if (!Validation.WasSuccessful)
+                    return Validation;
+
+                if (String.IsNullOrWhiteSpace(DomainInput))
+                    return Fail("Missing --domain.");
+
+                if (!File.Exists(DomainInput))
+                    return Fail("Domain source file not found: " + DomainInput);
+
+                if (!HasExtension(DomainInput, Domain.FILE_EXTENSION_DOMAIN))
+                    return Fail("Domain source must have .tdom extension.");
+
+                if (SamePath(Input, Output) && !InPlace)
+                    return Fail("Refusing to overwrite input. Use --in-place with --output set to the input path.");
+
+                if (InPlace && !SamePath(Input, Output))
+                    return Fail("--in-place requires --output to match --input.");
+
+                var LoadResult = LoadComposition(Input);
+                if (!LoadResult.WasSuccessful)
+                    return Fail(LoadResult.Message);
+
+                var SourceDomainResult = LoadNativeDomain(DomainInput);
+                if (!SourceDomainResult.WasSuccessful)
+                    return Fail(SourceDomainResult.Message);
+
+                var TargetDomain = LoadResult.Result.TargetComposition.CompositeContentDomain;
+                var Document = DomainJsonExporter.Export(SourceDomainResult.Result);
+                var Preview = DomainJsonImporter.Preview(TargetDomain, Document);
+
+                if (PreviewOnly)
+                    return Succeed("Embedded Domain update preview completed." + Environment.NewLine + Preview.PreviewSummary(), null);
+
+                var ApplyReport = ApplyDomainJson(LoadResult.Result, TargetDomain, Document);
+                SaveComposition(LoadResult.Result.TargetComposition, Output);
+
+                return Succeed("Embedded Domain updated from: " + Path.GetFullPath(DomainInput) + Environment.NewLine +
+                               "Output: " + Path.GetFullPath(Output) + Environment.NewLine +
+                               ApplyReport.ApplySummary(), Path.GetFullPath(Output));
+            });
+        }
+
         public static OperationResult<string> ValidateCompositionJsonRoundTrip(string Input, string OutputDirectory)
         {
             return ExpectedOperation(delegate

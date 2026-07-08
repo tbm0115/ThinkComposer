@@ -1,14 +1,13 @@
 # Dcom Interchange Release Notes
 
-This branch consolidates the first Domain/Composition JSON Interchange pass for ThinkComposer. Modern `.tcom` and `.tdom` packages now use root JSON as authoritative persistence; the explicit JSON commands remain export, patch, import, and safe merge workflows.
+This branch consolidates the first Domain/Composition JSON Interchange pass for ThinkComposer. Modern `.tcom` and `.tdom` packages now use root JSON as authoritative persistence; external edits should patch the authoritative package JSON and use CLI validation or compatibility import/export paths when needed.
 
 ## New Commands
 
-- Composition JSON interchange includes TechSpec-aware composition payloads and clearer source/import warning reporting. The earlier desktop `Composition -> File -> Export JSON...` and `Composition -> File -> Import JSON...` buttons are now deprecated in favor of CLI `thinkcomposer composition export-json` and `thinkcomposer composition import-json`.
-- `Domain -> Export Domain JSON...` exports text-safe Domain JSON using `format: "ThinkComposer.DomainJsonInterchange"`.
-- `Domain -> Import/Update Domain JSON...` previews and applies safe additive domain merges.
-- `Composition -> Domain -> Update Embedded Domain...` safely updates an active `.tcom` composition's embedded domain snapshot from a native `.tdom` or Domain JSON file.
-- Composition output generation now prepares concept/relationship definition output templates automatically before rendering, including templates imported through Domain JSON.
+- Composition JSON interchange includes TechSpec-aware composition payloads and clearer source/import warning reporting. The earlier desktop `Composition -> File -> Export JSON...` and `Composition -> File -> Import JSON...` buttons are now deprecated in favor of root package JSON and CLI `thinkcomposer composition export-json` / `thinkcomposer composition import-json` compatibility paths.
+- The earlier desktop `Domain -> Export Domain JSON...` and `Domain -> Import/Update Domain JSON...` buttons are now deprecated in favor of root `/Domain.json` package edits and CLI `thinkcomposer domain export-json` / `thinkcomposer domain import-json` compatibility paths.
+- `Composition -> Domain -> Update Embedded Domain...` and `thinkcomposer domain update-embedded` safely update an active `.tcom` composition's embedded domain snapshot from a native `.tdom`.
+- Composition output generation now prepares concept/relationship definition output templates automatically before rendering, including templates updated through root Domain JSON or embedded-domain update.
 - `Tools -> Output -> Generation Preview` now supports the active composition/root scope when nothing is selected and shows rendered output, the effective template, and resolution metadata.
 
 ## Supported Workflows
@@ -30,17 +29,17 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Preserve draft graph structure explicitly with `importOptions.relationshipDefinitionFallbackTechName` when a generated relationship uses an over-specific definition and `strictDefinition` is not set.
 - Keep unsupported GPT-authored details from blocking concept/relationship creation, with optional `detailFallbackMode` to append detail text/rows to TechSpec or Description.
 - Round-trip Composition JSON descriptions alongside summaries and TechSpec; JSON descriptions are plain text and are converted to native rich-text storage internally. Safe Text details can target known fields such as Description, Summary, or TechSpec.
-- Export `.tdom` domain metadata, definitions, tables, fields, roles, markers, external languages, and output templates as text-safe Domain JSON.
-- Import additive Domain JSON patches for metadata, TechSpec, definitions, tables/fields, external languages, and output templates.
+- Patch `.tdom` root `/Domain.json` metadata, definitions, tables, fields, roles, markers, external languages, and output templates as text-safe Domain JSON.
+- Validate additive Domain JSON patches for metadata, TechSpec, definitions, tables/fields, external languages, and output templates through the CLI compatibility path when preview/merge diagnostics are needed.
 - Generate composition output without opening every involved definition's Output-Templates tab first.
 - Diagnose generated files with per-file output-template resolution logs, deterministic subtemplate registration logs, template role inference/directives, XML/JSON post-processing, and XML/JSON validation summaries.
 - Update an existing `.tcom` embedded domain snapshot without deleting legacy objects or replacing the domain wholesale.
 
 ## Validated Manual Scenarios
 
-- Domain metadata/TechSpec patch import.
-- Domain additive import with five created objects and no skips on a fresh test copy.
-- Domain save/reopen persistence after import.
+- Domain metadata/TechSpec root JSON persistence.
+- Domain additive root JSON update with five created objects and no skips on a fresh test copy.
+- Domain save/reopen persistence after root JSON update or compatibility import.
 - Embedded Domain update from native `.tdom`.
 - Output-template external language alias resolution such as `Mermaid.js_Flowchart` to `Mermaid_JS_Flowchart`.
 - Output-template generation preview/generate diagnostics, including effective template preview, fragment/subtemplate suppression, subtemplate registry logs, and XML validation for XML-like output.
@@ -48,7 +47,7 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 - Composition layout fixture import into a fresh blank composition using `useActiveCompositionAsContainer`.
 - Composition active-root fallback import using `samples/composition-active-root-fallback.sample.json`, expecting 2 concepts and 1 relationship created with zero missing-container skips.
 - Composition description/detail regression import using `samples/composition-description-details-regression.sample.json`, expecting first-class Description/TechSpec updates and unsupported detail fallback without skipping created ideas.
-- Generated MTConnect composition patch workflow after importing/updating the companion Domain JSON first: `machine_monitoring_utilization_productivity_composition.json` should plan root-level concept and relationship creates instead of skipping `Active_Composition_Root`.
+- Generated MTConnect composition patch workflow after updating the companion Domain in the target package first: `machine_monitoring_utilization_productivity_composition.json` should plan root-level concept and relationship creates instead of skipping `Active_Composition_Root`.
 - Machine-monitoring composition imports that use incompatible domain-specific relationship definitions now report compatibility skips as domain validation issues, not container/endpoint importer failures.
 - Full-state-style generated composition documents now produce a clear note when missing top-level IDs are update-only because full-state-create mode is disabled; enabling the option allows concepts to create before relationship compatibility is evaluated.
 - Strict mode on machine-monitoring-style generated patches should block partial imports before apply when domain relationship compatibility failures are detected; non-strict mode still imports compatible concepts/relationships and skips invalid relationships with diagnostics.
@@ -67,11 +66,11 @@ Dialogs distinguish source warnings, import warnings, skipped operations, danger
 ## Recommended User Workflow
 
 1. Save or copy the native `.tcom` or `.tdom`.
-2. Export JSON when a full-state reference is useful, or author a patch directly against the schema.
-3. Preview the import/update operation.
-4. Confirm only after reviewing skipped and dangerous skipped counts.
-5. Save the native `.tcom` or `.tdom` after successful apply.
-6. Re-export JSON when verification or GPT follow-up work needs a fresh snapshot.
+2. Inspect and patch root `/Composition.json`, `/Domain.json`, or `/TemplateComposition.json` as the authoritative payload.
+3. Refresh root `/manifest.json` authoritative part metadata for any changed root JSON.
+4. Use CLI validation or compatibility import/export commands when preview/merge diagnostics are needed.
+5. Save the native `.tcom` or `.tdom` after successful verification.
+6. Re-inspect root JSON when verification or GPT follow-up work needs a fresh snapshot.
 
 ## Bundled Skill
 

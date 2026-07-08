@@ -214,9 +214,9 @@ Strict relationship/detail compatibility options can block partial imports befor
 
 ## Domain JSON Interchange
 
-Domain JSON Interchange exports a `.tdom` domain to editable JSON and merges edited JSON back into an open domain. It is also the merge source for updating an existing composition's embedded domain snapshot.
+Domain JSON is the text-safe payload used by modern `.tdom` packages and compatibility merge paths. It is also the merge source for updating an existing composition's embedded domain snapshot.
 
-Modern `.tdom` packages use root `/Domain.json` as their authoritative Open/Save payload. The Domain JSON menu commands remain explicit interchange commands with preview and merge behavior.
+Modern `.tdom` packages use root `/Domain.json` as their authoritative Open/Save payload. The old Domain JSON import/export desktop controls are deprecated; external edits should patch the authoritative package JSON and then reopen/save the package normally. CLI Domain JSON commands remain available for validation and compatibility workflows.
 
 Supported domain work includes:
 
@@ -246,7 +246,7 @@ The schema is maintained at [../thinkcomposer-domain-json-interchange.schema.jso
 
 ## Embedded Domain Updates
 
-Use `Composition -> Domain -> Update Embedded Domain...` when an existing `.tcom` composition should pick up safe additions or updates from a newer `.tdom` or Domain JSON source.
+Use `Composition -> Domain -> Update Embedded Domain...` when an existing `.tcom` composition should pick up safe additions or updates from a newer `.tdom` source.
 
 The update:
 

@@ -153,6 +153,14 @@ namespace Instrumind.ThinkComposer.Cli
                     Options.Has("in-place"),
                     Options.Has("preview-only")));
 
+            if (Command == "update-embedded")
+                return Finish(HeadlessThinkComposerOperations.UpdateEmbeddedDomainFromNativeDomain(
+                    Options.Required("input"),
+                    Options.Required("domain"),
+                    Options.Required("output"),
+                    Options.Has("in-place"),
+                    Options.Has("preview-only")));
+
             if (Command == "validate-json-roundtrip")
                 return Finish(HeadlessThinkComposerOperations.ValidateDomainJsonRoundTrip(
                     Options.Required("input"),
@@ -295,6 +303,7 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]");
+            Console.WriteLine("  thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>");
             Console.WriteLine("  thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>");
@@ -324,11 +333,13 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("Domain commands:");
             Console.WriteLine("  thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]");
+            Console.WriteLine("  thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>");
             Console.WriteLine("  thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>");
             Console.WriteLine();
             Console.WriteLine("For .tcom input, domain import updates the embedded domain and writes a .tcom output.");
+            Console.WriteLine("Use update-embedded to update a .tcom embedded domain directly from a native .tdom source.");
             Console.WriteLine("Round-trip validation rebuilds a Domain from JSON and compares normalized re-exported JSON.");
             Console.WriteLine("Persistence validation saves a JSON-authoritative .tdom, reopens it through normal load, saves again, and compares canonical root JSON payloads.");
         }

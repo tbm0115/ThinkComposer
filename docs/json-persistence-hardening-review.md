@@ -95,8 +95,8 @@ Codex did not have a reliable WPF desktop UI automation surface for Open/Save di
 - [ ] Open legacy `PredefinedContent\All-Purpose.tdom` in the desktop app.
 - [ ] Save As a new `.tdom` package.
 - [ ] Reopen the new `.tdom` in the desktop app.
-- [ ] Run `Domain > Export Domain JSON...` and confirm export still works as interchange.
-- [ ] Run `Domain > Import/Update Domain JSON...` into an active domain and confirm it previews/merges into the open domain rather than replacing the native package load path.
+- [ ] Inspect root `/Domain.json` and confirm it carries the authoritative domain payload.
+- [ ] Run `thinkcomposer domain export-json --input <saved-file.tdom> --output <domain.json>` and, when preview diagnostics are needed, `thinkcomposer domain import-json --input <saved-file.tdom> --json <domain.json> --output <imported-file.tdom> --preview-only` to confirm CLI compatibility remains separate from the native package load path. Desktop Domain JSON buttons are deprecated.
 - [ ] Save the migrated `.tdom` again and confirm `ThinkComposer.Cli\bin\Debug\ThinkComposer.Cli.exe package inspect --input <saved-file.tdom>` reports `jsonAuthoritative: true`.
 - [ ] Reopen both saved packages after deleting `/Interchange/*` and `/Previews/*` from copies of the packages to confirm sidecars are not authoritative.
 - [ ] Reopen JSON-only copies after deleting `/Composition.bin` or `/Domain.bin` to confirm binary fallback is not required when root JSON is valid.

@@ -1,22 +1,30 @@
 ---
 name: thinkcomposer-json-interchange
-description: create, edit, repair, and validate ThinkComposer composition and domain JSON interchange documents for a custom ThinkComposer build. Use this skill for .tcom JSON patches, .tdom Domain JSON patches, TechSpec updates, visual placement, layout-aware import options, embedded-domain update planning, schema validation, or import troubleshooting.
+description: create, edit, repair, and validate ThinkComposer authoritative package JSON and compatibility interchange documents for a custom ThinkComposer build. Use this skill for .tcom/.tdom root JSON patches, Domain JSON patches, TechSpec updates, visual placement, layout-aware import options, embedded-domain update planning, schema validation, or import troubleshooting.
 ---
 
 # ThinkComposer JSON Interchange
 
 ## Purpose
 
-Help users create, edit, repair, and validate ThinkComposer JSON Interchange documents for the custom `tbm0115/ThinkComposer` build. Prefer patch-operation JSON for GPT-authored edits unless the user explicitly asks for a full-state merge document.
+Help users create, edit, repair, and validate ThinkComposer JSON payloads for the custom `tbm0115/ThinkComposer` build. Prefer direct edits to authoritative package root JSON for native `.tcom` and `.tdom` files; use patch-operation JSON for GPT-authored compatibility imports unless the user explicitly asks for a full-state merge document.
 
 There are two current formats:
 
-- Composition JSON: `format: "ThinkComposer.JsonInterchange"` for active `.tcom` composition imports/exports.
-- Domain JSON: `format: "ThinkComposer.DomainJsonInterchange"` for `.tdom` domain imports/exports and safe embedded-domain updates into an active `.tcom`.
+- Composition JSON: `format: "ThinkComposer.JsonInterchange"` for root `/Composition.json` in `.tcom` and compatibility composition imports/exports.
+- Domain JSON: `format: "ThinkComposer.DomainJsonInterchange"` for root `/Domain.json` in `.tdom` or `.tcom` and compatibility domain imports/exports.
 
-Modern native `.tcom` and `.tdom` packages use root JSON payloads as authoritative persistence. The manual JSON commands still behave as interchange, patch, and merge workflows.
+Modern native `.tcom` and `.tdom` packages use root JSON payloads as authoritative persistence. Desktop Composition/Domain JSON import/export controls are deprecated; CLI import/export remains a compatibility, migration, and validation path.
 
-Saved native packages may contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. When a user provides a native `.tcom` or `.tdom`, inspect root JSON first when present; treat `/Interchange/` as synchronized context snapshots. `/Composition.bin` and `/Domain.bin` are legacy fallback/recovery payloads.
+Saved native packages may contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. When a user provides a native `.tcom` or `.tdom`, inspect and patch root JSON first when present; treat `/Interchange/` as synchronized context snapshots. `/Composition.bin` and `/Domain.bin` are legacy fallback/recovery payloads.
+
+When directly editing a native package:
+
+- Patch only authoritative root JSON parts: `.tcom` `/Composition.json` and `/Domain.json`; `.tdom` `/Domain.json` and optional `/TemplateComposition.json`.
+- Refresh the corresponding `/manifest.json` `authoritativeParts[]` metadata, especially `sha256` and `bytes`.
+- Do not edit `/Composition.bin` or `/Domain.bin`; they are optional legacy fallback parts.
+- Do not treat `/Interchange/*` or `/Previews/*` as authoritative. They may be stale until ThinkComposer saves the package again.
+- Validate with `package inspect` and the relevant `validate-json-persistence` CLI command after the package is patched.
 
 ## Source-of-truth order
 
@@ -66,9 +74,10 @@ Use Domain JSON when the user wants to edit a domain:
 
 - Update domain metadata or TechSpec.
 - Add/update concept definitions, relationship definitions, relationship roles, tables, fields, markers, variants, external languages, or output templates.
-- Prepare a source for `Composition -> Domain -> Update Embedded Domain...`.
+- Patch root `/Domain.json` in a `.tdom` or the embedded root `/Domain.json` in a `.tcom`.
+- Prepare a native `.tdom` source for `Composition -> Domain -> Update Embedded Domain...`.
 
-Do not mix the full Domain JSON schema into a Composition JSON document. Use the embedded-domain update command when a `.tcom` should pick up safe changes from a `.tdom` or Domain JSON source.
+Do not mix the full Domain JSON schema into a Composition JSON document. Use the embedded-domain update command when a `.tcom` should pick up safe changes from a `.tdom`; patch the `.tcom` root `/Domain.json` directly when the user wants direct package editing.
 
 ## Composition patch defaults
 
@@ -119,7 +128,7 @@ Rules:
 - Accepted active-root variants include `ACTIVE_COMPOSITION_ROOT`, `activeCompositionRoot`, `active-composition-root`, `active_composition_root`, `__ACTIVE_COMPOSITION_ROOT__`, `Current_Composition`, `CurrentComposition`, `Active_Composition`, `Composition_Root`, and `Root_Composition`; still prefer `Active_Composition_Root` in generated JSON.
 - Active-root fallback only applies to safe root-level create/place behavior, not destructive update/delete operations or precise nested-container imports.
 - Prefer explicit `viewTechName` when the target view is known. If a root-level create/place omits view fields, the importer may use the active view or composition root view; accepted view sentinels include `Active_View`, `Main_View`, and `Active_Composition_Root_View`.
-- If a composition patch depends on custom Domain definitions, import/update the Domain JSON or embedded domain first. Do not assume `definitionTechName` values are present just because they appear in a generated composition patch.
+- If a composition patch depends on custom Domain definitions, update or inspect root `/Domain.json` or refresh the embedded domain from the intended `.tdom` first. Do not assume `definitionTechName` values are present just because they appear in a generated composition patch.
 - If an import log contains `BEGIN THINKCOMPOSER RELATIONSHIP COMPATIBILITY REPORT`, use that report to regenerate relationship definitions/endpoints/roles rather than asking the user to debug generic skipped counts.
 
 ## Full-state-style composition documents
@@ -375,7 +384,7 @@ Use MTConnect `Devices_Response_Document` only as a regression example; do not h
 
 ## Embedded domain update
 
-`Composition -> Domain -> Update Embedded Domain...` updates the active `.tcom` composition's embedded domain snapshot from either a native `.tdom` or a Domain JSON file.
+`Composition -> Domain -> Update Embedded Domain...` updates the active `.tcom` composition's embedded domain snapshot from a native `.tdom`. The equivalent CLI path is `thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <updated-file.tcom>`. Some compatibility paths can still consume Domain JSON files, but the preferred AI/editing workflow is to patch root `/Domain.json` directly.
 
 This is explicit safe merge, not live sync:
 
@@ -384,7 +393,7 @@ This is explicit safe merge, not live sync:
 - Retains legacy embedded-domain objects by default.
 - Does not delete by omission or replace the embedded Domain object wholesale.
 - Preserves existing composition ideas and relationship links.
-- Keeps output template bodies text-only; they are not executed during import/export or embedded-domain update.
+- Keeps output template bodies text-only; they are not executed during compatibility import/export or embedded-domain update.
 
 ## Report categories
 

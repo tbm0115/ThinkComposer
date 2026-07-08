@@ -35,7 +35,6 @@ using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.ApplicationProduct.Widgets;
 using Instrumind.ThinkComposer.Composer;
 using Instrumind.ThinkComposer.Composer.ContainerSnapshots;
-using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
 
@@ -197,19 +196,8 @@ namespace Instrumind.ThinkComposer.Definitor
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Save Domain As", ExposedWorkCommand.Name, "Saves the current Domain to the specified file.", "book_saveas.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
-            // -------------------------------------------------------------------------------------
-            ExposedWorkCommand = new GenericCommand("ExportDomainJson");
-            ExposedWorkCommand.Apply = (par => DomainJsonInterchangeCommands.ExportDomainJson(this.WorkspaceDirector));
-            ExposedWorkCommand.CanApply = (par => (this.WorkspaceDirector.ActiveDocument != null));
-            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Export Domain JSON...", ExposedWorkCommand.Name, "Exports the current Domain as editable JSON interchange text.", "page_white_code_red.png",
-                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
-
-            // -------------------------------------------------------------------------------------
-            ExposedWorkCommand = new GenericCommand("ImportDomainJson");
-            ExposedWorkCommand.Apply = (par => DomainJsonInterchangeCommands.ImportDomainJson(this.WorkspaceDirector));
-            ExposedWorkCommand.CanApply = (par => (this.WorkspaceDirector.ActiveDocument != null));
-            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Import/Update Domain JSON...", ExposedWorkCommand.Name, "Safely previews and merges Domain JSON into the current Domain.", "page_code.png",
-                                                                                          EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
+            // Domain JSON import/export remains available to CLI/compatibility paths, but is
+            // no longer exposed as a primary desktop command because package root JSON is authoritative.
 
             // -------------------------------------------------------------------------------------
             // Ordered list of quick access commands

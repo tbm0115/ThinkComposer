@@ -119,7 +119,7 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Confirm the log includes `JSON import container fallback` for samples whose `containerTechName` names a missing `Test__...` composition.
 - [ ] Run the matching Appearance layout command for each imported fixture.
 - [ ] Confirm samples without the fallback still explain which `containerId`/`containerTechName` values must be replaced before import.
-- [ ] For `machine_monitoring_utilization_productivity_composition.json`, import/update the companion MTConnect Domain JSON first, then import the composition patch.
+- [ ] For `machine_monitoring_utilization_productivity_composition.json`, update the companion MTConnect Domain in the target package first, then apply the composition patch.
 - [ ] Confirm the generated MTConnect patch previews 20 concept creates and 34 relationship creates, with no missing-container skips for `Active_Composition_Root`.
 - [ ] Confirm any remaining skips are specific definition, endpoint, role, view, or detail issues rather than container fallback failures.
 - [ ] Confirm relationship compatibility skips include endpoint concept definitions, resolved roles, allowed endpoint definitions when available, and a grouped summary by relationship definition.
@@ -152,17 +152,17 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 ## Domain JSON Interchange
 
 - [ ] Open or create a `.tdom`.
-- [ ] Run `Domain -> Export Domain JSON...`.
-- [ ] Confirm exported Domain JSON includes `domain.compatibilitySignature` and a `relationshipCompatibility` section when relationship definitions are present.
-- [ ] Run `Domain -> Import/Update Domain JSON...` with `samples/domain-json-interchange-patch.sample.json`.
-- [ ] Confirm the preview lists planned creates/updates and dangerous skipped deletes.
+- [ ] Inspect root `/Domain.json`.
+- [ ] Confirm root Domain JSON includes `domain.compatibilitySignature` and a `relationshipCompatibility` section when relationship definitions are present.
+- [ ] Apply `samples/domain-json-interchange-patch.sample.json` through direct root `/Domain.json` patching or the CLI compatibility import path.
+- [ ] If using the CLI import path, confirm the preview lists planned creates/updates and dangerous skipped deletes.
 - [ ] Confirm domain summary/TechSpec updates, and new definitions/tables/fields/templates are created when dependencies exist.
 - [ ] Confirm output template text is preserved as text and never executed.
-- [ ] Run `Domain -> Import/Update Domain JSON...` with `samples/domain-json-metadata-update.sample.json`.
+- [ ] Apply `samples/domain-json-metadata-update.sample.json` through direct root `/Domain.json` patching or the CLI compatibility import path.
 - [ ] Confirm field-level log lines include domain `summary`/`techSpec` and externalLanguage `summary`/`techSpec`, including match method.
 - [ ] Confirm metadata patch result is 2 updates, 0 skips, 0 source warnings, 0 import warnings, and 0 errors after adapting the external language techName if needed.
-- [ ] Save/reopen, export Domain JSON again, and verify `domain.techSpec` plus the target `externalLanguages[]` summary/TechSpec persisted.
-- [ ] Run `Domain -> Import/Update Domain JSON...` with `samples/domain-json-additive-definition.sample.json`.
+- [ ] Save/reopen, inspect root `/Domain.json`, and verify `domain.techSpec` plus the target `externalLanguages[]` summary/TechSpec persisted.
+- [ ] Apply `samples/domain-json-additive-definition.sample.json` through direct root `/Domain.json` patching or the CLI compatibility import path.
 - [ ] Confirm additive patch result is 5 creates, 0 skips, 0 source warnings, 0 import warnings, and 0 errors on a fresh test copy.
 - [ ] Confirm additive table, fields, concept definition, and output template are created without destructive changes.
 - [ ] Confirm field logs show parent table and data type resolution, and template logs show owner scope/owner/language resolution.
@@ -178,16 +178,16 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 - [ ] Generate files: confirm each generated file logs `Output template resolution` with file path, source item, language, owner scope, template hash, role, and validation result.
 - [ ] Subtemplates: confirm the log contains `Output template subtemplates registered` entries and that explicit Fragment/SubTemplate templates are not emitted as standalone deliverables by default.
 - [ ] Validation: generate XML-like or JSON-like output and confirm the summary reports XML/JSON valid/invalid counts without crashing generation.
-- [ ] Save/reopen: import Domain JSON containing output templates, save the composition, close/reopen, generate composition output, and confirm no individual Output-Templates tabs need to be opened.
-- [ ] MTConnect case: open the MTConnect Machine Monitoring composition, import/update the companion MTConnect Domain JSON, and generate an MTConnectDevices, SHACL, Mermaid, Text, or Use-Case Proposal output if available.
+- [ ] Save/reopen: update Domain JSON containing output templates, save the composition, close/reopen, generate composition output, and confirm no individual Output-Templates tabs need to be opened.
+- [ ] MTConnect case: open the MTConnect Machine Monitoring composition, update the companion MTConnect Domain from `.tdom`, and generate an MTConnectDevices, SHACL, Mermaid, Text, or Use-Case Proposal output if available.
 - [ ] Confirm the lower-left log contains `Output template preparation started`, active composition/domain/language context, inspected counts, materialized template counts, lint counts, and per-template warnings/errors.
-- [ ] Confirm output templates are not executed during Domain JSON import/export or refresh-only preparation.
+- [ ] Confirm output templates are not executed during Domain JSON compatibility import/export or refresh-only preparation.
 
 ## Embedded Domain Update
 
 - [ ] Open an older `.tcom` composition.
 - [ ] Run `Composition -> Domain -> Update Embedded Domain...`.
-- [ ] Select a newer `.tdom` or `samples/domain-sync-update.sample.json`.
+- [ ] Select a newer `.tdom`.
 - [ ] Confirm the preview lists added/updated/legacy-retained domain objects.
 - [ ] Confirm source warnings, import warnings, skipped operations, dangerous skipped operations, and errors are listed separately.
 - [ ] Confirm preserved source/export warnings do not make a clean update look like a failed import.

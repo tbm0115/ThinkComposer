@@ -356,7 +356,7 @@ Regression samples:
 
 Supported operations are `update`, `create`, `delete`, and `place` for the entity types where the native model can safely apply them.
 
-`set.description` and `set.techSpec` are supported for compositions, concepts, relationships, and views where the target native object exposes those fields. JSON `description` values should be plain text; the importer converts them into native rich-text storage, and export converts native rich text back to plain text where possible. Omission preserves the current value. An explicit empty string clears the field. The importer logs applied description and TechSpec field updates. Composition JSON exports embedded-domain and definition descriptions as context; authoritative domain edits should still use Domain JSON interchange.
+`set.description` and `set.techSpec` are supported for compositions, concepts, relationships, and views where the target native object exposes those fields. JSON `description` values should be plain text; the importer converts them into native rich-text storage, and export converts native rich text back to plain text where possible. Omission preserves the current value. An explicit empty string clears the field. The importer logs applied description and TechSpec field updates. Composition JSON exports embedded-domain and definition descriptions as context; authoritative domain edits should patch root `/Domain.json` in the native package or update the embedded domain from a `.tdom`.
 
 Patch semantics:
 
@@ -398,8 +398,8 @@ The preview/final summary also includes `Relationships skipped by compatibility`
 
 For domain-accurate imports, fix the JSON so every relationship definition connects compatible endpoint concept definitions. Recommended workflow:
 
-1. Import/update the Domain JSON or embedded domain first.
-2. Export or inspect the Domain JSON relationship definitions and role constraints.
+1. Update root `/Domain.json` or the embedded domain from the intended `.tdom` first.
+2. Inspect the Domain JSON relationship definitions and role constraints.
 3. Generate the `.tcom` patch using relationship definitions that accept the endpoint concept definitions.
 4. Use fallback only for draft graph preservation, not final domain-accurate semantics.
 
@@ -582,7 +582,7 @@ Additional sample files are available at `samples/json-interchange-patch.sample.
 
 ## Domain Interchange
 
-Domain JSON Interchange is separate from Composition JSON Interchange. Use `format: "ThinkComposer.DomainJsonInterchange"` for `.tdom` export/import or for updating an active composition's embedded domain snapshot.
+Domain JSON Interchange is separate from Composition JSON Interchange. Modern `.tdom` and `.tcom` packages use `format: "ThinkComposer.DomainJsonInterchange"` in authoritative root `/Domain.json` payloads. CLI import/export remains available as a compatibility and validation path.
 
 Related docs:
 
@@ -591,7 +591,7 @@ Related docs:
 - `docs/output-template-generation.md`
 - `docs/thinkcomposer-domain-json-interchange.schema.json`
 
-Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer `.tdom` or Domain JSON file. This command updates the embedded domain snapshot explicitly; it does not create a live sync link and does not delete legacy embedded-domain objects by omission.
+Use `Composition > Domain > Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer `.tdom`. This command updates the embedded domain snapshot explicitly; it does not create a live sync link and does not delete legacy embedded-domain objects by omission.
 
 When an embedded Domain update adds or changes output templates, ThinkComposer still treats template bodies as text during import. Composition output generation prepares the imported definition-level templates before rendering, so users should not need to open Concept/Relationship Definition Output-Templates tabs after the update.
 
@@ -615,7 +615,7 @@ When an embedded Domain update adds or changes output templates, ThinkComposer s
 14. Verify no `Put-visual must be applied within a Command` error appears.
 15. If an error occurs, inspect the log for the full exception, current operation, and rollback/undo result.
 16. Import `samples/composition-active-root-fallback.sample.json` into a fresh blank composition and confirm the preview/apply summary creates two concepts and one relationship with zero skipped operations.
-17. For generated MTConnect patches such as `machine_monitoring_utilization_productivity_composition.json`, import/update the required MTConnect Domain JSON first, then import the composition patch. Expected result after active-root fallback is fixed: the preview plans 20 concept creates and 34 relationship creates, missing-container skips are zero, auto-fit and auto-route run for newly placed items, and save/reopen preserves the created ideas and relationships.
+17. For generated MTConnect patches such as `machine_monitoring_utilization_productivity_composition.json`, update the required MTConnect domain in the target package first, then apply the composition patch. Expected result after active-root fallback is fixed: the preview plans 20 concept creates and 34 relationship creates, missing-container skips are zero, auto-fit and auto-route run for newly placed items, and save/reopen preserves the created ideas and relationships.
 18. Import `samples/composition-strict-domain-compatibility.sample.json` into an All-Purpose composition and confirm strict relationship compatibility passes with zero compatibility skips. Change `requires.domain.techName` to a non-active domain and confirm the preview blocks before apply.
 19. Add strict options to a known partially compatible generated patch. Expected result: preview reports compatibility failures and apply is blocked before creating concepts.
 20. Import `samples/composition-full-state-create.sample.json` into a blank All-Purpose composition. Expected result: two concepts created, one relationship created, visuals placed, skipped zero.
@@ -630,7 +630,7 @@ Detailed import diagnostics are in the lower-left application log window. The mo
 Before preview, the importer logs a preflight block with active composition/domain/view context, import options, required concept and relationship definitions, referenced containers/views/endpoints, planned ids/techNames, and unresolved references. Common skip causes are:
 
 - Missing container: use an exact container id/techName, or use `Active_Composition_Root` with `useActiveCompositionAsContainer=true` for root-level GPT patches.
-- Missing concept definition or relationship definition: import/update the required Domain JSON first, or use a definition techName that exists in the active embedded domain.
+- Missing concept definition or relationship definition: update root `/Domain.json` or refresh the embedded domain from the required `.tdom` first, or use a definition techName that exists in the active embedded domain.
 - Unresolved relationship endpoint: create the endpoint earlier in the patch, use the correct endpoint id/techName, or repair the active composition before importing.
 - Unresolved role: use `roleType` of `Origin`/`Target` or a roleDefinitionTechName present on the selected relationship definition.
 - Relationship compatibility failure: the endpoint concepts exist, but their concept definitions are not valid for the requested relationship definition/roles. Fix the relationship definition/endpoints for domain-accurate imports, or opt into `relationshipDefinitionFallbackTechName` for drafts.

@@ -1,10 +1,10 @@
 # ThinkComposer Domain JSON Interchange
 
-Domain JSON Interchange exports a ThinkComposer `.tdom` domain to editable JSON and merges edited JSON back into an open domain. It is also the merge source used when updating an existing `.tcom` composition's embedded domain snapshot.
+Domain JSON Interchange is the text-safe Domain payload used by modern `.tdom` packages and by compatibility merge paths. It is also the merge source used when updating an existing `.tcom` composition's embedded domain snapshot.
 
 The same full-state Domain JSON DTO is also used by modern native `.tdom` persistence. A newly saved `.tdom` package writes root `/Domain.json` as the authoritative domain payload. Normal domain Open/Save uses that root JSON first.
 
-Manual `Domain > Export Domain JSON...` and `Domain > Import/Update Domain JSON...` remain explicit interchange workflows. Import still previews and merges into the open domain or embedded domain; it is not the same code path as normal package load.
+The desktop `Domain > Export Domain JSON...` and `Domain > Import/Update Domain JSON...` buttons are deprecated. The forward path for AI-assisted or external edits is to patch the authoritative root `/Domain.json` inside the `.tdom` or `.tcom` package and refresh `/manifest.json` metadata for the changed authoritative part. CLI Domain JSON import/export remains available for validation, migration, and compatibility scenarios; it is not the same code path as normal package load.
 
 ## Native Package Persistence
 
@@ -24,13 +24,14 @@ The root package manifest schema is maintained at `docs/thinkcomposer-package-ma
 
 ## Workflow
 
-1. Open a domain in ThinkComposer.
-2. Use `Domain > Export Domain JSON...`.
-3. Edit the JSON manually or with GPT assistance.
-4. Reopen or keep the original `.tdom` domain active.
-5. Use `Domain > Import/Update Domain JSON...`.
-6. Review the preview summary, source warnings, import warnings, skipped operations, and errors.
-7. Confirm the merge, then save the `.tdom` normally.
+1. Copy or save the native `.tdom` or `.tcom` package before editing.
+2. Open the package as a ZIP/OPC container.
+3. Edit root `/Domain.json` manually or with GPT assistance.
+4. Refresh the matching `/manifest.json` `authoritativeParts[]` entry, including `sha256` and `bytes`.
+5. Reopen the package in ThinkComposer and review the domain content.
+6. Save the package normally to let ThinkComposer rewrite JSON, sidecars, previews, and optional binary fallback consistently.
+
+Use `Composition -> Domain -> Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer native `.tdom`. This UI path remains supported and does not require the deprecated Domain JSON import/export buttons.
 
 Every supported file starts with:
 
@@ -117,7 +118,7 @@ The importer is intentionally conservative:
 - Output template bodies are imported as text only. Templates, scripts, TechSpec, and external language text are never executed.
 - If an external language or owner definition is missing for a template, the template is skipped unless that dependency exists or is created earlier in the patch.
 
-After apply, Domain base output-template collections are refreshed for the available external languages. Definition-level template slots are prepared automatically when composition generation or `Tools -> Output -> Refresh Output Templates` runs, so users do not need to open every definition's Output-Templates tab after Domain JSON import.
+After apply through a compatibility import path or after native save/reopen through root JSON, Domain base output-template collections are refreshed for the available external languages. Definition-level template slots are prepared automatically when composition generation or `Tools -> Output -> Refresh Output Templates` runs, so users do not need to open every definition's Output-Templates tab after a Domain JSON update.
 
 Output-template create/update logs include owner scope, owner techName, external language match method, source collection, old/new text length, old/new template hash, `extendsBaseTemplate`, role, and target filename/extension hints. Template bodies are not written to the log. Use `Tools -> Output -> Generation Preview` to inspect the effective template and rendered output before generating files.
 
@@ -125,7 +126,7 @@ The preview dialog summarizes planned changes. Detailed parse, planning, apply, 
 
 ## Report Categories
 
-Domain JSON dialogs separate message categories:
+Domain JSON compatibility dialogs separate message categories:
 
 - `Source warnings` come from the imported/exported JSON itself, such as text-only template export notes, summarized binary/visual content, or grouped missing-category notices. They are useful context, not new failures from the current import.
 - `Import warnings` are generated while planning or applying the current import/merge.
@@ -170,25 +171,24 @@ Sample documents are maintained under `samples/`:
 ## Manual Regression
 
 1. Open or create a `.tdom`.
-2. Export Domain JSON.
-3. Import a patch that updates domain summary and TechSpec.
-4. Add a concept definition, table, field, link role variant, marker definition, relationship definition, roles, and output template.
-5. Confirm dangerous delete examples are skipped with warnings.
-6. Save and reopen the `.tdom`.
-7. Confirm changes persist and no omitted native domain objects were deleted.
+2. Patch root `/Domain.json` or use the CLI compatibility import path to update domain summary and TechSpec.
+3. Add a concept definition, table, field, link role variant, marker definition, relationship definition, roles, and output template.
+4. Confirm dangerous delete examples are skipped with warnings when using a merge/import path.
+5. Save and reopen the `.tdom`.
+6. Confirm changes persist and no omitted native domain objects were deleted.
 
 ## Re-Export Verification
 
-Use this path after importing a metadata/TechSpec patch such as `samples/domain-json-metadata-update.sample.json`:
+Use this path after applying a metadata/TechSpec patch such as `samples/domain-json-metadata-update.sample.json`:
 
 1. Open the target `.tdom` or composition-embedded domain.
-2. Run `Domain > Import/Update Domain JSON...` and import the metadata patch.
-3. Confirm the preview shows the planned domain and external language updates.
-4. Apply the patch and verify the lower-left log includes field-level lines for `summary` and `techSpec`, including the external language match method.
+2. Patch root `/Domain.json` in the package, or run the CLI compatibility import path and import the metadata patch.
+3. When using an import path, confirm the preview shows the planned domain and external language updates.
+4. Apply the patch and verify diagnostics include field-level lines for `summary` and `techSpec`, including the external language match method.
 5. Save the active `.tdom` or save the containing `.tcom` if the domain is embedded in an open composition.
 6. Close and reopen the file.
-7. Run `Domain > Export Domain JSON...`.
-8. Inspect the exported JSON and verify:
+7. Inspect root `/Domain.json` or use `thinkcomposer domain export-json` for a compatibility export.
+8. Verify:
    - `domain.techSpec` contains the imported TechSpec text.
    - The target `externalLanguages[]` item contains the imported `summary`.
    - The target `externalLanguages[]` item contains the imported `techSpec`.
@@ -198,8 +198,8 @@ Use this path after importing a metadata/TechSpec patch such as `samples/domain-
 
 Use `samples/domain-json-additive-definition.sample.json` against a copied test composition/domain:
 
-1. Run `Domain > Import/Update Domain JSON...`.
-2. Confirm preview shows five planned creates and no planned skips, import warnings, or errors.
+1. Patch root `/Domain.json` in the copied package, or run the CLI compatibility import path.
+2. When using an import path, confirm preview shows five planned creates and no planned skips, import warnings, or errors.
 3. Apply and confirm the final summary reports five created items:
    - one `tableDefinition`
    - two `fieldDefinition` objects under `Interchange_Metadata`
@@ -213,7 +213,7 @@ Use `samples/domain-json-additive-definition.sample.json` against a copied test 
    - owner `Interchange_Component`
    - external language `Text`
 6. Save and reopen the `.tdom` or containing `.tcom`.
-7. Export Domain JSON again and confirm the table, fields, concept definition, custom fields table reference, and output template are present.
+7. Inspect root `/Domain.json` or export with `thinkcomposer domain export-json` and confirm the table, fields, concept definition, custom fields table reference, and output template are present.
 
 If the output template is skipped, check the log for an unresolved owner scope, owner definition, or external language. The importer accepts `ownerScope` and the alias `ownerKind`; supported scopes are `domainConcept`, `domainRelationship`, `conceptDefinition`, and `relationshipDefinition`.
 
@@ -223,4 +223,4 @@ For generation behavior after import, see `docs/output-template-generation.md`. 
 
 ## Limits
 
-This pass imports supported native visual format settings, text formats, WPF brush payloads, and report configuration needed by JSON-authoritative package persistence, but it still does not import custom domain shapes, domain-level binary image resources, arbitrary rich visual style object graphs, full destructive migrations, or executable behavior. JSON persistence does not reconstruct metadata-only binary domain payloads. `.tdom` JSON import/export is not live sync. Use `docs/domain-sync.md` for the explicit `.tdom` / Domain JSON to `.tcom` embedded-domain update workflow.
+This pass imports supported native visual format settings, text formats, WPF brush payloads, and report configuration needed by JSON-authoritative package persistence, but it still does not import custom domain shapes, domain-level binary image resources, arbitrary rich visual style object graphs, full destructive migrations, or executable behavior. JSON persistence does not reconstruct metadata-only binary domain payloads. `.tdom` JSON updates are not live sync. Use `docs/domain-sync.md` for the explicit native `.tdom` to `.tcom` embedded-domain update workflow.

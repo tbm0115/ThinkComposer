@@ -18,10 +18,11 @@ Detailed technical references are also available for [Composition JSON Interchan
 
 Use the CLI for:
 
-- exporting a composition to JSON before external review or AI-assisted editing
-- importing reviewed Composition JSON back into a saved `.tcom`
-- exporting a native `.tdom` domain or a composition's embedded domain to JSON
-- importing Domain JSON into a `.tdom` or into the embedded domain of a `.tcom`
+- exporting a composition to JSON for compatibility review
+- importing reviewed Composition JSON through the compatibility merge path
+- exporting a native `.tdom` domain or a composition's embedded domain to JSON for compatibility review
+- importing Domain JSON through the compatibility merge path
+- updating a composition's embedded domain directly from a native `.tdom`
 - inspecting, converting, and validating JSON-authoritative `.tcom` and `.tdom` packages
 - generating a standard composition report as PDF or XPS
 - generating files from output templates without opening the desktop shell
@@ -138,11 +139,13 @@ Overwrite the input only when that is intentional:
 thinkcomposer composition import-json --input "Models\ServiceMap.tcom" --json "Patches\ServiceMap.patch.json" --output "Models\ServiceMap.tcom" --in-place
 ```
 
+Modern `.tcom` persistence uses root `/Composition.json` and `/Domain.json` as the native source of truth. Use the CLI import/export commands when you need a compatibility merge, preview, or standalone interchange document; patch root package JSON directly for JSON-authoritative persistence edits.
+
 For the JSON model, patch operations, visual strategies, and diagnostics, see [Composition JSON Interchange](04-current-features.md#composition-json-interchange) and the detailed [Composition JSON Interchange reference](../json-interchange.md).
 
 ## Domain JSON
 
-Domain JSON export works with native `.tdom` domain files:
+Domain JSON export works with native `.tdom` domain files as a compatibility/interchange command:
 
 ```cmd
 thinkcomposer domain export-json --input "Domains\ServiceDesign.tdom" --output "Exports\ServiceDesign.domain.json"
@@ -154,16 +157,22 @@ It can also export the embedded domain snapshot from a `.tcom` composition:
 thinkcomposer domain export-json --input "Models\ServiceMap.tcom" --output "Exports\ServiceMap.embedded-domain.json"
 ```
 
-Import Domain JSON into a native domain:
+Import Domain JSON into a native domain through the compatibility merge path:
 
 ```cmd
 thinkcomposer domain import-json --input "Domains\ServiceDesign.tdom" --json "Patches\ServiceDesign.domain.json" --output "Domains\ServiceDesign.updated.tdom"
 ```
 
-Import Domain JSON into a composition's embedded domain:
+Import Domain JSON into a composition's embedded domain through the compatibility merge path:
 
 ```cmd
 thinkcomposer domain import-json --input "Models\ServiceMap.tcom" --json "Patches\ServiceDesign.domain.json" --output "Models\ServiceMap.updated.tcom"
+```
+
+Update a composition's embedded domain directly from a native `.tdom` source:
+
+```cmd
+thinkcomposer domain update-embedded --input "Models\ServiceMap.tcom" --domain "Domains\ServiceDesign.tdom" --output "Models\ServiceMap.updated.tcom"
 ```
 
 Preview or in-place behavior follows the same safety rules as Composition JSON import:
@@ -171,7 +180,10 @@ Preview or in-place behavior follows the same safety rules as Composition JSON i
 ```cmd
 thinkcomposer domain import-json --input "Domains\ServiceDesign.tdom" --json "Patches\ServiceDesign.domain.json" --output "Domains\ServiceDesign.updated.tdom" --preview-only
 thinkcomposer domain import-json --input "Domains\ServiceDesign.tdom" --json "Patches\ServiceDesign.domain.json" --output "Domains\ServiceDesign.tdom" --in-place
+thinkcomposer domain update-embedded --input "Models\ServiceMap.tcom" --domain "Domains\ServiceDesign.tdom" --output "Models\ServiceMap.updated.tcom" --preview-only
 ```
+
+Modern `.tdom` persistence uses root `/Domain.json` as the native source of truth. Use CLI domain import/export when you need a compatibility merge, preview, or standalone interchange document; patch root package JSON directly for JSON-authoritative persistence edits.
 
 For domain concepts, see [Domains](02-base-model.md#domains), [Output Templates](02-base-model.md#output-templates), and [External Languages](02-base-model.md#external-languages). For merge behavior, see [Domain JSON Interchange](04-current-features.md#domain-json-interchange), [Embedded Domain Updates](04-current-features.md#embedded-domain-updates), and the detailed [Domain JSON Interchange reference](../domain-json-interchange.md).
 
@@ -223,7 +235,7 @@ Generate files from output templates:
 thinkcomposer output generate --input "Models\ServiceMap.tcom" --output-dir "Generated\ServiceMap" --language "Xml"
 ```
 
-The `--language` value is the external language TechName from the composition's embedded domain. If you are not sure which language names are available, export Domain JSON and inspect its external-language entries, or review the domain in the desktop application.
+The `--language` value is the external language TechName from the composition's embedded domain. If you are not sure which language names are available, inspect root `/Domain.json`, run `thinkcomposer domain export-json` as a compatibility export, or review the domain in the desktop application.
 
 Common options:
 
@@ -256,6 +268,6 @@ Then remove the stale folder from `Path` or run `thinkcomposer --remove-from-pat
 
 If import fails because JSON is invalid, export a fresh JSON document from the same source file and compare the format header, `formatVersion`, identifiers, and patch operations. Use `--preview-only` before saving.
 
-If output generation reports an unknown language TechName, export Domain JSON from the same `.tcom` or `.tdom` and confirm the intended external language TechName.
+If output generation reports an unknown language TechName, inspect root `/Domain.json` from the same `.tcom` or `.tdom`, or run `thinkcomposer domain export-json` as a compatibility export, and confirm the intended external language TechName.
 
 If report generation writes an empty or unexpected report, open the composition in the desktop application and verify that the composition opens correctly and that the report configuration is suitable for that document.

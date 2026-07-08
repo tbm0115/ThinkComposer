@@ -14,6 +14,7 @@ thinkcomposer composition convert-json-persistence --input <file.tcom> --output 
 thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>
 thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>
 thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]
+thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <file.tcom> [--in-place] [--preview-only]
 thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --output-dir <dir>
 thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>
 thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>
@@ -44,6 +45,8 @@ Pass `-User` after any helper command to update or check only the current user's
 ## Import Safety
 
 Imports always require `--output`. The CLI refuses to overwrite the input path unless `--in-place` is also present and `--output` matches `--input`. `--preview-only` validates the input JSON and prints the planned import summary without saving any document.
+
+`domain update-embedded` is the CLI equivalent of `Composition -> Domain -> Update Embedded Domain...` for native `.tdom` sources. It previews or applies the safe embedded-domain merge, then writes a `.tcom` output.
 
 ## Package Persistence
 

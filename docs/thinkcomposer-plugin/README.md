@@ -1,26 +1,28 @@
 # ThinkComposer Codex Plugin
 
 Local Codex plugin for working with ThinkComposer diagrams through modern `.tcom`
-containers, JSON interchange, application logs, and embedded or exported view images.
+and `.tdom` containers, authoritative root JSON payloads, application logs, and
+embedded or exported view images.
 
 ## What It Adds
 
-- A `thinkcomposer` Codex skill with the safe export/import workflow.
+- A `thinkcomposer` Codex skill with the safe direct-package JSON workflow.
 - A bundled `thinkcomposer-json-interchange` skill with the detailed schemas, samples, validation helper, and JSON patching rules.
-- A local stdio MCP server for discovering `.tcom` containers and exported artifacts, summarizing and validating embedded or standalone JSON, extracting embedded interchange/screenshots, writing import patches, analyzing copied application logs, and finding recent embedded or exported images.
+- A local stdio MCP server for discovering `.tcom`/`.tdom` containers and exported artifacts, summarizing and validating root or sidecar JSON, extracting package JSON/screenshots, writing JSON patch documents, analyzing copied application logs, and finding recent embedded or exported images.
 - A `.codex-plugin/plugin.json` manifest so the plugin can be packaged or referenced from a local marketplace entry.
 
 ## Normal Loop
 
-1. Prefer a modern `.tcom` container when available. It can include root `Composition.json`, root `Domain.json`, optional `Interchange/*` sidecars, and `Previews/views/*.png`.
-2. If using an older file or a standalone interchange artifact is needed, export Composition JSON with `thinkcomposer composition export-json --input <file.tcom> --output <file.json>`.
-3. Export Domain JSON first if composition changes depend on domain definitions, roles, tables, details, or output templates and it is not embedded in the `.tcom`.
-4. Let Codex inspect the container or JSON and write a patch file.
-5. Apply the Composition patch with `thinkcomposer composition import-json --input <file.tcom> --json <patch.json> --output <updated-file.tcom>`, or use `Domain > Import/Update Domain JSON...` for Domain patches.
-6. Copy or save the lower-left application log if there are warnings, skips, or errors.
-7. Use embedded `.tcom` previews or export the active view as PNG with `Export Image` so Codex can visually verify the result.
+1. Prefer a modern `.tcom` or `.tdom` container when available. It can include root `manifest.json`, `Composition.json`, `Domain.json`, optional `TemplateComposition.json`, optional legacy binary fallback, `Interchange/*` sidecars, and `Previews/views/*.png`.
+2. Inspect root `/manifest.json` and the authoritative root JSON parts first. Treat `/Interchange/*` and previews as context only.
+3. Let Codex prepare the smallest safe JSON update for root `/Composition.json`, `/Domain.json`, or `/TemplateComposition.json`.
+4. Patch the native package root JSON and refresh `/manifest.json` authoritative part hashes and byte counts.
+5. Use `thinkcomposer package inspect` and `validate-json-persistence` commands to verify the updated package. Use CLI import/export only as a compatibility or migration path.
+6. Use `Composition -> Domain -> Update Embedded Domain...` or the equivalent CLI path when a `.tcom` should pick up safe domain changes from a `.tdom`.
+7. Copy or save the lower-left application log if there are warnings, skips, or errors.
+8. Use embedded previews or export the active view as PNG with `Export Image` so Codex can visually verify the result.
 
-The plugin does not edit native `.tcom` or `.tdom` files directly. It works through ThinkComposer's safe CLI/package merge commands.
+The plugin is now expected to work against native `.tcom` and `.tdom` package JSON directly. Do not treat `/Interchange/*` sidecars as authoritative, and do not edit `/Composition.bin` or `/Domain.bin` legacy fallback parts.
 
 ## Packaging
 

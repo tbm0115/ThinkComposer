@@ -55,7 +55,7 @@ These commands are intended to make imported or hand-authored diagrams readable 
 - Better layout option dialogs.
 - JSON import integration for Spider, Hierarchy, Flowchart, and System Map beyond the current auto-place, auto-fit, and auto-route options.
 
-Domain JSON import/export and explicit embedded-domain updates are covered by `docs/domain-json-interchange.md` and `docs/domain-sync.md`; they are separate from these manual Appearance layout commands.
+Package root Domain JSON updates and explicit embedded-domain updates are covered by `docs/domain-json-interchange.md` and `docs/domain-sync.md`; they are separate from these manual Appearance layout commands.
 
 ## Command Details
 

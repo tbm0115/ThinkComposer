@@ -447,11 +447,15 @@ namespace Instrumind.ThinkComposer.Composer
             if (!ProductDirector.ValidateEditionLimit(CompoLevels, MaxQuota, "save", "Composability Depth Levels"))
                 return "This product edition cannot save a Composition with more than " + MaxQuota.ToString() + " composability depth levels.";
 
+            var PreviousLocation = this.Location;
             if (DocumentLocation == null)
                 DocumentLocation = this.Location;
-            else
-                if (UpdateLocation)
-                    this.Location = DocumentLocation;
+
+            var GitSyncLink = PreserveGitSyncLinkOnSave(PreviousLocation, DocumentLocation);
+            var EmbeddedDomainGitSyncLink = ResolveEmbeddedDomainGitSyncLinkOnSave(PreviousLocation, this.DomainLocation);
+
+            if (DocumentLocation != null && UpdateLocation)
+                this.Location = DocumentLocation;
 
             var Snapshot = (this.TargetComposition.ActiveView == null
                             ? null
@@ -459,13 +463,88 @@ namespace Instrumind.ThinkComposer.Composer
 
             var Result = JsonPackagePersistence.StoreComposition(this.TargetComposition, DocumentLocation,
                                                                  RegisterAsRecentDoc, false,
-                                                                 Snapshot, true);
+                                                                 Snapshot, true,
+                                                                 GitSyncLink,
+                                                                 EmbeddedDomainGitSyncLink);
 
             if (Result.IsAbsent() && ResetExistenceStatus)
                 this.ExistenceStatus = EExistenceStatus.NotModified;
 
             return Result;
         }
+
+        private static GitSync.GitPackageLink PreserveGitSyncLinkOnSave(Uri PreviousLocation, Uri TargetLocation)
+        {
+            try
+            {
+                if (PreviousLocation == null || TargetLocation == null ||
+                    String.IsNullOrWhiteSpace(PreviousLocation.LocalPath) ||
+                    String.IsNullOrWhiteSpace(TargetLocation.LocalPath))
+                    return null;
+
+                var PreviousPath = Path.GetFullPath(PreviousLocation.LocalPath);
+                var TargetPath = Path.GetFullPath(TargetLocation.LocalPath);
+                if (!String.Equals(PreviousPath, TargetPath, StringComparison.OrdinalIgnoreCase) || !File.Exists(PreviousPath))
+                    return null;
+
+                return JsonPackagePersistence.ReadGitSyncLink(PreviousPath);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Cannot preserve gitSync link on save: " + Problem.Message);
+                return null;
+            }
+        }
+
+        private GitSync.GitPackageLink ResolveEmbeddedDomainGitSyncLinkOnSave(Uri PreviousCompositionLocation, Uri DomainLocation)
+        {
+            try
+            {
+                if (HasDomainSelfBaseline(this.PendingEmbeddedDomainGitSyncLink))
+                    return this.PendingEmbeddedDomainGitSyncLink;
+
+                if (DomainLocation != null &&
+                    !String.IsNullOrWhiteSpace(DomainLocation.LocalPath) &&
+                    File.Exists(DomainLocation.LocalPath))
+                {
+                    var DomainLink = JsonPackagePersistence.ReadGitSyncLink(DomainLocation.LocalPath);
+                    if (HasDomainSelfBaseline(DomainLink))
+                        return DomainLink;
+
+                    return null;
+                }
+
+                if (PreviousCompositionLocation == null ||
+                    String.IsNullOrWhiteSpace(PreviousCompositionLocation.LocalPath) ||
+                    !File.Exists(PreviousCompositionLocation.LocalPath))
+                    return null;
+
+                var ExistingLink = JsonPackagePersistence.ReadEmbeddedDomainGitSyncLink(PreviousCompositionLocation.LocalPath);
+                return HasDomainSelfBaseline(ExistingLink) ? ExistingLink : null;
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Cannot preserve embedded Domain gitSync link on save: " + Problem.Message);
+                return null;
+            }
+        }
+
+        private static bool HasDomainSelfBaseline(GitSync.GitPackageLink Link)
+        {
+            return Link != null &&
+                   Link.FindBaseline(GitSync.GitPackageLink.KindDomain, GitSync.GitPackageLink.RoleSelf) != null;
+        }
+
+        public bool RememberEmbeddedDomainGitSyncLink(GitSync.GitPackageLink Link)
+        {
+            if (!HasDomainSelfBaseline(Link))
+                return false;
+
+            this.PendingEmbeddedDomainGitSyncLink = Link;
+            return true;
+        }
+
+        private GitSync.GitPackageLink PendingEmbeddedDomainGitSyncLink = null;
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
         /// <summary>

@@ -9,7 +9,7 @@ Related manual topics:
 - [Overview](01-overview.md) explains how compositions and domains fit into a normal ThinkComposer workflow.
 - [Base Model](02-base-model.md) defines compositions, domains, ideas, relationships, output templates, and external languages.
 - [Application Guide](03-application-guide.md) covers installation, working with compositions, reporting, and the desktop commands mirrored by the CLI.
-- [Current Features](04-current-features.md) explains JSON interchange, Domain JSON, embedded-domain updates, and output template generation.
+- [Current Features](04-current-features.md) explains JSON interchange, Domain JSON, Git sync, embedded-domain updates, and output template generation.
 - [Template Language](05-template-language.md) and [Composition Information Model](06-information-model.md) describe the template model used by generated output.
 
 Detailed technical references are also available for [Composition JSON Interchange](../json-interchange.md), [Domain JSON Interchange](../domain-json-interchange.md), [Domain Sync](../domain-sync.md), [Output Template Generation](../output-template-generation.md), and the compact [CLI reference](../cli.md).
@@ -24,6 +24,7 @@ Use the CLI for:
 - importing Domain JSON through the compatibility merge path
 - updating a composition's embedded domain directly from a native `.tdom`
 - inspecting, converting, and validating JSON-authoritative `.tcom` and `.tdom` packages
+- linking packages to Git remotes, pulling linked packages, and pushing linked compositions
 - generating a standard composition report as PDF or XPS
 - generating files from output templates without opening the desktop shell
 
@@ -82,6 +83,7 @@ Use global or command-specific help:
 thinkcomposer --help
 thinkcomposer composition --help
 thinkcomposer domain --help
+thinkcomposer git --help
 thinkcomposer report --help
 thinkcomposer output --help
 ```
@@ -210,6 +212,50 @@ thinkcomposer domain validate-json-persistence --input "Domains\ServiceDesign.td
 ```
 
 The validation commands save a modern package, reopen it through normal load, fail if binary fallback was used, save again, and compare canonical root JSON payloads.
+
+## Git Sync
+
+Git sync requires `git.exe` to be installed and available on `Path`. ThinkComposer uses normal Git remotes and your existing Git credentials or SSH configuration. It does not store passwords, tokens, GitHub credentials, or Bitbucket credentials. Package-level links are stored as `gitSync`; Composition packages can also store `embeddedDomainGitSync` for the source `.tdom` link copied from a Git-linked Domain.
+
+Link a composition to a Git remote and repo-relative `.tcom` path:
+
+```cmd
+thinkcomposer git link --input "Models\ServiceMap.tcom" --remote "https://example.com/team/models.git" --branch main --path "compositions/ServiceMap.tcom" --output "Models\ServiceMap.tcom" --in-place
+```
+
+If the composition also has a related Domain source in the same repository, include `--domain-path`:
+
+```cmd
+thinkcomposer git link --input "Models\ServiceMap.tcom" --remote "https://example.com/team/models.git" --branch main --path "compositions/ServiceMap.tcom" --domain-path "domains/ServiceDesign.tdom" --output "Models\ServiceMap.tcom" --in-place
+```
+
+Link a standalone Domain package:
+
+```cmd
+thinkcomposer git link --input "Domains\ServiceDesign.tdom" --remote "https://example.com/team/models.git" --branch main --path "domains/ServiceDesign.tdom" --output "Domains\ServiceDesign.tdom" --in-place
+```
+
+Inspect the link and remote status:
+
+```cmd
+thinkcomposer git status --input "Models\ServiceMap.tcom"
+```
+
+Pull a linked package. In-place pull creates a backup before replacing the package. If `--backup-dir` is omitted, the backup is stored in the ThinkComposer user application data folder under `GitSync\backups`; temporary pull staging files are stored under `GitSync\temp`, not beside the `.tcom` or `.tdom`.
+
+```cmd
+thinkcomposer git pull --input "Models\ServiceMap.tcom" --output "Models\ServiceMap.tcom" --in-place
+```
+
+Push is supported for Composition packages:
+
+```cmd
+thinkcomposer git push --input "Models\ServiceMap.tcom" --message "Update service map"
+```
+
+For a new blank remote repository, link the package and push first. ThinkComposer creates the linked branch and baseline package path during the first push. Pull requires the linked branch and package path to exist already, and reports a warning when the remote is still empty.
+
+Domain packages are pull-only in this version. To update a Composition's embedded Domain after pulling a `.tdom`, use `thinkcomposer domain update-embedded`. In the desktop UI, Domain `Pull from Git` can use a Composition package's `embeddedDomainGitSync` link to pull and merge the embedded Domain source directly.
 
 ## Reports
 

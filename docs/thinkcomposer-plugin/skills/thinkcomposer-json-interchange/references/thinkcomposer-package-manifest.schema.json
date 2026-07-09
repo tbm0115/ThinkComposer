@@ -61,6 +61,13 @@
     "source": {
       "$ref": "#/$defs/source"
     },
+    "gitSync": {
+      "$ref": "#/$defs/gitSync"
+    },
+    "embeddedDomainGitSync": {
+      "$ref": "#/$defs/gitSync",
+      "description": "Optional .tcom-only Git linkage for the embedded Domain source. This is separate from package-level gitSync so a Composition and its base Domain can come from different remotes or paths."
+    },
     "sidecars": {
       "$ref": "#/$defs/sidecars"
     },
@@ -164,6 +171,81 @@
         "lastModification": {
           "type": "string",
           "format": "date-time"
+        }
+      }
+    },
+    "repoPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/\\\\]+(?:/[^/\\\\]+)*$"
+    },
+    "gitSync": {
+      "type": "object",
+      "required": [
+        "version",
+        "remote",
+        "baselines"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "remote": {
+          "$ref": "#/$defs/gitRemote"
+        },
+        "baselines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/gitBaseline"
+          }
+        }
+      }
+    },
+    "gitRemote": {
+      "type": "object",
+      "required": [
+        "url",
+        "branch"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Generic Git remote URL. Credentials and tokens must not be embedded."
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "gitBaseline": {
+      "type": "object",
+      "required": [
+        "kind",
+        "role",
+        "path"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "composition",
+            "domain"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "self",
+            "embeddedDomainSource"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/repoPath"
         }
       }
     },

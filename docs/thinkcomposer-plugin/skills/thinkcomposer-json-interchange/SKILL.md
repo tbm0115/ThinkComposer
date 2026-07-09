@@ -16,12 +16,13 @@ There are two current formats:
 
 Modern native `.tcom` and `.tdom` packages use root JSON payloads as authoritative persistence. Desktop Composition/Domain JSON import/export controls are deprecated; CLI import/export remains a compatibility, migration, and validation path.
 
-Saved native packages may contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. When a user provides a native `.tcom` or `.tdom`, inspect and patch root JSON first when present; treat `/Interchange/` as synchronized context snapshots. `/Composition.bin` and `/Domain.bin` are legacy fallback/recovery payloads.
+Saved native packages may contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. `/manifest.json` may also include optional package-level `gitSync` metadata with a generic Git remote, branch, and repo-relative baseline package paths; `.tcom` manifests may additionally include `embeddedDomainGitSync` for the embedded Domain's source `.tdom` link. When a user provides a native `.tcom` or `.tdom`, inspect and patch root JSON first when present; treat `/Interchange/` as synchronized context snapshots. `/Composition.bin` and `/Domain.bin` are legacy fallback/recovery payloads.
 
 When directly editing a native package:
 
 - Patch only authoritative root JSON parts: `.tcom` `/Composition.json` and `/Domain.json`; `.tdom` `/Domain.json` and optional `/TemplateComposition.json`.
 - Refresh the corresponding `/manifest.json` `authoritativeParts[]` metadata, especially `sha256` and `bytes`.
+- Preserve or intentionally update `/manifest.json` `gitSync` and `embeddedDomainGitSync` when present. Do not store Git credentials, tokens, last-sync commits, or package hashes in the package; sync state is machine-local.
 - Do not edit `/Composition.bin` or `/Domain.bin`; they are optional legacy fallback parts.
 - Do not treat `/Interchange/*` or `/Previews/*` as authoritative. They may be stale until ThinkComposer saves the package again.
 - Validate with `package inspect` and the relevant `validate-json-persistence` CLI command after the package is patched.

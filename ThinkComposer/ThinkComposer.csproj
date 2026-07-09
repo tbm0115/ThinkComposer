@@ -209,6 +209,10 @@
       <DependentUpon>FindAndReplaceDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Composer\ContainerSnapshots\ContainerSnapshotService.cs" />
+    <Compile Include="Composer\GitSync\GitPackageLink.cs" />
+    <Compile Include="Composer\GitSync\GitPackageSyncCommands.cs" />
+    <Compile Include="Composer\GitSync\GitPackageSyncService.cs" />
+    <Compile Include="Composer\GitSync\GitSyncLinkDialog.cs" />
     <Compile Include="Composer\JsonPackagePersistence.cs" />
     <Compile Include="Composer\Generation\FileGenerator.cs" />
     <Compile Include="Composer\Generation\GenerationManager.cs" />

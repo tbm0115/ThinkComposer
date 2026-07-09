@@ -212,6 +212,21 @@ Import and export write detailed diagnostics to the application log. Dialogs dis
 
 Strict relationship/detail compatibility options can block partial imports before apply. Non-strict workflows still import compatible objects and report invalid relationships or unsupported details.
 
+## Git Sync
+
+Modern `.tcom` and `.tdom` packages can store optional Git linkage in root `/manifest.json`. Package-level links use `gitSync` to connect the package to a generic Git remote, branch, and repo-relative baseline path. A `.tcom` can also store `embeddedDomainGitSync`, copied from a linked source `.tdom`, so the Composition and its base Domain can be updated from separate Git locations. ThinkComposer uses installed `git.exe`; it does not store passwords, tokens, GitHub API credentials, or Bitbucket API credentials.
+
+Composition Git sync supports:
+
+- linking the current `.tcom` to a remote path
+- pulling the linked `.tcom` as a whole-package replacement after validation
+- saving, committing, and pushing the linked `.tcom`
+- pulling a linked embedded Domain source and applying it through the existing embedded-domain update workflow
+
+Domain Git sync supports linking and pulling `.tdom` packages. Domain push is not exposed in this version.
+
+Pull does not perform a JSON merge. It validates the pulled package, creates a backup for in-place updates, and preserves the local Git link. For safe Domain changes inside a Composition, use `Composition -> Domain -> Update Embedded Domain...` or the linked Domain pull command.
+
 ## Domain JSON Interchange
 
 Domain JSON is the text-safe payload used by modern `.tdom` packages and compatibility merge paths. It is also the merge source for updating an existing composition's embedded domain snapshot.

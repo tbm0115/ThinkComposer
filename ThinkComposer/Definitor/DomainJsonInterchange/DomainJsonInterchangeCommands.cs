@@ -16,6 +16,7 @@ using Instrumind.Common.Visualization;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.Composer;
+using Instrumind.ThinkComposer.Composer.GitSync;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
 
@@ -130,9 +131,20 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (SourceLocation == null)
                 return;
 
+            UpdateEmbeddedDomainFromFile(Engine, SourceLocation.LocalPath);
+        }
+
+        public static void UpdateEmbeddedDomainFromFile(CompositionEngine Engine, string SourceRoute)
+        {
+            var TargetDomain = ActiveDomain(Engine);
+            if (TargetDomain == null)
+                return;
+
+            if (String.IsNullOrWhiteSpace(SourceRoute))
+                return;
+
             try
             {
-                var SourceRoute = SourceLocation.LocalPath;
                 Console.WriteLine("Embedded Domain update started. source='" + SourceRoute + "' target composition='" +
                                   Engine.TargetComposition.TechName + "' target domain='" + TargetDomain.TechName + "'");
 
@@ -151,10 +163,16 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                     TargetDomain.UpdateVersion();
                     DomainServices.UpdateDomainDependants(TargetDomain);
                     Engine.CompleteCommandVariation();
+                    var GitLinkMessage = RememberSourceDomainGitSyncLink(Engine, SourceRoute);
                     Engine.ExistenceStatus = EExistenceStatus.Modified;
                     LogPersistenceReminder("Embedded Domain update", Engine, TargetDomain);
+                    if (!String.IsNullOrWhiteSpace(GitLinkMessage))
+                        Console.WriteLine(GitLinkMessage);
                     Console.WriteLine("Embedded Domain update completed. " + ApplyReport.ApplySummary().Replace("\n", "; "));
-                    Display.DialogMessage("Embedded Domain Update", "Update completed.\n\n" + ApplyReport.ApplySummary(), EMessageType.Information);
+                    Display.DialogMessage("Embedded Domain Update",
+                                          "Update completed.\n\n" + ApplyReport.ApplySummary() +
+                                          (String.IsNullOrWhiteSpace(GitLinkMessage) ? "" : "\n\n" + GitLinkMessage),
+                                          EMessageType.Information);
                 }
                 catch (Exception)
                 {
@@ -188,6 +206,34 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             DomainJsonSerializer.Validate(Document);
             Console.WriteLine("Embedded Domain update source loaded as Domain JSON.");
             return Document;
+        }
+
+        private static string RememberSourceDomainGitSyncLink(CompositionEngine Engine, string SourceRoute)
+        {
+            if (Engine == null ||
+                String.IsNullOrWhiteSpace(SourceRoute) ||
+                !String.Equals(Path.GetExtension(SourceRoute).TrimStart('.'), Domain.FILE_EXTENSION_DOMAIN, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            try
+            {
+                var Link = JsonPackagePersistence.ReadGitSyncLink(SourceRoute);
+                if (Link == null ||
+                    Link.FindBaseline(GitPackageLink.KindDomain, GitPackageLink.RoleSelf) == null)
+                    return null;
+
+                if (!Engine.RememberEmbeddedDomainGitSyncLink(Link))
+                    return null;
+
+                return "Embedded Domain update gitSync: linked Domain source will be saved into the Composition manifest. Save the Composition to persist it. remote=" +
+                       GitPackageLink.RedactRemoteUrl(Link.Remote == null ? null : Link.Remote.Url) +
+                       "; branch=" + (Link.Remote == null ? "" : Link.Remote.Branch);
+            }
+            catch (Exception Problem)
+            {
+                Console.WriteLine("Embedded Domain update gitSync warning: cannot read source Domain gitSync link. " + Problem.Message);
+                return null;
+            }
         }
 
         private static Domain ActiveDomain(CompositionEngine Engine)

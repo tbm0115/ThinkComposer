@@ -25,6 +25,10 @@ The Microsoft .NET Framework 4.0 must be preinstalled.
 If not already present in your PC, you can download it from...
 http://www.microsoft.com/download/en/details.aspx?displaylang=en&id=17851
 
+Git synchronization commands require a separate Git for Windows installation with git.exe
+available on PATH. The ThinkComposer installer does not package a Git runtime or store
+Git hosting credentials.
+
 --------------------------------------------------------------------------------------
 
 KNOWN ISSUES: Installer is alerted as untrusted software by web Browsers and Windows.

@@ -25,12 +25,12 @@
             <DataTemplate>
                 <!--OLD Style
                     <Border x:Name="ItemBorder" CornerRadius="5" Margin="-1,1,0,1" Padding="2" HorizontalAlignment="Stretch" ToolTip="{Binding Summary}" Cursor="Hand"
-                            Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}"
-                            BorderBrush="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" BorderThickness="2">-->
+                            Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}"
+                            BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" BorderThickness="2">-->
             <!--Cursor="Hand" // Test: Cursor="/ApplicationProduct/Cursors/arrow_idea.cur"-->
             <!--ToolTip="{Binding Summary, Converter={StaticResource EmptyTextToNullConverter}}"-->
             <Border x:Name="ItemBorder" CornerRadius="5" Margin="0,0,0,0" Padding="2" HorizontalAlignment="Stretch"
-                        Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}"
+                        Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}"
                         BorderThickness="2" BorderBrush="Transparent">
                 <Border.ToolTip>
                     <!--NOTE: Multibinding does not work because produces a string and the ToolTip expects an object-->
@@ -61,7 +61,7 @@
                             </Image.Effect>
                         </Image>
                         <TextBlock Text="{Binding Name}" FontWeight="400" FontSize="10" FontFamily="Tahoma"
-                                       Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemTextBrush}}">
+                                       Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemTextBrush}}">
                                 <!--difficult to read
                                 <TextBlock.Effect>
                                     <DropShadowEffect ShadowDepth="2" Direction="330" Color="Gray"

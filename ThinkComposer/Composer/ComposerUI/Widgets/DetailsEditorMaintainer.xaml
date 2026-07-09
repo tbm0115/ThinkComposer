@@ -22,18 +22,11 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisCollConverter" />
         <imcv:BooleanToVisibilityHiddenConverter x:Key="BoolToVisHiddConverter" />
         <imcv:BooleanToInverseConverter x:Key="BoolToInverseConverter" />
-        <Style x:Key="ListboxStyle">
-            <Style.Resources>
-                <!-- Background of selected item when focussed -->
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FFBFD2DB" />
-                <!-- Background of selected item when not focussed -->
-                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FFBFD2DB" />
-            </Style.Resources>
-        </Style>
+        <Style x:Key="ListboxStyle" TargetType="{x:Type ListBox}" BasedOn="{StaticResource ThemeListBoxStyle}" />
         <DataTemplate x:Key="DetailDataTemplate" DataType="{x:Type tccu:DetailEditingCard}">
             <DockPanel>
                 <Polygon x:Name="CurrentRowArrow" DockPanel.Dock="Left" Points="2,4 18,10 2,16" Visibility="Hidden"
-                         Fill="#FFE9F2F2" />
+                         Fill="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
                 <Border x:Name="RowBorder" CornerRadius="3" Margin="22,1,1,1" Height="24"
                         Background="Transparent" BorderBrush="Transparent" BorderThickness="0">
                     <DockPanel>
@@ -62,7 +55,9 @@
                                    ToolTip="{Binding KindTitleAndSummary}" Width="18" />-->
                         <TextBlock DockPanel.Dock="Right" TextAlignment="Center"
                                    Text="{Binding KindTitle}" ToolTip="{Binding KindSummary}"
-                                   FontSize="10" Foreground="Black" Margin="2,0,2,0" Width="80"/>
+                                   FontSize="10"
+                                   Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=ExpositorTextBrush}}"
+                                   Margin="2,0,2,0" Width="80"/>
 
                         <!--MinWidth="198"-->
                         <DockPanel MinWidth="240">
@@ -100,25 +95,27 @@
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type ListBoxItem}},Path=IsSelected}" Value="True">
                     <Setter TargetName="CurrentRowArrow" Property="Visibility" Value="Visible" />
                     <Setter TargetName="RowBorder" Property="Background"
-                            Value="#FFBFD2DB" />
+                            Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
     </UserControl.Resources>
     <DockPanel x:Name="DetailsPanel" DockPanel.Dock="Top" >
         <Border DockPanel.Dock="Top" CornerRadius="10,10,0,0" Padding="7,0,7,0"
-                Background="#FFE9F2F2">
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=HeaderBrush}}">
             <!--Notice that Define is no longer allowed-->
-            <imvw:CollectionEditingToolPanel x:Name="DetailsToolPanel" Title="Details..." TitleBrush="Black" CanDefine="False"
+            <imvw:CollectionEditingToolPanel x:Name="DetailsToolPanel" Title="Details..."
+                                             TitleBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=HeaderTextBrush}}"
+                                             CanDefine="False"
                                              EditClicked="DetailsToolPanel_EditClicked" AddClicked="DetailsToolPanel_AddClicked"
                                              DeleteClicked="DetailsToolPanel_DeleteClicked"/>
         </Border>
         <ListBox x:Name="DetailsListBox" HorizontalContentAlignment="Stretch" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Hidden"
-                 Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelBrush}}"
+                 Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelBrush}}"
                  ItemTemplate="{StaticResource DetailDataTemplate}" Style="{StaticResource ListboxStyle}"
                  SelectionChanged="DetailsListBox_SelectionChanged" IsSynchronizedWithCurrentItem="True">
             <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem">
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource ThemeListBoxItemStyle}">
                     <EventSetter Event="PreviewGotKeyboardFocus" Handler="ListBoxItem_GotKeyboardFocus"/>
                     <EventSetter Event="MouseDoubleClick" Handler="ListBoxItem_DoubleClick" />
                 </Style>

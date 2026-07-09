@@ -7,7 +7,7 @@
              MinHeight="100" MinWidth="400" >
     <StackPanel>
         <Border CornerRadius="5" Margin="2" Padding="2"
-                Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelBrush}}">
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelBrush}}">
             <DockPanel>
                 <RadioButton x:Name="RbReferenced" Margin="2" GroupName="StructDecl"
                              DockPanel.Dock="Left" Width="180" Checked="RbReferenced_Checked">
@@ -19,7 +19,7 @@
             </DockPanel>
         </Border>
         <Border CornerRadius="5" Margin="2" Padding="2"
-                Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelBrush}}">
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelBrush}}">
             <StackPanel>
                 <DockPanel>
                     <StackPanel>

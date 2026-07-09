@@ -121,7 +121,12 @@ namespace Instrumind.Common.Visualization.Widgets
                         var Binder = new Binding(Definitor.TechName);
                         Binder.Mode = BindingMode.TwoWay;
                         Column.SelectedItemBinding = Binder;
-                        var ComboStyle = new Style(typeof(ComboBox));
+                        var BaseComboStyle = (Application.Current == null
+                                              ? null
+                                              : Application.Current.TryFindResource("ThemeComboBoxStyle") as Style);
+                        var ComboStyle = (BaseComboStyle == null
+                                          ? new Style(typeof(ComboBox))
+                                          : new Style(typeof(ComboBox), BaseComboStyle));
                         ComboStyle.Setters.Add(new Setter(ComboBox.FontSizeProperty, DEF_FONT_SIZE));
                         /*T This may crash? for edit value (as text)
                         ComboStyle.Setters.Add(new Setter(ComboBox.IsEditableProperty, true));

@@ -10,7 +10,7 @@
     <UserControl.Template>
         <ControlTemplate TargetType="{x:Type UserControl}">
             <Border x:Name="BackBorder" CornerRadius="3" BorderBrush="LightGray" BorderThickness="1"
-                    Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderBrush}}">
+                    Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderBrush}}">
                 <Grid>
                     <DockPanel>
                         <Border x:Name="AltContentBorder" DockPanel.Dock="Left">
@@ -66,7 +66,7 @@
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
                                 <Grid>
-                                    <Ellipse Fill="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}" Width="14" Height="14"/>
+                                    <Ellipse Fill="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}" Width="14" Height="14"/>
                                     <Ellipse Stroke="LightGray" Width="14" Height="14"/>
 
                                     <Grid x:Name="SwitchSymbol">

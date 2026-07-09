@@ -515,6 +515,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Settings.cs" />
+    <Compile Include="ApplicationShell\ApplicationThemeManager.cs" />
     <Compile Include="ApplicationShell\MainWindowHeader.xaml.cs">
       <DependentUpon>MainWindowHeader.xaml</DependentUpon>
     </Compile>

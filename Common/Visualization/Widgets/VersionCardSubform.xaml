@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:this="clr-namespace:Instrumind.Common.Visualization.Widgets"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=FormBodyBrush}}"
+             Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=FormBodyBrush}}"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="400">
     <DockPanel>

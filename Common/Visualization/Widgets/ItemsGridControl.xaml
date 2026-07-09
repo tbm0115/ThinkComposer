@@ -7,9 +7,20 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="700">
-    <DockPanel>
+    <DockPanel Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}">
         <ToolBar x:Name="ControlToolBar" DockPanel.Dock="Top"
-                 Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}">
+                 Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}"
+                 Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}">
+            <ToolBar.Template>
+                <ControlTemplate TargetType="{x:Type ToolBar}">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}"
+                            BorderThickness="0,0,0,1"
+                            Padding="2,1">
+                        <ItemsPresenter />
+                    </Border>
+                </ControlTemplate>
+            </ToolBar.Template>
             <this:PaletteButton x:Name="ItemAdd" ToolTip="Add Item" ButtonText="" ButtonImage="/Instrumind.Common;component/Visualization/Images/item_add.png"
                                 x:FieldModifier="public"/>
             <this:PaletteButton x:Name="ItemInsert" ToolTip="Insert Item" ButtonText="" ButtonImage="/Instrumind.Common;component/Visualization/Images/item_insert.png"
@@ -54,13 +65,17 @@
                                 Click="NavNext_Click" />
             <this:PaletteButton x:Name="NavLast" ToolTip="Last Item" ButtonText="" ButtonImage="/Instrumind.Common;component/Visualization/Images/resultset_last.png"
                                 Click="NavLast_Click" />
-            <Border x:Name="NavArea" BorderBrush="Gray" Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:BasicWindow}, ResourceId=WindowFrameBrush}}"
+            <Border x:Name="NavArea" BorderBrush="Gray" Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:BasicWindow}, ResourceId=WindowFrameBrush}}"
                     BorderThickness="1" Padding="2" Margin="0" CornerRadius="3" Visibility="Collapsed">
                 <StackPanel Orientation="Horizontal">
                     <TextBox x:Name="NavGotoItemNumber" Text="{Binding Path=CurrentItemIndex, Mode=TwoWay}"
                              LostFocus="NavGotoItemNumber_LostFocus"
                              GotFocus="NavGotoItemNumber_GotFocus"
-                             FontSize="11" Padding="-1" Background="White" TextAlignment="Center" FontWeight="700" MinWidth="30" BorderBrush="LightGray" />
+                             FontSize="11" Padding="-1"
+                             Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"
+                             Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}"
+                             TextAlignment="Center" FontWeight="700" MinWidth="30"
+                             BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
                     <TextBlock Text="of" FontSize="11" Margin="2,1,3,0" TextAlignment="Center" />
                     <TextBlock x:Name="NavItemsCount" Text="{Binding ElementName=ItemsDataGrid, Path=ItemsSource.Count, FallbackValue=0000}"
                                FontSize="11" Margin="0,1,0,0" TextAlignment="Center" FontWeight="700" />
@@ -69,19 +84,24 @@
         </ToolBar>
         
         <Border x:Name="AlternativeEditorContainer" DockPanel.Dock="Right" Visibility="Collapsed"
-                MinWidth="200" MinHeight="200" Background="Silver" />
+                MinWidth="200" MinHeight="200"
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}" />
         
         <!-- RowBackground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}" -->
         <!-- IMPORTANT: Do not use RowHeight="22" because the "g/p/j" letters are partially shown -->
         <DataGrid x:Name="EditingDataGrid" AutoGenerateColumns="False" RowHeaderWidth="10"
-                    Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
+                    Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"
+                    Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}"
+                    BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}" BorderThickness="0"
                     BeginningEdit="ItemsDataGrid_BeginningEdit" MinRowHeight="24"
                     CellEditEnding="ItemsDataGrid_CellEditEnding"
                     CurrentCellChanged="ItemsDataGrid_CurrentCellChanged"
                     RowEditEnding="ItemsDataGrid_RowEditEnding"
                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
-                    GridLinesVisibility="All" HorizontalGridLinesBrush="AliceBlue" VerticalGridLinesBrush="AliceBlue"
+                    GridLinesVisibility="All"
+                    HorizontalGridLinesBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}"
+                    VerticalGridLinesBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}"
                     SelectionMode="Single" SelectionUnit="FullRow" IsReadOnly="False"
                     DataGridCell.Selected="EditingDataGrid_CellSelected">
             <DataGrid.ItemTemplate>
@@ -96,7 +116,7 @@
                 </DataTemplate>
             </DataGrid.ItemTemplate>
             <DataGrid.Resources>
-                <Style TargetType="{x:Type DataGridCell}">
+                <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource ThemeDataGridCellStyle}">
                     <EventSetter Event="PreviewMouseLeftButtonDown" Handler="DataGridCell_PreviewMouseLeftButtonDown"></EventSetter>
                     <EventSetter Event="PreviewMouseLeftButtonUp" Handler="DataGridCell_PreviewMouseLeftButtonUp"></EventSetter>
                 </Style>

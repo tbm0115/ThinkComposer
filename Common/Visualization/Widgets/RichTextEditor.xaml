@@ -7,6 +7,17 @@
              mc:Ignorable="d" d:DesignHeight="300"
              Height="Auto" Width="Auto"
              Loaded="UserControl_Loaded" Unloaded="UserControl_Unloaded">
+    <UserControl.Resources>
+        <Style x:Key="RichTextEditorComboBoxStyle" TargetType="{x:Type ComboBox}">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="BorderBrush" Value="LightGray" />
+        </Style>
+        <Style x:Key="RichTextEditorComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height ="Auto" />
@@ -14,6 +25,8 @@
         </Grid.RowDefinitions>
         <ToolBar x:Name="ControlToolBar" Grid.Row="0">
             <ComboBox x:Name="TextFont" MinWidth="100" ToolTip="Font" HorizontalContentAlignment="Stretch"
+                      Style="{StaticResource RichTextEditorComboBoxStyle}"
+                      ItemContainerStyle="{StaticResource RichTextEditorComboBoxItemStyle}"
                       SelectionChanged="TextFont_SelectionChanged">
                 <ComboBox.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -28,6 +41,8 @@
             </ComboBox>
 
             <ComboBox x:Name="TextSize" MinWidth="35" ToolTip="Size"
+                      Style="{StaticResource RichTextEditorComboBoxStyle}"
+                      ItemContainerStyle="{StaticResource RichTextEditorComboBoxItemStyle}"
                       SelectionChanged="TextSize_SelectionChanged"/>
             
             <this:PaletteToggleButton x:Name="TextBold" ToolTip="Bold" ButtonText="" ButtonImage="/Instrumind.Common;component/Visualization/Images/text_bold.png"
@@ -93,6 +108,9 @@
         <!-- Old limit to avoid too much auto-resizing... MaxWidth="800" -->
         <this:RichTextBoxImproved x:Name="TextEditor" Grid.Row="1" 
                                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  Background="White"
+                                  Foreground="Black"
+                                  BorderBrush="LightGray"
                                   AcceptsTab="True" SpellCheck.IsEnabled="True"
                                   HorizontalScrollBarVisibility="Auto"
                                   VerticalScrollBarVisibility="Auto"

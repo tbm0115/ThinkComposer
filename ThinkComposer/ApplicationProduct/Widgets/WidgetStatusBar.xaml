@@ -15,7 +15,7 @@
                     <ControlTemplate TargetType="Button">
                         <Grid>
                             <Ellipse Width="16" Height="16"
-                                     Fill="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}"/>
+                                     Fill="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}"/>
                             <ContentPresenter Margin="2" />
                             <ContentPresenter Margin="2" />
                             <Ellipse Width="16" Height="16" Stroke="LightGray" />
@@ -117,7 +117,7 @@
                 
                 <ComboBox x:Name="DocumentSelector" BorderBrush="LightGray" Width="400" Height="38"
                           Text="Working Title / Selected Subject" Padding="1" BorderThickness="0"
-                          Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=PanelBrush}}" 
+                          Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=PanelBrush}}"
                           IsSynchronizedWithCurrentItem="True" HorizontalContentAlignment="Stretch" 
                           ToolTip="{Binding ElementName=DocumentSelector, Path=SelectionBoxItem.Overview}">
                     <ComboBox.ItemTemplate>
@@ -139,14 +139,14 @@
 
             <DockPanel Margin="2,0,2,0" Width="400" >
                 <!--<TextBlock DockPanel.Dock="Left" FontWeight="Bold" FontSize="10" TextAlignment="Right" Padding="2,0,2,2" Text="Help"
-                           Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderTextBrush}}"
-                           Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderBrush}}">
+                           Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderTextBrush}}"
+                           Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderBrush}}">
                     <TextBlock.LayoutTransform>
                         <RotateTransform Angle="270" />
                     </TextBlock.LayoutTransform>
                 </TextBlock>-->
                 <TextBlock DockPanel.Dock="Top" x:Name="PointingToText" Height="32"
-                           Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}"
+                           Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}"
                            Text="&lt;Pointing-To&gt;" TextWrapping="Wrap" FontSize="11"
                            ToolTip="Pointed object"/>
                 <TextBlock x:Name="AssistanceText" Opacity="0.7"

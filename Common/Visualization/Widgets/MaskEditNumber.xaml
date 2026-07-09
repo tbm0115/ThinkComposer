@@ -13,7 +13,9 @@
         <Popup x:Name="PopupSelectorList" DockPanel.Dock="Right" MouseLeave="UserControl_MouseLeave"
                 PlacementTarget="{Binding ElementName=WorkPanel}" Placement="Bottom" AllowsTransparency="True"
                 PopupAnimation="None" MinWidth="{Binding Path=ActualWidth, ElementName=WorkPanel}">
-            <Border Background="WhiteSmoke" BorderThickness="0.5" BorderBrush="LightGray">
+            <Border Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"
+                    BorderThickness="0.5"
+                    BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}">
                 <!-- The next binding properties didn't work as expected:
                 SelectedValuePath="{Binding Path=ValuesSourceMemberPath, RelativeSource={RelativeSource FindAncestor, AncestorType=this:MaskEditNumber, AncestorLevel=1}, Mode=OneWay}"
                 SelectedItem="{Binding Path=Value, RelativeSource={RelativeSource FindAncestor, AncestorType=this:MaskEditNumber, AncestorLevel=1}, Mode=OneWay}" -->
@@ -22,7 +24,7 @@
                          DisplayMemberPath="{Binding Path=ValuesSourceMemberPath, RelativeSource={RelativeSource FindAncestor, AncestorType=this:MaskEditNumber, AncestorLevel=1}, Mode=OneWay}"
                          SelectionChanged="LbxSelector_SelectionChanged">
                     <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource ThemeListBoxItemStyle}">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                             <Setter Property="Cursor" Value="Hand" />
                         </Style>
@@ -33,10 +35,10 @@
 
         <!--Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"-->
         <Border x:Name="ListActioner" DockPanel.Dock="Right" CornerRadius="1" Margin="1"
-                Background="WhiteSmoke"
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}"
                 MouseLeftButtonDown="ListActioner_MouseLeftButtonDown">
             <!--<TextBlock Text="..." />-->
-            <Polygon Stroke="Black" Fill="Black" Points="1,0 7,0, 4,6" Margin="2,6,2,1" />
+            <Polygon Stroke="{DynamicResource GlyphBrush}" Fill="{DynamicResource GlyphBrush}" Points="1,0 7,0, 4,6" Margin="2,6,2,1" />
             <Border.Style>
                 <Style TargetType="Border">
                     <Style.Triggers>

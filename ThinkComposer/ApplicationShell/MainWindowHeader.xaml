@@ -12,22 +12,22 @@
              MouseDown="MainWindowHeader_MouseDown">
     <Grid>
         <Border x:Name="BackBorder" Padding="0"
-                Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralTopBrush}}"
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralTopBrush}}"
                 VerticalAlignment="Top" >
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="285*" />
-                    <ColumnDefinition Width="411*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="25" />
                 </Grid.ColumnDefinitions>
                 <wg:AutoCollapsePanel x:Name="PaletteSupraContainer" Orientation="Horizontal"
                             CollapsedSize="20" Margin="1"
-                            VerticalAlignment="Top" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Grid.ColumnSpan="2">
+                            VerticalAlignment="Top" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Grid.Column="0">
                     <TextBlock Text="Main Menu-Palette Floating Container" Foreground="WhiteSmoke" Padding="1" />
                 </wg:AutoCollapsePanel>
 
                 <Border Background="Transparent" BorderBrush="Transparent"
                         BorderThickness="1" CornerRadius="3" Width="108" Height="24"
-                        Margin="250,-1,0,-2" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.ColumnSpan="2">
+                        Margin="250,-1,0,-2" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="0">
                     <StackPanel x:Name="QuickToolPanel" VerticalAlignment="Top" HorizontalAlignment="Center" Orientation="Horizontal">
                         <wg:PaletteButton ButtonText="" ButtonImage="/Instrumind.ThinkComposer;component/Instrumind_48x48.ico" Margin="-1"/>
                         <wg:PaletteButton ButtonText="" ButtonImage="/Instrumind.ThinkComposer;component/Instrumind_48x48.ico" Margin="-1"/>
@@ -35,6 +35,54 @@
                         <wg:PaletteButton ButtonText="" ButtonImage="/Instrumind.ThinkComposer;component/Instrumind_48x48.ico" Margin="-1"/>
                     </StackPanel>
                 </Border>
+
+                <ToggleButton x:Name="ThemeToggleButton"
+                              Width="21" Height="21" Margin="1,2,2,0"
+                              HorizontalAlignment="Center" VerticalAlignment="Top"
+                              Focusable="False"
+                              Checked="ThemeToggleButton_Checked"
+                              Unchecked="ThemeToggleButton_Unchecked"
+                              Grid.Column="1">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="ToggleBack"
+                                    CornerRadius="10"
+                                    BorderThickness="1"
+                                    Background="{DynamicResource ThinkComposer.ThemeToggleBackgroundBrush}"
+                                    BorderBrush="{DynamicResource ThinkComposer.ThemeToggleBorderBrush}">
+                                <Viewbox Width="15" Height="15">
+                                    <Grid Width="20" Height="20">
+                                        <Ellipse x:Name="SunCore"
+                                                 Width="8" Height="8"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"
+                                                 Fill="{DynamicResource ThinkComposer.ThemeToggleGlyphBrush}" />
+                                        <Path x:Name="SunRays"
+                                              Stroke="{DynamicResource ThinkComposer.ThemeToggleGlyphBrush}"
+                                              StrokeThickness="1.6"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              Data="M10,1 L10,4 M10,16 L10,19 M1,10 L4,10 M16,10 L19,10 M3.6,3.6 L5.8,5.8 M14.2,14.2 L16.4,16.4 M16.4,3.6 L14.2,5.8 M5.8,14.2 L3.6,16.4" />
+                                        <Path x:Name="MoonGlyph"
+                                              Visibility="Collapsed"
+                                              Fill="{DynamicResource ThinkComposer.ThemeToggleGlyphBrush}"
+                                              Data="M13,2 C9.2,3 6.5,6.5 6.5,10.3 C6.5,14.7 10.1,18.3 14.5,18.3 C16,18.3 17.3,17.9 18.5,17.1 C14.4,16.7 11.2,13.2 11.2,9 C11.2,6.2 11.9,4 13,2 Z" />
+                                    </Grid>
+                                </Viewbox>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="SunCore" Property="Visibility" Value="Collapsed" />
+                                    <Setter TargetName="SunRays" Property="Visibility" Value="Collapsed" />
+                                    <Setter TargetName="MoonGlyph" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ToggleBack" Property="Background" Value="{DynamicResource ThinkComposer.ThemeToggleHoverBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                </ToggleButton>
 
             </Grid>
         </Border>

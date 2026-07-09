@@ -6,10 +6,10 @@
              xmlns:imcv="clr-namespace:Instrumind.Common.Visualization.Widgets;assembly=Instrumind.Common"
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300">
-    <DockPanel Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelBrush}}">
+    <DockPanel Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelBrush}}">
         <DockPanel DockPanel.Dock="Right" VerticalAlignment="Top">
             <!--POSTPONED UNTIL KEY DUPLICATION REJECTED-->
-            <Border DockPanel.Dock="Top" Background="WhiteSmoke" CornerRadius="5" Margin="2" Visibility="Collapsed">
+            <Border DockPanel.Dock="Top" Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorBrush}}" CornerRadius="5" Margin="2" Visibility="Collapsed">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top">
                         <Button x:Name="BtnAddKeyField" DockPanel.Dock="Left" BorderBrush="Transparent"
@@ -34,7 +34,7 @@
                     <ListBox x:Name="LstbxUniqueKeyFields" MinWidth="100" MinHeight="70" Margin="2" BorderBrush="Transparent"/>
                 </DockPanel>
             </Border>
-            <Border DockPanel.Dock="Top" Background="WhiteSmoke" CornerRadius="5" Margin="2" Visibility="Collapsed">
+            <Border DockPanel.Dock="Top" Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorBrush}}" CornerRadius="5" Margin="2" Visibility="Collapsed">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top">
                         <Button x:Name="BtnAddDominantField" DockPanel.Dock="Left" BorderBrush="Transparent"
@@ -59,7 +59,7 @@
                     <ListBox x:Name="LstbxDominantFields" MinWidth="100" MinHeight="70" Margin="2" BorderBrush="Transparent"/>
                 </DockPanel>
             </Border>
-            <Border Background="WhiteSmoke" CornerRadius="5" Margin="2" MaxHeight="130">
+            <Border Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorBrush}}" CornerRadius="5" Margin="2" MaxHeight="130">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top">
                         <Button x:Name="BtnAddLabelField" DockPanel.Dock="Left" BorderBrush="Transparent"
@@ -85,7 +85,7 @@
                 </DockPanel>
             </Border>
         </DockPanel>
-        <Border Background="WhiteSmoke" CornerRadius="5" Margin="2">
+        <Border Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorBrush}}" CornerRadius="5" Margin="2">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="Field Definitions" FontWeight="700" Margin="2"
                            ToolTip="Defines the Fields (elementary data attributes), that compose Table records." />

@@ -26,7 +26,7 @@
                 <!-- Previous: Text = "Label" -->
                 <TextBlock x:Name="LabelExpositor" x:FieldModifier="public"
                         Text="" Height="16" Margin="1,2,2,0" FontSize="10" MinWidth="60" TextAlignment="Right"
-                        Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}">
+                        Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}">
                     <!--difficult to read
                     <TextBlock.Effect>
                         <DropShadowEffect ShadowDepth="2" Direction="330" Color="Gray"
@@ -38,7 +38,7 @@
                 <!-- Previous: Text = ")" -->
                 <TextBlock x:Name="ValuePreExpositor" DockPanel.Dock="Left" Text=""
                            FontFamily="Wingdings 2" FontSize="17" Padding="1,0,0,0" Width="12" VerticalAlignment="Top"
-                           Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}"/>
+                           Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}"/>
                 <!--<Image x:Name="ValuePreExpositor" DockPanel.Dock="Left" Stretch="None" VerticalAlignment="Top" Margin="0,4,0,0"
                        Source="/Instrumind.Common;component/Visualization/Images/type_text.png" />-->
                 <!--<Button x:Name="ValuePostExpositorButton" DockPanel.Dock="Right" Content="@" 

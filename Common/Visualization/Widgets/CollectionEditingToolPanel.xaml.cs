@@ -37,7 +37,7 @@ namespace Instrumind.Common.Visualization.Widgets
                 new FrameworkPropertyMetadata("Title", new PropertyChangedCallback(OnTitleChanged)));
 
             CollectionEditingToolPanel.TitleBrushProperty = DependencyProperty.Register("TitleBrush", typeof(Brush), typeof(CollectionEditingToolPanel),
-                new FrameworkPropertyMetadata(Brushes.Black, new PropertyChangedCallback(OnTitleBrushChanged)));
+                new FrameworkPropertyMetadata(null, new PropertyChangedCallback(OnTitleBrushChanged)));
 
             CollectionEditingToolPanel.CanAddProperty = DependencyProperty.Register("CanAdd", typeof(bool), typeof(CollectionEditingToolPanel),
                 new FrameworkPropertyMetadata(true, new PropertyChangedCallback(OnCanAddChanged)));
@@ -58,6 +58,10 @@ namespace Instrumind.Common.Visualization.Widgets
         public CollectionEditingToolPanel()
         {
             InitializeComponent();
+
+            if (this.TitleBrush == null)
+                this.TitleTextBlock.SetResourceReference(TextBlock.ForegroundProperty,
+                    new ComponentResourceKey(typeof(EntitledPanel), "HeaderTextBrush"));
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -139,7 +143,14 @@ namespace Instrumind.Common.Visualization.Widgets
 
         private static void OnTitleBrushChanged(DependencyObject depobj, DependencyPropertyChangedEventArgs evargs)
         {
-            ((CollectionEditingToolPanel)depobj).TitleTextBlock.Foreground = evargs.NewValue as Brush;
+            var Target = (CollectionEditingToolPanel)depobj;
+            var Brush = evargs.NewValue as Brush;
+
+            if (Brush == null)
+                Target.TitleTextBlock.SetResourceReference(TextBlock.ForegroundProperty,
+                    new ComponentResourceKey(typeof(EntitledPanel), "HeaderTextBrush"));
+            else
+                Target.TitleTextBlock.Foreground = Brush;
         }
 
         private static void OnCanAddChanged(DependencyObject depobj, DependencyPropertyChangedEventArgs evargs)

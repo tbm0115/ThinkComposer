@@ -8,8 +8,8 @@
              d:DesignHeight="300" d:DesignWidth="300">
     <DockPanel>
         <!--<TextBlock DockPanel.Dock="Left" FontWeight="Bold" FontSize="10" TextAlignment="Right" Padding="2,0,2,2" Text="Messages"
-                   Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderTextBrush}}"
-                   Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderBrush}}">
+                   Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderTextBrush}}"
+                   Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderBrush}}">
             <TextBlock.LayoutTransform>
                 <RotateTransform Angle="270" />
             </TextBlock.LayoutTransform>

@@ -7,20 +7,18 @@
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="TabHeaderBrush" Color="#FFE5ECEF"/>
-        <!--<LinearGradientBrush x:Key="TabHeaderBrush" StartPoint="0.5,0" EndPoint="0.5,1">
-            <GradientStop Offset="0" Color="#FFF5F2F2" />
-            <GradientStop Offset="1" Color="#FFE2E2E2" />
-        </LinearGradientBrush>-->
         <Style TargetType="{x:Type TabItem}">
+            <Setter Property="Foreground" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TabItem}">
                         <Grid x:Name="BackPanel" Margin="0,1,0,0"  >
                             <Border Name="NormalBorder" BorderThickness="1,1,0,0" Margin="-2,0,11,0"
-                                    Background="{StaticResource TabHeaderBrush}" BorderBrush="{StaticResource TabHeaderBrush}"/>
+                                    Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}"
+                                    BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}"/>
                             <Border Name="SkewedBorder" BorderThickness="0,1,1,0" Margin="-1,0,2,0"
-                                    Background="{StaticResource TabHeaderBrush}" BorderBrush="{StaticResource TabHeaderBrush}">
+                                    Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}"
+                                    BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}">
                                 <Border.LayoutTransform>
                                     <SkewTransform AngleX="25" />
                                 </Border.LayoutTransform>
@@ -34,16 +32,16 @@
                                 <Setter TargetName="BackPanel" Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="NormalBorder" Property="Background" Value="White" />
-                                <Setter TargetName="SkewedBorder" Property="Background" Value="White" />
-                                <Setter TargetName="NormalBorder" Property="BorderBrush" Value="White" />
-                                <Setter TargetName="SkewedBorder" Property="BorderBrush" Value="White" />
+                                <Setter TargetName="NormalBorder" Property="Background" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}" />
+                                <Setter TargetName="SkewedBorder" Property="Background" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}" />
+                                <Setter TargetName="NormalBorder" Property="BorderBrush" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}" />
+                                <Setter TargetName="SkewedBorder" Property="BorderBrush" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="False">
-                                <Setter TargetName="NormalBorder" Property="Background" Value="{StaticResource TabHeaderBrush}" />
-                                <Setter TargetName="SkewedBorder" Property="Background" Value="{StaticResource TabHeaderBrush}" />
-                                <Setter TargetName="NormalBorder" Property="BorderBrush" Value="{StaticResource TabHeaderBrush}" />
-                                <Setter TargetName="SkewedBorder" Property="BorderBrush" Value="{StaticResource TabHeaderBrush}" />
+                                <Setter TargetName="NormalBorder" Property="Background" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}" />
+                                <Setter TargetName="SkewedBorder" Property="Background" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}" />
+                                <Setter TargetName="NormalBorder" Property="BorderBrush" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+                                <Setter TargetName="SkewedBorder" Property="BorderBrush" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -51,14 +49,9 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <TabControl x:Name="MainTabControl" x:FieldModifier="public" TabStripPlacement="Top" BorderBrush="White"
-                >
-        <TabControl.Background>
-            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                <GradientStop Color="#FFEFF4F7" Offset="0" />
-                <GradientStop Color="#FFDCE6EA" Offset="1" />
-            </LinearGradientBrush>
-        </TabControl.Background>
+    <TabControl x:Name="MainTabControl" x:FieldModifier="public" TabStripPlacement="Top"
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}"
+                BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}">
         <TabItem Header="First">First Content</TabItem>
         <TabItem Header="Second">Second Content</TabItem>
     </TabControl>

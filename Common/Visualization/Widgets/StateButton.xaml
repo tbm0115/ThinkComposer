@@ -8,7 +8,7 @@
              d:DesignHeight="300" d:DesignWidth="300">
     <UserControl.Template>
         <ControlTemplate  TargetType="{x:Type UserControl}">
-            <Border CornerRadius="3" Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:BasicWindow}, ResourceId=WindowFrameBrush}}" Padding="8">
+            <Border CornerRadius="3" Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:BasicWindow}, ResourceId=WindowFrameBrush}}" Padding="8">
                 <StackPanel>
                     <TextBlock Text="Alpha" Background="Silver" />
                     <TextBlock Text="Bravo" Background="LightGray" />

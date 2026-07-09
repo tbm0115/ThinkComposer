@@ -32,6 +32,7 @@ using Instrumind.Common.EntityDefinition;
 using Instrumind.Common.Visualization;
 using Instrumind.Common.Visualization.Widgets;
 
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.ApplicationProduct.Widgets;
 using Instrumind.ThinkComposer.Definitor;
 using Instrumind.ThinkComposer.Definitor.DefinitorMaintenance;
@@ -327,6 +328,7 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
             Application.Current.MainWindow.Cursor = Cursors.Wait;
 
             AppExec.LoadConfigurationFrom();
+            ApplicationThemeManager.LoadPreferenceFromConfiguration();
 
             WorkspaceDirector = new WorkspaceManager(ShellHost);
             DocumentVisualizerControl = new WidgetDocumentVisualizer();
@@ -1061,8 +1063,9 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
 
         public static void PopulateMenuPalette(WidgetPalette Palette, WorkSphere Sphere, params EShellCommandCategory[] AssignableCommandCategories)
         {
-            var GroupingHeaderBrush = Display.GetResource<Brush, EntitledPanel>("HeaderBrush");  // PanelTextBrush also looks good
-            var GroupingBodyBrush = new SolidColorBrush(Color.FromRgb(242, 246, 248));  // Display.GetGradientBrush(Color.FromRgb(252, 252, 252), Color.FromRgb(247, 247, 247)); //Display.GetResource<Brush, EntitledPanel>("PanelBrush");
+            var GroupingHeaderBrushKey = new ComponentResourceKey(typeof(EntitledPanel), "HeaderBrush");
+            var GroupingHeaderTextBrushKey = new ComponentResourceKey(typeof(EntitledPanel), "HeaderTextBrush");
+            var GroupingBodyBrushKey = new ComponentResourceKey(typeof(EntitledPanel), "PanelBrush");
 
             // Adds the required tab items if these already does not exists in the palette's tab control.
             foreach (var Area in Sphere.CommandAreas)
@@ -1117,7 +1120,7 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
 
                         var GroupingHeader = new Border();
                         GroupingHeader.CornerRadius = new CornerRadius(3.0, 0, 0, 3.0);
-                        GroupingHeader.Background = GroupingHeaderBrush;
+                        GroupingHeader.SetResourceReference(Border.BackgroundProperty, GroupingHeaderBrushKey);
                         GroupingHeader.Padding = new Thickness(0,4,1,4);
                         GroupingHeader.ToolTip = Group.Name;
 
@@ -1126,7 +1129,7 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
                         GroupingTitle.FontFamily = new FontFamily("Arial"); // new FontFamily("Verdana");
                         GroupingTitle.FontSize = 11;
                         // GroupingTitle.FontWeight = FontWeights.Thin;
-                        GroupingTitle.Foreground = Brushes.White;
+                        GroupingTitle.SetResourceReference(TextBlock.ForegroundProperty, GroupingHeaderTextBrushKey);
                         GroupingTitle.TextAlignment = TextAlignment.Right;
                         GroupingTitle.HorizontalAlignment = HorizontalAlignment.Stretch;
                         GroupingTitle.LayoutTransform = new RotateTransform(-90.0);
@@ -1135,7 +1138,7 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
 
                         var GroupingBody = new Border();
                         GroupingBody.CornerRadius = new CornerRadius(0, 3.0, 3.0, 0);
-                        GroupingBody.Background = GroupingBodyBrush;
+                        GroupingBody.SetResourceReference(Border.BackgroundProperty, GroupingBodyBrushKey);
                         GroupingBody.BorderThickness = new Thickness(0);
                         // GroupingBody.BorderBrush = Brushes.LightGray;
                         // GroupingBody.BorderThickness = new Thickness(0,1,1,1);

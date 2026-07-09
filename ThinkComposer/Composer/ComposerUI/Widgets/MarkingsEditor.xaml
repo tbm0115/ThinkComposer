@@ -12,18 +12,11 @@
         <imcv:BooleanToInverseConverter x:Key="BoolToInverseConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisCollConverter" />
         <imcv:BooleanToVisibilityHiddenConverter x:Key="BoolToVisHiddConverter" />
-        <Style x:Key="ListboxStyle">
-            <Style.Resources>
-                <!-- Background of selected item when focussed -->
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FFBFD2DB" />
-                <!-- Background of selected item when not focussed -->
-                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FFBFD2DB" />
-            </Style.Resources>
-        </Style>
+        <Style x:Key="ListboxStyle" TargetType="{x:Type ListBox}" BasedOn="{StaticResource ThemeListBoxStyle}" />
         <DataTemplate x:Key="MarkerDataTemplate" DataType="{x:Type tcmg:MarkerAssignment}">
             <DockPanel>
                 <Polygon x:Name="CurrentRowArrow" DockPanel.Dock="Left" Points="2,4 18,10 2,16" Visibility="Hidden"
-                         Fill="#FFE9F2F2" />
+                         Fill="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
                 <Border x:Name="RowBorder" Background="Transparent" CornerRadius="3" Margin="1,1,1,1" Height="26"
                         BorderBrush="Transparent" BorderThickness="1">
                     <DockPanel>
@@ -58,7 +51,7 @@
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type ListBoxItem}},Path=IsSelected}" Value="True">
                     <Setter TargetName="CurrentRowArrow" Property="Visibility" Value="Visible" />
                     <Setter TargetName="RowBorder" Property="Background"
-                            Value="#FFBFD2DB" />
+                            Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -89,15 +82,16 @@
             </StackPanel>
         </DockPanel>
         <Border DockPanel.Dock="Top" CornerRadius="5,5,0,0"
-                Background="#FFE9F2F2">
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderBrush}}">
             <imcw:CollectionEditingToolPanel x:Name="MarkingsToolPanel" Title="Current markers..."
-                                             CanDefine="False" TitleBrush="Black"
+                                             CanDefine="False"
+                                             TitleBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=HeaderTextBrush}}"
                                              EditClicked="MarkingsToolPanel_EditClicked"
                                              AddClicked="MarkingsToolPanel_AddClicked" DeleteClicked="MarkingsToolPanel_DeleteClicked"/>
         </Border>
         <ListBox x:Name="MarkingsListBox" HorizontalContentAlignment="Stretch" BorderThickness="0"
                  ItemTemplate="{StaticResource MarkerDataTemplate}" Style="{StaticResource ListboxStyle}"
-                 Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=PanelBrush}}"
+                 Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=PanelBrush}}"
                  SelectionChanged="MarkingsListBox_SelectionChanged" IsSynchronizedWithCurrentItem="True">
         </ListBox>
     </DockPanel>

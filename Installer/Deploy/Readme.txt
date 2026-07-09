@@ -1,4 +1,4 @@
-﻿Instrumind ThinkComposer v1.5.1619
+﻿Instrumind ThinkComposer v1.6.000
 ==================================
 
 Copyright (C) 2011-2016 Néstor Marcel Sánchez Ahumada
@@ -35,6 +35,11 @@ KNOWN ISSUES: Installer is alerted as untrusted software by web Browsers and Win
 
 VERSIONS HISTORY:
 *****************
+Version 1.6.000;
+- New: JSON-authoritative Composition and Domain package persistence.
+- New: Generic Git synchronization links for maintained Composition and Domain packages.
+- Updated: Version advanced for the maintained fork release.
+
 Version 1.5.1619;
 - Updated: User manual migrated to maintained Markdown/Pandoc sources and installer now includes the generated PDF manual.
 - Updated: Installer product identity/version synchronized with the publication procedure.

@@ -85,9 +85,9 @@
   <Issues>0</Issues>
   <Program_Info>
     <Program_Name>ThinkComposer</Program_Name>
-    <Program_Version>1.5.161900</Program_Version>
-    <Program_Release_Month>06</Program_Release_Month>
-    <Program_Release_Day>19</Program_Release_Day>
+    <Program_Version>1.6.000000</Program_Version>
+    <Program_Release_Month>07</Program_Release_Month>
+    <Program_Release_Day>09</Program_Release_Day>
     <Program_Release_Year>2026</Program_Release_Year>
     <Program_Cost_Dollars>0</Program_Cost_Dollars>
     <Program_Type>Freeware</Program_Type>
@@ -95,9 +95,9 @@
     <Program_Install_Support>Install and Uninstall</Program_Install_Support>
     <Program_OS_Support>WinXP,WinVista,WinVista x64,Win7 x32,Win7 x64</Program_OS_Support>
     <Program_Language>English</Program_Language>
-    <Program_Change_Info>Version 1.5.1619;
-- Updated: User manual migrated to maintained Markdown/Pandoc sources and installer now includes the generated PDF manual.
-- Updated: Installer product identity/version synchronized with the publication procedure.
+    <Program_Change_Info>Version 1.6.000;
+- New: JSON-authoritative Composition and Domain package persistence.
+- New: Generic Git synchronization links for maintained Composition and Domain packages.
 - Updated: Release documentation identifies this repository as the independently maintained tbm0115 fork.</Program_Change_Info>
     <Program_System_Requirements>2GB of RAM, 2.2 GHz of speed, 500MB of Disk, 1024x768 Screen, .NET Framework 4.0 (full) preinstalled</Program_System_Requirements>
     <Program_Category_Class>Graphic Apps::Other</Program_Category_Class>

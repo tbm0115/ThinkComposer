@@ -1,8 +1,8 @@
 ---
 title: "ThinkComposer User Manual"
-subtitle: "Version 1.5.1619 - Visual thinking, domain modeling, interchange, and output generation"
+subtitle: "Version 1.6.000 - Visual thinking, domain modeling, interchange, Git synchronization, and output generation"
 author: "Instrumind ThinkComposer / maintained fork by tbm0115"
-date: "2026-06-19"
+date: "2026-07-09"
 lang: "en-US"
 documentclass: book
 classoption:

@@ -16,18 +16,18 @@
                 VerticalAlignment="Top" >
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="285*" />
-                    <ColumnDefinition Width="411*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="25" />
                 </Grid.ColumnDefinitions>
                 <wg:AutoCollapsePanel x:Name="PaletteSupraContainer" Orientation="Horizontal"
                             CollapsedSize="20" Margin="1"
-                            VerticalAlignment="Top" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Grid.ColumnSpan="2">
+                            VerticalAlignment="Top" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Grid.Column="0">
                     <TextBlock Text="Main Menu-Palette Floating Container" Foreground="WhiteSmoke" Padding="1" />
                 </wg:AutoCollapsePanel>
 
                 <Border Background="Transparent" BorderBrush="Transparent"
                         BorderThickness="1" CornerRadius="3" Width="108" Height="24"
-                        Margin="250,-1,0,-2" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.ColumnSpan="2">
+                        Margin="250,-1,0,-2" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="0">
                     <StackPanel x:Name="QuickToolPanel" VerticalAlignment="Top" HorizontalAlignment="Center" Orientation="Horizontal">
                         <wg:PaletteButton ButtonText="" ButtonImage="/Instrumind.ThinkComposer;component/Instrumind_48x48.ico" Margin="-1"/>
                         <wg:PaletteButton ButtonText="" ButtonImage="/Instrumind.ThinkComposer;component/Instrumind_48x48.ico" Margin="-1"/>
@@ -37,12 +37,12 @@
                 </Border>
 
                 <ToggleButton x:Name="ThemeToggleButton"
-                              Width="21" Height="21" Margin="0,2,27,0"
-                              HorizontalAlignment="Right" VerticalAlignment="Top"
+                              Width="21" Height="21" Margin="1,2,2,0"
+                              HorizontalAlignment="Center" VerticalAlignment="Top"
                               Focusable="False"
                               Checked="ThemeToggleButton_Checked"
                               Unchecked="ThemeToggleButton_Unchecked"
-                              Grid.ColumnSpan="2">
+                              Grid.Column="1">
                     <ToggleButton.Template>
                         <ControlTemplate TargetType="ToggleButton">
                             <Border x:Name="ToggleBack"

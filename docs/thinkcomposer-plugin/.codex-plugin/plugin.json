@@ -1,7 +1,7 @@
 {
   "name": "thinkcomposer",
-  "version": "0.1.0+codex.20260622130402",
-  "description": "Work with ThinkComposer .tcom containers, JSON interchange, application logs, and embedded or exported view images.",
+  "version": "0.2.0+codex.20260709",
+  "description": "Work with ThinkComposer .tcom/.tdom packages, authoritative root JSON, CLI validation, Git links, reports, output generation, logs, and view images.",
   "author": {
     "name": "Local developer"
   },
@@ -10,13 +10,16 @@
     "diagram",
     "composition",
     "domain",
-    "json-interchange"
+    "json-interchange",
+    "json-persistence",
+    "git-sync",
+    "cli"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "ThinkComposer",
-    "shortDescription": "Read .tcom containers, JSON, logs, and images",
-    "longDescription": "ThinkComposer lets Codex collaborate with the desktop diagramming app by reading modern .tcom containers with embedded interchange JSON and previews, reading standalone Composition and Domain JSON, writing safe import patches, inspecting copied application logs, and finding embedded or exported view images for visual verification.",
+    "shortDescription": "Patch .tcom/.tdom JSON and use the CLI",
+    "longDescription": "ThinkComposer lets Codex collaborate with the desktop diagramming app by reading modern .tcom/.tdom packages with authoritative root JSON and previews, patching package JSON directly, preserving Git sync manifest metadata, using the ThinkComposer CLI for package inspection, validation, Git pull/push, PDF/XPS reports, and output-template generation, inspecting copied application logs, and finding embedded or exported view images for visual verification.",
     "developerName": "Local developer",
     "category": "Developer Tools",
     "capabilities": [
@@ -26,8 +29,8 @@
     ],
     "defaultPrompt": [
       "Inspect my ThinkComposer .tcom",
-      "Create a JSON import patch",
-      "Diagnose a ThinkComposer import log"
+      "Patch a .tcom/.tdom package",
+      "Run ThinkComposer CLI validation"
     ],
     "brandColor": "#2E7D6B"
   },

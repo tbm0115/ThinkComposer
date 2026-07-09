@@ -1,6 +1,6 @@
 ---
 name: thinkcomposer-json-interchange
-description: create, edit, repair, and validate ThinkComposer authoritative package JSON and compatibility interchange documents for a custom ThinkComposer build. Use this skill for .tcom/.tdom root JSON patches, Domain JSON patches, TechSpec updates, visual placement, layout-aware import options, embedded-domain update planning, schema validation, or import troubleshooting.
+description: create, edit, repair, and validate ThinkComposer authoritative package JSON and compatibility interchange documents for a custom ThinkComposer build. Use this skill for .tcom/.tdom root JSON patches, Domain JSON patches, TechSpec updates, visual placement, layout-aware import options, embedded-domain update planning, schema validation, CLI validation, Git sync, report/output generation, or import troubleshooting.
 ---
 
 # ThinkComposer JSON Interchange
@@ -27,6 +27,30 @@ When directly editing a native package:
 - Do not treat `/Interchange/*` or `/Previews/*` as authoritative. They may be stale until ThinkComposer saves the package again.
 - Validate with `package inspect` and the relevant `validate-json-persistence` CLI command after the package is patched.
 
+## CLI Automation
+
+Use the CLI for saved-package validation and headless operations that ThinkComposer exposes safely:
+
+```cmd
+thinkcomposer package inspect --input <file.tcom|file.tdom>
+thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>
+thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>
+thinkcomposer git status --input <file.tcom|file.tdom>
+thinkcomposer git pull --input <file.tcom|file.tdom> --output <file> [--in-place]
+thinkcomposer git push --input <file.tcom> --message <message>
+thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>
+thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name>
+```
+
+Rules:
+
+- Use `package inspect` before and after direct package edits when practical.
+- Use `validate-json-persistence` after changing authoritative root JSON.
+- Use `git status/pull/push` only when `/manifest.json` has a package `gitSync` link or `.tcom` `embeddedDomainGitSync` for the embedded Domain source. Composition push is supported; Domain push is not supported in v1.
+- Use `report pdf` for standard PDF/XPS reports from a saved `.tcom`.
+- Use `output generate` to render external-language output templates from a saved `.tcom`. If the requested `--language` techName is unclear, inspect root `/Domain.json` or run a compatibility `domain export-json`.
+- Do not use `composition import-json` or `domain import-json` as the default persistence write path. They are compatibility merge/preview commands; direct package edits should patch root JSON and refresh `/manifest.json`.
+
 ## Source-of-truth order
 
 Use the most current accessible references in this order:
@@ -38,6 +62,7 @@ Use the most current accessible references in this order:
    - `references/thinkcomposer-domain-json-interchange.schema.json`
    - `references/thinkcomposer-package-manifest.schema.json`
    - `references/thinkcomposer-container-manifest.schema.json`
+   - `references/cli.md`
    - `references/json-interchange.md`
    - `references/domain-json-interchange.md`
    - `references/domain-sync.md`

@@ -1,6 +1,6 @@
 ---
 name: thinkcomposer
-description: Work directly with ThinkComposer diagrams and domains using modern .tcom/.tdom containers with authoritative root JSON persistence, package JSON patching, embedded previews, CLI validation, application log diagnostics, and exported view images. Use when the user asks Codex to inspect, edit, generate, repair, or verify ThinkComposer projects.
+description: Work directly with ThinkComposer diagrams and domains using modern .tcom/.tdom containers with authoritative root JSON persistence, package JSON patching, embedded previews, CLI validation, Git synchronization, report/output generation, application log diagnostics, and exported view images. Use when the user asks Codex to inspect, edit, generate, repair, synchronize, or verify ThinkComposer projects.
 ---
 
 # ThinkComposer Direct Workflow
@@ -16,6 +16,7 @@ ThinkComposer native `.tcom` and `.tdom` packages remain the source of truth, wi
 - Composition edits: patch root `/Composition.json` inside the `.tcom`, and update `/manifest.json` authoritative part metadata.
 - Domain edits: patch root `/Domain.json` inside the `.tdom` or `.tcom`, and update `/manifest.json` authoritative part metadata.
 - Compatibility CLI paths: use `thinkcomposer composition export-json/import-json`, `thinkcomposer domain export-json/import-json`, `package inspect`, and `validate-json-persistence` for migration, validation, or preview/merge diagnostics when needed.
+- CLI automation: use `thinkcomposer report pdf` for headless PDF/XPS reports, `thinkcomposer output generate` for output-template generation, and `thinkcomposer git status/pull/push` for linked package synchronization. These commands operate on saved packages; patch and validate authoritative root JSON first when the model itself must change.
 - Embedded-domain refresh: use `Composition -> Domain -> Update Embedded Domain...` or `thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <updated-file.tcom>` when a `.tcom` should pick up safe domain changes from a `.tdom`.
 - Git sync: use `thinkcomposer git link/status/pull/push` for package-level synchronization. Composition push is supported; Domain packages are link/pull only. `gitSync` stores package remote/branch/path metadata only; `.tcom` `embeddedDomainGitSync` stores the embedded Domain source link separately. Commit/hash state is machine-local.
 - Visual verification: run `Export Image` on the active view, preferably PNG. Hold Ctrl while exporting when a transparent PNG is useful.
@@ -49,6 +50,19 @@ When the user provides a modern `.tcom` or `.tdom`, inspect it before asking for
 - `Previews/views/*.png`: view screenshots keyed by `viewName`, `viewTechName`, `viewId`, width, height, skipped state, and part URI.
 
 Use embedded previews as Codex's first visual pass. Extract previews only when a local image file path is needed for direct visual inspection. When editing a package, patch the root JSON and refresh `manifest.json`; do not edit `/Composition.bin`, `/Domain.bin`, or `/Interchange/*` as if they were authoritative.
+
+## CLI Task Routing
+
+Use the ThinkComposer CLI when the user asks for repeatable package checks or headless output:
+
+- Inspect package contract: `thinkcomposer package inspect --input <file.tcom|file.tdom>`.
+- Validate JSON-authoritative persistence: `thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>` or `thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>`.
+- Convert legacy binary-backed files: `thinkcomposer composition convert-json-persistence` or `thinkcomposer domain convert-json-persistence`.
+- Synchronize Git-linked packages: `thinkcomposer git status`, `thinkcomposer git pull`, and, for linked `.tcom` packages, `thinkcomposer git push`.
+- Generate reports: `thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>`.
+- Generate language output files: `thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name>`.
+
+Do not use CLI import/export as the normal persistence edit path. They are compatibility/interchange commands for preview, migration, diagnostics, or external review. For model edits, patch root package JSON and refresh `/manifest.json`, then validate with the CLI.
 
 ## Safe JSON Rules
 
@@ -123,6 +137,7 @@ When the ThinkComposer repository is available, use these local docs for format 
 
 - `docs/thinkcomposer-plugin/skills/thinkcomposer-json-interchange/SKILL.md`
 - `docs/thinkcomposer-plugin/skills/thinkcomposer-json-interchange/references/*`
+- `docs/cli.md`
 - `docs/json-interchange.md`
 - `docs/domain-json-interchange.md`
 - `docs/domain-sync.md`

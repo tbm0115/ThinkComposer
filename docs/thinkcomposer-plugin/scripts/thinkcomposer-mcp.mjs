@@ -9,7 +9,7 @@ import { inflateRawSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
 const SERVER_NAME = "thinkcomposer";
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.2.0";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = path.resolve(SCRIPT_DIR, "..");
 const DEFAULT_ROOT = process.env.THINKCOMPOSER_ROOT || findThinkComposerRoot(PLUGIN_ROOT) || process.cwd();

@@ -7,7 +7,10 @@
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="300">
     <ListBox x:Name="LbxSelector" x:FieldModifier="public" Padding="0,1,0,0"
-             BorderThickness="0" Background="White" Cursor="Hand"
+             BorderThickness="0"
+             Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ExpositorBrush}}"
+             Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ExpositorTextBrush}}"
+             Cursor="Hand"
              ScrollViewer.VerticalScrollBarVisibility="Auto"
              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
              HorizontalContentAlignment="Stretch">
@@ -18,14 +21,7 @@
         </ListBox.ItemsPanel>
         <ListBox.Style>
             <!--This Style is for hiding the ugly last-selected-item color marking that WPF uses to put.-->
-            <Style>
-                <Style.Resources>
-                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"
-                                     Color="#FFBFD2DB" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}"
-                                     Color="LightGray" />
-                </Style.Resources>
-            </Style>
+            <Style />
         </ListBox.Style>
     </ListBox>
 </UserControl>

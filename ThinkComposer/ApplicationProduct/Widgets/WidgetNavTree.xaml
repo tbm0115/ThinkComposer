@@ -26,7 +26,7 @@
     </TextBox>-->
     <TreeView x:Name="NavTree"
               BorderThickness="0" HorizontalContentAlignment="Stretch" Padding="-4,0,0,0"
-              Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=PanelBrush}}"
+              Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=PanelBrush}}"
               ItemsSource="{Binding}" SelectedItemChanged="NavTree_SelectedItemChanged"
               VirtualizingStackPanel.IsVirtualizing="True"
               VirtualizingStackPanel.VirtualizationMode="Recycling"
@@ -53,13 +53,13 @@
                 <Setter Property="Margin" Value="1" /> -->
                 <Setter Property="ToolTip" Value="{Binding Summary, Converter={StaticResource EmptyTextToNullConverter}}" />
                 <Setter Property="Background"
-                        Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemBrush}}" />
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemBrush}}" />
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                         <Setter Property="Background" Value="LightSkyBlue" />
                     </DataTrigger>
                     <!--<DataTrigger Binding="{Binding IsSelected}" Value="False">
-                        <Setter Property="Background" Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemBrush}}" />
+                        <Setter Property="Background" Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemBrush}}" />
                     </DataTrigger>-->
                 </Style.Triggers>
             </Style>

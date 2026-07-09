@@ -23,6 +23,7 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -49,6 +50,9 @@ namespace Instrumind.ThinkComposer.ApplicationShell
         public event Action Minimizing;
         public event Action RestoringOrMaximizing;
         public event Action Closing;
+        public event Action<bool> ThemeToggled;
+
+        private bool IsUpdatingThemeToggle = false;
 
         static MainWindowHeader()
         {
@@ -72,10 +76,66 @@ namespace Instrumind.ThinkComposer.ApplicationShell
 
         private void MainWindowHeader_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (IsInsideInteractiveControl(e.OriginalSource as DependencyObject))
+                return;
+
             var Handler = Dragging;
 
             if (Handler != null)
                 Handler(e);
+        }
+
+        public void SetThemeToggleState(bool IsDarkTheme)
+        {
+            this.IsUpdatingThemeToggle = true;
+            this.ThemeToggleButton.IsChecked = IsDarkTheme;
+            this.ThemeToggleButton.ToolTip = ApplicationThemeManager.GetToggleToolTip();
+            this.IsUpdatingThemeToggle = false;
+        }
+
+        private void ThemeToggleButton_Checked(object sender, RoutedEventArgs e)
+        {
+            RaiseThemeToggled(true);
+        }
+
+        private void ThemeToggleButton_Unchecked(object sender, RoutedEventArgs e)
+        {
+            RaiseThemeToggled(false);
+        }
+
+        private void RaiseThemeToggled(bool UseDarkTheme)
+        {
+            if (this.IsUpdatingThemeToggle)
+                return;
+
+            var Handler = ThemeToggled;
+            if (Handler != null)
+                Handler(UseDarkTheme);
+        }
+
+        private bool IsInsideInteractiveControl(DependencyObject Source)
+        {
+            while (Source != null && Source != this)
+            {
+                if (Source is ButtonBase || Source is TextBox || Source is Selector)
+                    return true;
+
+                Source = GetObjectParent(Source);
+            }
+
+            return false;
+        }
+
+        private DependencyObject GetObjectParent(DependencyObject Source)
+        {
+            try
+            {
+                return VisualTreeHelper.GetParent(Source);
+            }
+            catch
+            {
+                return LogicalTreeHelper.GetParent(Source);
+            }
         }
 
         private void BtnMinimize_Click(object sender, RoutedEventArgs e)

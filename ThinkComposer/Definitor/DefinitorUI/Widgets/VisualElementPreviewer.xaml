@@ -8,10 +8,10 @@
              Height="180" MinWidth="700"
              Loaded="UserControl_Loaded" Unloaded="UserControl_Unloaded">
     <Border CornerRadius="1"
-            Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelBrush}}">
+            Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelBrush}}">
         <DockPanel>
             <DockPanel DockPanel.Dock="Top">
-                <TextBlock DockPanel.Dock="Left" Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelTextBrush}}"
+                <TextBlock DockPanel.Dock="Left" Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelTextBrush}}"
                    Text="Preview" FontWeight="Bold" Margin="4,4,4,0" />
                 <DockPanel>
                     <imcv:PaletteButton x:Name="BtnSelectPredefStyle" DockPanel.Dock="Right" Margin="4,2,4,0"
@@ -20,13 +20,15 @@
                     <Popup x:Name="PopupSelectPredefStyle" MouseLeave="PopupSelectPredefStyle_MouseLeave"
                        PlacementTarget="{Binding ElementName=BtnSelectPredefStyle}" Placement="Bottom" AllowsTransparency="True"
                        PopupAnimation="None" MinWidth="{Binding Path=ActualWidth, ElementName=BtnSelectPredefStyle}">
-                        <Border Background="White" BorderThickness="0.5" BorderBrush="LightGray">
+                        <Border Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelBrush}}"
+                                BorderThickness="0.5"
+                                BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ItemBorderBrush}}">
                             <itpw:WidgetVisualSampleSelector x:Name="LvsPredefStyle" />
                         </Border>
                     </Popup>
                     <CheckBox x:Name="CbxDetailsPoster" IsChecked="True" HorizontalAlignment="Right" Margin="4,4,4,0" Visibility="Collapsed"
                       Content="details sample" ToolTip="Shows a sample details poster under the preview symbol."
-                      Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelTextBrush}}" />
+                      Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=PanelTextBrush}}" />
                 </DockPanel>
             </DockPanel>
             <Border Padding="6" Background="White" Margin="4">

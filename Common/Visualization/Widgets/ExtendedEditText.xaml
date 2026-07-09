@@ -14,7 +14,9 @@
         <Popup x:Name="PopupSelectorList" DockPanel.Dock="Right" MouseLeave="UserControl_MouseLeave"
                 PlacementTarget="{Binding ElementName=WorkPanel}" Placement="Bottom" AllowsTransparency="True"
                 PopupAnimation="None" MinWidth="{Binding Path=ActualWidth, ElementName=WorkPanel}">
-            <Border Background="White" BorderThickness="0.5" BorderBrush="LightGray">
+            <Border Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"
+                    BorderThickness="0.5"
+                    BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}">
                 <!-- The next binding properties didn't work as expected:
                 SelectedValuePath="{Binding Path=ValuesSourceMemberPath, RelativeSource={RelativeSource FindAncestor, AncestorType=this:ExtendedEditText, AncestorLevel=1}, Mode=OneWay}"
                 SelectedItem="{Binding Path=Value, RelativeSource={RelativeSource FindAncestor, AncestorType=this:ExtendedEditText, AncestorLevel=1}, Mode=OneWay}" -->
@@ -23,8 +25,7 @@
                          DisplayMemberPath="{Binding Path=ValuesSourceMemberPath, RelativeSource={RelativeSource FindAncestor, AncestorType=this:ExtendedEditText, AncestorLevel=1}, Mode=OneWay}"
                          SelectionChanged="LbxSelectorList_SelectionChanged">
                     <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Background" Value="WhiteSmoke" />
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource ThemeListBoxItemStyle}">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                             <Setter Property="Cursor" Value="Hand" />
                         </Style>
@@ -35,16 +36,18 @@
         <!--Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"-->
         <!-- supressed until assign appropriate name: ToolTip="Select list item..." -->
         <Border x:Name="ListActioner" DockPanel.Dock="Right" CornerRadius="1" Margin="1"
-                Background="WhiteSmoke"
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}"
                 MouseLeftButtonDown="ListActioner_MouseLeftButtonDown">
             <!--<TextBlock Text="..." />-->
-            <Polygon Stroke="Black" Fill="Black" Points="1,0 7,0, 4,6" Margin="2,6,2,1" />
+            <Polygon Stroke="{DynamicResource GlyphBrush}" Fill="{DynamicResource GlyphBrush}" Points="1,0 7,0, 4,6" Margin="2,6,2,1" />
         </Border>
 
         <Popup x:Name="PopupSelectorTree" DockPanel.Dock="Right" MouseLeave="UserControl_MouseLeave"
                 PlacementTarget="{Binding ElementName=WorkPanel}" Placement="Bottom" AllowsTransparency="True"
                 PopupAnimation="None" MinWidth="{Binding Path=ActualWidth, ElementName=WorkPanel}">
-            <Border Background="White" BorderThickness="0.5" BorderBrush="LightGray">
+            <Border Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"
+                    BorderThickness="0.5"
+                    BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBorderBrush}}">
                 <!-- IMPORTANT: The TreeView is not freed after use, and create high memory-pressure if used repeatedly.
                                 This is specially notorius if the Composition has many composite Ideas (hundreds).
                                 Anyway, the memory is released after window closing. -->
@@ -68,7 +71,8 @@
                             <Setter Property="Margin" Value="-2,1,-2,1" />
                             <Setter Property="ToolTip" Value="{Binding Summary, Converter={StaticResource EmptyTextToNullConverter}}" />
                             <Setter Property="Cursor" Value="Hand" />
-                            <Setter Property="Background" Value="WhiteSmoke" />
+                            <Setter Property="Background"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}" />
                             <!--<Style.Triggers>
                                 <DataTrigger Binding="{Binding IsMouseOver}" Value="True">
                                     <Setter Property="Background" Value="LightSkyBlue" />
@@ -112,10 +116,10 @@
         <!--Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorBrush}}"-->
         <!-- supressed until assign appropriate name: ToolTip="Select tree item..." -->
         <Border x:Name="TreeActioner" DockPanel.Dock="Right" CornerRadius="1" Margin="1"
-                Background="WhiteSmoke"
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ItemBrush}}"
                 MouseLeftButtonDown="TreeActioner_MouseLeftButtonDown">
             <!--<TextBlock Text="..." />-->
-            <Polygon Stroke="Black" Fill="Black" Points="1,3 4,0, 7,3 4,6" Margin="2,6,2,1" />
+            <Polygon Stroke="{DynamicResource GlyphBrush}" Fill="{DynamicResource GlyphBrush}" Points="1,3 4,0, 7,3 4,6" Margin="2,6,2,1" />
             <!--<Polygon Stroke="Black" Fill="Black" Points="1,0 7,0, 1,6 7,6" Margin="2,6,2,1" />-->
             <!-- <Polygon Stroke="Black" Fill="Black" Points="1,0 8,6, 8,0 1,6" Margin="2,6,2,1" /> -->
         </Border>

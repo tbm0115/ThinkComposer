@@ -5,7 +5,7 @@
              xmlns:imcv="clr-namespace:Instrumind.Common.Visualization.Widgets;assembly=Instrumind.Common"
              xmlns:this="clr-namespace:Instrumind.ThinkComposer.Definitor.DefinitorUI.Widgets"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=FormBodyBrush}}"
+             Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=FormBodyBrush}}"
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="410">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisCollConverter" />
@@ -36,7 +36,7 @@
                                             ExposedProperty="RelatedIdeasAreOrdered" TabOrder="2" LabelMinWidth="150" />
                 </Grid>
             </StackPanel>
-            <Grid Background="WhiteSmoke">
+            <Grid Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorBrush}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition />

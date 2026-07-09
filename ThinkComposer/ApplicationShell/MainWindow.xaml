@@ -5,7 +5,8 @@
         xmlns:wg="clr-namespace:Instrumind.Common.Visualization.Widgets;assembly=Instrumind.Common"
         xmlns:this="clr-namespace:Instrumind.ThinkComposer.ApplicationShell"
         Title="Instrumind ThinkComposer"
-        Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBodyBrush}}"
+        Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBodyBrush}}"
+        Foreground="{DynamicResource ThinkComposer.WindowTextBrush}"
         Width="1440" Height="810" WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize" WindowStyle="SingleBorderWindow" AllowsTransparency="False"
         BorderBrush="Black" BorderThickness="0"
@@ -16,15 +17,15 @@
         For YouTube videos use 16x9 aspect ratios: 1920*1080, 1600*900,  1280*720, [1440*810], 1024*576, 800*450, 720*405 (standard Youtube HD) -->
     <Grid>
         <Border x:Name="WorkingAreaBorder" Margin="0,21,0,0"
-                Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBodyBrush}}">
+                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBodyBrush}}">
             <DockPanel>
                 <DockPanel x:Name="BottomContainer" DockPanel.Dock="Bottom" Height="70">
                     <DockPanel x:Name="StatusContainer" DockPanel.Dock="Right"
-                                Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBottomBrush}}">
+                                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBottomBrush}}">
                         <TextBlock Text="StatusContainer" />
                     </DockPanel>
                     <DockPanel x:Name="MessagingContainer" Width="Auto" Margin="0,0,0,1"
-                                Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBottomBrush}}">
+                                Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:BasicWindow}, ResourceId=GeneralBottomBrush}}">
                         <TextBlock Text="MessagingContainer" />
                     </DockPanel>
                 </DockPanel>

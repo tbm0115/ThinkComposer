@@ -39,7 +39,7 @@
             <Setter Property="Margin" Value="1" />
             <Setter Property="ToolTip" Value="{Binding RepresentedIdea.Summary, Converter={StaticResource EmptyTextToNullConverter}}" />
             <Setter Property="Background"
-                    Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemBrush}}" />
+                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ItemBrush}}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                     <Setter Property="Background" Value="LightSkyBlue" />

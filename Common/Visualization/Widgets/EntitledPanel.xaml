@@ -12,12 +12,12 @@
     <UserControl.Template>
         <ControlTemplate TargetType="{x:Type UserControl}">
             <Border CornerRadius="5"
-                    Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}">
+                    Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}">
                 <DockPanel>
                     <!--Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}"-->
                     <Border x:Name="TitleBorder" DockPanel.Dock="Top" CornerRadius="5,5,0,0" Margin="0" Padding="2"
                             BorderThickness="0" BorderBrush="Transparent"
-                            Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}">
+                            Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}">
                         <DockPanel x:Name="TitlePanel">
                             <Border x:Name="ExpanderBorder" DockPanel.Dock="Right" Background="WhiteSmoke" CornerRadius="3" Visibility="Collapsed"
                                     MouseLeftButtonDown="ExpanderBorder_MouseLeftButtonDown">
@@ -40,34 +40,34 @@
                                               Visibility="{Binding Converter={StaticResource BoolToVisCollConverter}, Path=CanSortItems, RelativeSource={RelativeSource FindAncestor, AncestorType=this:EntitledPanel, AncestorLevel=1}}"
                                               ToolTip="{Binding Path=SortText, RelativeSource={RelativeSource FindAncestor, AncestorType=this:EntitledPanel, AncestorLevel=1}}" >
                                             <Ellipse x:Name="EllipseBtnSort" Width="12" Height="12" Margin="1"
-                                                     Fill="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderTextBrush}}"/>
+                                                     Fill="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderTextBrush}}"/>
                                             <Line X1="3" Y1="7" X2="7" Y2="3" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                  Stroke="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
+                                                  Stroke="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
                                             <Line X1="7" Y1="3" X2="11" Y2="7" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                  Stroke="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
+                                                  Stroke="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
                                             <Line X1="3" Y1="7" X2="11" Y2="7" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                  Stroke="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
+                                                  Stroke="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
                                             <Line X1="3" Y1="7" X2="7" Y2="11" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                  Stroke="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
+                                                  Stroke="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
                                             <Line X1="7" Y1="11" X2="11" Y2="7" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                  Stroke="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
+                                                  Stroke="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
                                         </Grid>
                                         <Grid x:Name="BtnCreate" Cursor="Hand" Margin="4,0,0,0"
                                               MouseLeftButtonDown="BtnCreate_MouseLeftButtonDown"
                                               Visibility="{Binding Converter={StaticResource BoolToVisCollConverter}, Path=CanCreateItems, RelativeSource={RelativeSource FindAncestor, AncestorType=this:EntitledPanel, AncestorLevel=1}}"
                                               ToolTip="{Binding Path=CreationText, RelativeSource={RelativeSource FindAncestor, AncestorType=this:EntitledPanel, AncestorLevel=1}}" >
                                             <Ellipse x:Name="EllipseBtnCreate" Width="12" Height="12" Margin="1"
-                                                     Fill="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderTextBrush}}"/>
+                                                     Fill="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderTextBrush}}"/>
                                             <Line X1="7" Y1="3" X2="7" Y2="11" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                  Stroke="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
+                                                  Stroke="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
                                             <Line X1="3" Y1="7" X2="11" Y2="7" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                  Stroke="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
+                                                  Stroke="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderBrush}}" />
                                         </Grid>
                                     </StackPanel>
                                     <!--Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderTextBrush}}"-->
                                     <TextBlock x:Name="TitleTextBlock" FontSize="11" TextAlignment="Left" Margin="4,0,4,0"
                                                Text="EntitledPanelTitle" FontFamily="Verdana" FontWeight="Normal"
-                                               Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderTextBrush}}">
+                                               Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=HeaderTextBrush}}">
                                         <!--<TextBlock.Effect>
                                             <DropShadowEffect ShadowDepth="2" Direction="330" Color="Gray"
                                                               Opacity="0.5" BlurRadius="3"/>

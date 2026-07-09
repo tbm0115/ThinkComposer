@@ -21,34 +21,34 @@
                     <Border DockPanel.Dock="Left" Padding="2" Margin="1" Width="50"
                             ToolTip="Indicates whether to Display the Detail">
                         <TextBlock Text="Is Displayed" TextAlignment="Center" VerticalAlignment="Bottom" TextWrapping="Wrap" FontSize="10"
-                                   Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
+                                   Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
                     </Border>
                     <Border DockPanel.Dock="Left" Padding="2" Margin="1" Width="50"
                             ToolTip="Show the Detail's Title">
                         <TextBlock Text="Show  Title" TextAlignment="Center" VerticalAlignment="Bottom" TextWrapping="Wrap" FontSize="10"
-                                   Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
+                                   Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
                     </Border>
                     <DockPanel DockPanel.Dock="Right">
                         <Border DockPanel.Dock="Top" Margin="1" BorderThickness="0,0,0,1"
-                                BorderBrush="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}">
+                                BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}">
                             <TextBlock Text="Table" TextAlignment="Center"
-                                       Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}" />
+                                       Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}" />
                         </Border>
                         <StackPanel Orientation="Horizontal" >
                             <Border Padding="2" Margin="1" Width="65"
                                     ToolTip="Indicates whether the table grid will show multiple records. If not, then show only the first one.">
                                 <TextBlock Text="Multi-Record" TextAlignment="Center" TextWrapping="Wrap" FontSize="10"
-                                           Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
+                                           Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
                             </Border>
                             <Border Padding="2" Margin="1" Width="85"
                                     ToolTip="Selects table Layout style">
                                 <TextBlock Text="Layout" TextAlignment="Center" TextWrapping="Wrap" FontSize="10"
-                                           Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
+                                           Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
                             </Border>
                             <Border Padding="2" Margin="1" Width="55"
                                     ToolTip="Indicates whether to display table Field Titles">
                                 <TextBlock Text="Field Titles" TextAlignment="Center" TextWrapping="Wrap" FontSize="10"
-                                           Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
+                                           Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
                             </Border>
                         </StackPanel>
                     </DockPanel>
@@ -71,7 +71,7 @@
                             <Border Padding="2" Margin="1" Width="80"
                                     ToolTip="Constitution of the designated detail type.">
                                 <TextBlock Text="Kind" TextAlignment="Center" VerticalAlignment="Bottom"
-                                           Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
+                                           Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
                             </Border>
                         </StackPanel>
                         <!--<Border Background="SlateGray" Padding="2" Margin="1"
@@ -82,7 +82,7 @@
                     <Border DockPanel.Dock="Left" Padding="2" Margin="1" MinWidth="192"
                             ToolTip="Title/Name given to the attached Detail">
                         <TextBlock Text="Title" TextAlignment="Center" VerticalAlignment="Bottom"
-                                   Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
+                                   Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=PanelTextBrush}}"/>
                     </Border>
                 </DockPanel>
             </DockPanel>

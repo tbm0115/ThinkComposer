@@ -11,7 +11,7 @@
         <GroupBox>
             <GroupBox.Header>
                 <TextBlock DockPanel.Dock="Top" Text="Text Formats..." FontWeight="Bold" Margin="2"
-                           Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+                           Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcw:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
             </GroupBox.Header>
             <ListBox x:Name="LbxFormats" Margin="2" Background="Transparent" BorderBrush="Transparent" HorizontalContentAlignment="Stretch"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled" >

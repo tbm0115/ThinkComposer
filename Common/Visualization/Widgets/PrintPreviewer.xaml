@@ -6,7 +6,7 @@
              xmlns:this="clr-namespace:Instrumind.Common.Visualization.Widgets"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="700"
-             Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}"
+             Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}"
              Loaded="UserControl_Loaded">
     <DockPanel>
         <!--<TextBlock DockPanel.Dock="Top" x:Name="Title" Text="Print Preview" FontWeight="Bold" Margin="2" />-->

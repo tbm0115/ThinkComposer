@@ -71,6 +71,10 @@ namespace Instrumind.ThinkComposer.ApplicationShell
         {
             InitializeComponent();
 
+            this.WinHeader.ThemeToggled += WinHeader_ThemeToggled;
+            ApplicationThemeManager.ThemeChanged += ApplicationThemeManager_ThemeChanged;
+            this.WinHeader.SetThemeToggleState(ApplicationThemeManager.IsDarkThemeApplied);
+
             this.InitializeUI();
 
             ProductDirector.Initialize(this);
@@ -142,6 +146,8 @@ namespace Instrumind.ThinkComposer.ApplicationShell
         /// </summary>
         private void Window_Closed(object sender, EventArgs e)
         {
+            ApplicationThemeManager.ThemeChanged -= ApplicationThemeManager_ThemeChanged;
+
             ProductDirector.Terminate();
         }
 
@@ -234,6 +240,16 @@ namespace Instrumind.ThinkComposer.ApplicationShell
                 this.BorderThickness = new Thickness(2);
                 this.WindowState = WindowState.Normal;
             }
+        }
+
+        private void WinHeader_ThemeToggled(bool UseDarkTheme)
+        {
+            ApplicationThemeManager.SetDarkTheme(UseDarkTheme, true);
+        }
+
+        private void ApplicationThemeManager_ThemeChanged(object sender, EventArgs e)
+        {
+            this.WinHeader.SetThemeToggleState(ApplicationThemeManager.IsDarkThemeApplied);
         }
 
         #region IShellProvider Members

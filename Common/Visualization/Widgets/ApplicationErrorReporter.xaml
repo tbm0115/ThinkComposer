@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:this="clr-namespace:Instrumind.Common.Visualization.Widgets"
              Height="300" Width="600" Loaded="UserControl_Loaded"
-             Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}">
+             Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:DialogOptionsWindow}, ResourceId=DialogFrameBrush}}">
     <DockPanel>
         <DockPanel DockPanel.Dock="Bottom" >
             <this:PaletteButton DockPanel.Dock="Right" x:Name="BtnCancel" ButtonText="Close" Click="BtnCancel_Click"

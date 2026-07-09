@@ -6,7 +6,9 @@
              xmlns:imcv="clr-namespace:Instrumind.Common.Visualization.Widgets;assembly=Instrumind.Common"
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300">
-    <DockPanel x:Name="MainPanel">
+    <DockPanel x:Name="MainPanel"
+               Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorBrush}}"
+               TextElement.Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorTextBrush}}">
         <StackPanel DockPanel.Dock="Top" x:Name="TopPanel" Orientation="Horizontal" />
         <DockPanel x:Name="BottomPanel" DockPanel.Dock="Bottom">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
@@ -22,7 +24,11 @@
         </DockPanel>
         <DockPanel x:Name="BackPanel">
             <DataGrid x:Name="EditingGrid"
-                      GridLinesVisibility="All" HorizontalGridLinesBrush="AliceBlue" VerticalGridLinesBrush="AliceBlue"/>
+                      Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorBrush}}"
+                      Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ExpositorTextBrush}}"
+                      GridLinesVisibility="All"
+                      HorizontalGridLinesBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ItemBorderBrush}}"
+                      VerticalGridLinesBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imcv:EntitledPanel}, ResourceId=ItemBorderBrush}}"/>
         </DockPanel>
     </DockPanel>
 </UserControl>

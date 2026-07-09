@@ -30,6 +30,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 
 using Instrumind.Common;
+using Instrumind.ThinkComposer.ApplicationShell;
 
 /// Instrumind ThinkComposer product.
 /// The Visual Thinking tool for analyze problems, design solutions and express knowledge.
@@ -72,7 +73,17 @@ namespace Instrumind.ThinkComposer
             EventManager.RegisterClassHandler(typeof(TextBox), TextBox.MouseDoubleClickEvent,
                 new RoutedEventHandler(SelectAllText));
 
+            AppExec.LoadConfigurationFrom();
+            ApplicationThemeManager.Initialize();
+
             base.OnStartup(e);
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            ApplicationThemeManager.Shutdown();
+
+            base.OnExit(e);
         }
 
         void SelectivelyIgnoreMouseButton(object sender, MouseButtonEventArgs e)

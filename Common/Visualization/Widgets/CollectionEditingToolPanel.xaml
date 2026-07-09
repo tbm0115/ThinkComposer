@@ -5,8 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:imvw="clr-namespace:Instrumind.Common.Visualization.Widgets"
              mc:Ignorable="d" d:DesignWidth="700">
-    <DockPanel>
+    <DockPanel TextElement.Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=HeaderTextBrush}}">
         <TextBlock x:Name="TitleTextBlock" DockPanel.Dock="Left" Text="ToolPanel Title..."
+                   Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type imvw:EntitledPanel}, ResourceId=HeaderTextBrush}}"
                    FontWeight="700" Width="120" Margin="2" />
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
             <imvw:PaletteButton x:Name="BtnMoveTop" x:FieldModifier="public"

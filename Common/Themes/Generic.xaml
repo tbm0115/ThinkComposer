@@ -230,14 +230,313 @@
                      Color="DodgerBlue" />
 
     <!-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
-    <Style TargetType="{x:Type DataGridCell}">
+    <ControlTemplate x:Key="ThemeComboBoxTextBoxTemplate" TargetType="{x:Type TextBox}">
+        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" />
+    </ControlTemplate>
+
+    <Style x:Key="ThemeComboBoxStyle" TargetType="{x:Type ComboBox}">
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="Background"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="3,1,3,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="MinHeight" Value="20" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ComboBox}">
+                    <Grid SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
+                        <Border x:Name="ComboBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2" />
+
+                        <ToggleButton x:Name="DropDownToggle"
+                                      HorizontalAlignment="Right"
+                                      Width="20"
+                                      Focusable="False"
+                                      ClickMode="Press"
+                                      IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                    <Border x:Name="ToggleBorder" Background="Transparent">
+                                        <Path x:Name="Arrow"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Width="8"
+                                              Height="4"
+                                              Fill="{DynamicResource GlyphBrush}"
+                                              Data="M 0 0 L 4 4 L 8 0 Z" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ToggleBorder" Property="Background"
+                                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}" />
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter TargetName="Arrow" Property="Opacity" Value="0.55" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+
+                        <ContentPresenter x:Name="ContentSite"
+                                          Margin="{TemplateBinding Padding}"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          IsHitTestVisible="False"
+                                          TextElement.Foreground="{TemplateBinding Foreground}" />
+
+                        <TextBox x:Name="PART_EditableTextBox"
+                                 Margin="3,2,23,2"
+                                 Style="{x:Null}"
+                                 Template="{StaticResource ThemeComboBoxTextBoxTemplate}"
+                                 Background="Transparent"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}"
+                                 Visibility="Hidden" />
+
+                        <Popup x:Name="PART_Popup"
+                               Placement="Bottom"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               PopupAnimation="Slide">
+                            <Grid x:Name="DropDown"
+                                  MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                  MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                <Border x:Name="DropDownBorder"
+                                        Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}"
+                                        BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}"
+                                        BorderThickness="1"
+                                        CornerRadius="2">
+                                    <ScrollViewer Margin="1" SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ComboBorder" Property="Background"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="ComboBorder" Property="BorderBrush"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+                        </Trigger>
+                        <Trigger Property="IsDropDownOpen" Value="True">
+                            <Setter TargetName="ComboBorder" Property="BorderBrush"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+                        </Trigger>
+                        <Trigger Property="HasItems" Value="False">
+                            <Setter TargetName="DropDownBorder" Property="MinHeight" Value="24" />
+                        </Trigger>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden" />
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledForegroundBrush}" />
+                            <Setter TargetName="ComboBorder" Property="Opacity" Value="0.7" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type ComboBox}" BasedOn="{StaticResource ThemeComboBoxStyle}" />
+
+    <Style x:Key="ThemeComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="4,2,4,2" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                    <Border x:Name="ItemBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="1"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="ItemBorder" Property="Background"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderTextBrush}}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="ItemBorder" Property="Background"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderTextBrush}}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledForegroundBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type ComboBoxItem}" BasedOn="{StaticResource ThemeComboBoxItemStyle}" />
+
+    <Style x:Key="ThemeListBoxStyle" TargetType="{x:Type ListBox}">
+        <Setter Property="Background"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+        <Setter Property="TextElement.Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+    </Style>
+
+    <Style TargetType="{x:Type ListBox}" BasedOn="{StaticResource ThemeListBoxStyle}" />
+
+    <Style x:Key="ThemeListBoxItemStyle" TargetType="{x:Type ListBoxItem}">
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                    <Border x:Name="ItemBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="1"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ItemBorder" Property="Background"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="ItemBorder" Property="Background"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderTextBrush}}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledForegroundBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource ThemeListBoxItemStyle}" />
+
+    <Style x:Key="ThemeDataGridStyle" TargetType="{x:Type DataGrid}">
+        <Setter Property="Background"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+        <Setter Property="HorizontalGridLinesBrush"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+        <Setter Property="VerticalGridLinesBrush"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+        <Setter Property="RowBackground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+        <Setter Property="AlternatingRowBackground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=PanelBrush}}" />
+    </Style>
+
+    <Style TargetType="{x:Type DataGrid}" BasedOn="{StaticResource ThemeDataGridStyle}" />
+
+    <Style x:Key="ThemeDataGridColumnHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
+        <Setter Property="Background"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=PanelBrush}}" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+        <Setter Property="BorderThickness" Value="0,0,1,1" />
+        <Setter Property="Padding" Value="4,2,4,2" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+
+    <Style TargetType="{x:Type DataGridColumnHeader}" BasedOn="{StaticResource ThemeDataGridColumnHeaderStyle}" />
+
+    <Style x:Key="ThemeDataGridRowStyle" TargetType="{x:Type DataGridRow}">
+        <Setter Property="Background"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
         <Style.Triggers>
-            <Trigger Property="DataGridCell.IsSelected" Value="True">
+            <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background"
-                        Value="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}" />
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background"
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+                <Setter Property="Foreground"
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderTextBrush}}" />
             </Trigger>
         </Style.Triggers>
     </Style>
+
+    <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource ThemeDataGridRowStyle}" />
+
+    <Style x:Key="ThemeDataGridCellStyle" TargetType="{x:Type DataGridCell}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorTextBrush}}" />
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBorderBrush}}" />
+        <Style.Triggers>
+            <Trigger Property="DataGridCell.IsMouseOver" Value="True">
+                <Setter Property="Background"
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemBrush}}" />
+            </Trigger>
+            <Trigger Property="DataGridCell.IsSelected" Value="True">
+                <Setter Property="Background"
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+                <Setter Property="Foreground"
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderTextBrush}}" />
+                <Setter Property="BorderBrush"
+                        Value="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ItemSelectionBrush}}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource ThemeDataGridCellStyle}" />
 
     <!--FOR THE SCROLLVIEWERS........................................................................................... -->
     <!-- From Sacha Barber's blog...
@@ -296,7 +595,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type RepeatButton}">
                     <Border Name="Border" Margin="1" CornerRadius="2"
-                            Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderBrush}}"
+                            Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderBrush}}"
                             BorderBrush="Transparent" BorderThickness="0">
                         <!--The Triangle...-->
                         <Path HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -328,7 +627,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type RepeatButton}">
-                    <Border Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+                    <Border Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -344,7 +643,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Border CornerRadius="2"
-                     Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderBrush}}"
+                     Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=HeaderBrush}}"
                      BorderBrush="Transparent" BorderThickness="0" />
                 </ControlTemplate>
             </Setter.Value>
@@ -353,14 +652,14 @@
 
     <ControlTemplate x:Key="VerticalScrollBar"
                      TargetType="{x:Type ScrollBar}">
-        <Grid Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}">
+        <Grid Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}">
             <Grid.RowDefinitions>
                 <RowDefinition MaxHeight="14"/>
                 <RowDefinition Height="0.00001*"/>
                 <RowDefinition MaxHeight="14"/>
             </Grid.RowDefinitions>
             <Border Grid.RowSpan="3" CornerRadius="2"
-                    Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+                    Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
             <RepeatButton Grid.Row="0" Style="{StaticResource ScrollBarLineButton}"
                           Height="14" Command="ScrollBar.LineUpCommand"
                           Content="M 0 4 L 8 4 L 4 0 Z" />
@@ -387,14 +686,14 @@
     </ControlTemplate>
     <!-- HorizontalScrollBar Template using the previously created Templates -->
     <ControlTemplate x:Key="HorizontalScrollBar" TargetType="{x:Type ScrollBar}">
-        <Grid Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}">
+        <Grid Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition MaxWidth="14"/>
                 <ColumnDefinition Width="0.00001*"/>
                 <ColumnDefinition MaxWidth="14"/>
             </Grid.ColumnDefinitions>
             <Border Grid.ColumnSpan="3" CornerRadius="2"
-                    Background="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
+                    Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type wg:EntitledPanel}, ResourceId=ExpositorBrush}}" />
             <RepeatButton Grid.Column="0" Style="{StaticResource ScrollBarLineButton}"
                           Width="14" Command="ScrollBar.LineLeftCommand"
                           Content="M 4 0 L 4 8 L 0 4 Z" />

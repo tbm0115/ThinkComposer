@@ -11,6 +11,11 @@
         <ToolBar x:Name="ControlToolBar" DockPanel.Dock="Top"
                  Foreground="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=ExpositorTextBrush}}"
                  Background="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type this:EntitledPanel}, ResourceId=PanelBrush}}">
+            <ToolBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ToolBarPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ToolBar.ItemsPanel>
             <ToolBar.Template>
                 <ControlTemplate TargetType="{x:Type ToolBar}">
                     <Border Background="{TemplateBinding Background}"

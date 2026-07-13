@@ -650,13 +650,21 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (String.Equals(OwnerScope, "conceptDefinition", StringComparison.OrdinalIgnoreCase))
             {
                 var Owner = this.Resolver.ConceptDefinition(null, OwnerTechName);
-                return Owner == null ? null : Owner.OutputTemplates;
+                if (Owner == null)
+                    return null;
+
+                Owner.DeclareOutputTemplatesCollection();
+                return Owner.OutputTemplates;
             }
 
             if (String.Equals(OwnerScope, "relationshipDefinition", StringComparison.OrdinalIgnoreCase))
             {
                 var Owner = this.Resolver.RelationshipDefinition(null, OwnerTechName);
-                return Owner == null ? null : Owner.OutputTemplates;
+                if (Owner == null)
+                    return null;
+
+                Owner.DeclareOutputTemplatesCollection();
+                return Owner.OutputTemplates;
             }
 
             return null;

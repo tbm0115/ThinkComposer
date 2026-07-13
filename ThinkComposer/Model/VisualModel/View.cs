@@ -2256,7 +2256,8 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         /// Returns indication of content drawn.
         /// </summary>
         public bool DrawContent(DrawingContext Context, Rect AvailableArea,
-                                bool WithTransparentBackground = false, Brush Background = null)
+                                bool WithTransparentBackground = false, Brush Background = null,
+                                Rect? SourceArea = null)
         {
             if (AvailableArea.Width < 24 || AvailableArea.Height < 24)
                 return false;
@@ -2265,12 +2266,12 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                                        AvailableArea.Width - SNAPSHOT_MARGIN * 2.0, AvailableArea.Height - SNAPSHOT_MARGIN * 2.0);
 
             // Draw the content without inerts
-            var ContentArea = this.DetermineContentArea();
+            var ContentArea = SourceArea.HasValue ? SourceArea.Value : this.DetermineContentArea();
 
             var CompositeGroup = new DrawingGroup();
             bool ContentWasRendered = false;
 
-            if (ContentArea != Rect.Empty)
+            if (ContentArea != Rect.Empty && ContentArea.Width > 0 && ContentArea.Height > 0)
             {
                 var Scale = Math.Min(DisplayZone.Width / ContentArea.Width, DisplayZone.Height / ContentArea.Height);
 
@@ -2315,14 +2316,15 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         public Tuple<DrawingGroup, Rect> ToSnapshot(bool WithTransparentBackground = false,
                                                     double AvailableWidth = double.NaN,
                                                     double AvailableHeight = double.NaN,
-                                                    Brush SnapshotBackground = null)
+                                                    Brush SnapshotBackground = null,
+                                                    Rect? SourceArea = null)
         {
-            var SourceArea = this.DetermineContentArea();
-            if (SourceArea == Rect.Empty)
+            var EffectiveSourceArea = SourceArea.HasValue ? SourceArea.Value : this.DetermineContentArea();
+            if (EffectiveSourceArea == Rect.Empty || EffectiveSourceArea.Width <= 0 || EffectiveSourceArea.Height <= 0)
                 return null;
 
-            AvailableWidth = AvailableWidth.NaNDefault(SourceArea.Width);
-            AvailableHeight = AvailableHeight.NaNDefault(SourceArea.Height);
+            AvailableWidth = AvailableWidth.NaNDefault(EffectiveSourceArea.Width);
+            AvailableHeight = AvailableHeight.NaNDefault(EffectiveSourceArea.Height);
 
             var SnapshotZone = new Rect(0, 0, AvailableWidth, AvailableHeight);
 
@@ -2330,12 +2332,12 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             bool Rendered = false;
             using (var Context = Snapshot.Open())
                 Rendered = DrawContent(Context, SnapshotZone,
-                                       WithTransparentBackground, SnapshotBackground);
+                                       WithTransparentBackground, SnapshotBackground, EffectiveSourceArea);
 
             if (!Rendered)
                 return null;
 
-            var Result = Tuple.Create(Snapshot, new Rect(SourceArea.X, SourceArea.Y, SnapshotZone.Width, SnapshotZone.Height));
+            var Result = Tuple.Create(Snapshot, new Rect(EffectiveSourceArea.X, EffectiveSourceArea.Y, SnapshotZone.Width, SnapshotZone.Height));
             return Result;
         }
 

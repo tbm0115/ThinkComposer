@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 
@@ -99,6 +100,26 @@ namespace Instrumind.ThinkComposer.Cli
                 return Finish(HeadlessThinkComposerOperations.ExportCompositionJson(
                     Options.Required("input"),
                     Options.Required("output")));
+
+            if (Command == "export-image")
+            {
+                var ImageOptions = new HeadlessImageExportOptions();
+                ImageOptions.Input = Options.Required("input");
+                ImageOptions.Output = Options.Required("output");
+                ImageOptions.ViewTechName = Options.Optional("view");
+                ImageOptions.Width = OptionalPositiveInt(Options, "width");
+                ImageOptions.Height = OptionalPositiveInt(Options, "height");
+                ImageOptions.Padding = OptionalNonNegativeDouble(Options, "padding");
+                ImageOptions.Transparent = Options.Has("transparent");
+
+                foreach (var FitTechName in Options.Values("fit"))
+                    ImageOptions.FitTechNames.Add(FitTechName);
+
+                foreach (var FitTechName in Options.Values("fit-tech-name"))
+                    ImageOptions.FitTechNames.Add(FitTechName);
+
+                return Finish(HeadlessThinkComposerOperations.ExportCompositionImage(ImageOptions));
+            }
 
             if (Command == "import-json")
                 return Finish(HeadlessThinkComposerOperations.ImportCompositionJson(
@@ -339,6 +360,32 @@ namespace Instrumind.ThinkComposer.Cli
             return ExitSuccess;
         }
 
+        private static int? OptionalPositiveInt(OptionSet Options, string Key)
+        {
+            var Text = Options.Optional(Key);
+            if (String.IsNullOrWhiteSpace(Text))
+                return null;
+
+            int Result;
+            if (!Int32.TryParse(Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out Result) || Result <= 0)
+                throw new UsageException("--" + Key + " must be a positive integer.");
+
+            return Result;
+        }
+
+        private static double? OptionalNonNegativeDouble(OptionSet Options, string Key)
+        {
+            var Text = Options.Optional(Key);
+            if (String.IsNullOrWhiteSpace(Text))
+                return null;
+
+            double Result;
+            if (!Double.TryParse(Text, NumberStyles.Float, CultureInfo.InvariantCulture, out Result) || Result < 0)
+                throw new UsageException("--" + Key + " must be zero or greater.");
+
+            return Result;
+        }
+
         private static bool IsHelp(string Arg)
         {
             return String.Equals(Arg, "--help", StringComparison.OrdinalIgnoreCase) ||
@@ -352,6 +399,7 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine();
             Console.WriteLine("Usage:");
             Console.WriteLine("  thinkcomposer composition export-json --input <file.tcom> --output <file.json>");
+            Console.WriteLine("  thinkcomposer composition export-image --input <file.tcom> --output <file.png|file.jpg|file.gif|file.tif|file.bmp> [--view <view-tech-name>] [--fit <idea-tech-name>] [--width <px>] [--height <px>] [--padding <px>] [--transparent]");
             Console.WriteLine("  thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>");
@@ -378,12 +426,14 @@ namespace Instrumind.ThinkComposer.Cli
         {
             Console.WriteLine("Composition commands:");
             Console.WriteLine("  thinkcomposer composition export-json --input <file.tcom> --output <file.json>");
+            Console.WriteLine("  thinkcomposer composition export-image --input <file.tcom> --output <file.png|file.jpg|file.gif|file.tif|file.bmp> [--view <view-tech-name>] [--fit <idea-tech-name>] [--width <px>] [--height <px>] [--padding <px>] [--transparent]");
             Console.WriteLine("  thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>");
             Console.WriteLine("  thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>");
             Console.WriteLine();
             Console.WriteLine("Imports require --output. To overwrite --input, set --output to the input path and pass --in-place.");
+            Console.WriteLine("Image export defaults to the root/main view fitted into 1600x1200 pixels. Repeat --fit to fit specific visible idea TechNames.");
             Console.WriteLine("Round-trip validation rebuilds Domain and Composition from JSON and compares normalized re-exported JSON.");
             Console.WriteLine("Persistence validation saves a JSON-authoritative package, reopens it through normal load, saves again, and compares canonical root JSON payloads.");
         }

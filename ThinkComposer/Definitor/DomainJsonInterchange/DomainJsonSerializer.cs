@@ -197,6 +197,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 return null;
 
             var Result = new DomainJsonElement();
+            Result.Set = GetObjectDictionary(Source, "set");
             Result.Id = GetString(Source, "id");
             Result.Entity = GetString(Source, "entity");
             Result.Name = GetString(Source, "name");
@@ -204,6 +205,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.Summary = GetString(Source, "summary");
             Result.Description = GetString(Source, "description");
             Result.TechSpec = GetString(Source, "techSpec");
+            if (Result.TechSpec == null)
+                Result.TechSpec = GetString(Result.Set, "techSpec");
             Result.CompatibilitySignature = GetString(Source, "compatibilitySignature");
             Result.OwnerId = GetString(Source, "ownerId");
             Result.OwnerTechName = GetString(Source, "ownerTechName");
@@ -225,6 +228,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.RelatedIdeasAreOrdered = GetNullableBool(Source, "relatedIdeasAreOrdered");
             Result.ExternalLanguageTechName = GetString(Source, "externalLanguageTechName");
             Result.TemplateText = GetString(Source, "templateText");
+            if (Result.TemplateText == null)
+                Result.TemplateText = GetString(Result.Set, "templateText");
             Result.ExtendsBaseTemplate = GetNullableBool(Source, "extendsBaseTemplate");
             Result.Order = GetNullableInt(Source, "order");
             Result.AllowedVariantTechNames = ReadStringList(Source, "allowedVariantTechNames");
@@ -232,7 +237,6 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.Fields = ReadList(Source, "fields", ReadElement);
             Result.RoleDefinitions = ReadList(Source, "roleDefinitions", ReadElement);
             Result.OutputTemplates = ReadList(Source, "outputTemplates", ReadElement);
-            Result.Set = GetObjectDictionary(Source, "set");
             return Result;
         }
 
@@ -275,6 +279,13 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             var Result = new List<TTarget>();
             if (Source == null || !Source.ContainsKey(Key) || Source[Key] == null)
                 return Result;
+
+            var SingleItem = Source[Key] as IDictionary<string, object>;
+            if (SingleItem != null)
+            {
+                Result.Add(Reader(SingleItem));
+                return Result;
+            }
 
             var Items = Source[Key] as IEnumerable;
             if (Items == null || Source[Key] is string)
@@ -417,10 +428,6 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         private static void AddIf(OrderedDictionary Object, string Key, object Value)
         {
             if (Value == null)
-                return;
-
-            var Text = Value as string;
-            if (Text != null && Text.Length == 0)
                 return;
 
             Object.Add(Key, Value);

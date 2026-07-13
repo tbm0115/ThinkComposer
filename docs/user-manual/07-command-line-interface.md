@@ -2,7 +2,7 @@
 
 ThinkComposer includes a headless command-line interface for repeatable import, export, package persistence validation, report, and output-generation work. The desktop application remains the primary visual editor. Use the CLI when you want the same operations available from Command Prompt, scripts, build jobs, or other automation.
 
-Modern `.tcom` and `.tdom` files use root JSON payloads as their native persistence source of truth. Manual JSON exports are still exchange artifacts, while PDF, XPS, and generated files are publication/output artifacts.
+Modern `.tcom` and `.tdom` files use root JSON payloads as their native persistence source of truth. Manual JSON exports are still exchange artifacts, while image exports, PDF, XPS, and generated files are publication/output artifacts.
 
 Related manual topics:
 
@@ -19,6 +19,7 @@ Detailed technical references are also available for [Composition JSON Interchan
 Use the CLI for:
 
 - exporting a composition to JSON for compatibility review
+- exporting a fitted image of the main view or a selected view area
 - importing reviewed Composition JSON through the compatibility merge path
 - exporting a native `.tdom` domain or a composition's embedded domain to JSON for compatibility review
 - importing Domain JSON through the compatibility merge path
@@ -144,6 +145,28 @@ thinkcomposer composition import-json --input "Models\ServiceMap.tcom" --json "P
 Modern `.tcom` persistence uses root `/Composition.json` and `/Domain.json` as the native source of truth. Use the CLI import/export commands when you need a compatibility merge, preview, or standalone interchange document; patch root package JSON directly for JSON-authoritative persistence edits.
 
 For the JSON model, patch operations, visual strategies, and diagnostics, see [Composition JSON Interchange](04-current-features.md#composition-json-interchange) and the detailed [Composition JSON Interchange reference](../json-interchange.md).
+
+## Composition Image Export
+
+Composition image export writes a fitted raster image from a `.tcom` composition. By default, it exports the root or main view fitted into a 1600x1200 image:
+
+```cmd
+thinkcomposer composition export-image --input "Models\ServiceMap.tcom" --output "Exports\ServiceMap.main.png"
+```
+
+Use `--view` to export a specific view by TechName:
+
+```cmd
+thinkcomposer composition export-image --input "Models\ServiceMap.tcom" --output "Exports\ServiceMap.system.png" --view "SystemMap"
+```
+
+Use repeated `--fit` values to fit the export viewport around specific visible idea TechNames on the chosen view. `--fit-tech-name` is accepted as an explicit alias.
+
+```cmd
+thinkcomposer composition export-image --input "Models\ServiceMap.tcom" --output "Exports\ServiceMap.slice.png" --view "SystemMap" --fit "Customer" --fit "Service" --width 1920
+```
+
+Supported raster extensions are `.png`, `.jpg`, `.jpeg`, `.gif`, `.tif`, `.tiff`, and `.bmp`. If only `--width` or `--height` is supplied, ThinkComposer infers the other dimension from the fitted source area. `--padding` controls source-area padding around fitted TechNames; the default is 20. `--transparent` keeps the background transparent when the selected image format supports alpha, such as PNG.
 
 ## Domain JSON
 

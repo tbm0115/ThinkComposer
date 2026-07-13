@@ -6,10 +6,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Packaging;
 using System.Linq;
 using System.Text;
+using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 using Instrumind.Common;
@@ -29,6 +32,7 @@ using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.Model;
 using Instrumind.ThinkComposer.Model.GraphModel;
+using Instrumind.ThinkComposer.Model.VisualModel;
 
 namespace Instrumind.ThinkComposer.Headless
 {
@@ -48,8 +52,32 @@ namespace Instrumind.ThinkComposer.Headless
         }
     }
 
+    public sealed class HeadlessImageExportOptions
+    {
+        public string Input { get; set; }
+        public string Output { get; set; }
+        public string ViewTechName { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
+        public double? Padding { get; set; }
+        public bool Transparent { get; set; }
+        public IList<string> FitTechNames { get; private set; }
+
+        public HeadlessImageExportOptions()
+        {
+            this.FitTechNames = new List<string>();
+        }
+    }
+
     public static class HeadlessThinkComposerOperations
     {
+        private const int DefaultImageExportWidth = 1600;
+        private const int DefaultImageExportHeight = 1200;
+        private const int MinImageExportDimension = 24;
+        private const int MaxImageExportDimension = 10000;
+        private const long MaxImageExportPixels = 100000000;
+        private const double DefaultImageFitPadding = 20.0;
+
         public static OperationResult<string> ExportCompositionJson(string Input, string Output)
         {
             return ExpectedOperation(delegate
@@ -66,6 +94,80 @@ namespace Instrumind.ThinkComposer.Headless
                 var Document = CompositionJsonExporter.Export(LoadResult.Result.TargetComposition);
                 CompositionJsonSerializer.Save(Document, Path.GetFullPath(Output));
                 return Succeed("Composition JSON exported to: " + Path.GetFullPath(Output), Path.GetFullPath(Output));
+            });
+        }
+
+        public static OperationResult<string> ExportCompositionImage(HeadlessImageExportOptions Options)
+        {
+            return ExpectedOperation(delegate
+            {
+                if (Options == null)
+                    return Fail("No image export options were supplied.");
+
+                var Validation = ValidateInputOutput(Options.Input, Options.Output, Composition.FILE_EXTENSION_COMPOSITION, null, false);
+                if (!Validation.WasSuccessful)
+                    return Validation;
+
+                if (!IsImageOutputPath(Options.Output))
+                    return Fail("Image output must have .png, .jpg, .jpeg, .gif, .tif, .tiff, or .bmp extension.");
+
+                var LoadResult = LoadComposition(Options.Input);
+                if (!LoadResult.WasSuccessful)
+                    return Fail(LoadResult.Message);
+
+                var TargetComposition = LoadResult.Result.TargetComposition;
+                var TargetView = ResolveCompositionView(TargetComposition, Options.ViewTechName);
+                if (TargetView == null)
+                    return Fail("Cannot resolve view '" + Options.ViewTechName.ToStringAlways() + "'. Known view TechNames: " +
+                                KnownViewTechNames(TargetComposition));
+
+                var FitTechNames = NormalizeReferences(Options.FitTechNames);
+                var FitPadding = Options.Padding.HasValue ? Options.Padding.Value : DefaultImageFitPadding;
+                if (FitPadding < 0)
+                    return Fail("--padding must be zero or greater.");
+
+                Rect SourceArea;
+                string FitDescription;
+                if (FitTechNames.Count > 0)
+                {
+                    var FitResult = DetermineImageFitSourceArea(TargetView, FitTechNames, FitPadding);
+                    if (!FitResult.WasSuccessful)
+                        return Fail(FitResult.Message);
+
+                    SourceArea = FitResult.Result;
+                    FitDescription = "TechNames: " + String.Join(", ", FitTechNames.ToArray());
+                }
+                else
+                {
+                    SourceArea = TargetView.DetermineContentArea();
+                    FitDescription = "full view";
+                }
+
+                if (SourceArea == Rect.Empty || SourceArea.Width <= 0 || SourceArea.Height <= 0)
+                    return Fail("View '" + DescribeView(TargetView) + "' has no renderable content.");
+
+                int ExportWidth;
+                int ExportHeight;
+                string SizeError;
+                if (!TryResolveImageExportSize(SourceArea, Options.Width, Options.Height, out ExportWidth, out ExportHeight, out SizeError))
+                    return Fail(SizeError);
+
+                EnsureParentDirectory(Options.Output);
+                var Target = Path.GetFullPath(Options.Output);
+                var Snapshot = TargetView.ToSnapshot(Options.Transparent, ExportWidth, ExportHeight, null, SourceArea);
+                if (Snapshot == null)
+                    return Fail("View '" + DescribeView(TargetView) + "' did not produce a renderable image snapshot.");
+
+                var Error = Display.ExportImageTo(Target, Snapshot.Item1.RenderToDrawingVisual(), ExportWidth, ExportHeight);
+                if (!Error.IsAbsent())
+                    return Fail(Error);
+
+                return Succeed("View image exported to: " + Target + Environment.NewLine +
+                               "View: " + DescribeView(TargetView) + Environment.NewLine +
+                               "Fit: " + FitDescription + Environment.NewLine +
+                               "Size: " + ExportWidth.ToString(CultureInfo.InvariantCulture) + "x" +
+                               ExportHeight.ToString(CultureInfo.InvariantCulture),
+                               Target);
             });
         }
 
@@ -1026,6 +1128,229 @@ namespace Instrumind.ThinkComposer.Headless
             });
         }
 
+        private static OperationResult<Rect> DetermineImageFitSourceArea(View TargetView, IList<string> FitTechNames, double Padding)
+        {
+            if (TargetView == null)
+                return OperationResult.Failure<Rect>("No target view was supplied.");
+
+            var Representations = GetViewRepresentations(TargetView).ToList();
+            var Missing = FitTechNames
+                .Where(TechName => !Representations.Any(RepresentationHasTechName(TechName)))
+                .ToList();
+
+            if (Missing.Count > 0)
+                return OperationResult.Failure<Rect>("Cannot resolve fit TechName(s) on view '" + DescribeView(TargetView) +
+                                                     "': " + String.Join(", ", Missing.ToArray()) +
+                                                     ". Known visible idea TechNames: " + KnownVisibleIdeaTechNames(TargetView));
+
+            var Result = Rect.Empty;
+            var MeasuredParts = 0;
+
+            foreach (var Representator in Representations.Where(RepresentationMatchesAny(FitTechNames)))
+                foreach (var Part in Representator.VisualParts.Where(Part => Part != null && Part.IsRelatedVisible))
+                {
+                    var PartArea = GetVisualObjectContentArea(Part);
+                    if (PartArea == Rect.Empty || PartArea.Width <= 0 || PartArea.Height <= 0)
+                        continue;
+
+                    if (Result == Rect.Empty)
+                        Result = PartArea;
+                    else
+                        Result.Union(PartArea);
+
+                    MeasuredParts++;
+                }
+
+            if (MeasuredParts < 1 || Result == Rect.Empty)
+                return OperationResult.Failure<Rect>("Fit TechName(s) resolved on view '" + DescribeView(TargetView) +
+                                                     "', but no renderable visual area was found.");
+
+            if (Padding > 0)
+                Result.Inflate(Padding, Padding);
+
+            return OperationResult.Success(Result);
+        }
+
+        private static Func<VisualRepresentation, bool> RepresentationHasTechName(string TechName)
+        {
+            return delegate(VisualRepresentation Representation)
+            {
+                return Representation != null &&
+                       Representation.RepresentedIdea != null &&
+                       String.Equals(Representation.RepresentedIdea.TechName, TechName, StringComparison.OrdinalIgnoreCase);
+            };
+        }
+
+        private static Func<VisualRepresentation, bool> RepresentationMatchesAny(IList<string> TechNames)
+        {
+            return delegate(VisualRepresentation Representation)
+            {
+                return TechNames.Any(TechName => RepresentationHasTechName(TechName)(Representation));
+            };
+        }
+
+        private static IEnumerable<VisualRepresentation> GetViewRepresentations(View TargetView)
+        {
+            if (TargetView == null || TargetView.ViewChildren == null)
+                return Enumerable.Empty<VisualRepresentation>();
+
+            return TargetView.ViewChildren
+                             .Select(Child => Child == null ? null : Child.Key as VisualElement)
+                             .Where(Element => Element != null && Element.OwnerRepresentation != null)
+                             .Select(Element => Element.OwnerRepresentation)
+                             .Distinct()
+                             .Where(Representator => Representator != null && Representator.RepresentedIdea != null);
+        }
+
+        private static Rect GetVisualObjectContentArea(VisualObject Source)
+        {
+            if (Source == null)
+                return Rect.Empty;
+
+            var Result = Source.Graphic == null ? Rect.Empty : Source.Graphic.ContentBounds;
+            if (Result == Rect.Empty || Result.Width <= 0 || Result.Height <= 0)
+                Result = Source.TotalArea;
+
+            return Result;
+        }
+
+        private static bool TryResolveImageExportSize(Rect SourceArea, int? RequestedWidth, int? RequestedHeight,
+                                                      out int Width, out int Height, out string Message)
+        {
+            Width = RequestedWidth.HasValue ? RequestedWidth.Value : 0;
+            Height = RequestedHeight.HasValue ? RequestedHeight.Value : 0;
+            Message = null;
+
+            if (!RequestedWidth.HasValue && !RequestedHeight.HasValue)
+            {
+                Width = DefaultImageExportWidth;
+                Height = DefaultImageExportHeight;
+            }
+            else
+                if (RequestedWidth.HasValue && !RequestedHeight.HasValue)
+                    Height = Convert.ToInt32(Math.Round((double)Width * (SourceArea.Height / SourceArea.Width)));
+                else
+                    if (!RequestedWidth.HasValue && RequestedHeight.HasValue)
+                        Width = Convert.ToInt32(Math.Round((double)Height * (SourceArea.Width / SourceArea.Height)));
+
+            if (Width < MinImageExportDimension || Height < MinImageExportDimension)
+            {
+                Message = "--width and --height must resolve to at least " +
+                          MinImageExportDimension.ToString(CultureInfo.InvariantCulture) + " pixels.";
+                return false;
+            }
+
+            if (Width > MaxImageExportDimension || Height > MaxImageExportDimension)
+            {
+                Message = "--width and --height must be no greater than " +
+                          MaxImageExportDimension.ToString(CultureInfo.InvariantCulture) + " pixels.";
+                return false;
+            }
+
+            if ((long)Width * (long)Height > MaxImageExportPixels)
+            {
+                Message = "Image export is limited to " +
+                          MaxImageExportPixels.ToString(CultureInfo.InvariantCulture) + " pixels to avoid exhausting memory.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static IList<string> NormalizeReferences(IEnumerable<string> References)
+        {
+            return (References ?? Enumerable.Empty<string>())
+                   .Where(Reference => !String.IsNullOrWhiteSpace(Reference))
+                   .Select(Reference => Reference.Trim())
+                   .Distinct(StringComparer.OrdinalIgnoreCase)
+                   .ToList();
+        }
+
+        private static View ResolveCompositionView(Composition Composition, string ViewReference)
+        {
+            if (Composition == null)
+                return null;
+
+            var Views = GetCompositionViews(Composition).ToList();
+            if (String.IsNullOrWhiteSpace(ViewReference))
+                return Composition.RootView ?? Composition.ActiveView ?? Views.FirstOrDefault();
+
+            if (String.Equals(ViewReference, "root", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(ViewReference, "main", StringComparison.OrdinalIgnoreCase))
+                return Composition.RootView ?? Views.FirstOrDefault();
+
+            if (String.Equals(ViewReference, "active", StringComparison.OrdinalIgnoreCase))
+                return Composition.ActiveView ?? Composition.RootView ?? Views.FirstOrDefault();
+
+            Guid ParsedId;
+            if (Guid.TryParse(ViewReference, out ParsedId))
+                return Views.FirstOrDefault(View => View.GlobalId == ParsedId);
+
+            return Views.FirstOrDefault(View => String.Equals(View.TechName, ViewReference, StringComparison.OrdinalIgnoreCase)) ??
+                   Views.FirstOrDefault(View => String.Equals(View.Name, ViewReference, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IEnumerable<View> GetCompositionViews(Composition Composition)
+        {
+            if (Composition == null)
+                return Enumerable.Empty<View>();
+
+            var Views = Composition.GetSubgraphChildren()
+                                   .Where(Idea => Idea != null && Idea.CompositeViews != null)
+                                   .SelectMany(Idea => Idea.CompositeViews)
+                                   .Where(View => View != null)
+                                   .Distinct()
+                                   .OrderBy(View => View.Name ?? "")
+                                   .ThenBy(View => View.TechName ?? "")
+                                   .ThenBy(View => IdOf(View))
+                                   .ToList();
+
+            if (Composition.RootView != null && !Views.Contains(Composition.RootView))
+                Views.Insert(0, Composition.RootView);
+
+            if (Composition.ActiveView != null && !Views.Contains(Composition.ActiveView))
+                Views.Insert(0, Composition.ActiveView);
+
+            return Views;
+        }
+
+        private static string KnownViewTechNames(Composition Composition)
+        {
+            var Values = GetCompositionViews(Composition)
+                         .Select(View => View.TechName)
+                         .Where(TechName => !String.IsNullOrWhiteSpace(TechName))
+                         .OrderBy(TechName => TechName)
+                         .ToArray();
+
+            return Values.Length == 0 ? "<none>" : String.Join(", ", Values);
+        }
+
+        private static string KnownVisibleIdeaTechNames(View TargetView)
+        {
+            var Values = GetViewRepresentations(TargetView)
+                         .Select(Representator => Representator.RepresentedIdea.TechName)
+                         .Where(TechName => !String.IsNullOrWhiteSpace(TechName))
+                         .Distinct(StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(TechName => TechName)
+                         .ToArray();
+
+            return Values.Length == 0 ? "<none>" : String.Join(", ", Values);
+        }
+
+        private static string IdOf(UniqueElement Element)
+        {
+            return Element == null ? null : Element.GlobalId.ToString("D");
+        }
+
+        private static string DescribeView(View Source)
+        {
+            if (Source == null)
+                return "<none>";
+
+            return Source.Name.ToStringAlways() + " (" + Source.TechName.ToStringAlways() + ", id=" +
+                   Source.GlobalId.ToString("D") + ")";
+        }
+
         private static OperationResult<CompositionEngine> RehydrateCompositionFromJson(CompositionJsonDocument CompositionDocument,
                                                                                        DomainJsonDocument DomainDocument)
         {
@@ -1483,6 +1808,17 @@ namespace Instrumind.ThinkComposer.Headless
 
             return Ideas.FirstOrDefault(Idea => Idea != null &&
                                                 String.Equals(Idea.TechName, Reference, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool IsImageOutputPath(string PathText)
+        {
+            return HasExtension(PathText, "png") ||
+                   HasExtension(PathText, "jpg") ||
+                   HasExtension(PathText, "jpeg") ||
+                   HasExtension(PathText, "gif") ||
+                   HasExtension(PathText, "tif") ||
+                   HasExtension(PathText, "tiff") ||
+                   HasExtension(PathText, "bmp");
         }
 
         private static bool HasExtension(string PathText, string Extension)

@@ -8,6 +8,7 @@ For user-facing installation, PATH, safety, and workflow guidance, see [Command-
 
 ```cmd
 thinkcomposer composition export-json --input <file.tcom> --output <file.json>
+thinkcomposer composition export-image --input <file.tcom> --output <file.png|file.jpg|file.gif|file.tif|file.bmp> [--view <view-tech-name>] [--fit <idea-tech-name>] [--width <px>] [--height <px>] [--padding <px>] [--transparent]
 thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]
 thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>
 thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>
@@ -52,6 +53,22 @@ Pass `-User` after any helper command to update or check only the current user's
 Imports always require `--output`. The CLI refuses to overwrite the input path unless `--in-place` is also present and `--output` matches `--input`. `--preview-only` validates the input JSON and prints the planned import summary without saving any document.
 
 `domain update-embedded` is the CLI equivalent of `Composition -> Domain -> Update Embedded Domain...` for native `.tdom` sources. It previews or applies the safe embedded-domain merge, then writes a `.tcom` output.
+
+## Image Export
+
+`composition export-image` opens a `.tcom` composition and writes a fitted raster image of a view. By default it exports the root/main view fitted into a 1600x1200 image:
+
+```cmd
+thinkcomposer composition export-image --input model.tcom --output exports\model-main.png
+```
+
+Use `--view <view-tech-name>` to export another view. Use repeated `--fit <idea-tech-name>` values to fit the export viewport around specific visible idea TechNames on that view. `--fit-tech-name` is accepted as a clearer alias for `--fit`.
+
+```cmd
+thinkcomposer composition export-image --input model.tcom --output exports\service-slice.png --view SystemMap --fit Customer --fit Service --width 1920
+```
+
+If only one of `--width` or `--height` is supplied, the other dimension is inferred from the fitted source area. `--padding <px>` controls source-area padding around fitted TechNames; the default is 20. `--transparent` keeps the background transparent when the chosen output format supports alpha, such as PNG.
 
 ## Package Persistence
 

@@ -27,6 +27,8 @@ thinkcomposer git pull --input <file.tcom|file.tdom> --output <file> [--in-place
 thinkcomposer git push --input <file.tcom> --message <message>
 thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>
 thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id-or-tech-name>]
+thinkcomposer performance prepare-json-persistence-corpus --source-root <repo> --output-dir <dir> [--mode <development|certification>] [--real-package <sanitized-slow-file>]...
+thinkcomposer performance benchmark-json-persistence --corpus <dir>\corpus.json --output <report.json> [--warmup 1] [--iterations 5] [--baseline <report.json>] [--minimum-speedup 2.0] [--allow-legacy-baseline-output] [--skip-splash-responsiveness-gate]
 ```
 
 Use `thinkcomposer --help`, `thinkcomposer composition --help`, or `thinkcomposer composition export-json --help` for command-line help.
@@ -76,7 +78,32 @@ If only one of `--width` or `--height` is supplied, the other dimension is infer
 
 `composition convert-json-persistence` and `domain convert-json-persistence` open legacy packages through the normal loader and save a modern JSON-authoritative package.
 
-`composition validate-json-persistence` and `domain validate-json-persistence` save a JSON-authoritative package, reopen it through normal load, assert that JSON was used instead of binary fallback, save again, and compare canonical root JSON payloads.
+New saves are JSON-only: `.tcom` packages do not write `/Composition.bin`, `.tdom` packages do not write `/Domain.bin`, and the root manifest records `legacyBinaryFallback.present: false`. Binary-only and transitional packages remain readable. Resaving one migrates it to JSON-only persistence. A corrupt root JSON payload falls back only when the matching legacy binary part is physically present; otherwise the open fails with the JSON diagnostic.
+
+`composition validate-json-persistence` and `domain validate-json-persistence` save a JSON-authoritative package, reopen it through normal load, assert that JSON was used instead of binary fallback, save again, compare canonical root JSON payloads, and verify the result is binary-free.
+
+## JSON Persistence Performance
+
+Prepare a reproducible corpus from the repository examples, predefined Domains, optional sanitized real-world packages, and deterministic large synthetic Composition and Domain cases:
+
+```cmd
+thinkcomposer performance prepare-json-persistence-corpus --source-root C:\src\ThinkComposer --output-dir C:\bench\tc-corpus --mode certification --real-package C:\bench\sanitized-slow.tcom
+```
+
+`--mode development` is the default and permits a repository-only developer corpus. `--mode certification` requires at least one repeatable `--real-package`; each such input is tagged as a sanitized slow package so the report can identify the required splash-responsiveness cases. Corpus preparation converts every source through normal persistence, records authoritative-payload and whole-package SHA-256 hashes, exact package byte lengths, and model counts, and writes `corpus.json` plus package cases beneath the output directory. Benchmark startup rejects any case whose package hash or actual byte length changed after preparation.
+
+Benchmark loading, the first save, and a second steady-state save:
+
+```cmd
+thinkcomposer performance benchmark-json-persistence --corpus C:\bench\tc-corpus\corpus.json --output C:\bench\baseline.json --warmup 1 --iterations 5 --allow-legacy-baseline-output
+thinkcomposer performance benchmark-json-persistence --corpus C:\bench\tc-corpus\corpus.json --output C:\bench\candidate.json --warmup 1 --iterations 5 --baseline C:\bench\baseline.json --minimum-speedup 2.0
+```
+
+Each measured sample runs in a fresh CLI process and copies its immutable source before timing. Reports include the executable, authoritative-payload, and whole-package corpus hashes, exact source/output byte lengths, machine/CLR/process-architecture fingerprint, raw per-case samples, splash first-paint/heartbeat/dispatcher-stop telemetry, aggregate median and nearest-rank p95, and per-sample persistence validation results. Raw `stageTimings` entries prefixed with `firstSave.` and `steadySave.` separately report `save-export-dto`, `save-json-serialization-hash`, `save-preview-cache-read`, `save-preview-input-hash`, `save-preview-render`, `save-preview-reuse`, `save-required-package-write`, `save-package-close`, `save-safe-replacement`, and `save-optional-sidecars`. The required-writer span contains its export/serialization sub-spans, and the optional-sidecar span contains its preview hash/render/reuse sub-spans, so nested values diagnose their parent and must not be summed as disjoint total time. Use `--allow-legacy-baseline-output` only when recording a pre-optimization baseline whose save writer retains the exact matching `/Composition.bin` or `/Domain.bin` beside authoritative root JSON. Baseline workers measure the second save without requiring the candidate-only v2 preview-reuse contract; candidate workers require and report that contract. Baseline mode still requires JSON authority and authoritative-hash parity, and rejects binary-only output or an unrelated binary part. It cannot be combined with `--baseline`; candidate comparison runs always enforce strict JSON-only output on every measured package.
+
+Baseline comparison requires the same corpus mode, per-case authoritative and whole-package hashes, exact byte lengths, machine fingerprint, warmup/iteration counts, splash-certification mode, and a minimum speedup for both aggregate median load and first-save time. A validated report marked as allowing legacy baseline output is accepted as the baseline, while the candidate remains strict. The default `2.0` gate means the candidate must complete each median in no more than half of the baseline time. Certification corpora apply the splash gate to every tagged sanitized slow package; development corpora retain the all-case diagnostic gate. Each selected open must paint within 250 ms, keep its maximum heartbeat gap within 500 ms, and stop the dedicated dispatcher cleanly. `--skip-splash-responsiveness-gate` makes those checks diagnostic only for constrained CI/headless environments. This benchmark escape hatch does not change the application's best-effort splash degradation behavior. The steady-state save measurement reports preview-cache reuse but is diagnostic rather than part of the speed gate.
+
+For final certification, capture separate baseline and candidate Windows Performance Recorder traces around the sanitized-package benchmark. Enable CPU sampling, file/disk I/O, allocation/.NET activity, and UI/WPF responsiveness providers, then compare the traces in Windows Performance Analyzer alongside the JSON reports. Keep sanitized packages and trace files outside version control.
 
 ## Git Sync
 

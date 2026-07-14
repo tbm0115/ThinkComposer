@@ -33,6 +33,16 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         }
 
         public int PlannedCreated { get; set; }
+
+        /// <summary>
+        /// Suppresses high-volume field/informational logging for native package
+        /// rehydration while preserving report counts and diagnostic collections.
+        /// </summary>
+        public bool QuietLogging { get; set; }
+
+        private int QuietDiagnosticsWritten { get; set; }
+        private const int MaximumQuietDiagnostics = 8;
+
         public int PlannedUpdated { get; set; }
         public int PlannedDeleted { get; set; }
         public int PlannedSkipped { get; set; }
@@ -112,6 +122,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             this.SourceWarnings.Add(Warning);
             this.Warnings.Add(Warning);
             this.Log("Domain JSON source warning: " + Warning);
+            this.WriteQuietDiagnostic("Domain JSON source warning: " + Warning);
         }
 
         public void ImportWarning(string Warning)
@@ -122,6 +133,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             this.ImportWarnings.Add(Warning);
             this.Warnings.Add(Warning);
             this.Log("Domain JSON import warning: " + Warning);
+            this.WriteQuietDiagnostic("Domain JSON import warning: " + Warning);
         }
 
         public void Note(string Message)
@@ -144,6 +156,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             this.Warnings.Add(Message);
             this.Log("Domain JSON skipped: " + Message);
+            this.WriteQuietDiagnostic("Domain JSON skipped: " + Message);
         }
 
         public void Error(string Error)
@@ -153,6 +166,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             this.Errors.Add(Error);
             this.Log("Domain JSON error: " + Error);
+            if (this.QuietLogging)
+                Console.WriteLine("Domain JSON error: " + Error);
         }
 
         public void Log(string Message)
@@ -160,12 +175,18 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (String.IsNullOrWhiteSpace(Message))
                 return;
 
-            this.LogLines.Add(Message);
-            Console.WriteLine(Message);
+            if (!this.QuietLogging)
+            {
+                this.LogLines.Add(Message);
+                Console.WriteLine(Message);
+            }
         }
 
         public void LogFieldUpdate(string Entity, string FieldName, string Target, string MatchMethod, object OldValue, object NewValue, bool IsPreview)
         {
+            if (this.QuietLogging)
+                return;
+
             var Message = "Domain JSON " + (IsPreview ? "planned" : "applied") +
                           " field update: entity=" + Entity.ToStringAlways() +
                           " match=" + MatchMethod.ToStringAlways() +
@@ -176,6 +197,17 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             this.FieldUpdates.Add(Message);
             this.Log(Message);
+        }
+
+        private void WriteQuietDiagnostic(string Message)
+        {
+            if (!this.QuietLogging || this.QuietDiagnosticsWritten >= MaximumQuietDiagnostics)
+                return;
+
+            Console.WriteLine(Message);
+            this.QuietDiagnosticsWritten++;
+            if (this.QuietDiagnosticsWritten == MaximumQuietDiagnostics)
+                Console.WriteLine("Domain JSON persistence rehydration: further warnings/skips are retained in the summary but omitted from the live log.");
         }
 
         public string FieldUpdatePreview(int Maximum)

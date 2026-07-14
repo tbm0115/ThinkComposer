@@ -9,6 +9,7 @@ using System.IO;
 
 using Instrumind.Common;
 using Instrumind.Common.EntityBase;
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.Composer.JsonInterchange;
 using Instrumind.ThinkComposer.Definitor;
 using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
@@ -40,6 +41,8 @@ namespace Instrumind.ThinkComposer.Composer
         private static JsonPersistenceLoadResult<Composition> TryLoadCompositionFromJsonPackage(CompositionEngine Engine, Uri SourceLocation)
         {
             var Result = new JsonPersistenceLoadResult<Composition>();
+            var PreviousTarget = Engine == null ? null : Engine.TargetComposition;
+            var PreviousGlobalId = Engine == null ? Guid.Empty : Engine.GlobalId;
 
             try
             {
@@ -50,12 +53,17 @@ namespace Instrumind.ThinkComposer.Composer
                 if (!Payload.HasAuthoritativeJson)
                     return Result;
 
-                Result.Content = RehydrateCompositionFromJsonDocument(Engine, Payload.CompositionDocument, Payload.DomainDocument);
+                var Composition = RehydrateCompositionFromJsonDocument(Engine, Payload.CompositionDocument, Payload.DomainDocument);
+                FinalizeRehydratedComposition(Engine, Composition);
+                Result.Content = Composition;
                 Result.Loaded = true;
                 Console.WriteLine("JSON persistence loaded composition package: {0}", SourceLocation.LocalPath);
             }
             catch (Exception Problem)
             {
+                if (Engine != null)
+                    Engine.RestoreTargetAfterJsonLoadAttempt(PreviousTarget, PreviousGlobalId);
+
                 Result.Error = "Cannot load JSON-authoritative composition package: " + Problem.Message;
                 Result.Exception = Problem;
                 Console.WriteLine(Result.Error);
@@ -77,6 +85,9 @@ namespace Instrumind.ThinkComposer.Composer
         private static JsonPersistenceLoadResult<Domain> TryLoadDomainFromJsonPackage(Uri SourceLocation)
         {
             var Result = new JsonPersistenceLoadResult<Domain>();
+            var Engine = CompositionEngine.ActiveCompositionEngine;
+            var PreviousTarget = Engine == null ? null : Engine.TargetComposition;
+            var PreviousGlobalId = Engine == null ? Guid.Empty : Engine.GlobalId;
 
             try
             {
@@ -87,16 +98,24 @@ namespace Instrumind.ThinkComposer.Composer
                 if (!Payload.HasAuthoritativeJson)
                     return Result;
 
-                var Engine = CompositionEngine.ActiveCompositionEngine;
                 if (Engine == null)
                     throw new InvalidOperationException("JSON-authoritative Domain package load requires an active CompositionEngine.");
 
                 var Domain = RehydrateDomainFromJsonDocument(Engine, Payload.DomainDocument);
 
+                Composition Template = null;
                 if (Payload.TemplateCompositionDocument != null)
                 {
-                    var Template = RehydrateCompositionFromJsonDocument(Engine, Payload.TemplateCompositionDocument, Domain);
+                    Template = RehydrateCompositionFromJsonDocument(Engine, Payload.TemplateCompositionDocument, Domain);
                     Domain.SetOwnerComposition(Template);
+                }
+
+                ReportFinalizationProgress("Repairing and finalizing the Domain...");
+                ModelFixes.ApplyModelFixes(Domain);
+                if (Template != null)
+                {
+                    Template.Initialize();
+                    Engine.GlobalId = Template.GlobalId;
                 }
 
                 Result.Content = Domain;
@@ -105,6 +124,9 @@ namespace Instrumind.ThinkComposer.Composer
             }
             catch (Exception Problem)
             {
+                if (Engine != null)
+                    Engine.RestoreTargetAfterJsonLoadAttempt(PreviousTarget, PreviousGlobalId);
+
                 Result.Error = "Cannot load JSON-authoritative domain package: " + Problem.Message;
                 Result.Exception = Problem;
                 Console.WriteLine(Result.Error);
@@ -158,20 +180,35 @@ namespace Instrumind.ThinkComposer.Composer
             TargetComposition.CompositionDefinitor.SetOwnerComposition(TargetComposition);
             TargetComposition.Initialize();
 
-            var ImportDocument = CloneCompositionDocument(CompositionDocument);
-            ImportDocument.ImportOptions = BuildPersistenceImportOptions();
-
-            var Report = CompositionJsonImporter.RehydrateFullState(Engine, ImportDocument, true);
+            var Report = CompositionJsonImporter.RehydrateFullState(Engine, CompositionDocument, true,
+                                                                    BuildPersistenceImportOptions(), true);
             if (Report.CompatibilityBlocked || Report.HasErrors)
                 throw new InvalidOperationException("Composition JSON persistence rehydration failed." + Environment.NewLine +
                                                     Report.ToSummaryString(true));
 
             TargetComposition.CompositionDefinitor.SetOwnerComposition(TargetComposition);
+            Console.WriteLine("JSON persistence composition rehydration summary: " +
+                              Report.ToDetailedCountsString() + ".");
+
+            return TargetComposition;
+        }
+
+        private static void FinalizeRehydratedComposition(CompositionEngine Engine, Composition TargetComposition)
+        {
+            ReportFinalizationProgress("Repairing and finalizing the Composition...");
+            TargetComposition.CompositionDefinitor.SetOwnerComposition(TargetComposition);
             ModelFixes.ApplyModelFixes(TargetComposition.CompositionDefinitor);
             TargetComposition.Initialize();
             Engine.GlobalId = TargetComposition.GlobalId;
+        }
 
-            return TargetComposition;
+        private static void ReportFinalizationProgress(string Message)
+        {
+            var Progress = PersistenceOperationContext.Current;
+            if (Progress != null)
+                Progress.ReportStage(PersistenceOperationStages.FinalizeModel, 8,
+                                     PersistenceOperationStages.LoadStageCount,
+                                     Message, true);
         }
 
         private static Domain RehydrateDomainFromJsonDocument(CompositionEngine Engine, DomainJsonDocument DomainDocument)
@@ -180,17 +217,15 @@ namespace Instrumind.ThinkComposer.Composer
                 throw new UsageAnomaly("Cannot rehydrate a Domain without /Domain.json.");
 
             var TargetDomain = Domain.Create(Engine);
-            var Preview = DomainJsonImporter.Preview(TargetDomain, DomainDocument);
-            if (Preview.Errors.Count > 0)
-                throw new InvalidOperationException("Domain JSON persistence preview failed." + Environment.NewLine +
-                                                    Preview.PreviewSummary());
-
-            var Report = DomainJsonImporter.ApplyPreservingIds(TargetDomain, DomainDocument, new DomainJsonImportReport());
+            var QuietReport = new DomainJsonImportReport { QuietLogging = true };
+            var Report = DomainJsonImporter.ApplyPreservingIdsFromValidatedDocument(TargetDomain, DomainDocument, QuietReport);
             if (Report.Errors.Count > 0)
                 throw new InvalidOperationException("Domain JSON persistence rehydration failed." + Environment.NewLine +
                                                     Report.ApplySummary());
 
-            TargetDomain.DeclareExtraCollections();
+            Console.WriteLine("JSON persistence Domain rehydration summary: " +
+                              Report.ApplySummary().Replace(Environment.NewLine, "; ") +
+                              "; by entity: " + Report.EntitySummary() + ".");
 
             return TargetDomain;
         }
@@ -218,11 +253,6 @@ namespace Instrumind.ThinkComposer.Composer
                 PreventSelfRecursiveCompositeViews = true,
                 RepairRecursiveVisuals = true
             };
-        }
-
-        private static CompositionJsonDocument CloneCompositionDocument(CompositionJsonDocument Source)
-        {
-            return CompositionJsonSerializer.Deserialize(CompositionJsonSerializer.Serialize(Source));
         }
 
         private class JsonPersistenceLoadResult<TContent>

@@ -16,14 +16,14 @@ There are two current formats:
 
 Modern native `.tcom` and `.tdom` packages use root JSON payloads as authoritative persistence. Desktop Composition/Domain JSON import/export controls are deprecated; CLI import/export remains a compatibility, migration, and validation path.
 
-Saved native packages may contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. `/manifest.json` may also include optional package-level `gitSync` metadata with a generic Git remote, branch, and repo-relative baseline package paths; `.tcom` manifests may additionally include `embeddedDomainGitSync` for the embedded Domain's source `.tdom` link. When a user provides a native `.tcom` or `.tdom`, inspect and patch root JSON first when present; treat `/Interchange/` as synchronized context snapshots. `/Composition.bin` and `/Domain.bin` are legacy fallback/recovery payloads.
+Saved native packages contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. Current saves are JSON-only and emit `legacyBinaryFallback.present:false`; `/Composition.bin` and `/Domain.bin` can exist only in older binary-only/transitional packages and are never edit targets. `/manifest.json` may also include optional package-level `gitSync` metadata with a generic Git remote, branch, and repo-relative baseline package paths; `.tcom` manifests may additionally include `embeddedDomainGitSync` for the embedded Domain's source `.tdom` link. When a user provides a native `.tcom` or `.tdom`, inspect and patch root JSON first when present; treat `/Interchange/` as synchronized context snapshots. Sidecar manifest v2 preview hashes/profile/disposition support verified PNG reuse but remain non-authoritative.
 
 When directly editing a native package:
 
 - Patch only authoritative root JSON parts: `.tcom` `/Composition.json` and `/Domain.json`; `.tdom` `/Domain.json` and optional `/TemplateComposition.json`.
 - Refresh the corresponding `/manifest.json` `authoritativeParts[]` metadata, especially `sha256` and `bytes`.
 - Preserve or intentionally update `/manifest.json` `gitSync` and `embeddedDomainGitSync` when present. Do not store Git credentials, tokens, last-sync commits, or package hashes in the package; sync state is machine-local.
-- Do not edit `/Composition.bin` or `/Domain.bin`; they are optional legacy fallback parts.
+- Do not edit `/Composition.bin` or `/Domain.bin` when an older package contains them. A normal save migrates the package to JSON-only persistence.
 - Do not treat `/Interchange/*` or `/Previews/*` as authoritative. They may be stale until ThinkComposer saves the package again.
 - Validate with `package inspect` and the relevant `validate-json-persistence` CLI command after the package is patched.
 
@@ -40,6 +40,8 @@ thinkcomposer git pull --input <file.tcom|file.tdom> --output <file> [--in-place
 thinkcomposer git push --input <file.tcom> --message <message>
 thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>
 thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name>
+thinkcomposer performance prepare-json-persistence-corpus --source-root <repo> --output-dir <dir> [--mode <development|certification>] [--real-package <sanitized-slow-file>]...
+thinkcomposer performance benchmark-json-persistence --corpus <dir>\corpus.json --output <report.json> [--baseline <report.json>] [--minimum-speedup 2.0] [--allow-legacy-baseline-output]
 ```
 
 Rules:
@@ -49,6 +51,7 @@ Rules:
 - Use `git status/pull/push` only when `/manifest.json` has a package `gitSync` link or `.tcom` `embeddedDomainGitSync` for the embedded Domain source. Composition push is supported; Domain push is not supported in v1.
 - Use `report pdf` for standard PDF/XPS reports from a saved `.tcom`.
 - Use `output generate` to render external-language output templates from a saved `.tcom`. If the requested `--language` techName is unclear, inspect root `/Domain.json` or run a compatibility `domain export-json`.
+- Use the `performance` commands only for developer benchmarking. They validate a hash-locked JSON-only corpus and run load/first-save/steady-save samples in fresh processes; a baseline comparison requires the same machine, corpus, and iteration count. `--allow-legacy-baseline-output` may be used only while recording a pre-optimization JSON-authoritative baseline that retains the exact matching legacy binary fallback. Never combine it with `--baseline`; candidate runs remain strict JSON-only.
 - Do not use `composition import-json` or `domain import-json` as the default persistence write path. They are compatibility merge/preview commands; direct package edits should patch root JSON and refresh `/manifest.json`.
 
 ## Source-of-truth order

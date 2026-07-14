@@ -168,20 +168,15 @@ namespace Instrumind.ThinkComposer.Definitor
 
                     var TargetDomain = Engine.TargetComposition.CompositeContentDomain;
 
-                    Visual Snapshot = null;
-
-                    if (SaveTemplate && TargetDomain.OwnerComposition.ActiveView != null)
-                        Snapshot = TargetDomain.OwnerComposition.ActiveView
-                                        .ToVisualSnapshot(DocumentEngine.PART_SNAPSHOT_WIDTH, DocumentEngine.PART_SNAPSHOT_HEIGHT);
-
                     TargetDomain.SetTemplateSaving(SaveTemplate);
                     var GitSyncLink = PreserveGitSyncLinkOnSave(Engine.DomainLocation, TargetRoute);
 
                     var Result = JsonPackagePersistence.StoreDomain(TargetDomain, TargetRoute,
                                                                     true, false,
-                                                                    Snapshot, true,
+                                                                    null, true,
                                                                     SaveTemplate,
-                                                                    GitSyncLink);
+                                                                    GitSyncLink,
+                                                                    Engine.DomainLocation);
 
                     if (!Result.IsAbsent())
                     {

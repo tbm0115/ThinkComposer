@@ -37,6 +37,7 @@ using Instrumind.Common.Visualization.Widgets;
 
 using Instrumind.ThinkComposer;
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.Composer.ContainerSnapshots;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
@@ -89,6 +90,18 @@ namespace Instrumind.ThinkComposer.Composer
         /// <returns>Engine for edit a created/opened Composition plus possible error-message.</returns>
         public static Tuple<CompositionEngine, string> Materialize(Uri SourceLocation = null, Domain RootDomain = null, bool UseDomainCompositionAsTemplate = false)
         {
+            return Materialize(SourceLocation, RootDomain, UseDomainCompositionAsTemplate, true);
+        }
+
+        /// <summary>
+        /// Internal materialization entry used by transactional interactive opens.  Those callers
+        /// register the path in Recents only after workspace registration and engine startup have
+        /// both succeeded.
+        /// </summary>
+        internal static Tuple<CompositionEngine, string> Materialize(Uri SourceLocation, Domain RootDomain,
+                                                                      bool UseDomainCompositionAsTemplate,
+                                                                      bool RegisterAsRecentDocument)
+        {
             Tuple<CompositionEngine, string> Result = null;
 
             var Engine = CompositionEngine.ActiveCompositionEngine;
@@ -104,8 +117,15 @@ namespace Instrumind.ThinkComposer.Composer
 
                 try
                 {
+                    var Progress = PersistenceOperationContext.Current;
+                    if (Progress != null)
+                        Progress.ReportStage(PersistenceOperationStages.OpenPackage, 1,
+                                             PersistenceOperationStages.LoadStageCount,
+                                             "Opening Composition package...", true);
+
                     ResetJsonPersistenceLoadDiagnostics();
                     var JsonLoad = TryLoadCompositionFromJsonPackage(Engine, SourceLocation);
+                    var LoadedFromJson = JsonLoad.Loaded;
                     if (JsonLoad.Loaded)
                     {
                         TargetComposition = JsonLoad.Content;
@@ -129,7 +149,10 @@ namespace Instrumind.ThinkComposer.Composer
                         }
 
                         // Load Composition's legacy document package from Uri
-                        var LoadResult = LoadFromLocation<ISphereModel>(FileDataType.FileTypeComposition.Name, SourceLocation, CompositionDocumentUri);
+                        // Registration is transactional with the complete materialization below.
+                        // Do not mutate Recents while the legacy part may still fail finalization.
+                        var LoadResult = LoadFromLocation<ISphereModel>(FileDataType.FileTypeComposition.Name, SourceLocation,
+                                                                       CompositionDocumentUri, false);
                         var Content = LoadResult.Item1;
 
                         if (Content == null)
@@ -149,8 +172,21 @@ namespace Instrumind.ThinkComposer.Composer
                     Engine.GlobalId = TargetComposition.GlobalId;
                     TargetComposition.CompositionDefinitor.SetOwnerComposition(TargetComposition);    // Reattach of owner Composition (which is non-serializable)
 
-                    ModelFixes.ApplyModelFixes(TargetComposition.CompositionDefinitor);
-                    TargetComposition.Initialize();
+                    // JSON finalization is part of TryLoadCompositionFromJsonPackage so any
+                    // repair failure remains inside the exact-binary fallback boundary.
+                    if (!LoadedFromJson)
+                    {
+                        if (Progress != null)
+                            Progress.ReportStage(PersistenceOperationStages.FinalizeModel, 8,
+                                                 PersistenceOperationStages.LoadStageCount,
+                                                 "Repairing and finalizing the Composition...", true);
+
+                        ModelFixes.ApplyModelFixes(TargetComposition.CompositionDefinitor);
+                        TargetComposition.Initialize();
+                    }
+
+                    if (RegisterAsRecentDocument)
+                        DocumentEngine.RegisterRecentDocument(SourceLocation.LocalPath);
 
                     Result = Tuple.Create(Engine, "");
                 }
@@ -219,15 +255,34 @@ namespace Instrumind.ThinkComposer.Composer
         /// <returns>Opened root Domain, plus possible error-message.</returns>
         public static Tuple<Domain, string> MaterializeDomain(Uri DomainLocation = null)
         {
+            return MaterializeDomain(DomainLocation, true);
+        }
+
+        /// <summary>
+        /// Internal Domain materialization entry used when the interactive caller owns the final
+        /// workspace/merge transaction and therefore must defer Recents until that transaction
+        /// succeeds.
+        /// </summary>
+        internal static Tuple<Domain, string> MaterializeDomain(Uri DomainLocation,
+                                                                 bool RegisterAsRecentDocument)
+        {
             // Load Domain's document package from Uri
             Tuple<ISphereModel, string> Result = null;
+            var LoadedFromJson = false;
 
             try
             {
+                var Progress = PersistenceOperationContext.Current;
+                if (Progress != null)
+                    Progress.ReportStage(PersistenceOperationStages.OpenPackage, 1,
+                                         PersistenceOperationStages.LoadStageCount,
+                                         "Opening Domain package...", true);
+
                 ResetJsonPersistenceLoadDiagnostics();
                 var JsonLoad = TryLoadDomainFromJsonPackage(DomainLocation);
                 if (JsonLoad.Loaded)
                 {
+                    LoadedFromJson = true;
                     Result = Tuple.Create<ISphereModel, string>(JsonLoad.Content, "");
                     MarkJsonPersistenceLoad(true, false, "Loaded domain from /Domain.json.");
                 }
@@ -248,7 +303,9 @@ namespace Instrumind.ThinkComposer.Composer
                         MarkJsonPersistenceLoad(false, false, "Loaded legacy binary-only domain package.");
                     }
 
-                    Result = LoadFromLocation<ISphereModel>(FileDataType.FileTypeDomain.Name, DomainLocation, DomainsManager.DomainDocumentUri);
+                    // Register only after the loaded Domain has passed the final model-fix stage.
+                    Result = LoadFromLocation<ISphereModel>(FileDataType.FileTypeDomain.Name, DomainLocation,
+                                                            DomainsManager.DomainDocumentUri, false);
                 }
             }
             catch (Exception Problem)
@@ -268,7 +325,21 @@ namespace Instrumind.ThinkComposer.Composer
             if (RootDomain == null)
                 throw new ExternalAnomaly("Cannot load Domain from the specified location.", DomainLocation);
 
-            ModelFixes.ApplyModelFixes(RootDomain);
+            // JSON finalization is part of TryLoadDomainFromJsonPackage so any repair
+            // failure can still fall back to the physically matching /Domain.bin part.
+            if (!LoadedFromJson)
+            {
+                var FinalizeProgress = PersistenceOperationContext.Current;
+                if (FinalizeProgress != null)
+                    FinalizeProgress.ReportStage(PersistenceOperationStages.FinalizeModel, 8,
+                                                 PersistenceOperationStages.LoadStageCount,
+                                                 "Repairing and finalizing the Domain...", true);
+
+                ModelFixes.ApplyModelFixes(RootDomain);
+            }
+
+            if (RegisterAsRecentDocument)
+                DocumentEngine.RegisterRecentDocument(DomainLocation.LocalPath);
 
             return Tuple.Create(RootDomain, "");
         }
@@ -454,21 +525,21 @@ namespace Instrumind.ThinkComposer.Composer
             var GitSyncLink = PreserveGitSyncLinkOnSave(PreviousLocation, DocumentLocation);
             var EmbeddedDomainGitSyncLink = ResolveEmbeddedDomainGitSyncLinkOnSave(PreviousLocation, this.DomainLocation);
 
-            if (DocumentLocation != null && UpdateLocation)
-                this.Location = DocumentLocation;
-
-            var Snapshot = (this.TargetComposition.ActiveView == null
-                            ? null
-                            : this.TargetComposition.ActiveView.ToVisualSnapshot(PART_SNAPSHOT_WIDTH, PART_SNAPSHOT_HEIGHT));
-
             var Result = JsonPackagePersistence.StoreComposition(this.TargetComposition, DocumentLocation,
                                                                  RegisterAsRecentDoc, false,
-                                                                 Snapshot, true,
+                                                                 null, true,
                                                                  GitSyncLink,
-                                                                 EmbeddedDomainGitSyncLink);
+                                                                 EmbeddedDomainGitSyncLink,
+                                                                 PreviousLocation);
 
-            if (Result.IsAbsent() && ResetExistenceStatus)
-                this.ExistenceStatus = EExistenceStatus.NotModified;
+            if (Result.IsAbsent())
+            {
+                if (DocumentLocation != null && UpdateLocation)
+                    this.Location = DocumentLocation;
+
+                if (ResetExistenceStatus)
+                    this.ExistenceStatus = EExistenceStatus.NotModified;
+            }
 
             return Result;
         }
@@ -563,15 +634,23 @@ namespace Instrumind.ThinkComposer.Composer
                 && ClipboardTransferSourceView.OwnerCompositeContainer.OwnerComposition == this.TargetComposition)
                 ClipboardTransferSelectedObjects.Clear();
 
-            // Discards the visual views.
-            this.Visualizer.DiscardAllViews();
+            // Discard only this engine's views. The visualizer is shared across workspace
+            // documents, and a failed load can stop before any target has been assigned.
+            if (this.TargetComposition != null)
+                this.Visualizer.DiscardAllViews(this.TargetComposition);
 
-            // Discards remembered for-edit objects
-            Definitor.DefinitorMaintenance.DomainMaintainer.RememberedTemplateTestConcept.Remove(this.TargetComposition);
-            Definitor.DefinitorMaintenance.DomainMaintainer.RememberedTemplateTestRelationship.Remove(this.TargetComposition);
+            // Discards remembered for-edit objects and model subscriptions. Failed materialization
+            // can stop an engine before a TargetComposition has been assigned.
+            if (this.TargetComposition != null)
+            {
+                Definitor.DefinitorMaintenance.DomainMaintainer.RememberedTemplateTestConcept.Remove(this.TargetComposition);
+                Definitor.DefinitorMaintenance.DomainMaintainer.RememberedTemplateTestRelationship.Remove(this.TargetComposition);
+                this.TargetComposition.PropertyChanged -= this.TargetComposition__PropertyChanged;
+            }
 
             // PENDING: Free resources, if any.
             this.EntityChanged -= this.ExistenceUpdateAction;
+            this.Manager.WorkspaceDirector.ShellProvider.KeyActioned -= this.ShellProvider_KeyActioned;
 
             return (this.ExistenceStatus != EExistenceStatus.Modified);
         }
@@ -587,8 +666,15 @@ namespace Instrumind.ThinkComposer.Composer
             }
             protected set
             {
+                if (Object.ReferenceEquals(this.TargetComposition_, value))
+                    return;
+
+                if (this.TargetComposition_ != null)
+                    this.TargetComposition_.PropertyChanged -= TargetComposition__PropertyChanged;
+
                 this.TargetComposition_ = value;
-                this.TargetComposition_.PropertyChanged += TargetComposition__PropertyChanged;
+                if (this.TargetComposition_ != null)
+                    this.TargetComposition_.PropertyChanged += TargetComposition__PropertyChanged;
 
                 var Handler = this.MainEditedEntityChanged;
                 if (Handler != null)
@@ -596,6 +682,65 @@ namespace Instrumind.ThinkComposer.Composer
             }
         }
         protected Composition TargetComposition_ = null;
+
+        /// <summary>
+        /// Removes a model constructed by a failed JSON rehydration attempt and restores the
+        /// target that existed before the attempt, so legacy fallback starts from a clean engine.
+        /// </summary>
+        internal void RestoreTargetAfterJsonLoadAttempt(Composition PreviousTarget, Guid PreviousGlobalId)
+        {
+            var PartialTarget = this.TargetComposition_;
+            if (Object.ReferenceEquals(PartialTarget, PreviousTarget))
+            {
+                this.GlobalId = PreviousGlobalId;
+                return;
+            }
+
+            if (PartialTarget != null)
+            {
+                try
+                {
+                    this.Visualizer.DiscardAllViews(PartialTarget);
+                }
+                catch (Exception CleanupProblem)
+                {
+                    AppExec.LogException(CleanupProblem, "Failed JSON target view cleanup");
+                }
+
+                PartialTarget.PropertyChanged -= this.TargetComposition__PropertyChanged;
+                Definitor.DefinitorMaintenance.DomainMaintainer.RememberedTemplateTestConcept.Remove(PartialTarget);
+                Definitor.DefinitorMaintenance.DomainMaintainer.RememberedTemplateTestRelationship.Remove(PartialTarget);
+            }
+
+            // Use the normal target setter so observers which saw the temporary template also see
+            // the restored active document. The setter re-establishes the PropertyChanged
+            // subscription and emits MainEditedEntityChanged exactly once.
+            try
+            {
+                this.TargetComposition = PreviousTarget;
+            }
+            catch (Exception NotificationProblem)
+            {
+                // Rollback and exact-binary recovery must not be defeated by a diagnostic/UI
+                // observer. The setter assigns and subscribes before notifying, so normally the
+                // state is already restored when an observer throws.
+                AppExec.LogException(NotificationProblem, "Failed JSON target restoration notification");
+                if (!Object.ReferenceEquals(this.TargetComposition_, PreviousTarget))
+                {
+                    this.TargetComposition_ = PreviousTarget;
+                    if (PreviousTarget != null)
+                    {
+                        PreviousTarget.PropertyChanged -= this.TargetComposition__PropertyChanged;
+                        PreviousTarget.PropertyChanged += this.TargetComposition__PropertyChanged;
+                    }
+                }
+            }
+
+            // Rehydrating an embedded Domain template adopts the temporary Composition's
+            // identity.  Target rollback must therefore restore the engine identity as well,
+            // otherwise a read-only update-source load mutates the active document engine.
+            this.GlobalId = PreviousGlobalId;
+        }
 
         /// <summary>
         /// Physical location of the working document

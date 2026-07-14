@@ -32,6 +32,7 @@ using Instrumind.Common.Visualization;
 using Instrumind.Common.Visualization.Widgets;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.Composer.JsonInterchange;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
@@ -169,47 +170,111 @@ namespace Instrumind.ThinkComposer.Composer
                                           "So, later it can be saved as the Domain's template."); */
 
             var CurrentWindow = Display.GetCurrentWindow();
-            CurrentWindow.Cursor = Cursors.Wait;
-
+            var PreviousCursor = CurrentWindow.Cursor;
             var PreviousActiveDoc = this.WorkspaceDirector.ActiveDocument;
-            this.WorkspaceDirector.ActiveDocument = null;   // Must deactive previous to create+activate the opening Composition.
+            CompositionEngine OpenedEngine = null;
+            ISphereModel RegisteredDocument = null;
+            string Failure = null;
+            string FailureAction = "Cannot open Domain.";
 
-            CompositionEngine.CreateActiveCompositionEngine(this, this.Visualizer, IsForOpenDomain);
-            var DomainLoad = CompositionEngine.MaterializeDomain(Location);
-            if (DomainLoad.Item1 == null)
+            var InitialMessage = IsForOpenDomain
+                               ? "Opening Domain package and rebuilding its model..."
+                               : "Opening Domain package for the new Composition...";
+
+            using (var Loading = PersistenceLoadingSplash.Begin(PersistenceOperationKind.OpenDomain,
+                                                                InitialMessage, CurrentWindow))
             {
-                CurrentWindow.Cursor = Cursors.Arrow;
-                Display.DialogMessage("Error!", "Cannot open Domain.\n\nProblem: " + DomainLoad.Item2, EMessageType.Warning);
-                this.WorkspaceDirector.ActiveDocument = PreviousActiveDoc;
+                try
+                {
+                    CurrentWindow.Cursor = Cursors.Wait;
+                    this.WorkspaceDirector.ActiveDocument = null;   // Must deactivate previous to create+activate the opening Composition.
+
+                    OpenedEngine = CompositionEngine.CreateActiveCompositionEngine(this, this.Visualizer, IsForOpenDomain);
+                    var DomainLoad = CompositionEngine.MaterializeDomain(Location, false);
+                    if (DomainLoad.Item1 == null)
+                    {
+                        Failure = DomainLoad.Item2.IsAbsent()
+                                ? "The Domain could not be materialized."
+                                : DomainLoad.Item2;
+                    }
+                    else
+                    {
+                        Loading.Context.ReportStage(PersistenceOperationStages.RebuildDomain, 4,
+                                                    PersistenceOperationStages.LoadStageCount,
+                                                    "Creating a Composition from the loaded Domain...", true);
+
+                        var Result = CompositionEngine.Materialize(null, DomainLoad.Item1,
+                                                                   OpenCompositionStoredWithDomain);
+                        if (Result.Item1 == null)
+                        {
+                            FailureAction = "Cannot create Composition of Domain.";
+                            Failure = Result.Item2.IsAbsent()
+                                    ? "The Composition could not be materialized from the Domain."
+                                    : Result.Item2;
+                        }
+                        else
+                        {
+                            OpenedEngine = Result.Item1;
+                            OpenedEngine.DomainLocation = Location;
+                            RegisteredDocument = OpenedEngine.TargetDocument;
+
+                            Loading.Context.ReportStage(PersistenceOperationStages.ActivateWorkspace, 9,
+                                                        PersistenceOperationStages.LoadStageCount,
+                                                        "Activating the loaded Domain...", true);
+
+                            this.WorkspaceDirector.LoadDocument(RegisteredDocument);
+                            OpenedEngine.Start();
+                            DocumentEngine.RegisterRecentDocument(Location.LocalPath);
+                        }
+                    }
+                }
+                catch (Exception Problem)
+                {
+                    Failure = Problem.Message.IsAbsent() ? Problem.ToString() : Problem.Message;
+                    AppExec.LogException(Problem, "Open Domain");
+                }
+                finally
+                {
+                    if (!Failure.IsAbsent())
+                    {
+                        if (OpenedEngine != null)
+                            try
+                            {
+                                OpenedEngine.Stop(true);
+                            }
+                            catch (Exception CleanupProblem)
+                            {
+                                AppExec.LogException(CleanupProblem, "Failed Domain open cleanup");
+                            }
+
+                        if (RegisteredDocument != null && this.WorkspaceDirector.Documents.Contains(RegisteredDocument))
+                            this.WorkspaceDirector.RemoveDocument(RegisteredDocument);
+
+                        this.WorkspaceDirector.ActiveDocument = PreviousActiveDoc;
+                        OpenedEngine = null;
+                    }
+
+                    CurrentWindow.Cursor = PreviousCursor;
+                }
+            }
+
+            if (!Failure.IsAbsent())
+            {
+                Display.DialogMessage("Error!", FailureAction + "\n\nProblem: " + Failure,
+                                      EMessageType.Warning);
                 return;
             }
 
-            var Result = CompositionEngine.Materialize(null, DomainLoad.Item1, OpenCompositionStoredWithDomain);
-            if (Result.Item1 == null)
-            {
-                CurrentWindow.Cursor = Cursors.Arrow;
-                Display.DialogMessage("Error!", "Cannot create Composition of Domain.\n\nProblem: " + Result.Item2, EMessageType.Warning);
-                this.WorkspaceDirector.ActiveDocument = PreviousActiveDoc;
-                return;
-            }
-
-            // Start visual interactive editing and show document view.
-            Result.Item1.DomainLocation = Location;
-            this.WorkspaceDirector.LoadDocument(Result.Item1.TargetDocument);
-
-            Result.Item1.Start();
-
+            // Modal editing starts only after the independent loading dispatcher has closed.
             if (IsForOpenDomain)
-                DomainServices.DomainEdit(Result.Item1.TargetComposition.CompositeContentDomain);
+                DomainServices.DomainEdit(OpenedEngine.TargetComposition.CompositeContentDomain);
             else
                 if (CanEditPropertiesOfNewCompo)
                 {
                     var EditOnNewComposition = AppExec.GetConfiguration<bool>("Composition", "EditOnNewComposition", true);
                     if (EditOnNewComposition)
-                        Result.Item1.EditCompositionProperties();
+                        OpenedEngine.EditCompositionProperties();
                 }
-
-            CurrentWindow.Cursor = Cursors.Arrow;
         }
 
         // -------------------------------------------------------------------------------------------------------------------------
@@ -247,24 +312,81 @@ namespace Instrumind.ThinkComposer.Composer
                 return (CurrentlyOpenedDoc as Composition);
             }
 
-            CurrentWindow.Cursor = Cursors.Wait;
-
+            var PreviousCursor = CurrentWindow.Cursor;
             var PreviousActiveDoc = ProductDirector.WorkspaceDirector.ActiveDocument;
-            ProductDirector.WorkspaceDirector.ActiveDocument = null;   // Must deactive previous to create+activate the opening Composition.
+            CompositionEngine OpenedEngine = null;
+            ISphereModel RegisteredDocument = null;
+            string Failure = null;
 
-            CompositionEngine.CreateActiveCompositionEngine(ProductDirector.CompositionDirector, ProductDirector.CompositionDirector.Visualizer, false);
-            var Result = CompositionEngine.Materialize(Location);
-            if (Result.Item1 == null)
+            using (var Loading = PersistenceLoadingSplash.Begin(PersistenceOperationKind.OpenComposition,
+                                                                "Opening Composition package and rebuilding its model...",
+                                                                CurrentWindow))
             {
-                CurrentWindow.Cursor = Cursors.Arrow;
-                Display.DialogMessage("Error!", "Cannot open Composition.\n\nProblem: " + Result.Item2, EMessageType.Warning);
-                ProductDirector.WorkspaceDirector.ActiveDocument = PreviousActiveDoc;
-                return null;
+                try
+                {
+                    CurrentWindow.Cursor = Cursors.Wait;
+                    ProductDirector.WorkspaceDirector.ActiveDocument = null;   // Must deactivate previous to create+activate the opening Composition.
+
+                    OpenedEngine = CompositionEngine.CreateActiveCompositionEngine(ProductDirector.CompositionDirector,
+                                                                                   ProductDirector.CompositionDirector.Visualizer,
+                                                                                   false);
+                    var Result = CompositionEngine.Materialize(Location, null, false, false);
+                    if (Result.Item1 == null)
+                        Failure = Result.Item2.IsAbsent()
+                                ? "The Composition could not be materialized."
+                                : Result.Item2;
+                    else
+                    {
+                        OpenedEngine = Result.Item1;
+                        RegisteredDocument = OpenedEngine.TargetComposition;
+
+                        Loading.Context.ReportStage(PersistenceOperationStages.ActivateWorkspace, 9,
+                                                    PersistenceOperationStages.LoadStageCount,
+                                                    "Activating the loaded Composition...", true);
+
+                        // Start visual interactive editing and show document view.
+                        ProductDirector.WorkspaceDirector.LoadDocument(RegisteredDocument);
+                        OpenedEngine.Start();
+                        DocumentEngine.RegisterRecentDocument(Location.LocalPath);
+                    }
+                }
+                catch (Exception Problem)
+                {
+                    Failure = Problem.Message.IsAbsent() ? Problem.ToString() : Problem.Message;
+                    AppExec.LogException(Problem, "Open Composition");
+                }
+                finally
+                {
+                    if (!Failure.IsAbsent())
+                    {
+                        if (OpenedEngine != null)
+                            try
+                            {
+                                OpenedEngine.Stop(true);
+                            }
+                            catch (Exception CleanupProblem)
+                            {
+                                AppExec.LogException(CleanupProblem, "Failed Composition open cleanup");
+                            }
+
+                        if (RegisteredDocument != null &&
+                            ProductDirector.WorkspaceDirector.Documents.Contains(RegisteredDocument))
+                            ProductDirector.WorkspaceDirector.RemoveDocument(RegisteredDocument);
+
+                        ProductDirector.WorkspaceDirector.ActiveDocument = PreviousActiveDoc;
+                        OpenedEngine = null;
+                    }
+
+                    CurrentWindow.Cursor = PreviousCursor;
+                }
             }
 
-            // Start visual interactive editing and show document view.
-            ProductDirector.WorkspaceDirector.LoadDocument(Result.Item1.TargetComposition);
-            Result.Item1.Start();
+            if (!Failure.IsAbsent())
+            {
+                Display.DialogMessage("Error!", "Cannot open Composition.\n\nProblem: " + Failure,
+                                      EMessageType.Warning);
+                return null;
+            }
 
             /* Only for Creation, not opening.
             if (CanEditPropertiesOfNewCompo)
@@ -274,9 +396,7 @@ namespace Instrumind.ThinkComposer.Composer
                     Result.Item1.EditCompositionProperties();
             } */
 
-            CurrentWindow.Cursor = Cursors.Arrow;
-
-            return Result.Item1.TargetComposition;
+            return OpenedEngine.TargetComposition;
         }
 
         // -------------------------------------------------------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 # JSON Persistence Hardening Review
 
-Date: 2026-07-08
+Original parity review: 2026-07-08
+
+JSON loading/performance update: 2026-07-13
 
 This review records the parity hardening work for native `.tcom` and `.tdom` persistence after moving the package source of truth from binary parts to root JSON payloads.
 
@@ -8,11 +10,12 @@ This review records the parity hardening work for native `.tcom` and `.tdom` per
 
 Modern packages are JSON-authoritative:
 
-- `.tcom`: `/manifest.json`, authoritative `/Composition.json`, authoritative embedded `/Domain.json`, optional recovery `/Composition.bin`, optional `/Interchange/*` sidecars and `/Previews/views/*.png`.
-- `.tdom`: `/manifest.json`, authoritative `/Domain.json`, optional authoritative `/TemplateComposition.json`, optional recovery `/Domain.bin`, optional sidecars/previews.
+- `.tcom`: `/manifest.json`, authoritative `/Composition.json`, authoritative embedded `/Domain.json`, optional `/Interchange/*` sidecars and `/Previews/views/*.png`.
+- `.tdom`: `/manifest.json`, authoritative `/Domain.json`, optional authoritative `/TemplateComposition.json`, and optional sidecars/previews.
 - `/Interchange/*` and preview PNGs are inspection/context sidecars only. They are never used as the native load source.
-- Legacy binary-only packages remain readable. Saving them migrates the package to the JSON-authoritative contract.
-- If root JSON fails and a binary fallback exists, load reports a JSON persistence diagnostic and uses the binary only as a recovery path. If root JSON fails without a binary fallback, open fails with the JSON diagnostic.
+- New saves are JSON-only and record `legacyBinaryFallback.present: false`; they never create `/Composition.bin` or `/Domain.bin`.
+- Legacy binary-only and transitional packages remain readable. Saving them migrates the package to the JSON-only contract.
+- If root JSON fails and the exact matching legacy binary part physically exists, load reports a JSON persistence diagnostic and uses that part only as a recovery path. If it does not exist, open fails with the JSON diagnostic.
 - Visual parity for the Shop-Connect deployment example was rechecked after the JSON-authoritative migration. The current JSON-only package restores the visual content missing from the earlier JSON-authority PDF regression: colored grouping regions, free text complements, detail posters, visual positions, shortcut visuals, and routed connector paths.
 
 ## Flow Audit
@@ -29,7 +32,7 @@ Composition save:
 
 - UI save commands call `CompositionEngine.Store(...)`.
 - CLI save/convert commands call `HeadlessThinkComposerOperations.SaveComposition(...)`.
-- Both routes write through `JsonPackagePersistence.StoreComposition(...)`, which emits root JSON, root manifest, optional binary fallback, sidecars, and previews.
+- Both routes write through `JsonPackagePersistence.StoreComposition(...)`, which emits required root JSON/root manifest and optional sidecars/previews through the safe package-replacement path. No binary fallback is serialized.
 
 Domain open:
 
@@ -43,6 +46,7 @@ Domain save:
 
 - UI domain save calls `DomainsManager.SaveDomainAs`, which writes through `JsonPackagePersistence.StoreDomain(...)`.
 - CLI domain save/convert calls `HeadlessThinkComposerOperations.SaveDomain(...)`, which also writes through `JsonPackagePersistence.StoreDomain(...)`.
+- Both routes require `/Domain.json` and `/manifest.json` (plus `/TemplateComposition.json` when requested), omit `/Domain.bin`, and keep optional sidecar failures non-fatal.
 
 Manual JSON export/import commands remain separate interchange workflows. They share DTOs/exporters/importers with persistence, but the manual import commands still preview and merge into an open document instead of replacing normal package load.
 
@@ -63,6 +67,16 @@ CLI validators now assert the failure and authority cases that were easy to regr
 - Domain JSON persistence now serializes/imports the native state needed for report and visual parity: model revision, report configuration, concept visual symbol formats, relationship connector formats, text formats, and brush/dash values.
 
 `package inspect` was also hardened so root JSON presence marks a package JSON-authoritative even when `/manifest.json` is missing or unreadable.
+
+## Loading Responsiveness and Performance Hardening
+
+- Interactive Composition and Domain opens now create a non-cancellable loading splash on an independent STA thread/dispatcher. The model is still rebuilt synchronously on the main WPF thread, while the splash continues painting elapsed time, indeterminate parse activity, and determinate importer counts.
+- One operation context reports nine stable stages: package open, Composition parse, Domain/template parse, Domain rebuild, concepts, relationships, views/visuals, final repair, and workspace activation. Nested opens share the outer splash, progress is throttled, and cleanup runs through `finally` on success or failure.
+- Native rehydration uses summary diagnostics instead of per-field log traffic. The console roll batches dispatcher work and remains bounded without replacing the whole observable collection for each new line.
+- Composition and Domain importers use per-operation indexes instead of repeated full-model scans. Native blank-target loading skips merge-preview work and duplicate repair/collection passes.
+- Save exports each authoritative DTO/UTF-8 payload/hash once and reuses it for root and sidecar parts. Required root-write failures preserve the original package; optional sidecar failures remain warnings. The Composition and Domain persistence validators inject both failures, compare the required-failure target byte-for-byte, and reopen the optional-failure package's required payload.
+- Container snapshot manifest v2 records preview `inputSha256`, `renderProfile`, and `disposition`. An unchanged preview is reused only after manifest metadata, byte count, and PNG SHA-256 verification; otherwise that view is rerendered.
+- The developer performance harness prepares a whole-package-hash/byte-locked corpus and runs fresh-process load, first-save, and steady-save samples. Certification mode requires and tags a sanitized slow package; every measured output is inspected. Baseline comparison requires equivalent corpus mode, per-case hashes/sizes, machine, and run counts, with a default 2x median gate for both load and first save.
 
 ## Visual Regression Evidence
 
@@ -92,14 +106,19 @@ Codex did not have a reliable WPF desktop UI automation surface for Open/Save di
 - [ ] Run `thinkcomposer composition export-json --input <saved-file.tcom> --output <composition.json>` and confirm export still works as interchange.
 - [ ] Run `thinkcomposer composition import-json --input <saved-file.tcom> --json <composition.json> --output <imported-file.tcom> --preview-only`, then without `--preview-only` if needed, and confirm interchange remains separate from the native package load path. Desktop Composition JSON buttons are deprecated.
 - [ ] Save the migrated `.tcom` again and confirm `ThinkComposer.Cli\bin\Debug\ThinkComposer.Cli.exe package inspect --input <saved-file.tcom>` reports `jsonAuthoritative: true`.
+- [ ] Confirm the migrated `.tcom` contains no `/Composition.bin` and reports `transitionalWithBinaryFallback: false`.
 - [ ] Open legacy `PredefinedContent\All-Purpose.tdom` in the desktop app.
 - [ ] Save As a new `.tdom` package.
 - [ ] Reopen the new `.tdom` in the desktop app.
 - [ ] Inspect root `/Domain.json` and confirm it carries the authoritative domain payload.
 - [ ] Run `thinkcomposer domain export-json --input <saved-file.tdom> --output <domain.json>` and, when preview diagnostics are needed, `thinkcomposer domain import-json --input <saved-file.tdom> --json <domain.json> --output <imported-file.tdom> --preview-only` to confirm CLI compatibility remains separate from the native package load path. Desktop Domain JSON buttons are deprecated.
 - [ ] Save the migrated `.tdom` again and confirm `ThinkComposer.Cli\bin\Debug\ThinkComposer.Cli.exe package inspect --input <saved-file.tdom>` reports `jsonAuthoritative: true`.
+- [ ] Confirm the migrated `.tdom` contains no `/Domain.bin` and reports `transitionalWithBinaryFallback: false`.
 - [ ] Reopen both saved packages after deleting `/Interchange/*` and `/Previews/*` from copies of the packages to confirm sidecars are not authoritative.
 - [ ] Reopen JSON-only copies after deleting `/Composition.bin` or `/Domain.bin` to confirm binary fallback is not required when root JSON is valid.
+- [ ] Open a large `.tcom` and `.tdom`; confirm the splash paints promptly, elapsed time keeps moving during JSON parsing, item counts advance during reconstruction, and the splash closes exactly once.
+- [ ] Repeat unchanged and one-view-changed saves; confirm the sidecar v2 manifest reports reused previews for the first case and rerenders only affected previews for the second.
+- [ ] Prepare a `--mode certification` JSON persistence corpus with a sanitized slow package and benchmark it; compare against a same-machine, hash/size-matched baseline with the default 2x load/first-save median gate.
 
 ## Validation Commands
 
@@ -170,7 +189,7 @@ ThinkComposer.Cli\bin\Debug\ThinkComposer.Cli.exe composition convert-json-persi
 ThinkComposer.Cli\bin\Debug\ThinkComposer.Cli.exe domain convert-json-persistence --input PredefinedContent\All-Purpose.tdom --output artifacts\json-validation-final\All-Purpose-converted-final.tdom
 ```
 
-Result: both passed and produced JSON-authoritative transitional packages with optional binary fallback.
+Historical 2026-07-08 result: both passed and produced JSON-authoritative transitional packages with optional binary fallback. Current saves are expected to produce JSON-only packages and must be revalidated under the checklist above.
 
 Package inspect checks:
 
@@ -210,7 +229,7 @@ Warning and documentation coverage now includes:
 
 ## Remaining Limitations
 
-- Transitional packages still write optional binary fallbacks for recovery and backwards compatibility. These are not authoritative when root JSON is present.
+- Existing transitional packages may still contain legacy binary fallbacks until resaved. Current saves omit them.
 - Unsupported native-only/binary payloads are surfaced as warnings and documentation limitations; they are not reconstructed from JSON.
 - External JSON Schema tooling was not installed in the local environment. The manifest contract was validated by a focused local checker.
 - Manual PDF regeneration depends on the maintainer's local Pandoc/TeX setup and is tracked separately in the final verification notes.

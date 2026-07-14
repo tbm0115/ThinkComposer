@@ -18,7 +18,7 @@ Use Windows application management or the installed uninstaller to remove the pr
 
 ### Version Update
 
-The release notes in this repository identify the current maintained fork build as `1.6.000`. Older manuals may still show document version `1.5.13.1127`; this Markdown manual is the maintained source intended to replace that static PDF.
+The release notes in this repository identify the current maintained fork build as `2.0.000`. This major version marks the JSON-authoritative persistence architecture and responsive Composition/Domain loading pipeline. Older manuals may still show document version `1.5.13.1127`; this Markdown manual is the maintained source intended to replace that static PDF.
 
 Before updating a production installation, save or copy important `.tcom` and `.tdom` files.
 
@@ -49,7 +49,9 @@ Current import, layout, and output-generation commands log detailed diagnostics 
 
 Create a composition when you need a new knowledge document. Choose an appropriate domain at creation time. The domain determines what concept and relationship definitions are available, how symbols look, and what details or templates can be used.
 
-Save the native `.tcom` package as the source of truth. Modern packages persist their authoritative content in root JSON payloads; manual JSON exports, reports, PDFs, images, and generated files are exchange or publication artifacts.
+Save the native `.tcom` package as the source of truth. Modern packages persist their authoritative content in root JSON payloads; manual JSON exports, reports, PDFs, images, and generated files are exchange or publication artifacts. New `.tcom` and `.tdom` saves are JSON-only and omit the old binary fallback parts. Older binary-only or transitional files still open, and the next successful save migrates them to the JSON-only package format.
+
+Large Composition and Domain opens show a non-cancellable loading window with the current stage, elapsed time, and item progress where counts are available. The window remains responsive while ThinkComposer rebuilds the model. Let the operation finish; if loading fails, ThinkComposer closes the progress window and reports the normal diagnostic without leaving a partially opened document.
 
 ## Working With Diagram Views
 

@@ -76,6 +76,9 @@ namespace Instrumind.ThinkComposer.Cli
             if (Area == "output")
                 return ExecuteOutput(Args.Skip(1).ToArray());
 
+            if (Area == "performance")
+                return ExecutePerformance(Args.Skip(1).ToArray());
+
             throw new UsageException("Unknown command area: " + Args[0]);
         }
 
@@ -340,6 +343,59 @@ namespace Instrumind.ThinkComposer.Cli
             throw new UsageException("Unknown output command: " + Args[0]);
         }
 
+        private static int ExecutePerformance(string[] Args)
+        {
+            if (Args.Length == 0 || IsHelp(Args[0]))
+            {
+                PrintPerformanceHelp();
+                return ExitSuccess;
+            }
+
+            var Command = Args[0].ToLowerInvariant();
+            var Options = OptionSet.Parse(Args.Skip(1).ToArray());
+            if (Options.HelpRequested)
+            {
+                PrintPerformanceHelp();
+                return ExitSuccess;
+            }
+
+            if (Command == "prepare-json-persistence-corpus")
+                return Finish(PersistencePerformance.PrepareCorpus(
+                    Options.Required("source-root"),
+                    Options.Required("output-dir"),
+                    Options.Values("real-package"),
+                    Options.Optional("mode")));
+
+            if (Command == "benchmark-json-persistence")
+            {
+                var Warmup = OptionalNonNegativeInt(Options, "warmup") ?? 1;
+                var Iterations = OptionalPositiveInt(Options, "iterations") ?? 5;
+                var MinimumSpeedup = OptionalNonNegativeDouble(Options, "minimum-speedup") ?? 2.0;
+                if (MinimumSpeedup <= 0)
+                    throw new UsageException("--minimum-speedup must be greater than zero.");
+
+                return Finish(PersistencePerformance.Benchmark(
+                    Options.Required("corpus"),
+                    Options.Required("output"),
+                    Warmup,
+                    Iterations,
+                    Options.Optional("baseline"),
+                    MinimumSpeedup,
+                    !Options.Has("skip-splash-responsiveness-gate"),
+                    Options.Has("allow-legacy-baseline-output")));
+            }
+
+            // Coordinator-only implementation detail. Each timed sample runs in a clean process.
+            if (Command == "run-json-persistence-sample")
+                return Finish(PersistencePerformance.RunSample(
+                    Options.Required("input"),
+                    Options.Required("working-file"),
+                    Options.Required("result"),
+                    Options.Required("sample-mode")));
+
+            throw new UsageException("Unknown performance command: " + Args[0]);
+        }
+
         private static int Finish(OperationResult<string> Result)
         {
             if (Result == null)
@@ -369,6 +425,19 @@ namespace Instrumind.ThinkComposer.Cli
             int Result;
             if (!Int32.TryParse(Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out Result) || Result <= 0)
                 throw new UsageException("--" + Key + " must be a positive integer.");
+
+            return Result;
+        }
+
+        private static int? OptionalNonNegativeInt(OptionSet Options, string Key)
+        {
+            var Text = Options.Optional(Key);
+            if (String.IsNullOrWhiteSpace(Text))
+                return null;
+
+            int Result;
+            if (!Int32.TryParse(Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out Result) || Result < 0)
+                throw new UsageException("--" + Key + " must be zero or greater.");
 
             return Result;
         }
@@ -418,6 +487,8 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer git push --input <file.tcom> --message <message>");
             Console.WriteLine("  thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>");
             Console.WriteLine("  thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id>]");
+            Console.WriteLine("  thinkcomposer performance prepare-json-persistence-corpus --source-root <repo> --output-dir <dir> [--mode <development|certification>] [--real-package <sanitized-slow-file>]...");
+            Console.WriteLine("  thinkcomposer performance benchmark-json-persistence --corpus <dir>\\corpus.json --output <report.json> [--warmup 1] [--iterations 5] [--baseline <report.json>] [--minimum-speedup 2.0] [--allow-legacy-baseline-output] [--skip-splash-responsiveness-gate]");
             Console.WriteLine();
             Console.WriteLine("Exit codes: 0 success, 1 usage/validation/operation failure, 2 unexpected exception.");
         }
@@ -489,6 +560,20 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id>]");
             Console.WriteLine();
             Console.WriteLine("--exclude can be repeated and accepts an idea GlobalId or TechName.");
+        }
+
+        private static void PrintPerformanceHelp()
+        {
+            Console.WriteLine("JSON persistence performance commands:");
+            Console.WriteLine("  thinkcomposer performance prepare-json-persistence-corpus --source-root <repo> --output-dir <dir> [--mode <development|certification>] [--real-package <sanitized-slow-file>]...");
+            Console.WriteLine("  thinkcomposer performance benchmark-json-persistence --corpus <dir>\\corpus.json --output <report.json> [--warmup 1] [--iterations 5] [--baseline <report.json>] [--minimum-speedup 2.0] [--allow-legacy-baseline-output] [--skip-splash-responsiveness-gate]");
+            Console.WriteLine();
+            Console.WriteLine("Development corpus mode is the default and permits repository-only preparation. Certification mode requires at least one --real-package; those inputs are tagged as sanitized slow packages for splash certification.");
+            Console.WriteLine("Corpus preparation converts the three repository examples, All-Purpose and Genealogy Tree Domains, tagged sanitized packages, and deterministic large synthetic packages to JSON-authoritative persistence.");
+            Console.WriteLine("Benchmark samples copy their input before timing and run load, first save, and steady-state save in a fresh child process. Defaults are one warmup and five measured samples.");
+            Console.WriteLine("When --baseline is supplied, full corpus package hashes, machine fingerprint, and run counts must match; both aggregate load and first-save medians must meet --minimum-speedup.");
+            Console.WriteLine("Use --allow-legacy-baseline-output only to record a pre-optimization baseline whose JSON-authoritative saves retain the exact matching legacy binary fallback. It cannot be combined with --baseline; candidate runs remain strictly JSON-only.");
+            Console.WriteLine("Certification gates tagged sanitized slow opens; development gates all cases. Each selected splash must paint within 250 ms, heartbeat within 500 ms, and stop its dispatcher cleanly. --skip-splash-responsiveness-gate makes the checks diagnostic only.");
         }
 
         private sealed class OptionSet

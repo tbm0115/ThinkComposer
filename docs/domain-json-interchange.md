@@ -13,12 +13,12 @@ Modern domain packages use this root-level contract:
 - `/manifest.json`: package metadata with `format: "ThinkComposer.Package"`, `packageKind: "domain"`, `persistenceFormat: "json"`, `persistenceFormatVersion`, application version, UTC save timestamp, authoritative part hashes, legacy fallback metadata, and optional `gitSync` linkage.
 - `/Domain.json`: authoritative `ThinkComposer.DomainJsonInterchange` full-state domain payload.
 - `/TemplateComposition.json`: optional authoritative template composition payload when the domain is saved with a template composition.
-- `/Domain.bin`: optional legacy binary fallback retained in transitional packages for recovery and backwards compatibility.
+- `/Domain.bin`: legacy fallback found only in older binary-only or transitional packages; current saves do not write it.
 - `/Interchange/*` and `/Previews/views/*.png`: optional AI-readable sidecars generated from the same exporters, never authoritative.
 
-When both JSON and binary payloads exist, ThinkComposer opens the root JSON payload first. If root JSON loading fails and a binary fallback is present, the loader logs a JSON persistence warning and falls back to `/Domain.bin` as a recovery path. If root JSON loading fails with no fallback, open fails with the JSON diagnostic.
+When both JSON and binary payloads exist, ThinkComposer opens the root JSON payload first. If root JSON loading fails and `/Domain.bin` physically exists, the loader logs a JSON persistence warning and uses that exact part as a recovery path. If root JSON loading fails without the matching fallback, open fails with the JSON diagnostic.
 
-Opening an older binary-only `.tdom` still works. Saving it again writes the JSON-authoritative package contract above, so normal save acts as the migration step.
+Opening an older binary-only `.tdom` still works. Saving it again writes JSON-authoritative root parts, emits `legacyBinaryFallback.present: false`, and omits `/Domain.bin`, so normal save acts as the JSON-only migration step.
 
 The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. Optional `gitSync` metadata records a generic Git remote, branch, and repo-relative `.tdom` baseline path. When a Composition is saved from a Git-linked Domain, the `.tcom` manifest can carry that Domain source link separately as `embeddedDomainGitSync`; this keeps the Domain update path available even when the Composition itself is linked to a different Git remote or is not linked at all. Domains are pull-only in the first Git sync version; Composition push remains the write workflow. The root domain payload still validates against this interchange schema; there is no separate Domain persistence payload schema in v1.
 
@@ -29,7 +29,7 @@ The root package manifest schema is maintained at `docs/thinkcomposer-package-ma
 3. Edit root `/Domain.json` manually or with GPT assistance.
 4. Refresh the matching `/manifest.json` `authoritativeParts[]` entry, including `sha256` and `bytes`.
 5. Reopen the package in ThinkComposer and review the domain content.
-6. Save the package normally to let ThinkComposer rewrite JSON, sidecars, previews, and optional binary fallback consistently.
+6. Save the package normally to let ThinkComposer rewrite authoritative JSON and optional sidecars/previews consistently. The rewritten package is binary-free.
 
 Use `Composition -> Domain -> Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer native `.tdom`. This UI path remains supported and does not require the deprecated Domain JSON import/export buttons.
 

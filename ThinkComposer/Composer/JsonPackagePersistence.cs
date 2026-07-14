@@ -23,6 +23,7 @@ using Instrumind.Common;
 using Instrumind.Common.EntityBase;
 using Instrumind.Common.Visualization;
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.Composer.ContainerSnapshots;
 using Instrumind.ThinkComposer.Composer.GitSync;
 using Instrumind.ThinkComposer.Composer.JsonInterchange;
@@ -55,16 +56,30 @@ namespace Instrumind.ThinkComposer.Composer
 
         public static string StoreComposition(Composition SourceComposition, Uri Location,
                                               bool RegisterAsRecentDoc, bool SilentSave,
-                                              Visual Snapshot, bool SafeSaving,
-                                              GitPackageLink GitSyncLink = null,
-                                              GitPackageLink EmbeddedDomainGitSyncLink = null)
+                                               Visual Snapshot, bool SafeSaving,
+                                               GitPackageLink GitSyncLink = null,
+                                               GitPackageLink EmbeddedDomainGitSyncLink = null,
+                                               Uri PreviewSourceLocation = null)
         {
-            return DocumentEngine.StoreToLocation<ISphereModel>(
+            ContainerSnapshotService.PreviousPreviewCache PreviousPreviews;
+            using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SavePreviewCacheRead))
+                PreviousPreviews = ContainerSnapshotService.LoadPreviousPreviewCache(PreviewSourceLocation);
+
+            var TimingContext = PersistenceOperationContext.Current;
+            PersistenceExportBundle ExportBundle = null;
+            return DocumentEngine.StorePackageToLocation<ISphereModel>(
                 SourceComposition,
                 Composition.__ClassDefinitor.Name,
-                SourceComposition.Classification.ContentTypeCode,
                 Location,
-                CompositionEngine.CompositionDocumentUri,
+                delegate(Package Package)
+                {
+                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
+                    {
+                        ExportBundle = CreateCompositionExportBundle(SourceComposition);
+                        WriteCompositionPersistenceParts(Package, SourceComposition, ExportBundle, GitSyncLink,
+                                                         EmbeddedDomainGitSyncLink);
+                    }
+                },
                 RegisterAsRecentDoc,
                 SilentSave,
                 SourceComposition,
@@ -72,25 +87,41 @@ namespace Instrumind.ThinkComposer.Composer
                 SafeSaving,
                 delegate(Package Package)
                 {
-                    WriteCompositionPersistenceParts(Package, SourceComposition, GitSyncLink, EmbeddedDomainGitSyncLink);
-                    ContainerSnapshotService.WriteCompositionSnapshot(Package, SourceComposition, CompositionEngine.CompositionDocumentUri);
-                });
+                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveOptionalSidecars))
+                        ContainerSnapshotService.WriteCompositionSnapshot(Package, SourceComposition, CompositionJsonPartUri,
+                                                                          ExportBundle.Composition, ExportBundle.Domain,
+                                                                          PreviousPreviews);
+                },
+                CreatePackageStageTimingObserver(TimingContext));
         }
 
         public static string StoreDomain(Domain SourceDomain, Uri Location,
                                          bool RegisterAsRecentDoc, bool SilentSave,
-                                         Visual Snapshot, bool SafeSaving,
-                                         bool IncludeTemplateComposition,
-                                         GitPackageLink GitSyncLink = null)
+                                          Visual Snapshot, bool SafeSaving,
+                                          bool IncludeTemplateComposition,
+                                          GitPackageLink GitSyncLink = null,
+                                          Uri PreviewSourceLocation = null)
         {
             SourceDomain.SetTemplateSaving(IncludeTemplateComposition);
 
-            return DocumentEngine.StoreToLocation<Domain>(
+            ContainerSnapshotService.PreviousPreviewCache PreviousPreviews;
+            using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SavePreviewCacheRead))
+                PreviousPreviews = ContainerSnapshotService.LoadPreviousPreviewCache(PreviewSourceLocation);
+
+            var TimingContext = PersistenceOperationContext.Current;
+            PersistenceExportBundle ExportBundle = null;
+            return DocumentEngine.StorePackageToLocation<Domain>(
                 SourceDomain,
                 Domain.__ClassDefinitor.Name,
-                SourceDomain.Classification.ContentTypeCode,
                 Location,
-                DomainsManager.DomainDocumentUri,
+                delegate(Package Package)
+                {
+                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
+                    {
+                        ExportBundle = CreateDomainExportBundle(SourceDomain, IncludeTemplateComposition);
+                        WriteDomainPersistenceParts(Package, SourceDomain, IncludeTemplateComposition, ExportBundle, GitSyncLink);
+                    }
+                },
                 RegisterAsRecentDoc,
                 SilentSave,
                 SourceDomain,
@@ -98,9 +129,27 @@ namespace Instrumind.ThinkComposer.Composer
                 SafeSaving,
                 delegate(Package Package)
                 {
-                    WriteDomainPersistenceParts(Package, SourceDomain, IncludeTemplateComposition, GitSyncLink);
-                    ContainerSnapshotService.WriteDomainSnapshot(Package, SourceDomain, DomainsManager.DomainDocumentUri, IncludeTemplateComposition);
-                });
+                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveOptionalSidecars))
+                        ContainerSnapshotService.WriteDomainSnapshot(Package, SourceDomain, DomainJsonPartUri,
+                                                                     IncludeTemplateComposition, ExportBundle.Domain,
+                                                                     ExportBundle.TemplateComposition, PreviousPreviews);
+                },
+                CreatePackageStageTimingObserver(TimingContext));
+        }
+
+        private static Action<DocumentPackageSaveTimingStage, TimeSpan> CreatePackageStageTimingObserver(
+            PersistenceOperationContext Context)
+        {
+            if (Context == null)
+                return null;
+
+            return delegate(DocumentPackageSaveTimingStage Stage, TimeSpan Elapsed)
+            {
+                var StageId = Stage == DocumentPackageSaveTimingStage.PackageClose
+                            ? PersistenceOperationStages.SavePackageClose
+                            : PersistenceOperationStages.SaveSafeReplacement;
+                Context.RecordStageTiming(StageId, Elapsed);
+            };
         }
 
         public static CompositionPackagePayload ReadCompositionPackage(string FilePath)
@@ -120,18 +169,34 @@ namespace Instrumind.ThinkComposer.Composer
                     Result.Manifest = ReadTextPart(Pack, ManifestPartUri);
 
                 if (!Result.HasAuthoritativeJson)
+                {
+                    if (!Result.HasLegacyBinaryFallback)
+                        throw new InvalidDataException("Composition package contains neither authoritative /Composition.json nor legacy /Composition.bin.");
+
                     return Result;
+                }
 
                 Result.CompositionJson = ReadTextPart(Pack, CompositionJsonPartUri);
+                var Progress = PersistenceOperationContext.Current;
+                if (Progress != null)
+                    Progress.ReportStage(PersistenceOperationStages.ParseComposition, 2,
+                                         PersistenceOperationStages.LoadStageCount,
+                                         "Parsing Composition JSON...", true);
                 Result.CompositionDocument = CompositionJsonSerializer.Deserialize(Result.CompositionJson);
                 CompositionJsonSerializer.Validate(Result.CompositionDocument);
+                Result.CompositionJson = null;
 
                 if (!Result.HasEmbeddedDomainJson)
                     throw new InvalidOperationException("JSON-authoritative composition package is missing /Domain.json for the embedded Domain.");
 
                 Result.DomainJson = ReadTextPart(Pack, DomainJsonPartUri);
+                if (Progress != null)
+                    Progress.ReportStage(PersistenceOperationStages.ParseDomain, 3,
+                                         PersistenceOperationStages.LoadStageCount,
+                                         "Parsing embedded Domain JSON...", true);
                 Result.DomainDocument = DomainJsonSerializer.Deserialize(Result.DomainJson);
                 DomainJsonSerializer.Validate(Result.DomainDocument);
+                Result.DomainJson = null;
             }
 
             return Result;
@@ -154,17 +219,33 @@ namespace Instrumind.ThinkComposer.Composer
                     Result.Manifest = ReadTextPart(Pack, ManifestPartUri);
 
                 if (!Result.HasAuthoritativeJson)
+                {
+                    if (!Result.HasLegacyBinaryFallback)
+                        throw new InvalidDataException("Domain package contains neither authoritative /Domain.json nor legacy /Domain.bin.");
+
                     return Result;
+                }
 
                 Result.DomainJson = ReadTextPart(Pack, DomainJsonPartUri);
+                var Progress = PersistenceOperationContext.Current;
+                if (Progress != null)
+                    Progress.ReportStage(PersistenceOperationStages.ParseDomain, 3,
+                                         PersistenceOperationStages.LoadStageCount,
+                                         "Parsing Domain JSON...", true);
                 Result.DomainDocument = DomainJsonSerializer.Deserialize(Result.DomainJson);
                 DomainJsonSerializer.Validate(Result.DomainDocument);
+                Result.DomainJson = null;
 
                 if (Result.HasTemplateCompositionJson)
                 {
                     Result.TemplateCompositionJson = ReadTextPart(Pack, TemplateCompositionJsonPartUri);
+                    if (Progress != null)
+                        Progress.ReportStage(PersistenceOperationStages.ParseDomain, 3,
+                                             PersistenceOperationStages.LoadStageCount,
+                                             "Parsing Domain template Composition JSON...", true);
                     Result.TemplateCompositionDocument = CompositionJsonSerializer.Deserialize(Result.TemplateCompositionJson);
                     CompositionJsonSerializer.Validate(Result.TemplateCompositionDocument);
+                    Result.TemplateCompositionJson = null;
                 }
             }
 
@@ -376,62 +457,272 @@ namespace Instrumind.ThinkComposer.Composer
             return Builder.ToString().TrimEnd();
         }
 
+        private static PersistenceExportBundle CreateCompositionExportBundle(Composition Composition)
+        {
+            if (Composition == null)
+                throw new UsageAnomaly("Cannot save a null Composition.");
+
+            if (Composition.CompositeContentDomain == null)
+                throw new InvalidOperationException("Cannot save a JSON-authoritative Composition without an embedded Domain.");
+
+            CompositionJsonDocument CompositionDocument;
+            DomainJsonDocument DomainDocument;
+            using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveExportDto))
+            {
+                var DomainCompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Composition.CompositeContentDomain);
+                CompositionDocument = CompositionJsonExporter.Export(Composition, DomainCompatibilitySignature);
+                DomainDocument = DomainJsonExporter.Export(Composition.CompositeContentDomain, DomainCompatibilitySignature);
+            }
+
+            var Result = new PersistenceExportBundle();
+            Result.Composition = CreateCompositionExportPayload(CompositionDocument);
+            Result.Domain = CreateDomainExportPayload(DomainDocument);
+            return Result;
+        }
+
+        private static PersistenceExportBundle CreateDomainExportBundle(Domain Domain, bool IncludeTemplateComposition)
+        {
+            if (Domain == null)
+                throw new UsageAnomaly("Cannot save a null Domain.");
+
+            if (IncludeTemplateComposition && Domain.OwnerComposition == null)
+                throw new InvalidOperationException("Cannot include /TemplateComposition.json because the Domain has no owner Composition.");
+
+            DomainJsonDocument DomainDocument;
+            CompositionJsonDocument TemplateCompositionDocument = null;
+            using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveExportDto))
+            {
+                var DomainCompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Domain);
+                DomainDocument = DomainJsonExporter.Export(Domain, DomainCompatibilitySignature);
+                if (IncludeTemplateComposition)
+                {
+                    var TemplateDomain = Domain.OwnerComposition.CompositeContentDomain;
+                    var TemplateDomainCompatibilitySignature = Object.ReferenceEquals(TemplateDomain, Domain)
+                                                             ? DomainCompatibilitySignature
+                                                             : DomainJsonCompatibility.ComputeSignature(TemplateDomain);
+                    TemplateCompositionDocument = CompositionJsonExporter.Export(
+                        Domain.OwnerComposition, TemplateDomainCompatibilitySignature);
+                }
+            }
+
+            var Result = new PersistenceExportBundle();
+            Result.Domain = CreateDomainExportPayload(DomainDocument);
+            if (IncludeTemplateComposition)
+                Result.TemplateComposition = CreateCompositionExportPayload(TemplateCompositionDocument);
+
+            return Result;
+        }
+
+        private static PersistenceExportPayload CreateCompositionExportPayload(CompositionJsonDocument Document)
+        {
+            using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveJsonSerializationHash))
+            {
+                var Json = CompositionJsonSerializer.Serialize(Document);
+                return CreateExportPayload(Document, Json, CompositionJsonDocument.CurrentFormat,
+                                           Document == null ? null : Document.Warnings);
+            }
+        }
+
+        private static PersistenceExportPayload CreateDomainExportPayload(DomainJsonDocument Document)
+        {
+            using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveJsonSerializationHash))
+            {
+                var Json = DomainJsonSerializer.Serialize(Document);
+                var Result = CreateExportPayload(Document, Json, DomainJsonDocument.CurrentFormat,
+                                                 Document == null ? null : Document.Warnings);
+                // Derive the render-stable Domain input hash from the canonical JSON while that
+                // one serializer output string is already live.  Do not retain the string and do
+                // not perform a second object-graph conversion for preview cache signatures.
+                Result.PreviewInputSha256 = CreateNormalizedDomainPreviewHash(Json);
+                return Result;
+            }
+        }
+
+        private static PersistenceExportPayload CreateExportPayload(object Document, string Json, string Format, IEnumerable<string> Warnings)
+        {
+            var Result = new PersistenceExportPayload();
+            Result.Document = Document;
+            Result.Format = Format;
+            Result.Utf8Bytes = Utf8NoBom.GetBytes(Json ?? "");
+            Result.Sha256 = HashBytes(Result.Utf8Bytes);
+            Result.Warnings = (Warnings ?? Enumerable.Empty<string>()).ToList();
+            return Result;
+        }
+
+        internal static string CreateNormalizedDomainPreviewHash(string Json)
+        {
+            Json = Json ?? String.Empty;
+            var Normalized = new StringBuilder(Json.Length);
+            var NestingDepth = 0;
+            var Index = 0;
+
+            while (Index < Json.Length)
+            {
+                var Current = Json[Index];
+                if (Current == '"')
+                {
+                    var StringEnd = FindJsonStringEnd(Json, Index);
+                    var Separator = SkipJsonWhitespace(Json, StringEnd);
+                    if (Separator < Json.Length && Json[Separator] == ':')
+                    {
+                        var IsRootProperty = NestingDepth == 1;
+                        var NormalizeWarnings = IsRootProperty && JsonPropertyEquals(Json, Index, StringEnd, "warnings");
+                        var NormalizeScalar = (IsRootProperty && JsonPropertyEquals(Json, Index, StringEnd, "exportedAtUtc")) ||
+                                              JsonPropertyEquals(Json, Index, StringEnd, "creation") ||
+                                              JsonPropertyEquals(Json, Index, StringEnd, "lastModification") ||
+                                              JsonPropertyEquals(Json, Index, StringEnd, "compatibilitySignature");
+                        if (NormalizeWarnings || NormalizeScalar)
+                        {
+                            var ValueStart = SkipJsonWhitespace(Json, Separator + 1);
+                            Normalized.Append(Json, Index, ValueStart - Index);
+                            Normalized.Append(NormalizeWarnings ? "[]" : "null");
+                            Index = SkipJsonValue(Json, ValueStart);
+                            continue;
+                        }
+                    }
+
+                    Normalized.Append(Json, Index, StringEnd - Index);
+                    Index = StringEnd;
+                    continue;
+                }
+
+                Normalized.Append(Current);
+                if (Current == '{' || Current == '[')
+                    NestingDepth++;
+                else if ((Current == '}' || Current == ']') && NestingDepth > 0)
+                    NestingDepth--;
+                Index++;
+            }
+
+            return HashBytes(Utf8NoBom.GetBytes(Normalized.ToString()));
+        }
+
+        private static bool JsonPropertyEquals(string Json, int Start, int End, string PropertyName)
+        {
+            return End - Start == PropertyName.Length + 2 &&
+                   String.CompareOrdinal(Json, Start + 1, PropertyName, 0, PropertyName.Length) == 0;
+        }
+
+        private static int FindJsonStringEnd(string Json, int Start)
+        {
+            var Escaped = false;
+            for (var Index = Start + 1; Index < Json.Length; Index++)
+            {
+                var Current = Json[Index];
+                if (Escaped)
+                {
+                    Escaped = false;
+                    continue;
+                }
+
+                if (Current == '\\')
+                {
+                    Escaped = true;
+                    continue;
+                }
+
+                if (Current == '"')
+                    return Index + 1;
+            }
+
+            return Json.Length;
+        }
+
+        private static int SkipJsonWhitespace(string Json, int Start)
+        {
+            while (Start < Json.Length && Char.IsWhiteSpace(Json[Start]))
+                Start++;
+            return Start;
+        }
+
+        private static int SkipJsonValue(string Json, int Start)
+        {
+            Start = SkipJsonWhitespace(Json, Start);
+            if (Start >= Json.Length)
+                return Start;
+
+            if (Json[Start] == '"')
+                return FindJsonStringEnd(Json, Start);
+
+            if (Json[Start] == '{' || Json[Start] == '[')
+            {
+                var Depth = 0;
+                var Index = Start;
+                while (Index < Json.Length)
+                {
+                    if (Json[Index] == '"')
+                    {
+                        Index = FindJsonStringEnd(Json, Index);
+                        continue;
+                    }
+
+                    if (Json[Index] == '{' || Json[Index] == '[')
+                        Depth++;
+                    else if (Json[Index] == '}' || Json[Index] == ']')
+                    {
+                        Depth--;
+                        if (Depth == 0)
+                            return Index + 1;
+                    }
+                    Index++;
+                }
+                return Json.Length;
+            }
+
+            while (Start < Json.Length && !Char.IsWhiteSpace(Json[Start]) &&
+                   Json[Start] != ',' && Json[Start] != '}' && Json[Start] != ']')
+                Start++;
+            return Start;
+        }
+
         private static void WriteCompositionPersistenceParts(Package Package, Composition Composition,
+                                                             PersistenceExportBundle ExportBundle,
                                                              GitPackageLink GitSyncLink,
                                                              GitPackageLink EmbeddedDomainGitSyncLink)
         {
+            if (ExportBundle == null || ExportBundle.Composition == null || ExportBundle.Domain == null)
+                throw new InvalidOperationException("Composition persistence export bundle is incomplete.");
+
             var Parts = new List<PersistenceJsonPart>();
             var Warnings = new List<string>();
 
-            var CompositionDocument = CompositionJsonExporter.Export(Composition);
-            AddJsonWarnings(Warnings, "composition", CompositionDocument.Warnings);
-            var CompositionJson = CompositionJsonSerializer.Serialize(CompositionDocument);
-            WriteTextPart(Package, CompositionJsonPartUri, CompositionJson);
-            Parts.Add(CreateJsonPart("composition", CompositionJsonPartUri, CompositionJson, CompositionJsonDocument.CurrentFormat));
+            AddJsonWarnings(Warnings, "composition", ExportBundle.Composition.Warnings);
+            WriteJsonPayloadPart(Package, CompositionJsonPartUri, ExportBundle.Composition);
+            Parts.Add(CreateJsonPart("composition", CompositionJsonPartUri, ExportBundle.Composition));
 
-            if (Composition.CompositeContentDomain != null)
-            {
-                var DomainDocument = DomainJsonExporter.Export(Composition.CompositeContentDomain);
-                AddJsonWarnings(Warnings, "embeddedDomain", DomainDocument.Warnings);
-                var DomainJson = DomainJsonSerializer.Serialize(DomainDocument);
-                WriteTextPart(Package, DomainJsonPartUri, DomainJson);
-                Parts.Add(CreateJsonPart("embeddedDomain", DomainJsonPartUri, DomainJson, DomainJsonDocument.CurrentFormat));
-            }
-            else
-                Warnings.Add("Composition has no embedded Domain; /Domain.json was not written.");
+            AddJsonWarnings(Warnings, "embeddedDomain", ExportBundle.Domain.Warnings);
+            WriteJsonPayloadPart(Package, DomainJsonPartUri, ExportBundle.Domain);
+            Parts.Add(CreateJsonPart("embeddedDomain", DomainJsonPartUri, ExportBundle.Domain));
 
-            var Manifest = CreateManifest(CompositionKind, Composition, LegacyCompositionBinaryPartUri, Package, Parts, Warnings, GitSyncLink, EmbeddedDomainGitSyncLink);
+            var Manifest = CreateManifest(CompositionKind, Composition, Parts, Warnings, GitSyncLink, EmbeddedDomainGitSyncLink);
             WriteTextPart(Package, ManifestPartUri, SerializeManifest(Manifest));
             Console.WriteLine("JSON persistence package wrote /Composition.json as authoritative composition payload.");
         }
 
-        private static void WriteDomainPersistenceParts(Package Package, Domain Domain, bool IncludeTemplateComposition, GitPackageLink GitSyncLink)
+        private static void WriteDomainPersistenceParts(Package Package, Domain Domain, bool IncludeTemplateComposition,
+                                                        PersistenceExportBundle ExportBundle, GitPackageLink GitSyncLink)
         {
+            if (ExportBundle == null || ExportBundle.Domain == null ||
+                (IncludeTemplateComposition && ExportBundle.TemplateComposition == null))
+                throw new InvalidOperationException("Domain persistence export bundle is incomplete.");
+
             var Parts = new List<PersistenceJsonPart>();
             var Warnings = new List<string>();
 
-            var DomainDocument = DomainJsonExporter.Export(Domain);
-            AddJsonWarnings(Warnings, "domain", DomainDocument.Warnings);
-            var DomainJson = DomainJsonSerializer.Serialize(DomainDocument);
-            WriteTextPart(Package, DomainJsonPartUri, DomainJson);
-            Parts.Add(CreateJsonPart("domain", DomainJsonPartUri, DomainJson, DomainJsonDocument.CurrentFormat));
+            AddJsonWarnings(Warnings, "domain", ExportBundle.Domain.Warnings);
+            WriteJsonPayloadPart(Package, DomainJsonPartUri, ExportBundle.Domain);
+            Parts.Add(CreateJsonPart("domain", DomainJsonPartUri, ExportBundle.Domain));
 
-            if (IncludeTemplateComposition && Domain.OwnerComposition != null)
+            if (IncludeTemplateComposition)
             {
-                var CompositionDocument = CompositionJsonExporter.Export(Domain.OwnerComposition);
-                AddJsonWarnings(Warnings, "templateComposition", CompositionDocument.Warnings);
-                var CompositionJson = CompositionJsonSerializer.Serialize(CompositionDocument);
-                WriteTextPart(Package, TemplateCompositionJsonPartUri, CompositionJson);
-                Parts.Add(CreateJsonPart("templateComposition", TemplateCompositionJsonPartUri, CompositionJson, CompositionJsonDocument.CurrentFormat));
+                AddJsonWarnings(Warnings, "templateComposition", ExportBundle.TemplateComposition.Warnings);
+                WriteJsonPayloadPart(Package, TemplateCompositionJsonPartUri, ExportBundle.TemplateComposition);
+                Parts.Add(CreateJsonPart("templateComposition", TemplateCompositionJsonPartUri, ExportBundle.TemplateComposition));
             }
             else
-            {
                 DeletePartIfExists(Package, TemplateCompositionJsonPartUri);
-                if (IncludeTemplateComposition)
-                    Warnings.Add("Domain template composition was requested but no owner composition was available.");
-            }
 
-            var Manifest = CreateManifest(DomainKind, Domain, LegacyDomainBinaryPartUri, Package, Parts, Warnings, GitSyncLink, null);
+            var Manifest = CreateManifest(DomainKind, Domain, Parts, Warnings, GitSyncLink, null);
             WriteTextPart(Package, ManifestPartUri, SerializeManifest(Manifest));
             Console.WriteLine("JSON persistence package wrote /Domain.json as authoritative domain payload.");
         }
@@ -447,8 +738,6 @@ namespace Instrumind.ThinkComposer.Composer
 
         private static PersistenceManifest CreateManifest(string PackageKind,
                                                           IFormalizedRecognizableElement Source,
-                                                          Uri LegacyBinaryPartUri,
-                                                          Package Package,
                                                           List<PersistenceJsonPart> Parts,
                                                           List<string> Warnings,
                                                           GitPackageLink GitSyncLink,
@@ -464,7 +753,7 @@ namespace Instrumind.ThinkComposer.Composer
             Manifest.PersistenceFormat = PersistenceFormat;
             Manifest.PersistenceFormatVersion = PersistenceFormatVersion;
             Manifest.AuthoritativeParts = Parts ?? new List<PersistenceJsonPart>();
-            Manifest.LegacyBinaryFallback = CreateLegacyFallback(Package, LegacyBinaryPartUri);
+            Manifest.LegacyBinaryFallback = new PersistenceLegacyBinaryFallback { Present = false };
             Manifest.Source = CreateSource(Source);
             Manifest.GitSync = GitSyncLink;
             Manifest.EmbeddedDomainGitSync = EmbeddedDomainGitSyncLink;
@@ -472,16 +761,6 @@ namespace Instrumind.ThinkComposer.Composer
             Manifest.Sidecars.InterchangeManifestUri = ContainerSnapshotService.ManifestPartUri.ToString();
             Manifest.Warnings = Warnings ?? new List<string>();
             return Manifest;
-        }
-
-        private static PersistenceLegacyBinaryFallback CreateLegacyFallback(Package Package, Uri PartUri)
-        {
-            var Result = new PersistenceLegacyBinaryFallback();
-            Result.PartUri = PartUri == null ? null : PartUri.ToString();
-            Result.Present = PartUri != null && Package.PartExists(PartUri);
-            if (Result.Present)
-                Result.Sha256 = HashPart(Package, PartUri);
-            return Result;
         }
 
         private static PersistenceSource CreateSource(IFormalizedRecognizableElement Source)
@@ -503,15 +782,17 @@ namespace Instrumind.ThinkComposer.Composer
             return Result;
         }
 
-        private static PersistenceJsonPart CreateJsonPart(string Kind, Uri PartUri, string Json, string Format)
+        private static PersistenceJsonPart CreateJsonPart(string Kind, Uri PartUri, PersistenceExportPayload Payload)
         {
-            var Bytes = Utf8NoBom.GetBytes(Json ?? "");
+            if (Payload == null)
+                throw new ArgumentNullException("Payload");
+
             var Part = new PersistenceJsonPart();
             Part.Kind = Kind;
             Part.PartUri = PartUri.ToString();
-            Part.Format = Format;
-            Part.Sha256 = HashBytes(Bytes);
-            Part.Bytes = Bytes.Length;
+            Part.Format = Payload.Format;
+            Part.Sha256 = Payload.Sha256;
+            Part.Bytes = Payload.Utf8Bytes.Length;
             return Part;
         }
 
@@ -614,6 +895,14 @@ namespace Instrumind.ThinkComposer.Composer
         private static void WriteTextPart(Package Package, Uri PartUri, string Text)
         {
             WriteBinaryPart(Package, PartUri, JsonContentType, Utf8NoBom.GetBytes(Text ?? ""), CompressionOption.Maximum);
+        }
+
+        private static void WriteJsonPayloadPart(Package Package, Uri PartUri, PersistenceExportPayload Payload)
+        {
+            if (Payload == null || Payload.Utf8Bytes == null)
+                throw new InvalidOperationException("Cannot write an empty JSON persistence payload.");
+
+            WriteBinaryPart(Package, PartUri, JsonContentType, Payload.Utf8Bytes, CompressionOption.Maximum);
         }
 
         private static void WriteBinaryPart(Package Package, Uri PartUri, string ContentType, byte[] Bytes, CompressionOption Compression)
@@ -746,8 +1035,6 @@ namespace Instrumind.ThinkComposer.Composer
         {
             var Obj = NewObject();
             Add(Obj, "present", Fallback != null && Fallback.Present);
-            AddIf(Obj, "partUri", Fallback == null ? null : Fallback.PartUri);
-            AddIf(Obj, "sha256", Fallback == null ? null : Fallback.Sha256);
             return Obj;
         }
 
@@ -969,6 +1256,23 @@ namespace Instrumind.ThinkComposer.Composer
             public List<string> EmbeddedDomainGitSyncBaselines = new List<string>();
         }
 
+        internal sealed class PersistenceExportBundle
+        {
+            public PersistenceExportPayload Composition;
+            public PersistenceExportPayload Domain;
+            public PersistenceExportPayload TemplateComposition;
+        }
+
+        internal sealed class PersistenceExportPayload
+        {
+            public object Document;
+            public string Format;
+            public byte[] Utf8Bytes;
+            public string Sha256;
+            public string PreviewInputSha256;
+            public List<string> Warnings = new List<string>();
+        }
+
         private sealed class PersistenceManifest
         {
             public string Format;
@@ -1000,8 +1304,6 @@ namespace Instrumind.ThinkComposer.Composer
         private sealed class PersistenceLegacyBinaryFallback
         {
             public bool Present;
-            public string PartUri;
-            public string Sha256;
         }
 
         private sealed class PersistenceSource

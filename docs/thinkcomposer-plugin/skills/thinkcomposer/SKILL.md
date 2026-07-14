@@ -11,11 +11,11 @@ Use this skill when Codex is helping with a ThinkComposer `.tcom` composition/co
 
 ThinkComposer native `.tcom` and `.tdom` packages remain the source of truth, with modern packages using root JSON persistence payloads. Codex should work through the package root JSON first:
 
-- Modern `.tcom` context: root `manifest.json`, optional package-level `manifest.json` `gitSync`, optional embedded Domain `manifest.json` `embeddedDomainGitSync`, authoritative `Composition.json`, authoritative embedded `Domain.json`, optional legacy fallback `Composition.bin`, non-authoritative `Interchange/*` sidecars, and `Previews/views/*.png`.
-- Modern `.tdom` context: root `manifest.json`, optional `manifest.json` `gitSync`, authoritative `Domain.json`, optional authoritative `TemplateComposition.json`, optional legacy fallback `Domain.bin`, non-authoritative `Interchange/*` sidecars, and optional previews.
+- Modern `.tcom` context: root `manifest.json`, optional package-level `manifest.json` `gitSync`, optional embedded Domain `manifest.json` `embeddedDomainGitSync`, authoritative `Composition.json`, authoritative embedded `Domain.json`, non-authoritative `Interchange/*` sidecars, and `Previews/views/*.png`. Current saves do not write `Composition.bin`; it can exist only in an older binary-only/transitional package.
+- Modern `.tdom` context: root `manifest.json`, optional `manifest.json` `gitSync`, authoritative `Domain.json`, optional authoritative `TemplateComposition.json`, non-authoritative `Interchange/*` sidecars, and optional previews. Current saves do not write `Domain.bin`; it can exist only in an older binary-only/transitional package.
 - Composition edits: patch root `/Composition.json` inside the `.tcom`, and update `/manifest.json` authoritative part metadata.
 - Domain edits: patch root `/Domain.json` inside the `.tdom` or `.tcom`, and update `/manifest.json` authoritative part metadata.
-- Compatibility CLI paths: use `thinkcomposer composition export-json/import-json`, `thinkcomposer domain export-json/import-json`, `package inspect`, and `validate-json-persistence` for migration, validation, or preview/merge diagnostics when needed.
+- Compatibility CLI paths: use `thinkcomposer composition export-json/import-json`, `thinkcomposer domain export-json/import-json`, `package inspect`, and `validate-json-persistence` for migration, validation, or preview/merge diagnostics when needed. Developers can use `thinkcomposer performance prepare-json-persistence-corpus` and `benchmark-json-persistence` for hash-locked fresh-process load/save measurement.
 - CLI automation: use `thinkcomposer report pdf` for headless PDF/XPS reports, `thinkcomposer output generate` for output-template generation, and `thinkcomposer git status/pull/push` for linked package synchronization. These commands operate on saved packages; patch and validate authoritative root JSON first when the model itself must change.
 - Embedded-domain refresh: use `Composition -> Domain -> Update Embedded Domain...` or `thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <updated-file.tcom>` when a `.tcom` should pick up safe domain changes from a `.tdom`.
 - Git sync: use `thinkcomposer git link/status/pull/push` for package-level synchronization. Composition push is supported; Domain packages are link/pull only. `gitSync` stores package remote/branch/path metadata only; `.tcom` `embeddedDomainGitSync` stores the embedded Domain source link separately. Commit/hash state is machine-local.
@@ -39,12 +39,12 @@ For detailed Composition JSON, Domain JSON, package manifest, schema, sample, an
 
 When the user provides a modern `.tcom` or `.tdom`, inspect it before asking for separate exports. Treat root JSON as authoritative and sidecars/previews as context:
 
-- `manifest.json`: root package metadata, persistence format, authoritative JSON part hashes, and legacy fallback metadata.
+- `manifest.json`: root package metadata, persistence format, authoritative JSON part hashes, and legacy fallback metadata. Current saves emit `legacyBinaryFallback.present:false` without a binary URI/hash.
 - `manifest.json` optional `gitSync`: generic Git remote URL, branch, and repo-relative baseline package paths for the package itself. Optional `.tcom` `embeddedDomainGitSync` carries the embedded Domain source `.tdom` link. Do not add credentials or tokens.
 - `Composition.json`: authoritative Composition JSON payload in `.tcom`.
 - `Domain.json`: authoritative Domain JSON payload in `.tdom` or embedded-domain payload in `.tcom`.
 - `TemplateComposition.json`: optional authoritative template composition payload in `.tdom`.
-- `Interchange/manifest.json`: sidecar metadata, source composition identity/version, preview metadata, warnings, and hashes.
+- `Interchange/manifest.json`: non-authoritative sidecar metadata. Format v2 includes source identity, preview render-input hashes/profiles, `rendered`/`reused`/`empty` disposition, PNG hashes, and warnings.
 - `Interchange/Composition.json`: sidecar Composition JSON context.
 - `Interchange/Domain.json`: sidecar embedded Domain JSON context when present.
 - `Previews/views/*.png`: view screenshots keyed by `viewName`, `viewTechName`, `viewId`, width, height, skipped state, and part URI.
@@ -57,7 +57,8 @@ Use the ThinkComposer CLI when the user asks for repeatable package checks or he
 
 - Inspect package contract: `thinkcomposer package inspect --input <file.tcom|file.tdom>`.
 - Validate JSON-authoritative persistence: `thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>` or `thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>`.
-- Convert legacy binary-backed files: `thinkcomposer composition convert-json-persistence` or `thinkcomposer domain convert-json-persistence`.
+- Convert legacy binary-backed files: `thinkcomposer composition convert-json-persistence` or `thinkcomposer domain convert-json-persistence`; the output is JSON-only and omits the matching binary part.
+- Benchmark native JSON persistence: prepare a corpus with `thinkcomposer performance prepare-json-persistence-corpus`, record a pre-optimization baseline with `--allow-legacy-baseline-output` only when its JSON-authoritative writer retains the matching binary fallback, then run a strict JSON-only candidate with `--baseline` on the same machine.
 - Synchronize Git-linked packages: `thinkcomposer git status`, `thinkcomposer git pull`, and, for linked `.tcom` packages, `thinkcomposer git push`.
 - Generate reports: `thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>`.
 - Generate language output files: `thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name>`.

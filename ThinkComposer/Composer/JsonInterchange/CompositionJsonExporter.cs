@@ -34,14 +34,26 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             General.ContractRequiresNotNull(Composition);
 
+            return Export(Composition,
+                          DomainJsonCompatibility.ComputeSignature(Composition.CompositeContentDomain));
+        }
+
+        internal static CompositionJsonDocument Export(Composition Composition, string DomainCompatibilitySignature)
+        {
+            General.ContractRequiresNotNull(Composition);
+
             var Warnings = new List<string>();
             Warnings.Add("Custom visual formatting, store-box references, and native/binary-only content are exported only when represented by documented JSON fields; JSON persistence reconstructs documented visual formats and pictograms but does not reconstruct unsupported native-only payloads.");
             var Document = new CompositionJsonDocument();
             Document.ExportedAtUtc = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
-            Document.Composition = ExportComposition(Composition);
-            Document.TargetContext = ExportTargetContext(Composition);
+            Document.Composition = ExportComposition(Composition, DomainCompatibilitySignature);
+            Document.TargetContext = ExportTargetContext(Composition, DomainCompatibilitySignature);
 
             var Ideas = Composition.DeclaredIdeas.ToList();
+            var RepresentationsByView = Ideas.SelectMany(Idea => Idea.VisualRepresentators)
+                                             .Where(Representation => Representation != null &&
+                                                                      Representation.DisplayingView != null)
+                                             .ToLookup(Representation => Representation.DisplayingView);
 
             Document.Ideas = Ideas.Where(Idea => Idea is Concept && !(Idea is Composition))
                                   .Cast<Concept>()
@@ -64,7 +76,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                              .OrderBy(View => View.Name ?? "")
                              .ThenBy(View => View.TechName ?? "")
                              .ThenBy(View => IdOf(View))
-                             .Select(View => ExportView(View, Composition, Warnings))
+                             .Select(View => ExportView(View, RepresentationsByView[View], Warnings))
                              .ToList();
 
             if (Document.Composition.Domain != null)
@@ -83,7 +95,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Document;
         }
 
-        private static CompositionJsonComposition ExportComposition(Composition Composition)
+        private static CompositionJsonComposition ExportComposition(Composition Composition,
+                                                                    string DomainCompatibilitySignature)
         {
             var Result = new CompositionJsonComposition();
             Result.Id = IdOf(Composition);
@@ -107,18 +120,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Result.Domain.Summary = Domain.Summary;
                 Result.Domain.Description = ExportDescription(Domain.Description);
                 Result.Domain.TechSpec = Domain.TechSpec;
-                Result.Domain.CompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Domain);
+                Result.Domain.CompatibilitySignature = DomainCompatibilitySignature;
             }
 
             return Result;
         }
 
-        private static CompositionJsonTargetContext ExportTargetContext(Composition Composition)
+        private static CompositionJsonTargetContext ExportTargetContext(Composition Composition,
+                                                                        string DomainCompatibilitySignature)
         {
             var Result = new CompositionJsonTargetContext();
             Result.Composition = ExportContextElement(Composition, null);
             Result.Domain = ExportContextElement(Composition == null ? null : Composition.CompositeContentDomain,
-                                                 Composition == null ? null : DomainJsonCompatibility.ComputeSignature(Composition.CompositeContentDomain));
+                                                 DomainCompatibilitySignature);
             return Result;
         }
 
@@ -398,7 +412,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Warnings.Add("Attachment '" + Attachment.Source.ToStringAlways() + "' was exported as metadata only; binary content is not inlined in Composition JSON and is not reconstructed by JSON persistence.");
         }
 
-        private static CompositionJsonView ExportView(View View, Composition Composition, List<string> Warnings)
+        private static CompositionJsonView ExportView(View View,
+                                                      IEnumerable<VisualRepresentation> ViewRepresentations,
+                                                      List<string> Warnings)
         {
             var Result = new CompositionJsonView();
             Result.Id = IdOf(View);
@@ -408,12 +424,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.Description = ExportDescription(View.Description);
             Result.OwnerIdeaId = IdOf(View.OwnerCompositeContainer);
             Result.OwnerIdeaTechName = View.OwnerCompositeContainer == null ? null : View.OwnerCompositeContainer.TechName;
-            var Representations = Composition.DeclaredIdeas
-                                .SelectMany(Idea => Idea.VisualRepresentators)
-                                .Where(Representation => Representation.DisplayingView == View)
-                                .OrderBy(Representation => Representation.RepresentedIdea == null ? "" : Representation.RepresentedIdea.TechName)
-                                .ThenBy(Representation => IdOf(Representation))
-                                .ToList();
+            var Representations = (ViewRepresentations ?? Enumerable.Empty<VisualRepresentation>())
+                                  .OrderBy(Representation => Representation.RepresentedIdea == null ? "" : Representation.RepresentedIdea.TechName)
+                                  .ThenBy(Representation => IdOf(Representation))
+                                  .ToList();
 
             var FreeComplements = View.GetFreeComplements()
                                      .Where(Complement => IsExportableComplement(Complement, Warnings))

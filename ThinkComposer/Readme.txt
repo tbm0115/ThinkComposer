@@ -1,4 +1,4 @@
-﻿Instrumind ThinkComposer v1.6.000
+﻿Instrumind ThinkComposer v2.0.000
 ==================================
 
 Copyright (C) 2011-2016 Néstor Marcel Sánchez Ahumada
@@ -31,6 +31,12 @@ KNOWN ISSUES: Installer is alerted as untrusted software by web Browsers and Win
 
 VERSIONS HISTORY:
 *****************
+Version 2.0.000;
+- Changed: JSON is now the authoritative native persistence architecture for new Composition and Domain saves.
+- New: Responsive, thread-safe loading progress for Composition and Domain packages.
+- Improved: Indexed JSON materialization, transactional package writes, and selective preview reuse.
+- New: Fresh-process JSON persistence performance corpus and benchmark commands.
+
 Version 1.6.000;
 - New: JSON-authoritative Composition and Domain package persistence.
 - New: Generic Git synchronization links for maintained Composition and Domain packages.

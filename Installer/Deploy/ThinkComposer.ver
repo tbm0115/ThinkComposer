@@ -1,4 +1,10 @@
-﻿# 1.6.000
+﻿# 2.0.000
+- Changed: JSON is now the authoritative native persistence architecture for new Composition and Domain saves.
+- New: Responsive, thread-safe loading progress for Composition and Domain packages.
+- Improved: Indexed JSON materialization, transactional package writes, and selective preview reuse.
+- New: Fresh-process JSON persistence performance corpus and benchmark commands.
+
+# 1.6.000
 - New: JSON-authoritative Composition and Domain package persistence.
 - New: Generic Git synchronization links for maintained Composition and Domain packages.
 - Updated: Version advanced for the maintained fork release.

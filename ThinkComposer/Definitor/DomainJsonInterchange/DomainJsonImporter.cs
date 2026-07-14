@@ -19,6 +19,7 @@ using Instrumind.Common.EntityDefinition;
 using Instrumind.Common.Visualization;
 
 using Instrumind.ThinkComposer.MetaModel;
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.Composer.Generation;
 using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
@@ -37,10 +38,15 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             this.Report = Report ?? new DomainJsonImportReport();
             this.Resolver = new DomainJsonReferenceResolver(TargetDomain);
             this.PreserveSourceIds = PreserveSourceIds;
+            this.ProgressContext = PersistenceOperationContext.Current;
             this.PlannedTableDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             this.PlannedConceptDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             this.PlannedRelationshipDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             this.PlannedExternalLanguageTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            this.KnownDomainElementsById = new Dictionary<Guid, FormalElement>();
+            foreach (var Element in this.KnownDomainUniqueElements())
+                if (Element != null && !this.KnownDomainElementsById.ContainsKey(Element.GlobalId))
+                    this.KnownDomainElementsById.Add(Element.GlobalId, Element);
         }
 
         private Domain TargetDomain { get; set; }
@@ -53,6 +59,10 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         private HashSet<string> PlannedConceptDefinitionTechNames { get; set; }
         private HashSet<string> PlannedRelationshipDefinitionTechNames { get; set; }
         private HashSet<string> PlannedExternalLanguageTechNames { get; set; }
+        private Dictionary<Guid, FormalElement> KnownDomainElementsById { get; set; }
+        private PersistenceOperationContext ProgressContext { get; set; }
+        private long DomainProgressCurrent { get; set; }
+        private long DomainProgressTotal { get; set; }
 
         public static DomainJsonImportReport Preview(Domain TargetDomain, DomainJsonDocument Document)
         {
@@ -69,23 +79,56 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             return new DomainJsonImporter(TargetDomain, Document, false, ExistingReport, true).Execute();
         }
 
-        private DomainJsonImportReport Execute()
+        internal static DomainJsonImportReport ApplyPreservingIdsFromValidatedDocument(
+            Domain TargetDomain, DomainJsonDocument Document, DomainJsonImportReport ExistingReport = null)
         {
-            DomainJsonSerializer.Validate(this.Document);
+            // Native package readers already validated the authoritative DTO. Public/manual
+            // preserve-ID imports continue to validate through ApplyPreservingIds above.
+            return new DomainJsonImporter(TargetDomain, Document, false, ExistingReport, true).Execute(false);
+        }
 
-            this.Report.Log("Domain JSON " + (this.IsPreview ? "preview" : "apply") + " started for target domain " + Describe(this.TargetDomain));
-            this.Report.Log("Domain JSON source sections: externalLanguages=" + Count(this.Document.ExternalLanguages) +
-                            ", linkRoleVariants=" + Count(this.Document.LinkRoleVariants) +
-                            ", conceptDefinitions=" + Count(this.Document.ConceptDefinitions) +
-                            ", relationshipDefinitions=" + Count(this.Document.RelationshipDefinitions) +
-                            ", tableDefinitions=" + Count(this.Document.TableDefinitions) +
-                            ", operations=" + Count(this.Document.Operations));
+        private DomainJsonImportReport Execute(bool ValidateDocument = true)
+        {
+            if (ValidateDocument)
+                DomainJsonSerializer.Validate(this.Document);
+
+            this.DomainProgressCurrent = 0;
+            this.DomainProgressTotal = (this.Document.Domain == null ? 0 : 1) +
+                                       Count(this.Document.ExternalLanguages) +
+                                       Count(this.Document.LinkRoleVariants) +
+                                       Count(this.Document.MarkerClusters) +
+                                       Count(this.Document.ConceptDefinitionClusters) +
+                                       Count(this.Document.RelationshipDefinitionClusters) +
+                                       Count(this.Document.TableDefinitionCategories) +
+                                       Count(this.Document.FieldDefinitionCategories) +
+                                       Count(this.Document.MarkerDefinitions) +
+                                       Count(this.Document.TableDefinitions) +
+                                       Count(this.Document.ConceptDefinitions) +
+                                       Count(this.Document.RelationshipDefinitions) +
+                                       Count(this.Document.ConceptDefinitionOutputTemplates) +
+                                       Count(this.Document.RelationshipDefinitionOutputTemplates) +
+                                       Count(this.Document.Operations);
+            this.ReportDomainProgress();
+
+            if (!this.Report.QuietLogging)
+            {
+                this.Report.Log("Domain JSON " + (this.IsPreview ? "preview" : "apply") + " started for target domain " + Describe(this.TargetDomain));
+                this.Report.Log("Domain JSON source sections: externalLanguages=" + Count(this.Document.ExternalLanguages) +
+                                ", linkRoleVariants=" + Count(this.Document.LinkRoleVariants) +
+                                ", conceptDefinitions=" + Count(this.Document.ConceptDefinitions) +
+                                ", relationshipDefinitions=" + Count(this.Document.RelationshipDefinitions) +
+                                ", tableDefinitions=" + Count(this.Document.TableDefinitions) +
+                                ", operations=" + Count(this.Document.Operations));
+            }
 
             foreach (var Warning in this.Document.Warnings ?? new List<string>())
                 this.Report.SourceWarning(Warning);
 
             if (this.Document.Domain != null)
+            {
                 MergeDomain(this.Document.Domain);
+                this.AdvanceDomainProgress();
+            }
 
             MergeList(this.Document.ExternalLanguages, "externalLanguage", MergeExternalLanguage);
             MergeList(this.Document.LinkRoleVariants, "linkRoleVariant", MergeLinkRoleVariant);
@@ -103,16 +146,20 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             ApplyOperations();
 
-            if (!this.IsPreview)
+            if (!this.IsPreview && !this.PreserveSourceIds)
             {
                 this.TargetDomain.DeclareExtraCollections();
-                this.Report.Log("Domain JSON output template base collections refreshed; output-template resolution caches are treated as dirty and will be rebuilt during next Preview/Generate Files run.");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("Domain JSON output template base collections refreshed; output-template resolution caches are treated as dirty and will be rebuilt during next Preview/Generate Files run.");
             }
+            else if (!this.IsPreview && !this.Report.QuietLogging)
+                this.Report.Log("Native Domain JSON rehydration retained the package's complete collection state; constructor-owned collection declaration was not repeated.");
 
             this.Report.LegacyRetained = EstimateLegacyRetained();
-            this.Report.Log("Domain JSON " + (this.IsPreview ? "preview" : "apply") + " completed. " +
-                            (this.IsPreview ? this.Report.PreviewSummary().Replace("\n", "; ") : this.Report.ApplySummary().Replace("\n", "; ")) +
-                            "; by entity: " + this.Report.EntitySummary());
+            if (!this.Report.QuietLogging)
+                this.Report.Log("Domain JSON " + (this.IsPreview ? "preview" : "apply") + " completed. " +
+                                (this.IsPreview ? this.Report.PreviewSummary().Replace("\n", "; ") : this.Report.ApplySummary().Replace("\n", "; ")) +
+                                "; by entity: " + this.Report.EntitySummary());
             return this.Report;
         }
 
@@ -124,11 +171,33 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             foreach (var Item in Items)
             {
                 if (Item == null)
+                {
+                    this.AdvanceDomainProgress();
                     continue;
+                }
 
                 Item.Entity = Item.Entity.NullDefault(Entity);
                 Merger(Item);
+                this.AdvanceDomainProgress();
             }
+        }
+
+        private void AdvanceDomainProgress()
+        {
+            this.DomainProgressCurrent++;
+            this.ReportDomainProgress();
+        }
+
+        private void ReportDomainProgress()
+        {
+            if (this.ProgressContext == null)
+                return;
+
+            this.ProgressContext.ReportItems(PersistenceOperationStages.RebuildDomain, 4,
+                                             PersistenceOperationStages.LoadStageCount,
+                                             "Rebuilding Domain definitions",
+                                             this.DomainProgressCurrent,
+                                             this.DomainProgressTotal);
         }
 
         private void MergeDomain(DomainJsonElement Source)
@@ -161,7 +230,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             var MatchMethod = MatchMethodFor(Existing, Source);
-            this.Report.Log("Domain JSON externalLanguage matched by " + MatchMethod + ": " + Describe(Existing));
+            if (!this.Report.QuietLogging)
+                this.Report.Log("Domain JSON externalLanguage matched by " + MatchMethod + ": " + Describe(Existing));
             var Changed = AssignImportedId(Existing, Source, "externalLanguage", MatchMethod);
             Changed = ApplyFormalFields(Existing, Source, "externalLanguage", MatchMethod) || Changed;
             if (Changed)
@@ -340,9 +410,10 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                         if (DataType == null)
                             return;
 
-                        this.Report.Log("Domain JSON planned fieldDefinition create: techName=" + Source.TechName +
-                                        " ownerTable=" + Source.OwnerTechName + " match=planned dataType=" + DataType.TechName +
-                                        " dataTypeMatch=" + MatchMethodForDataType(DataType, Source.DataTypeTechName));
+                        if (!this.Report.QuietLogging)
+                            this.Report.Log("Domain JSON planned fieldDefinition create: techName=" + Source.TechName +
+                                            " ownerTable=" + Source.OwnerTechName + " match=planned dataType=" + DataType.TechName +
+                                            " dataTypeMatch=" + MatchMethodForDataType(DataType, Source.DataTypeTechName));
                         this.Report.CountCreated("fieldDefinition", this.IsPreview);
                         return;
                     }
@@ -355,9 +426,10 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 if (FieldType == null)
                     return;
 
-                this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") + " fieldDefinition owner/dataType: field=" +
-                                Source.TechName + " ownerTable=" + Owner.TechName + " ownerMatch=" + MatchMethodFor(Owner, Source.OwnerTechName) +
-                                " dataType=" + FieldType.TechName + " dataTypeMatch=" + MatchMethodForDataType(FieldType, Source.DataTypeTechName));
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") + " fieldDefinition owner/dataType: field=" +
+                                    Source.TechName + " ownerTable=" + Owner.TechName + " ownerMatch=" + MatchMethodFor(Owner, Source.OwnerTechName) +
+                                    " dataType=" + FieldType.TechName + " dataTypeMatch=" + MatchMethodForDataType(FieldType, Source.DataTypeTechName));
 
                 if (!this.IsPreview)
                 {
@@ -575,10 +647,11 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             {
                 if (this.IsPreview && IsPlannedTemplateOwner(OwnerScope, OwnerTechName))
                 {
-                    this.Report.Log("Domain JSON planned outputTemplate create: techName=" + Source.TechName +
-                                    " ownerScope=" + OwnerScope + " owner=" + OwnerTechName +
-                                    " ownerMatch=planned language=" + LanguageTechName(Language, Source) +
-                                    " languageMatch=" + (LanguageIsPlanned ? "planned" : LanguageMatch.MatchMethod));
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log("Domain JSON planned outputTemplate create: techName=" + Source.TechName +
+                                        " ownerScope=" + OwnerScope + " owner=" + OwnerTechName +
+                                        " ownerMatch=planned language=" + LanguageTechName(Language, Source) +
+                                        " languageMatch=" + (LanguageIsPlanned ? "planned" : LanguageMatch.MatchMethod));
                     this.Report.CountCreated("outputTemplate", this.IsPreview);
                     return;
                 }
@@ -590,24 +663,27 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             if (Language == null && LanguageIsPlanned)
             {
-                this.Report.Log("Domain JSON planned outputTemplate create: techName=" + Source.TechName +
-                                " ownerScope=" + OwnerScope + " owner=" + OwnerTechName +
-                                " language=" + Source.ExternalLanguageTechName + " languageMatch=planned");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("Domain JSON planned outputTemplate create: techName=" + Source.TechName +
+                                    " ownerScope=" + OwnerScope + " owner=" + OwnerTechName +
+                                    " language=" + Source.ExternalLanguageTechName + " languageMatch=planned");
                 this.Report.CountCreated("outputTemplate", this.IsPreview);
                 return;
             }
 
-            if (LanguageMatch.MatchMethod == "normalized techName")
+            if (LanguageMatch.MatchMethod == "normalized techName" && !this.Report.QuietLogging)
                 this.Report.Log("Domain JSON outputTemplate language matched by normalized techName: requested='" +
                                 Source.ExternalLanguageTechName.ToStringAlways() + "' matched='" + Language.TechName + "'");
 
             var Existing = TargetList.FirstOrDefault(Template => Template.Language == Language);
             if (Existing == null)
             {
-                this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") + " outputTemplate create: techName=" +
-                                Source.TechName + " ownerScope=" + OwnerScope + " owner=" + OwnerTechName +
-                                " language=" + Language.TechName + " languageMatch=" + LanguageMatch.MatchMethod);
-                this.Report.Log(OutputTemplateImportDetails("create", Source, null, Language, OwnerScope, OwnerTechName, LanguageMatch.MatchMethod));
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") + " outputTemplate create: techName=" +
+                                    Source.TechName + " ownerScope=" + OwnerScope + " owner=" + OwnerTechName +
+                                    " language=" + Language.TechName + " languageMatch=" + LanguageMatch.MatchMethod);
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(OutputTemplateImportDetails("create", Source, null, Language, OwnerScope, OwnerTechName, LanguageMatch.MatchMethod));
                 if (!this.IsPreview)
                     TargetList.Add(new TextTemplate(Language, Source.TemplateText.NullDefault(""), Source.ExtendsBaseTemplate.GetValueOrDefault(true)));
                 this.Report.CountCreated("outputTemplate", this.IsPreview);
@@ -633,8 +709,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 
             if (Changed)
             {
-                this.Report.Log(OutputTemplateImportDetails("update", Source, Existing, Language, OwnerScope, OwnerTechName, LanguageMatch.MatchMethod,
-                                                            OldText, OldExtendsBaseTemplate));
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(OutputTemplateImportDetails("update", Source, Existing, Language, OwnerScope, OwnerTechName, LanguageMatch.MatchMethod,
+                                                                OldText, OldExtendsBaseTemplate));
                 this.Report.CountUpdated("outputTemplate", this.IsPreview);
             }
         }
@@ -715,11 +792,13 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 var Operation = Operations[Index];
                 this.Report.CurrentOperationIndex = Index + 1;
                 this.Report.CurrentOperationSummary = DescribeOperation(Operation);
-                this.Report.Log("Domain JSON operation [" + (Index + 1).ToString(CultureInfo.InvariantCulture) + "/" +
-                                Operations.Count.ToString(CultureInfo.InvariantCulture) + "] " +
-                                this.Report.CurrentOperationSummary + " -> " + (this.IsPreview ? "plan start" : "apply start"));
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("Domain JSON operation [" + (Index + 1).ToString(CultureInfo.InvariantCulture) + "/" +
+                                    Operations.Count.ToString(CultureInfo.InvariantCulture) + "] " +
+                                    this.Report.CurrentOperationSummary + " -> " + (this.IsPreview ? "plan start" : "apply start"));
 
                 ApplyOperation(Operation);
+                this.AdvanceDomainProgress();
             }
         }
 
@@ -869,7 +948,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 var TableDef = this.Resolver.TableDefinition(null, Source.DataTypeTechName);
                 if (TableDef == null && this.IsPreview && this.PlannedTableDefinitionTechNames.Contains(Source.DataTypeTechName))
                 {
-                    this.Report.Log("Domain JSON planned customFieldsTable update for " + Describe(Target) + " -> " + Source.DataTypeTechName + " (planned table)");
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log("Domain JSON planned customFieldsTable update for " + Describe(Target) + " -> " + Source.DataTypeTechName + " (planned table)");
                     Changed = true;
                 }
                 else if (TableDef == null)
@@ -877,8 +957,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                                                               "' was not found for definition '" + Target.TechName + "'.");
                 else if (Target.CustomFieldsTableDef != TableDef)
                 {
-                    this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") +
-                                    " customFieldsTable update for " + Describe(Target) + " -> " + TableDef.TechName);
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") +
+                                        " customFieldsTable update for " + Describe(Target) + " -> " + TableDef.TechName);
                     if (!this.IsPreview)
                         Target.CustomFieldsTableDef = TableDef;
                     Changed = true;
@@ -1076,7 +1157,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             ApplyDash(Source, "regionDash", delegate(DashStyle Value) { Target.RegionDash = Value; });
             ApplyDouble(Source, "regionThickness", delegate(double Value) { Target.RegionThickness = Value; });
             ApplyEnum<EPlacementOnBorderHorizontal>(Source, "initialGroupRegionPlacementHorizontal", delegate(EPlacementOnBorderHorizontal Value) { Target.InitialGroupRegionPlacementHorizontal = Value; });
-            this.Report.Log("Domain JSON applied visualSymbolFormat for " + Entity + " '" + OwnerTechName.ToStringAlways() + "'.");
+            if (!this.Report.QuietLogging)
+                this.Report.Log("Domain JSON applied visualSymbolFormat for " + Entity + " '" + OwnerTechName.ToStringAlways() + "'.");
             return true;
         }
 
@@ -1096,7 +1178,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             ApplyBool(Source, "labelLinkDescriptor", delegate(bool Value) { Target.LabelLinkDescriptor = Value; });
             ApplyPlugMap(Target.HeadPlugs, GetSetDictionary(Source, "headPlugs"));
             ApplyPlugMap(Target.TailPlugs, GetSetDictionary(Source, "tailPlugs"));
-            this.Report.Log("Domain JSON applied visualConnectorsFormat for " + Entity + " '" + OwnerTechName.ToStringAlways() + "'.");
+            if (!this.Report.QuietLogging)
+                this.Report.Log("Domain JSON applied visualConnectorsFormat for " + Entity + " '" + OwnerTechName.ToStringAlways() + "'.");
             return true;
         }
 
@@ -1379,7 +1462,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (!this.IsPreview && this.TargetDomain.ReportingConfiguration == null)
                 this.TargetDomain.ReportingConfiguration = Target;
 
-            if (Changed)
+            if (Changed && !this.Report.QuietLogging)
                 this.Report.Log("Domain JSON " + (this.IsPreview ? "planned" : "applied") + " reportingConfiguration structural settings.");
 
             return Changed;
@@ -1529,6 +1612,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             var Changed = false;
             Entity = Entity.NullDefault(Source == null ? null : Source.Entity).NullDefault("domainEntity");
             MatchMethod = MatchMethod.NullDefault("unspecified");
+            var PreviousTechName = Target == null ? null : Target.TechName;
 
             if (Source.Name != null && Target.Name != Source.Name)
             {
@@ -1577,6 +1661,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             Changed = ApplyVersionFields(Target, Source, Entity, MatchMethod) || Changed;
+
+            if (!this.IsPreview)
+                this.RegisterDomainElement(Target, Entity, null, PreviousTechName);
 
             return Changed;
         }
@@ -1713,11 +1800,14 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             if (Target.GlobalId == Parsed)
+            {
+                this.RegisterDomainElement(Target, Entity.NullDefault(Source.Entity));
                 return false;
+            }
 
-            if (KnownDomainUniqueElements().Any(Element => Element != null &&
-                                                           !Object.ReferenceEquals(Element, Target) &&
-                                                           Element.GlobalId == Parsed))
+            FormalElement Existing;
+            if (this.KnownDomainElementsById.TryGetValue(Parsed, out Existing) &&
+                !Object.ReferenceEquals(Existing, Target))
             {
                 this.Report.ImportWarning("Domain JSON id '" + Source.Id + "' for " + Entity.ToStringAlways("domainEntity") + " already exists in the target domain; preserving generated id.");
                 return false;
@@ -1730,8 +1820,22 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                                        Target.GlobalId,
                                        Parsed,
                                        this.IsPreview);
+            var PreviousId = Target.GlobalId;
+            if (this.KnownDomainElementsById.TryGetValue(PreviousId, out Existing) && Object.ReferenceEquals(Existing, Target))
+                this.KnownDomainElementsById.Remove(PreviousId);
             Target.GlobalId = Parsed;
+            this.RegisterDomainElement(Target, Entity.NullDefault(Source.Entity), PreviousId);
             return true;
+        }
+
+        private void RegisterDomainElement(FormalElement Target, string Entity, Guid? PreviousId = null, string PreviousTechName = null)
+        {
+            if (Target == null)
+                return;
+
+            if (!this.KnownDomainElementsById.ContainsKey(Target.GlobalId))
+                this.KnownDomainElementsById.Add(Target.GlobalId, Target);
+            this.Resolver.Refresh(Entity.NullDefault("domainEntity"), Target, PreviousId, PreviousTechName);
         }
 
         private IEnumerable<FormalElement> KnownDomainUniqueElements()
@@ -1781,6 +1885,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             var Changed = false;
             Entity = Entity.NullDefault(Source == null ? null : Source.Entity).NullDefault("domainEntity");
             MatchMethod = MatchMethod.NullDefault("unspecified");
+            var PreviousTechName = Target == null ? null : Target.TechName;
 
             if (Source.Name != null && Target.Name != Source.Name)
             {
@@ -1813,6 +1918,9 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                     Target.TechSpec = Source.TechSpec;
                 Changed = true;
             }
+
+            if (!this.IsPreview)
+                this.Resolver.Refresh(Entity, Target as IIdentifiableElement, null, PreviousTechName);
 
             return Changed;
         }

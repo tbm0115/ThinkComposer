@@ -15,6 +15,7 @@ using Instrumind.Common.EntityBase;
 using Instrumind.Common.Visualization;
 
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.Composer;
 using Instrumind.ThinkComposer.Composer.GitSync;
 using Instrumind.ThinkComposer.MetaModel;
@@ -194,12 +195,41 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             var Extension = Path.GetExtension(SourceRoute).NullDefault("").TrimStart('.').ToLowerInvariant();
             if (Extension == Domain.FILE_EXTENSION_DOMAIN)
             {
-                var Load = CompositionEngine.MaterializeDomain(new Uri(SourceRoute, UriKind.Absolute));
-                if (Load == null || Load.Item1 == null)
-                    throw new InvalidDataException("Cannot load native Domain file. " + (Load == null ? "" : Load.Item2));
+                var Engine = CompositionEngine.ActiveCompositionEngine;
+                var PreviousTarget = Engine == null ? null : Engine.TargetComposition;
+                var PreviousGlobalId = Engine == null ? Guid.Empty : Engine.GlobalId;
+                var CurrentWindow = Display.GetCurrentWindow();
+                var PreviousCursor = CurrentWindow == null ? null : CurrentWindow.Cursor;
+                using (var Loading = PersistenceLoadingSplash.Begin(PersistenceOperationKind.OpenDomain,
+                                                                     "Opening Domain update source...",
+                                                                     CurrentWindow))
+                    try
+                    {
+                        if (CurrentWindow != null)
+                            CurrentWindow.Cursor = Cursors.Wait;
 
-                Console.WriteLine("Embedded Domain update source loaded as native .tdom domain '" + Load.Item1.TechName + "'.");
-                return DomainJsonExporter.Export(Load.Item1);
+                        var SourceLocation = new Uri(SourceRoute, UriKind.Absolute);
+                        var Load = CompositionEngine.MaterializeDomain(SourceLocation, false);
+                        if (Load == null || Load.Item1 == null)
+                            throw new InvalidDataException("Cannot load native Domain file. " + (Load == null ? "" : Load.Item2));
+
+                        Loading.Context.ReportStage(PersistenceOperationStages.ActivateWorkspace, 9,
+                                                    PersistenceOperationStages.LoadStageCount,
+                                                    "Preparing the loaded Domain for merge...", true);
+                        Console.WriteLine("Embedded Domain update source loaded as native .tdom domain '" + Load.Item1.TechName + "'.");
+                        var ExportedDocument = DomainJsonExporter.Export(Load.Item1);
+                        DocumentEngine.RegisterRecentDocument(SourceLocation.LocalPath);
+                        return ExportedDocument;
+                    }
+                    finally
+                    {
+                        // A .tdom may embed a template Composition. Native rehydration temporarily
+                        // attaches it to the active engine; restore the user's working document.
+                        if (Engine != null)
+                            Engine.RestoreTargetAfterJsonLoadAttempt(PreviousTarget, PreviousGlobalId);
+                        if (CurrentWindow != null)
+                            CurrentWindow.Cursor = PreviousCursor;
+                    }
             }
 
             var Document = DomainJsonSerializer.Load(SourceRoute);

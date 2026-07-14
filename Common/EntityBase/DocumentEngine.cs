@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Packaging;
 using System.Linq;
@@ -33,6 +34,12 @@ using System.Windows.Controls;
 /// Provides a foundation of structures and services for business entities management, considering its life cycle, edition and persistence mapping.
 namespace Instrumind.Common.EntityBase
 {
+    internal enum DocumentPackageSaveTimingStage
+    {
+        PackageClose,
+        SafeReplacement
+    }
+
     /// <summary>
     /// Provides the general mechanism and services for the interactive creation of documents.
     /// </summary>
@@ -106,6 +113,56 @@ namespace Instrumind.Common.EntityBase
                                                        IFormalizedRecognizableElement Descriptor = null, Visual Snapshot = null, bool SafeSaving = true,
                                                        Action<Package> AdditionalPackagePartsWriter = null)
         {
+            return StoreToLocationCore(Content, Kind, ContentType, Location, PartUri,
+                                       RegisterAsRecentDoc, SilentSave, Descriptor, Snapshot, SafeSaving,
+                                       true, null, AdditionalPackagePartsWriter, null);
+        }
+
+        /// <summary>
+        /// Saves a package whose required primary content is written by the supplied callback instead of by binary serialization.
+        /// Optional package parts are warning-only; a failure while writing required parts aborts the save.
+        /// </summary>
+        internal static string StorePackageToLocation<TContent>(TContent Content, string Kind, Uri Location,
+                                                                Action<Package> RequiredPackagePartsWriter,
+                                                                bool RegisterAsRecentDoc = true, bool SilentSave = false,
+                                                                IFormalizedRecognizableElement Descriptor = null, Visual Snapshot = null, bool SafeSaving = true,
+                                                                Action<Package> OptionalPackagePartsWriter = null)
+        {
+            if (RequiredPackagePartsWriter == null)
+                throw new UsageAnomaly("Cannot store a package without a required content writer.");
+
+            return StoreToLocationCore(Content, Kind, null, Location, null,
+                                       RegisterAsRecentDoc, SilentSave, Descriptor, Snapshot, SafeSaving,
+                                       false, RequiredPackagePartsWriter, OptionalPackagePartsWriter, null);
+        }
+
+        /// <summary>
+        /// Internal package-shell overload used by native persistence diagnostics. The public save
+        /// contract remains unchanged; timings are observational and callback failures are ignored.
+        /// </summary>
+        internal static string StorePackageToLocation<TContent>(TContent Content, string Kind, Uri Location,
+                                                                 Action<Package> RequiredPackagePartsWriter,
+                                                                 bool RegisterAsRecentDoc, bool SilentSave,
+                                                                 IFormalizedRecognizableElement Descriptor, Visual Snapshot,
+                                                                 bool SafeSaving, Action<Package> OptionalPackagePartsWriter,
+                                                                 Action<DocumentPackageSaveTimingStage, TimeSpan> StageTimingObserver)
+        {
+            if (RequiredPackagePartsWriter == null)
+                throw new UsageAnomaly("Cannot store a package without a required content writer.");
+
+            return StoreToLocationCore(Content, Kind, null, Location, null,
+                                       RegisterAsRecentDoc, SilentSave, Descriptor, Snapshot, SafeSaving,
+                                       false, RequiredPackagePartsWriter, OptionalPackagePartsWriter,
+                                       StageTimingObserver);
+        }
+
+        private static string StoreToLocationCore<TContent>(TContent Content, string Kind, string ContentType, Uri Location, Uri PartUri,
+                                                            bool RegisterAsRecentDoc, bool SilentSave,
+                                                            IFormalizedRecognizableElement Descriptor, Visual Snapshot, bool SafeSaving,
+                                                            bool WriteBinaryMainContent, Action<Package> RequiredPackagePartsWriter,
+                                                            Action<Package> OptionalPackagePartsWriter,
+                                                            Action<DocumentPackageSaveTimingStage, TimeSpan> StageTimingObserver)
+        {
             if (Location == null)
                 throw new UsageAnomaly("Cannot store document without a destination location.", Location);
 
@@ -115,126 +172,118 @@ namespace Instrumind.Common.EntityBase
             SafeSaving = (SafeSaving && File.Exists(Location.LocalPath));
             var WorkFilePath = (SafeSaving
                                ? Path.Combine(Path.GetDirectoryName(Location.LocalPath),
-                                              Path.GetFileName(Location.LocalPath) + "." + DateTime.Now.ToString("yyyyMMdd-hhmmss") + FILEEXT_SAV_NEW)
+                                              Path.GetFileName(Location.LocalPath) + "." + DateTime.Now.ToString("yyyyMMdd-HHmmss-fffffff") + FILEEXT_SAV_NEW)
                                : Location.LocalPath);
 
             try
             {
-                var Pack = Package.Open(WorkFilePath, FileMode.Create);
-                PackagePart Part = null;
-
-                if (PartUri == null)
-                    PartUri = PART_DEFAULT;
-
-                // Main Content
-                if (Pack.PartExists(PartUri))
-                    Part = Pack.GetPart(PartUri);
-                else
-                    Part = Pack.CreatePart(PartUri, ContentType, CompressionOption.Maximum);
-
-                /*T var TestFile = new FileStream(Location.LocalPath + ".BIN", FileMode.Create);
-                var NewSer = new StandardBinarySerializer(TestFile);
-                NewSer.Serialize(Content);
-                TestFile.Close();
-                Display.DialogMessage("TEST", "Saved using new binary format."); */
-
-                BytesHandling.Serialize<TContent>(Content, Part.GetStream());
-
-                // Descriptor
-                if (Descriptor != null)
+                using (var PackageScope = new TimedPackageScope(Package.Open(WorkFilePath, FileMode.Create),
+                                                                StageTimingObserver))
                 {
-                    Pack.PackageProperties.Title = Descriptor.Name;
-                    Pack.PackageProperties.Subject = Descriptor.TechName;
-                    Pack.PackageProperties.Identifier = Descriptor.GlobalId.ToString();
-                    Pack.PackageProperties.Description = Descriptor.Summary;
+                    var Pack = PackageScope.Package;
+                    PackagePart Part = null;
 
-                    if (Descriptor.Version != null)
+                    if (WriteBinaryMainContent)
                     {
-                        Pack.PackageProperties.Version = Descriptor.Version.VersionNumber;
-                        Pack.PackageProperties.Revision = Descriptor.Version.VersionSequence.ToStringAlways();
-                        Pack.PackageProperties.Creator = Descriptor.Version.Creator;
-                        Pack.PackageProperties.Created = Descriptor.Version.Creation;
-                        Pack.PackageProperties.LastModifiedBy = Descriptor.Version.LastModifier;
-                        Pack.PackageProperties.Modified = Descriptor.Version.LastModification;
+                        if (PartUri == null)
+                            PartUri = PART_DEFAULT;
+
+                        Part = Pack.CreatePart(PartUri, ContentType, CompressionOption.Maximum);
+                        BytesHandling.Serialize<TContent>(Content, Part.GetStream());
                     }
 
-                    if (Descriptor.Pictogram != null)
+                    // Descriptor
+                    if (Descriptor != null)
                     {
-                        if (Pack.PartExists(PART_PICTOGRAM))
-                            Part = Pack.GetPart(PART_PICTOGRAM);
-                        else
+                        Pack.PackageProperties.Title = Descriptor.Name;
+                        Pack.PackageProperties.Subject = Descriptor.TechName;
+                        Pack.PackageProperties.Identifier = Descriptor.GlobalId.ToString();
+                        Pack.PackageProperties.Description = Descriptor.Summary;
+
+                        if (Descriptor.Version != null)
+                        {
+                            Pack.PackageProperties.Version = Descriptor.Version.VersionNumber;
+                            Pack.PackageProperties.Revision = Descriptor.Version.VersionSequence.ToStringAlways();
+                            Pack.PackageProperties.Creator = Descriptor.Version.Creator;
+                            Pack.PackageProperties.Created = Descriptor.Version.Creation;
+                            Pack.PackageProperties.LastModifiedBy = Descriptor.Version.LastModifier;
+                            Pack.PackageProperties.Modified = Descriptor.Version.LastModification;
+                        }
+
+                        if (WriteBinaryMainContent && Descriptor.Pictogram != null)
+                        {
                             Part = Pack.CreatePart(PART_PICTOGRAM, "image/png", CompressionOption.Normal);
 
-                        var Encoder = new PngBitmapEncoder();
-                        using (var Torrent = Part.GetStream())
-                            Display.ExportImageTo(Encoder, Torrent, Descriptor.Pictogram.ToVisual(PART_PICTOGRAM_SIZE, PART_PICTOGRAM_SIZE),
-                                                    (int)PART_PICTOGRAM_SIZE, (int)PART_PICTOGRAM_SIZE);
+                            var Encoder = new PngBitmapEncoder();
+                            using (var Torrent = Part.GetStream())
+                                Display.ExportImageTo(Encoder, Torrent, Descriptor.Pictogram.ToVisual(PART_PICTOGRAM_SIZE, PART_PICTOGRAM_SIZE),
+                                                        (int)PART_PICTOGRAM_SIZE, (int)PART_PICTOGRAM_SIZE);
+                        }
                     }
-                }
 
-                // Snapshot
-                if (Snapshot != null)
-                {
-                    if (Pack.PartExists(PART_SNAPSHOT))
-                        Part = Pack.GetPart(PART_SNAPSHOT);
-                    else
+                    // Snapshot
+                    if (WriteBinaryMainContent && Snapshot != null)
+                    {
                         Part = Pack.CreatePart(PART_SNAPSHOT, "image/jpg", CompressionOption.Normal);
 
-                    var Encoder = new JpegBitmapEncoder();
-                    Encoder.QualityLevel = Display.DEF_JPEG_QUALITY;
-                    using (var Torrent = Part.GetStream())
-                        Display.ExportImageTo(Encoder, Torrent, Snapshot,
-                                                (int)PART_SNAPSHOT_WIDTH, (int)PART_SNAPSHOT_HEIGHT);
+                        var Encoder = new JpegBitmapEncoder();
+                        Encoder.QualityLevel = Display.DEF_JPEG_QUALITY;
+                        using (var Torrent = Part.GetStream())
+                            Display.ExportImageTo(Encoder, Torrent, Snapshot,
+                                                    (int)PART_SNAPSHOT_WIDTH, (int)PART_SNAPSHOT_HEIGHT);
+                    }
+
+                    if (RequiredPackagePartsWriter != null)
+                        RequiredPackagePartsWriter(Pack);
+
+                    if (OptionalPackagePartsWriter != null)
+                        try
+                        {
+                            OptionalPackagePartsWriter(Pack);
+                        }
+                        catch (Exception Problem)
+                        {
+                            AppExec.LogException(Problem, "Document package optional-parts writer");
+                            Console.WriteLine("Document package optional-parts warning: " + Problem.Message);
+                        }
                 }
-                else
-                    if (Pack.PartExists(PART_SNAPSHOT))
-                        Pack.DeletePart(PART_SNAPSHOT);
-
-                if (AdditionalPackagePartsWriter != null)
-                    try
-                    {
-                        AdditionalPackagePartsWriter(Pack);
-                    }
-                    catch (Exception Problem)
-                    {
-                        AppExec.LogException(Problem, "Document package sidecar writer");
-                        Console.WriteLine("Document package sidecar warning: " + Problem.Message);
-                    }
-
-                Pack.Close();
             }
             catch (Exception Problem)
             {
                 AppExec.LogException(Problem);
+                TryDeleteFailedWorkFile(WorkFilePath);
                 return "Cannot save content into file.\n" +
                        "Anomaly: " + Problem.Message;
             }
 
-            var Identified = Content as IIdentifiableElement;
-
-            if (!SilentSave)
-                Console.WriteLine("Document (" + Kind + ") successfully stored: "
-                                    + (Identified == null ? Location.ToString() : Identified.Name));
-
-            if (RegisterAsRecentDoc)
-                RegisterRecentDocument(Location.LocalPath);
-
             if (SafeSaving)
             {
-                // Create a temporal "old" name for the original file (meaningful, so it could be recovered)
                 var OrigFilePath = Location.LocalPath;
                 var DeleteFilePath = Path.Combine(Path.GetDirectoryName(OrigFilePath),
-                                                  Path.GetFileName(OrigFilePath) + "." + DateTime.Now.ToString("yyyyMMdd-hhmmss") + FILEEXT_SAV_OLD);
+                                                  Path.GetFileName(OrigFilePath) + "." + DateTime.Now.ToString("yyyyMMdd-HHmmss-fffffff") + FILEEXT_SAV_OLD);
                 try
                 {
-                    // Rename the original file to the temporal "old" name
-                    File.Move(OrigFilePath, DeleteFilePath);
-
-                    // Rename the working "new" file to that of the original
-                    File.Move(WorkFilePath, OrigFilePath);
-
-                    // Delete the temporal "old" file
-                    File.Delete(DeleteFilePath);
+                    // Same-volume replacement keeps the original at OrigFilePath if replacement fails.
+                    var ReplacementWatch = Stopwatch.StartNew();
+                    try
+                    {
+                        File.Replace(WorkFilePath, OrigFilePath, DeleteFilePath, true);
+                    }
+                    finally
+                    {
+                        ReplacementWatch.Stop();
+                        ReportSaveTiming(StageTimingObserver, DocumentPackageSaveTimingStage.SafeReplacement,
+                                         ReplacementWatch.Elapsed);
+                    }
+                    try
+                    {
+                        File.Delete(DeleteFilePath);
+                    }
+                    catch (Exception CleanupProblem)
+                    {
+                        AppExec.LogException(CleanupProblem, "Document package old-file cleanup");
+                        Console.WriteLine("Document package cleanup warning: backup retained at " + DeleteFilePath);
+                    }
                 }
                 catch (Exception Problem)
                 {
@@ -247,7 +296,81 @@ namespace Instrumind.Common.EntityBase
                 }
             }
 
+            var Identified = Content as IIdentifiableElement;
+
+            if (!SilentSave)
+                Console.WriteLine("Document (" + Kind + ") successfully stored: "
+                                    + (Identified == null ? Location.ToString() : Identified.Name));
+
+            if (RegisterAsRecentDoc)
+                RegisterRecentDocument(Location.LocalPath);
+
             return "";
+        }
+
+        private static void ReportSaveTiming(Action<DocumentPackageSaveTimingStage, TimeSpan> Observer,
+                                             DocumentPackageSaveTimingStage Stage, TimeSpan Elapsed)
+        {
+            if (Observer == null)
+                return;
+
+            try
+            {
+                Observer(Stage, Elapsed);
+            }
+            catch
+            {
+                // Persistence timings are diagnostic and must never change save behavior.
+            }
+        }
+
+        private sealed class TimedPackageScope : IDisposable
+        {
+            private Package PackageValue;
+            private readonly Action<DocumentPackageSaveTimingStage, TimeSpan> Observer;
+
+            internal TimedPackageScope(Package Package, Action<DocumentPackageSaveTimingStage, TimeSpan> Observer)
+            {
+                this.PackageValue = Package;
+                this.Observer = Observer;
+            }
+
+            internal Package Package { get { return this.PackageValue; } }
+
+            public void Dispose()
+            {
+                if (this.PackageValue == null)
+                    return;
+
+                var CloseWatch = Stopwatch.StartNew();
+                try
+                {
+                    this.PackageValue.Close();
+                }
+                finally
+                {
+                    this.PackageValue = null;
+                    CloseWatch.Stop();
+                    ReportSaveTiming(this.Observer, DocumentPackageSaveTimingStage.PackageClose,
+                                     CloseWatch.Elapsed);
+                }
+            }
+        }
+
+        private static void TryDeleteFailedWorkFile(string WorkFilePath)
+        {
+            if (WorkFilePath.IsAbsent() || !File.Exists(WorkFilePath))
+                return;
+
+            try
+            {
+                File.Delete(WorkFilePath);
+            }
+            catch (Exception CleanupProblem)
+            {
+                AppExec.LogException(CleanupProblem, "Failed document package cleanup");
+                Console.WriteLine("Document package cleanup warning: partial file retained at " + WorkFilePath);
+            }
         }
 
         /// <summary>
@@ -327,14 +450,17 @@ namespace Instrumind.Common.EntityBase
                 if (PartUri == null)
                     PartUri = PART_DEFAULT;
 
-                var Pack = Package.Open(Location.LocalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                if (Pack == null)
-                    throw new ExternalAnomaly("Zip package cannot be open.");
+                using (var Pack = Package.Open(Location.LocalPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    if (Pack == null)
+                        throw new ExternalAnomaly("Zip package cannot be open.");
 
-                var Parts = Pack.GetParts();
-                var Part = Parts.Where(part => part.Uri.IsEqual(PartUri)).FirstOrDefault().NullDefault(Parts.First());
-                Content = BytesHandling.Deserialize<TContent>(Part.GetStream());
-                Pack.Close();
+                    var Part = Pack.GetParts().FirstOrDefault(Candidate => Candidate.Uri.IsEqual(PartUri));
+                    if (Part == null)
+                        throw new ExternalAnomaly("Document package does not contain the required content part: " + PartUri);
+
+                    Content = BytesHandling.Deserialize<TContent>(Part.GetStream());
+                }
 
                 var Identified = Content as IIdentifiableElement;
 
@@ -343,6 +469,10 @@ namespace Instrumind.Common.EntityBase
 
                 if (RegisterAsRecentDoc)
                     RegisterRecentDocument(Location.LocalPath);
+            }
+            catch (ExternalAnomaly)
+            {
+                throw;
             }
             catch (Exception Problem)
             {

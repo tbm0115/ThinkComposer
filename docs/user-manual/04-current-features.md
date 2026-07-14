@@ -71,7 +71,7 @@ The Group Region is visual only. It does not change semantic containment, compos
 
 Composition JSON Interchange exports a `.tcom` composition to editable JSON and safely applies edited JSON into an updated package.
 
-Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. Desktop Composition JSON import/export buttons are deprecated; use package root JSON for native persistence review and the command-line interface for explicit Composition JSON interchange.
+Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. Current saves are JSON-only and do not write `/Composition.bin`; opening and resaving an older binary-backed file migrates it. Desktop Composition JSON import/export buttons are deprecated; use package root JSON for native persistence review and the command-line interface for explicit Composition JSON interchange.
 
 Native JSON package persistence preserves supported visual state such as positions, colors, connector paths, grouping complements, shortcut visuals, active/root view identity, and visible detail posters. Binary package parts, when present, are legacy fallback only.
 
@@ -231,7 +231,7 @@ Pull does not perform a JSON merge. It validates the pulled package, creates a b
 
 Domain JSON is the text-safe payload used by modern `.tdom` packages and compatibility merge paths. It is also the merge source for updating an existing composition's embedded domain snapshot.
 
-Modern `.tdom` packages use root `/Domain.json` as their authoritative Open/Save payload. The old Domain JSON import/export desktop controls are deprecated; external edits should patch the authoritative package JSON and then reopen/save the package normally. CLI Domain JSON commands remain available for validation and compatibility workflows.
+Modern `.tdom` packages use root `/Domain.json` as their authoritative Open/Save payload. Current saves are JSON-only and do not write `/Domain.bin`; opening and resaving an older binary-backed file migrates it. The old Domain JSON import/export desktop controls are deprecated; external edits should patch the authoritative package JSON and then reopen/save the package normally. CLI Domain JSON commands remain available for validation and compatibility workflows.
 
 Supported domain work includes:
 

@@ -15,14 +15,14 @@ Modern composition packages use this root-level contract:
 - `/manifest.json`: package metadata with `format: "ThinkComposer.Package"`, `packageKind: "composition"`, `persistenceFormat: "json"`, `persistenceFormatVersion`, application version, UTC save timestamp, authoritative part hashes, legacy fallback metadata, optional package-level `gitSync` linkage, and optional embedded Domain `embeddedDomainGitSync` linkage.
 - `/Composition.json`: authoritative `ThinkComposer.JsonInterchange` full-state composition payload.
 - `/Domain.json`: authoritative `ThinkComposer.DomainJsonInterchange` embedded-domain payload required by `/Composition.json`.
-- `/Composition.bin`: optional legacy binary fallback retained in transitional packages for recovery and backwards compatibility.
+- `/Composition.bin`: legacy fallback found only in older binary-only or transitional packages; current saves do not write it.
 - `/Interchange/*` and `/Previews/views/*.png`: optional AI-readable sidecars generated from the same exporters, never authoritative.
 
-When both JSON and binary payloads exist, ThinkComposer opens the root JSON payload first. If root JSON loading fails and a binary fallback is present, the loader logs a JSON persistence warning and falls back to `/Composition.bin` as a recovery path. If root JSON loading fails with no fallback, open fails with the JSON diagnostic.
+When both JSON and binary payloads exist, ThinkComposer opens the root JSON payload first. If root JSON loading fails and `/Composition.bin` physically exists, the loader logs a JSON persistence warning and uses that exact part as a recovery path. If root JSON loading fails without the matching fallback, open fails with the JSON diagnostic.
 
-Opening an older binary-only `.tcom` still works. Saving it again writes the JSON-authoritative package contract above, so normal save acts as the migration step.
+Opening an older binary-only `.tcom` still works. Saving it again writes JSON-authoritative root parts, emits `legacyBinaryFallback.present: false`, and omits `/Composition.bin`, so normal save acts as the JSON-only migration step.
 
-The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. Optional `gitSync` metadata records the linked `.tcom` package remote, branch, and repo-relative baseline path. Optional `embeddedDomainGitSync` metadata records the embedded Domain's source `.tdom` link separately, so a Composition and its base Domain can come from different Git remotes or paths. Neither section stores credentials, tokens, last-sync commits, or package hashes; those are machine-local sync state. The root JSON payload still validates against this interchange schema; there is no separate Composition persistence payload schema in v1.
+The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. Optional `gitSync` metadata records the linked `.tcom` package remote, branch, and repo-relative baseline path. Optional `embeddedDomainGitSync` metadata records the embedded Domain's source `.tdom` link separately, so a Composition and its base Domain can come from different Git remotes or paths. Neither section stores credentials, tokens, last-sync commits, or package hashes; those are machine-local sync state. The root JSON payload still validates against this interchange schema; there is no separate Composition persistence payload schema in v1. The optional `/Interchange/manifest.json` uses container-snapshot format v2 so unchanged, hash-verified PNG previews can be reused across saves.
 
 ## Workflow
 

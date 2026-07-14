@@ -20,6 +20,7 @@ using System.Windows;
 // to COM components.  If you need to access a type in this assembly from 
 // COM, set the ComVisible attribute to true on that type.
 [assembly: ComVisible(false)]
+[assembly: InternalsVisibleTo("ThinkComposer.Cli")]
 
 //In order to begin building localizable applications, set 
 //<UICulture>CultureYouAreCodingWith</UICulture> in your .csproj file
@@ -49,9 +50,7 @@ using System.Windows;
 //      Build Number
 //      Revision
 //
-// You can specify all the values or you can default the Build and Revision Numbers 
-// by using the '*' as shown below:
-// [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.*")]
-// THE NEXT LINE *MUST* BE COMMENTED/REMOVED TO AUTO-INCREMENT ASSEMBLY VERSION NUMBER (ALLOWS UPDATABLE INSTALLS)
-// [assembly: AssemblyFileVersion("1.0.0.0")]
+// ThinkComposer 2.0 establishes a new architectural compatibility boundary for
+// JSON-authoritative persistence and responsive loading.
+[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]

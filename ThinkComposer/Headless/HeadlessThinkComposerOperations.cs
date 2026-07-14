@@ -11,6 +11,7 @@ using System.IO;
 using System.IO.Packaging;
 using System.Linq;
 using System.Text;
+using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -191,7 +192,7 @@ namespace Instrumind.ThinkComposer.Headless
                     return Succeed("Composition JSON import preview completed." + Environment.NewLine + Preview.ToSummaryString(true), null);
 
                 var ApplyReport = CompositionJsonImporter.Import(LoadResult.Result, Document, Preview);
-                SaveComposition(LoadResult.Result.TargetComposition, Output);
+                SaveComposition(LoadResult.Result.TargetComposition, Output, null, null, Input);
 
                 return Succeed("Composition JSON imported into: " + Path.GetFullPath(Output) + Environment.NewLine +
                                ApplyReport.ToSummaryString(true), Path.GetFullPath(Output));
@@ -276,7 +277,7 @@ namespace Instrumind.ThinkComposer.Headless
                         return Succeed("Domain JSON import preview completed." + Environment.NewLine + Preview.PreviewSummary(), null);
 
                     var ApplyReport = ApplyDomainJson(EditResult.Result, EditResult.Result.TargetComposition.CompositeContentDomain, Document);
-                    SaveDomain(EditResult.Result.TargetComposition.CompositeContentDomain, Output);
+                    SaveDomain(EditResult.Result.TargetComposition.CompositeContentDomain, Output, false, Input);
                     return Succeed("Domain JSON imported into: " + Path.GetFullPath(Output) + Environment.NewLine +
                                    ApplyReport.ApplySummary(), Path.GetFullPath(Output));
                 }
@@ -292,7 +293,7 @@ namespace Instrumind.ThinkComposer.Headless
                         return Succeed("Embedded Domain JSON import preview completed." + Environment.NewLine + Preview.PreviewSummary(), null);
 
                     var ApplyReport = ApplyDomainJson(LoadResult.Result, TargetDomain, Document);
-                    SaveComposition(LoadResult.Result.TargetComposition, Output);
+                    SaveComposition(LoadResult.Result.TargetComposition, Output, null, null, Input);
                     return Succeed("Embedded Domain JSON imported into: " + Path.GetFullPath(Output) + Environment.NewLine +
                                    ApplyReport.ApplySummary(), Path.GetFullPath(Output));
                 }
@@ -340,7 +341,7 @@ namespace Instrumind.ThinkComposer.Headless
                 var ApplyReport = ApplyDomainJson(LoadResult.Result, TargetDomain, Document);
                 var GitSyncLink = SamePath(Input, Output) ? ReadPackageGitSyncLink(Input, GitPackageLink.KindComposition) : null;
                 var EmbeddedDomainGitSyncLink = ReadDomainGitSyncLink(DomainInput) ?? ReadEmbeddedDomainGitSyncLink(Input);
-                SaveComposition(LoadResult.Result.TargetComposition, Output, GitSyncLink, EmbeddedDomainGitSyncLink);
+                SaveComposition(LoadResult.Result.TargetComposition, Output, GitSyncLink, EmbeddedDomainGitSyncLink, Input);
 
                 return Succeed("Embedded Domain updated from: " + Path.GetFullPath(DomainInput) + Environment.NewLine +
                                "Output: " + Path.GetFullPath(Output) + Environment.NewLine +
@@ -549,7 +550,7 @@ namespace Instrumind.ThinkComposer.Headless
                 if (!LoadResult.WasSuccessful)
                     return Fail(LoadResult.Message);
 
-                SaveComposition(LoadResult.Result.TargetComposition, Output);
+                SaveComposition(LoadResult.Result.TargetComposition, Output, null, null, Input);
                 var Inspection = JsonPackagePersistence.Inspect(Output);
                 if (!Inspection.JsonAuthoritative)
                     return Fail("Converted composition package is not JSON-authoritative." + Environment.NewLine +
@@ -573,7 +574,7 @@ namespace Instrumind.ThinkComposer.Headless
                     return Fail(LoadResult.Message);
 
                 var IncludeTemplate = LoadResult.Result.OwnerComposition != null;
-                SaveDomain(LoadResult.Result, Output, IncludeTemplate);
+                SaveDomain(LoadResult.Result, Output, IncludeTemplate, Input);
                 var Inspection = JsonPackagePersistence.Inspect(Output);
                 if (!Inspection.JsonAuthoritative)
                     return Fail("Converted domain package is not JSON-authoritative." + Environment.NewLine +
@@ -601,16 +602,23 @@ namespace Instrumind.ThinkComposer.Headless
 
                 var FirstPath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-1.tcom");
                 var SecondPath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-2.tcom");
+                var TimestampOnlyPath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-domain-timestamp-only.tcom");
+                var RenderStatePath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-render-state-change.tcom");
+                var CompositeBaselinePath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-composite-active-baseline.tcom");
+                var CompositeChangePath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-composite-active-change.tcom");
+                var ImageBaselinePath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-image-complement-baseline.tcom");
+                var ImageChangePath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(Input) + "-json-persistence-image-complement-change.tcom");
 
                 var FirstLoad = LoadComposition(Input);
                 if (!FirstLoad.WasSuccessful)
                     return Fail(FirstLoad.Message);
 
-                SaveComposition(FirstLoad.Result.TargetComposition, FirstPath);
+                SaveComposition(FirstLoad.Result.TargetComposition, FirstPath, null, null, Input);
 
                 var FirstInspection = JsonPackagePersistence.Inspect(FirstPath);
-                if (!FirstInspection.JsonAuthoritative)
-                    return Fail("First saved composition package is not JSON-authoritative." + Environment.NewLine +
+                if (!FirstInspection.JsonAuthoritative || FirstInspection.HasCompositionBinary ||
+                    FirstInspection.TransitionalWithBinaryFallback || FirstInspection.LegacyBinaryOnly)
+                    return Fail("First saved composition package is not JSON-authoritative and binary-free." + Environment.NewLine +
                                 JsonPackagePersistence.DescribeInspection(FirstInspection));
 
                 var SecondLoad = LoadComposition(FirstPath);
@@ -621,7 +629,13 @@ namespace Instrumind.ThinkComposer.Headless
                     return Fail("Modern composition package did not reopen from JSON persistence." + Environment.NewLine +
                                 CompositionEngine.LastLoadPersistenceDiagnostic.ToStringAlways());
 
-                SaveComposition(SecondLoad.Result.TargetComposition, SecondPath);
+                SaveComposition(SecondLoad.Result.TargetComposition, SecondPath, null, null, FirstPath);
+
+                var SecondInspection = JsonPackagePersistence.Inspect(SecondPath);
+                if (!SecondInspection.JsonAuthoritative || SecondInspection.HasCompositionBinary ||
+                    SecondInspection.TransitionalWithBinaryFallback || SecondInspection.LegacyBinaryOnly)
+                    return Fail("Second saved composition package is not JSON-authoritative and binary-free." + Environment.NewLine +
+                                JsonPackagePersistence.DescribeInspection(SecondInspection));
 
                 var FirstPayload = JsonPackagePersistence.ReadCompositionPackage(FirstPath);
                 var SecondPayload = JsonPackagePersistence.ReadCompositionPackage(SecondPath);
@@ -648,13 +662,196 @@ namespace Instrumind.ThinkComposer.Headless
                                 CompositionMismatch + Environment.NewLine +
                                 DomainMismatch);
 
-                var HardeningNotes = ValidateCompositionPersistenceHardening(FirstPath, TargetDirectory);
+                var HardeningNotes = ValidateCompositionPersistenceHardening(FirstPath, Path.GetFullPath(Input), TargetDirectory);
+
+                var RenderStateView = SecondLoad.Result.TargetComposition.RootView;
+                if (RenderStateView == null)
+                    return Fail("Composition JSON persistence validation could not find a root View for preview-cache invalidation.");
+
+                var RenderStateViewId = IdOf(RenderStateView);
+                HardeningNotes.Add(ValidateDomainTimestampPreviewReuse(
+                    SecondLoad.Result.TargetComposition, RenderStateView, SecondPath, TimestampOnlyPath));
+                var BeforeRenderState = ReadPreviewCacheRecord(SecondPath, RenderStateViewId);
+                var OriginalShowIndicators = RenderStateView.ShowIndicators;
+                try
+                {
+                    RenderStateView.ShowIndicators = !OriginalShowIndicators;
+                    SaveComposition(SecondLoad.Result.TargetComposition, RenderStatePath, null, null, SecondPath);
+                }
+                finally
+                {
+                    RenderStateView.ShowIndicators = OriginalShowIndicators;
+                }
+
+                var AfterRenderState = ReadPreviewCacheRecord(RenderStatePath, RenderStateViewId);
+                if (String.Equals(BeforeRenderState.Item1, AfterRenderState.Item1, StringComparison.OrdinalIgnoreCase))
+                    return Fail("Changing a render-affecting View setting did not change the v2 preview inputSha256.");
+                if (String.Equals(AfterRenderState.Item2, "reused", StringComparison.OrdinalIgnoreCase))
+                    return Fail("Changing a render-affecting View setting incorrectly reused the prior preview PNG.");
+                HardeningNotes.Add("Hardening: a render-affecting View setting changed inputSha256 and did not reuse the prior preview.");
+
+                HardeningNotes.Add(ValidateCompositeActiveViewPreviewInvalidation(
+                    SecondLoad.Result.TargetComposition, RenderStateView, SecondPath,
+                    CompositeBaselinePath, CompositeChangePath));
+                HardeningNotes.Add(ValidateImageComplementPreviewInvalidation(
+                    SecondLoad.Result.TargetComposition, RenderStateView, SecondPath,
+                    ImageBaselinePath, ImageChangePath));
 
                 return Succeed("Composition JSON persistence validation passed." + Environment.NewLine +
                                String.Join(Environment.NewLine, HardeningNotes.ToArray()) + Environment.NewLine +
                                "Artifacts: " + TargetDirectory + Environment.NewLine +
                                JsonPackagePersistence.DescribeInspection(FirstInspection), FirstPath);
             });
+        }
+
+        private static string ValidateDomainTimestampPreviewReuse(Composition Composition, View RootView,
+                                                                   string PreviewSourcePath, string ChangedPath)
+        {
+            var Domain = Composition == null ? null : Composition.CompositeContentDomain;
+            if (Domain == null || Domain.Version == null)
+                throw new InvalidOperationException("Preview-cache hardening could not find a Domain version for timestamp normalization validation.");
+
+            var ViewId = IdOf(RootView);
+            var Before = ReadPreviewCacheRecord(PreviewSourcePath, ViewId);
+            var OriginalLastModification = Domain.Version.LastModification;
+            try
+            {
+                Domain.Version.LastModification = OriginalLastModification.Ticks < DateTime.MaxValue.Ticks
+                                                ? OriginalLastModification.AddTicks(1)
+                                                : OriginalLastModification.AddTicks(-1);
+                SaveComposition(Composition, ChangedPath, null, null, PreviewSourcePath);
+            }
+            finally
+            {
+                Domain.Version.LastModification = OriginalLastModification;
+            }
+
+            var After = ReadPreviewCacheRecord(ChangedPath, ViewId);
+            if (!String.Equals(Before.Item1, After.Item1, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Changing only Domain.Version.LastModification incorrectly changed the v2 preview inputSha256.");
+            if (!String.Equals(After.Item2, "reused", StringComparison.OrdinalIgnoreCase) &&
+                !String.Equals(After.Item2, "empty", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Changing only Domain.Version.LastModification did not reuse the prior preview cache entry.");
+
+            return "Hardening: a Domain timestamp-only edit preserved inputSha256 and reused the prior preview.";
+        }
+
+        private static string ValidateCompositeActiveViewPreviewInvalidation(Composition Composition, View RootView,
+                                                                               string PreviewSourcePath,
+                                                                               string BaselinePath, string ChangedPath)
+        {
+            var Representation = Composition.DeclaredIdeas
+                                            .OfType<Concept>()
+                                            .Where(Idea => Idea != null && !Object.ReferenceEquals(Idea, Composition))
+                                            .SelectMany(Idea => Idea.VisualRepresentators)
+                                            .FirstOrDefault(Item => Item != null && Item.MainSymbol != null &&
+                                                                    Object.ReferenceEquals(Item.DisplayingView, RootView));
+            if (Representation == null)
+                throw new InvalidOperationException("Preview-cache hardening could not find a root-view Concept symbol for CompositeActiveView validation.");
+
+            var CompositeIdea = Representation.RepresentedIdea;
+            if (CompositeIdea == null || CompositeIdea.CompositeViews == null)
+                throw new InvalidOperationException("Preview-cache hardening found a Concept without a CompositeViews collection.");
+
+            var Symbol = Representation.MainSymbol;
+            var OriginalActiveView = CompositeIdea.CompositeActiveView;
+            var OriginalAreDetailsShown = Symbol.AreDetailsShown;
+            var OriginalShowCompositeContent = Symbol.ShowCompositeContentAsDetails;
+            var OriginalDetailsPosterHeight = Symbol.DetailsPosterHeight;
+            var Suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
+            var FirstNestedView = new View(CompositeIdea, "Preview Cache Active A " + Suffix,
+                                           "Preview_Cache_Active_A_" + Suffix);
+            var SecondNestedView = new View(CompositeIdea, "Preview Cache Active B " + Suffix,
+                                            "Preview_Cache_Active_B_" + Suffix);
+            Tuple<string, string> Before;
+            Tuple<string, string> After;
+
+            CompositeIdea.CompositeViews.Add(FirstNestedView);
+            CompositeIdea.CompositeViews.Add(SecondNestedView);
+            try
+            {
+                Symbol.AreDetailsShown = true;
+                Symbol.ShowCompositeContentAsDetails = true;
+                Symbol.DetailsPosterHeight = Math.Max(OriginalDetailsPosterHeight, 120.0);
+                CompositeIdea.CompositeActiveView = FirstNestedView;
+                SaveComposition(Composition, BaselinePath, null, null, PreviewSourcePath);
+                Before = ReadPreviewCacheRecord(BaselinePath, IdOf(RootView));
+
+                CompositeIdea.CompositeActiveView = SecondNestedView;
+                SaveComposition(Composition, ChangedPath, null, null, BaselinePath);
+                After = ReadPreviewCacheRecord(ChangedPath, IdOf(RootView));
+            }
+            finally
+            {
+                CompositeIdea.CompositeActiveView = OriginalActiveView;
+                CompositeIdea.CompositeViews.Remove(SecondNestedView);
+                CompositeIdea.CompositeViews.Remove(FirstNestedView);
+                Symbol.AreDetailsShown = OriginalAreDetailsShown;
+                Symbol.ShowCompositeContentAsDetails = OriginalShowCompositeContent;
+                Symbol.DetailsPosterHeight = OriginalDetailsPosterHeight;
+            }
+
+            if (String.Equals(Before.Item1, After.Item1, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Changing a rendered Idea's CompositeActiveView did not change the v2 preview inputSha256.");
+            if (String.Equals(After.Item2, "reused", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Changing a rendered Idea's CompositeActiveView incorrectly reused the prior preview PNG.");
+
+            return "Hardening: changing a rendered Idea's CompositeActiveView changed inputSha256 and rerendered its containing preview.";
+        }
+
+        private static string ValidateImageComplementPreviewInvalidation(Composition Composition, View RootView,
+                                                                          string PreviewSourcePath,
+                                                                          string BaselinePath, string ChangedPath)
+        {
+            var Owner = Ownership.Create<View, VisualSymbol>(RootView);
+            var Complement = new VisualComplement(Domain.ComplementDefImage, Owner,
+                                                  new Point(64.0, 64.0), 32.0);
+            Complement.SetPropertyField(VisualComplement.PROP_FIELD_IMAGE,
+                                        CreatePreviewCacheHardeningImage(0x20, 0x60, 0xD0));
+            RootView.PutComplement(Complement);
+
+            Tuple<string, string> Before;
+            Tuple<string, string> After;
+            try
+            {
+                SaveComposition(Composition, BaselinePath, null, null, PreviewSourcePath);
+                Before = ReadPreviewCacheRecord(BaselinePath, IdOf(RootView));
+
+                Complement.SetPropertyField(VisualComplement.PROP_FIELD_IMAGE,
+                                            CreatePreviewCacheHardeningImage(0xD0, 0x40, 0x20));
+                SaveComposition(Composition, ChangedPath, null, null, BaselinePath);
+                After = ReadPreviewCacheRecord(ChangedPath, IdOf(RootView));
+            }
+            finally
+            {
+                RootView.Clear(Complement);
+            }
+
+            if (String.Equals(Before.Item1, After.Item1, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Changing an image VisualComplement payload did not change the v2 preview inputSha256.");
+            if (String.Equals(After.Item2, "reused", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Changing an image VisualComplement payload incorrectly reused the prior preview PNG.");
+
+            return "Hardening: changing an image VisualComplement payload changed inputSha256 and rerendered its View preview.";
+        }
+
+        private static ImageSource CreatePreviewCacheHardeningImage(byte Red, byte Green, byte Blue)
+        {
+            const int Width = 2;
+            const int Height = 2;
+            var Pixels = new byte[Width * Height * 4];
+            for (var Offset = 0; Offset < Pixels.Length; Offset += 4)
+            {
+                Pixels[Offset] = Blue;
+                Pixels[Offset + 1] = Green;
+                Pixels[Offset + 2] = Red;
+                Pixels[Offset + 3] = 0xFF;
+            }
+
+            var Result = System.Windows.Media.Imaging.BitmapSource.Create(
+                Width, Height, 96.0, 96.0, PixelFormats.Bgra32, null, Pixels, Width * 4);
+            Result.Freeze();
+            return Result;
         }
 
         public static OperationResult<string> ValidateDomainJsonPersistence(string Input, string OutputDirectory)
@@ -679,11 +876,12 @@ namespace Instrumind.ThinkComposer.Headless
                 if (!FirstLoad.WasSuccessful)
                     return Fail(FirstLoad.Message);
 
-                SaveDomain(FirstLoad.Result, FirstPath, FirstLoad.Result.OwnerComposition != null);
+                SaveDomain(FirstLoad.Result, FirstPath, FirstLoad.Result.OwnerComposition != null, Input);
 
                 var FirstInspection = JsonPackagePersistence.Inspect(FirstPath);
-                if (!FirstInspection.JsonAuthoritative)
-                    return Fail("First saved domain package is not JSON-authoritative." + Environment.NewLine +
+                if (!FirstInspection.JsonAuthoritative || FirstInspection.HasDomainBinary ||
+                    FirstInspection.TransitionalWithBinaryFallback || FirstInspection.LegacyBinaryOnly)
+                    return Fail("First saved domain package is not JSON-authoritative and binary-free." + Environment.NewLine +
                                 JsonPackagePersistence.DescribeInspection(FirstInspection));
 
                 var SecondLoad = LoadNativeDomain(FirstPath);
@@ -694,7 +892,13 @@ namespace Instrumind.ThinkComposer.Headless
                     return Fail("Modern domain package did not reopen from JSON persistence." + Environment.NewLine +
                                 CompositionEngine.LastLoadPersistenceDiagnostic.ToStringAlways());
 
-                SaveDomain(SecondLoad.Result, SecondPath, SecondLoad.Result.OwnerComposition != null);
+                SaveDomain(SecondLoad.Result, SecondPath, SecondLoad.Result.OwnerComposition != null, FirstPath);
+
+                var SecondInspection = JsonPackagePersistence.Inspect(SecondPath);
+                if (!SecondInspection.JsonAuthoritative || SecondInspection.HasDomainBinary ||
+                    SecondInspection.TransitionalWithBinaryFallback || SecondInspection.LegacyBinaryOnly)
+                    return Fail("Second saved domain package is not JSON-authoritative and binary-free." + Environment.NewLine +
+                                JsonPackagePersistence.DescribeInspection(SecondInspection));
 
                 var FirstPayload = JsonPackagePersistence.ReadDomainPackage(FirstPath);
                 var SecondPayload = JsonPackagePersistence.ReadDomainPackage(SecondPath);
@@ -734,7 +938,7 @@ namespace Instrumind.ThinkComposer.Headless
                                 DomainMismatch + Environment.NewLine +
                                 TemplateMismatch);
 
-                var HardeningNotes = ValidateDomainPersistenceHardening(FirstPath, TargetDirectory);
+                var HardeningNotes = ValidateDomainPersistenceHardening(FirstPath, Path.GetFullPath(Input), TargetDirectory);
 
                 return Succeed("Domain JSON persistence validation passed." + Environment.NewLine +
                                String.Join(Environment.NewLine, HardeningNotes.ToArray()) + Environment.NewLine +
@@ -743,7 +947,7 @@ namespace Instrumind.ThinkComposer.Headless
             });
         }
 
-        private static List<string> ValidateCompositionPersistenceHardening(string SourcePackage, string TargetDirectory)
+        private static List<string> ValidateCompositionPersistenceHardening(string SourcePackage, string LegacySourcePackage, string TargetDirectory)
         {
             var Notes = new List<string>();
 
@@ -775,6 +979,10 @@ namespace Instrumind.ThinkComposer.Headless
             Notes.Add("Hardening: composition package opened from root JSON with corrupt /manifest.json; inspect reports manifestWarning.");
 
             var AuthorityPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-root-json-authority", ".tcom");
+            var AuthorityHasLegacyBinary = TryCopyPackagePart(LegacySourcePackage,
+                                                              JsonPackagePersistence.LegacyCompositionBinaryPartUri,
+                                                              AuthorityPath,
+                                                              JsonPackagePersistence.LegacyCompositionBinaryPartUri);
             var Suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
             var RootCompositionName = "Root JSON Authority Composition " + Suffix;
             var RootDomainName = "Root JSON Authority Domain " + Suffix;
@@ -789,12 +997,24 @@ namespace Instrumind.ThinkComposer.Headless
             if (AuthorityLoad.TargetComposition.CompositeContentDomain == null ||
                 !String.Equals(AuthorityLoad.TargetComposition.CompositeContentDomain.Name, RootDomainName, StringComparison.Ordinal))
                 throw new InvalidOperationException("Composition root /Domain.json did not win over /Interchange/Domain.json.");
-            Notes.Add("Hardening: root /Composition.json and /Domain.json won over stale binary fallback and stale /Interchange sidecars.");
+            Notes.Add("Hardening: root /Composition.json and /Domain.json won over stale /Interchange sidecars" +
+                      (AuthorityHasLegacyBinary ? " and an exact legacy /Composition.bin fallback." : "."));
 
             var CorruptWithFallbackPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-corrupt-json-with-fallback", ".tcom");
-            WritePackageTextPart(CorruptWithFallbackPath, JsonPackagePersistence.CompositionJsonPartUri, "{ invalid composition json");
-            RequireCompositionFallbackLoad(CorruptWithFallbackPath, "Corrupt composition JSON with /Composition.bin fallback");
-            Notes.Add("Hardening: corrupt /Composition.json with /Composition.bin fallback recovered with legacy fallback diagnostic.");
+            if (TryCopyPackagePart(LegacySourcePackage,
+                                   JsonPackagePersistence.LegacyCompositionBinaryPartUri,
+                                   CorruptWithFallbackPath,
+                                   JsonPackagePersistence.LegacyCompositionBinaryPartUri))
+            {
+                WritePackageTextPart(CorruptWithFallbackPath, JsonPackagePersistence.CompositionJsonPartUri, "{ invalid composition json");
+                RequireCompositionFallbackLoad(CorruptWithFallbackPath, "Corrupt composition JSON with /Composition.bin fallback");
+                Notes.Add("Hardening: corrupt /Composition.json with an exact legacy /Composition.bin fallback recovered with the fallback diagnostic.");
+            }
+            else
+            {
+                File.Delete(CorruptWithFallbackPath);
+                Notes.Add("Hardening: corrupt-JSON legacy fallback scenario not applicable because the input had no /Composition.bin.");
+            }
 
             var CorruptNoFallbackPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-corrupt-json-no-fallback", ".tcom");
             WritePackageTextPart(CorruptNoFallbackPath, JsonPackagePersistence.CompositionJsonPartUri, "{ invalid composition json");
@@ -802,10 +1022,18 @@ namespace Instrumind.ThinkComposer.Headless
             RequireCompositionLoadFailure(CorruptNoFallbackPath, "Corrupt composition JSON without /Composition.bin fallback");
             Notes.Add("Hardening: corrupt /Composition.json without /Composition.bin fallback failed cleanly.");
 
+            var MissingRootNoFallbackPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-missing-json-no-fallback", ".tcom");
+            DeletePackagePart(MissingRootNoFallbackPath, JsonPackagePersistence.CompositionJsonPartUri);
+            DeletePackagePart(MissingRootNoFallbackPath, JsonPackagePersistence.LegacyCompositionBinaryPartUri);
+            RequireCompositionLoadFailure(MissingRootNoFallbackPath, "Missing composition JSON without /Composition.bin fallback");
+            Notes.Add("Hardening: missing /Composition.json without /Composition.bin failed cleanly without deserializing an unrelated part.");
+
+            ValidateTransactionalPackageShell(SourcePackage, TargetDirectory, ".tcom", Notes);
+
             return Notes;
         }
 
-        private static List<string> ValidateDomainPersistenceHardening(string SourcePackage, string TargetDirectory)
+        private static List<string> ValidateDomainPersistenceHardening(string SourcePackage, string LegacySourcePackage, string TargetDirectory)
         {
             var Notes = new List<string>();
 
@@ -837,6 +1065,10 @@ namespace Instrumind.ThinkComposer.Headless
             Notes.Add("Hardening: domain package opened from root JSON with corrupt /manifest.json; inspect reports manifestWarning.");
 
             var AuthorityPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-root-json-authority", ".tdom");
+            var AuthorityHasLegacyBinary = TryCopyPackagePart(LegacySourcePackage,
+                                                              JsonPackagePersistence.LegacyDomainBinaryPartUri,
+                                                              AuthorityPath,
+                                                              JsonPackagePersistence.LegacyDomainBinaryPartUri);
             var Suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
             var RootDomainName = "Root JSON Authority Domain " + Suffix;
             MutateDomainAuthorityMarkers(AuthorityPath,
@@ -845,12 +1077,24 @@ namespace Instrumind.ThinkComposer.Headless
             var AuthorityLoad = RequireDomainJsonLoad(AuthorityPath, "Domain package with stale binary and stale /Interchange sidecars");
             if (!String.Equals(AuthorityLoad.Name, RootDomainName, StringComparison.Ordinal))
                 throw new InvalidOperationException("Domain root /Domain.json did not win over stale /Domain.bin or /Interchange/Domain.json.");
-            Notes.Add("Hardening: root /Domain.json won over stale binary fallback and stale /Interchange sidecars.");
+            Notes.Add("Hardening: root /Domain.json won over stale /Interchange sidecars" +
+                      (AuthorityHasLegacyBinary ? " and an exact legacy /Domain.bin fallback." : "."));
 
             var CorruptWithFallbackPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-corrupt-json-with-fallback", ".tdom");
-            WritePackageTextPart(CorruptWithFallbackPath, JsonPackagePersistence.DomainJsonPartUri, "{ invalid domain json");
-            RequireDomainFallbackLoad(CorruptWithFallbackPath, "Corrupt domain JSON with /Domain.bin fallback");
-            Notes.Add("Hardening: corrupt /Domain.json with /Domain.bin fallback recovered with legacy fallback diagnostic.");
+            if (TryCopyPackagePart(LegacySourcePackage,
+                                   JsonPackagePersistence.LegacyDomainBinaryPartUri,
+                                   CorruptWithFallbackPath,
+                                   JsonPackagePersistence.LegacyDomainBinaryPartUri))
+            {
+                WritePackageTextPart(CorruptWithFallbackPath, JsonPackagePersistence.DomainJsonPartUri, "{ invalid domain json");
+                RequireDomainFallbackLoad(CorruptWithFallbackPath, "Corrupt domain JSON with /Domain.bin fallback");
+                Notes.Add("Hardening: corrupt /Domain.json with an exact legacy /Domain.bin fallback recovered with the fallback diagnostic.");
+            }
+            else
+            {
+                File.Delete(CorruptWithFallbackPath);
+                Notes.Add("Hardening: corrupt-JSON legacy fallback scenario not applicable because the input had no /Domain.bin.");
+            }
 
             var CorruptNoFallbackPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-corrupt-json-no-fallback", ".tdom");
             WritePackageTextPart(CorruptNoFallbackPath, JsonPackagePersistence.DomainJsonPartUri, "{ invalid domain json");
@@ -858,7 +1102,67 @@ namespace Instrumind.ThinkComposer.Headless
             RequireDomainLoadFailure(CorruptNoFallbackPath, "Corrupt domain JSON without /Domain.bin fallback");
             Notes.Add("Hardening: corrupt /Domain.json without /Domain.bin fallback failed cleanly.");
 
+            var MissingRootNoFallbackPath = CopyPackageVariant(SourcePackage, TargetDirectory, "-missing-json-no-fallback", ".tdom");
+            DeletePackagePart(MissingRootNoFallbackPath, JsonPackagePersistence.DomainJsonPartUri);
+            DeletePackagePart(MissingRootNoFallbackPath, JsonPackagePersistence.LegacyDomainBinaryPartUri);
+            RequireDomainLoadFailure(MissingRootNoFallbackPath, "Missing domain JSON without /Domain.bin fallback");
+            Notes.Add("Hardening: missing /Domain.json without /Domain.bin failed cleanly without deserializing an unrelated part.");
+
+            ValidateTransactionalPackageShell(SourcePackage, TargetDirectory, ".tdom", Notes);
+
             return Notes;
+        }
+
+        private static void ValidateTransactionalPackageShell(string SourcePackage, string TargetDirectory,
+                                                              string Extension, IList<string> Notes)
+        {
+            var Stem = Path.GetFileNameWithoutExtension(SourcePackage);
+            var RequiredFailurePath = Path.Combine(TargetDirectory, Stem + "-required-writer-failure" + Extension);
+            File.Copy(SourcePackage, RequiredFailurePath, true);
+            var OriginalBytes = File.ReadAllBytes(RequiredFailurePath);
+
+            var RequiredFailure = DocumentEngine.StorePackageToLocation<object>(
+                new object(), "transactional validation", new Uri(RequiredFailurePath, UriKind.Absolute),
+                Pack => { throw new InvalidOperationException("Injected required-part writer failure."); },
+                false, true, null, null, true, null);
+            if (String.IsNullOrWhiteSpace(RequiredFailure))
+                throw new InvalidOperationException("Injected required-part writer failure unexpectedly succeeded.");
+            if (!OriginalBytes.SequenceEqual(File.ReadAllBytes(RequiredFailurePath)))
+                throw new InvalidOperationException("Required-part writer failure changed the original package bytes.");
+
+            var OptionalFailurePath = Path.Combine(TargetDirectory, Stem + "-optional-writer-failure" + Extension);
+            if (File.Exists(OptionalFailurePath))
+                File.Delete(OptionalFailurePath);
+
+            var RequiredPartUri = new Uri("/Required.json", UriKind.Relative);
+            var ExpectedPayload = new UTF8Encoding(false).GetBytes("{\"required\":true}");
+            var OptionalFailure = DocumentEngine.StorePackageToLocation<object>(
+                new object(), "transactional validation", new Uri(OptionalFailurePath, UriKind.Absolute),
+                Pack =>
+                {
+                    var Part = Pack.CreatePart(RequiredPartUri, "application/json", CompressionOption.Maximum);
+                    using (var Stream = Part.GetStream(FileMode.Create, FileAccess.Write))
+                        Stream.Write(ExpectedPayload, 0, ExpectedPayload.Length);
+                },
+                false, true, null, null, true,
+                Pack => { throw new InvalidOperationException("Injected optional-part writer failure."); });
+            if (!String.IsNullOrWhiteSpace(OptionalFailure))
+                throw new InvalidOperationException("Optional-part writer failure aborted a package save: " + OptionalFailure);
+
+            using (var Pack = Package.Open(OptionalFailurePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                if (!Pack.PartExists(RequiredPartUri))
+                    throw new InvalidOperationException("Optional-part writer failure left no required package part.");
+                using (var Stream = Pack.GetPart(RequiredPartUri).GetStream(FileMode.Open, FileAccess.Read))
+                using (var Buffer = new MemoryStream())
+                {
+                    Stream.CopyTo(Buffer);
+                    if (!ExpectedPayload.SequenceEqual(Buffer.ToArray()))
+                        throw new InvalidOperationException("Optional-part writer failure changed the required package payload.");
+                }
+            }
+
+            Notes.Add("Hardening: required-writer failure preserved the original byte-for-byte; optional-writer failure retained a valid required package payload.");
         }
 
         private static CompositionEngine RequireCompositionJsonLoad(string PackagePath, string Scenario)
@@ -932,6 +1236,43 @@ namespace Instrumind.ThinkComposer.Headless
             var TargetPath = Path.Combine(TargetDirectory, Path.GetFileNameWithoutExtension(SourcePackage) + Suffix + Extension);
             File.Copy(SourcePackage, TargetPath, true);
             return TargetPath;
+        }
+
+        private static bool TryCopyPackagePart(string SourcePackage, Uri SourcePartUri,
+                                               string TargetPackage, Uri TargetPartUri)
+        {
+            if (String.IsNullOrWhiteSpace(SourcePackage) || !File.Exists(SourcePackage))
+                return false;
+
+            byte[] Bytes;
+            string ContentType;
+            CompressionOption Compression;
+            using (var Source = Package.Open(SourcePackage, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                if (!Source.PartExists(SourcePartUri))
+                    return false;
+
+                var SourcePart = Source.GetPart(SourcePartUri);
+                ContentType = SourcePart.ContentType;
+                Compression = SourcePart.CompressionOption;
+                using (var Stream = SourcePart.GetStream(FileMode.Open, FileAccess.Read))
+                using (var Buffer = new MemoryStream())
+                {
+                    Stream.CopyTo(Buffer);
+                    Bytes = Buffer.ToArray();
+                }
+            }
+
+            using (var Target = Package.Open(TargetPackage, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                if (Target.PartExists(TargetPartUri))
+                    Target.DeletePart(TargetPartUri);
+                var Part = Target.CreatePart(TargetPartUri, ContentType, Compression);
+                using (var Stream = Part.GetStream(FileMode.Create, FileAccess.Write))
+                    Stream.Write(Bytes, 0, Bytes.Length);
+            }
+
+            return true;
         }
 
         private static void MutateCompositionAuthorityMarkers(string PackagePath,
@@ -1571,17 +1912,21 @@ namespace Instrumind.ThinkComposer.Headless
         }
 
         private static void SaveComposition(Composition SourceComposition, string Output,
-                                            GitPackageLink GitSyncLink = null,
-                                            GitPackageLink EmbeddedDomainGitSyncLink = null)
+                                             GitPackageLink GitSyncLink = null,
+                                             GitPackageLink EmbeddedDomainGitSyncLink = null,
+                                             string PreviewSource = null)
         {
             EnsureParentDirectory(Output);
             var Location = new Uri(Path.GetFullPath(Output), UriKind.Absolute);
 
             var Error = JsonPackagePersistence.StoreComposition(SourceComposition, Location,
                                                                 false, false,
-                                                                null, true,
-                                                                GitSyncLink,
-                                                                EmbeddedDomainGitSyncLink);
+                                                                 null, true,
+                                                                 GitSyncLink,
+                                                                 EmbeddedDomainGitSyncLink,
+                                                                 String.IsNullOrWhiteSpace(PreviewSource)
+                                                                 ? null
+                                                                 : new Uri(Path.GetFullPath(PreviewSource), UriKind.Absolute));
 
             if (!String.IsNullOrEmpty(Error))
                 throw new InvalidOperationException(Error);
@@ -1630,16 +1975,21 @@ namespace Instrumind.ThinkComposer.Headless
             }
         }
 
-        private static void SaveDomain(Domain SourceDomain, string Output, bool IncludeTemplateComposition = false)
+        private static void SaveDomain(Domain SourceDomain, string Output, bool IncludeTemplateComposition = false,
+                                       string PreviewSource = null)
         {
             EnsureParentDirectory(Output);
             SourceDomain.SetTemplateSaving(IncludeTemplateComposition);
 
             var Error = JsonPackagePersistence.StoreDomain(SourceDomain,
                                                            new Uri(Path.GetFullPath(Output), UriKind.Absolute),
-                                                           false, false,
-                                                           null, true,
-                                                           IncludeTemplateComposition);
+                                                            false, false,
+                                                            null, true,
+                                                            IncludeTemplateComposition,
+                                                            null,
+                                                            String.IsNullOrWhiteSpace(PreviewSource)
+                                                            ? null
+                                                            : new Uri(Path.GetFullPath(PreviewSource), UriKind.Absolute));
 
             if (!String.IsNullOrEmpty(Error))
                 throw new InvalidOperationException(Error);
@@ -1657,6 +2007,49 @@ namespace Instrumind.ThinkComposer.Headless
             using (var Stream = Pack.GetPart(PartUri).GetStream(FileMode.Open, FileAccess.Read))
             using (var Reader = new StreamReader(Stream, Encoding.UTF8, true))
                 return Reader.ReadToEnd();
+        }
+
+        private static Tuple<string, string> ReadPreviewCacheRecord(string PackagePath, string ViewId)
+        {
+            var Serializer = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue };
+            var Root = Serializer.DeserializeObject(ReadPackageTextPart(PackagePath, ContainerSnapshotService.ManifestPartUri))
+                                 as IDictionary<string, object>;
+            if (Root == null)
+                throw new InvalidDataException("Preview manifest is not a JSON object: " + PackagePath);
+
+            object VersionValue;
+            int Version;
+            if (!Root.TryGetValue("formatVersion", out VersionValue) ||
+                !Int32.TryParse(Convert.ToString(VersionValue, CultureInfo.InvariantCulture),
+                                NumberStyles.Integer, CultureInfo.InvariantCulture, out Version) || Version != 2)
+                throw new InvalidDataException("Preview manifest is not format version 2: " + PackagePath);
+
+            object PreviewsValue;
+            var Previews = Root.TryGetValue("previews", out PreviewsValue)
+                         ? PreviewsValue as System.Collections.IEnumerable
+                         : null;
+            if (Previews != null)
+                foreach (var Item in Previews)
+                {
+                    var Preview = Item as IDictionary<string, object>;
+                    object ItemViewId;
+                    if (Preview == null || !Preview.TryGetValue("viewId", out ItemViewId) ||
+                        !String.Equals(Convert.ToString(ItemViewId, CultureInfo.InvariantCulture), ViewId,
+                                       StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    object InputHash;
+                    object Disposition;
+                    Preview.TryGetValue("inputSha256", out InputHash);
+                    Preview.TryGetValue("disposition", out Disposition);
+                    var Hash = Convert.ToString(InputHash, CultureInfo.InvariantCulture);
+                    if (String.IsNullOrWhiteSpace(Hash))
+                        throw new InvalidDataException("Preview manifest entry has no inputSha256 for View '" + ViewId + "'.");
+
+                    return Tuple.Create(Hash, Convert.ToString(Disposition, CultureInfo.InvariantCulture));
+                }
+
+            throw new InvalidDataException("Preview manifest has no entry for View '" + ViewId + "': " + PackagePath);
         }
 
         private static void WritePackageTextPart(string PackagePath, Uri PartUri, string Text)

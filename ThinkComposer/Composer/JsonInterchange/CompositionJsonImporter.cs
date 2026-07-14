@@ -20,6 +20,7 @@ using Instrumind.Common.EntityBase;
 using Instrumind.Common.EntityDefinition;
 using Instrumind.Common.Visualization;
 using Instrumind.ThinkComposer.ApplicationProduct;
+using Instrumind.ThinkComposer.ApplicationShell;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
@@ -89,6 +90,24 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly Dictionary<string, CompositionJsonVisualControl> VisualControlsByIdeaTechName = new Dictionary<string, CompositionJsonVisualControl>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, CompositionJsonVisualControl> VisualControlsByIdeaId = new Dictionary<string, CompositionJsonVisualControl>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> LayoutRolesByRelationshipTechName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<Guid, UniqueElement> UniqueElementsById = new Dictionary<Guid, UniqueElement>();
+        private readonly Dictionary<Guid, Idea> IdeasById = new Dictionary<Guid, Idea>();
+        private readonly Dictionary<string, Idea> IdeasByTechName = new Dictionary<string, Idea>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<Guid, View> ViewsById = new Dictionary<Guid, View>();
+        private readonly Dictionary<string, View> ViewsByTechName = new Dictionary<string, View>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<Guid, VisualRepresentation> VisualRepresentationsById = new Dictionary<Guid, VisualRepresentation>();
+        private readonly Dictionary<View, Dictionary<Guid, VisualRepresentation>> VisualRepresentationsByViewAndIdea = new Dictionary<View, Dictionary<Guid, VisualRepresentation>>();
+        private readonly Dictionary<Guid, IdeaDefinition> DefinitionsById = new Dictionary<Guid, IdeaDefinition>();
+        private readonly Dictionary<string, IdeaDefinition> DefinitionsByTechName = new Dictionary<string, IdeaDefinition>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, IdeaDefinition> DefinitionsByName = new Dictionary<string, IdeaDefinition>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, MarkerDefinition> MarkerDefinitionsByTechName = new Dictionary<string, MarkerDefinition>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, MarkerDefinition> MarkerDefinitionsByName = new Dictionary<string, MarkerDefinition>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<View, HashSet<VisualObject>> NativeViewChildKeys = new Dictionary<View, HashSet<VisualObject>>();
+        private readonly CompositionJsonImportOptions ImportOptionsOverride;
+        private readonly bool NativeRehydration;
+        private readonly PersistenceOperationContext ProgressContext;
+        private long ViewProgressCurrent;
+        private long ViewProgressTotal;
 
         private class PlannedConceptReference
         {
@@ -210,14 +229,21 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         }
 
         private CompositionJsonImporter(Composition Composition, CompositionEngine Engine, bool IsPreview,
-                                        bool TreatMissingComplementFieldsAsNull = false)
+                                        bool TreatMissingComplementFieldsAsNull = false,
+                                        CompositionJsonImportOptions ImportOptionsOverride = null,
+                                        CompositionJsonImportReport ExistingReport = null,
+                                        bool NativeRehydration = false)
         {
             this.Composition = Composition;
             this.Engine = Engine ?? Composition.Engine;
             this.IsPreview = IsPreview;
             this.TreatMissingComplementFieldsAsNull = TreatMissingComplementFieldsAsNull;
-            this.Report = new CompositionJsonImportReport();
+            this.ImportOptionsOverride = ImportOptionsOverride;
+            this.NativeRehydration = NativeRehydration;
+            this.ProgressContext = PersistenceOperationContext.Current;
+            this.Report = ExistingReport ?? new CompositionJsonImportReport();
             this.Report.IsPreview = IsPreview;
+            this.InitializeLookupIndexes();
         }
 
         public static CompositionJsonImportReport Preview(Composition Composition, CompositionJsonDocument Document)
@@ -337,13 +363,40 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public static CompositionJsonImportReport RehydrateFullState(CompositionEngine Engine, CompositionJsonDocument Document,
                                                                      bool TreatMissingComplementFieldsAsNull = false)
         {
-            General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
-            CompositionJsonSerializer.Validate(Document);
+            return RehydrateFullStateCore(Engine, Document, TreatMissingComplementFieldsAsNull, null, false, false);
+        }
 
-            var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false, TreatMissingComplementFieldsAsNull);
-            Importer.Report.Log("JSON persistence rehydration started for composition " + Importer.DescribeTarget(Engine.TargetComposition) + ".");
+        internal static CompositionJsonImportReport RehydrateFullState(CompositionEngine Engine, CompositionJsonDocument Document,
+                                                                        bool TreatMissingComplementFieldsAsNull,
+                                                                        CompositionJsonImportOptions ImportOptionsOverride,
+                                                                        bool QuietLogging)
+        {
+            // Native package readers deserialize and validate the authoritative DTO before this
+            // internal path is reached. Avoid walking a large Composition document a second time;
+            // the public/manual rehydration overload above retains its validation boundary.
+            return RehydrateFullStateCore(Engine, Document, TreatMissingComplementFieldsAsNull,
+                                          ImportOptionsOverride, QuietLogging, true);
+        }
+
+        private static CompositionJsonImportReport RehydrateFullStateCore(CompositionEngine Engine, CompositionJsonDocument Document,
+                                                                           bool TreatMissingComplementFieldsAsNull,
+                                                                           CompositionJsonImportOptions ImportOptionsOverride,
+                                                                           bool QuietLogging,
+                                                                           bool DocumentAlreadyValidated)
+        {
+            General.ContractRequiresNotNull(Engine, Engine.TargetComposition);
+            if (!DocumentAlreadyValidated)
+                CompositionJsonSerializer.Validate(Document);
+
+            var Report = new CompositionJsonImportReport { QuietLogging = QuietLogging };
+            var Importer = new CompositionJsonImporter(Engine.TargetComposition, Engine, false,
+                                                       TreatMissingComplementFieldsAsNull,
+                                                       ImportOptionsOverride, Report, true);
+            if (!QuietLogging)
+                Importer.Report.Log("JSON persistence rehydration started for composition " + Importer.DescribeTarget(Engine.TargetComposition) + ".");
             Importer.ApplyDocument(Document);
-            Importer.Report.Log("JSON persistence rehydration completed: " + Importer.Report.ToDetailedCountsString() + ".");
+            if (!QuietLogging)
+                Importer.Report.Log("JSON persistence rehydration completed: " + Importer.Report.ToDetailedCountsString() + ".");
             return Importer.Report;
         }
 
@@ -377,73 +430,68 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             this.SourceRootViewId = Document == null || Document.Composition == null ? null : Document.Composition.RootViewId;
             this.SourceActiveViewId = Document == null || Document.Composition == null ? null : Document.Composition.ActiveViewId;
+            var ImportOptions = this.ImportOptionsOverride ?? Document.ImportOptions;
 
-            this.AutoPlaceNewItems = Document.ImportOptions == null ||
-                                     Document.ImportOptions.AutoPlaceNewItems == null ||
-                                     Document.ImportOptions.AutoPlaceNewItems.Value;
-            this.AutoFitPlacedConcepts = Document.ImportOptions == null ||
-                                         Document.ImportOptions.AutoFitPlacedConcepts == null ||
-                                         Document.ImportOptions.AutoFitPlacedConcepts.Value;
-            this.AutoRoutePlacedLinks = Document.ImportOptions == null ||
-                                        Document.ImportOptions.AutoRoutePlacedLinks == null ||
-                                        Document.ImportOptions.AutoRoutePlacedLinks.Value;
-            this.UseActiveCompositionAsContainer = Document.ImportOptions != null &&
-                                                   Document.ImportOptions.UseActiveCompositionAsContainer != null &&
-                                                   Document.ImportOptions.UseActiveCompositionAsContainer.Value;
-            this.TreatMissingFullStateItemsAsCreates = Document.ImportOptions != null &&
-                                                       Document.ImportOptions.TreatMissingFullStateItemsAsCreates != null &&
-                                                       Document.ImportOptions.TreatMissingFullStateItemsAsCreates.Value;
-            this.PreventSelfRecursiveCompositeViews = Document.ImportOptions == null ||
-                                                      Document.ImportOptions.PreventSelfRecursiveCompositeViews == null ||
-                                                      Document.ImportOptions.PreventSelfRecursiveCompositeViews.Value;
-            this.RepairRecursiveVisuals = Document.ImportOptions == null ||
-                                          Document.ImportOptions.RepairRecursiveVisuals == null ||
-                                          Document.ImportOptions.RepairRecursiveVisuals.Value;
-            this.LayoutMode = NormalizeLayoutMode(Document.ImportOptions == null ? null : Document.ImportOptions.LayoutMode);
-            this.RelationshipDefinitionFallbackTechName = Document.ImportOptions == null ? null : Document.ImportOptions.RelationshipDefinitionFallbackTechName;
-            this.DetailFallbackMode = NormalizeDetailFallbackMode(Document.ImportOptions == null ? null : Document.ImportOptions.DetailFallbackMode);
-            this.DomainCompatibilityPolicy = NormalizeCompatibilityPolicy(Document.ImportOptions == null ? null : Document.ImportOptions.DomainCompatibilityPolicy, "domainCompatibilityPolicy");
-            this.CompositionVersionPolicy = NormalizeCompatibilityPolicy(Document.ImportOptions == null ? null : Document.ImportOptions.CompositionVersionPolicy, "compositionVersionPolicy");
-            this.StrictRelationshipCompatibility = Document.ImportOptions != null && Document.ImportOptions.StrictRelationshipCompatibility.IsTrue();
-            this.AbortOnRelationshipCompatibilityFailure = Document.ImportOptions != null && Document.ImportOptions.AbortOnRelationshipCompatibilityFailure.IsTrue();
-            this.StrictDetailsCompatibility = Document.ImportOptions != null && Document.ImportOptions.StrictDetailsCompatibility.IsTrue();
-            this.AbortOnDetailCompatibilityFailure = Document.ImportOptions != null && Document.ImportOptions.AbortOnDetailCompatibilityFailure.IsTrue();
+            this.AutoPlaceNewItems = ImportOptions == null || ImportOptions.AutoPlaceNewItems == null || ImportOptions.AutoPlaceNewItems.Value;
+            this.AutoFitPlacedConcepts = ImportOptions == null || ImportOptions.AutoFitPlacedConcepts == null || ImportOptions.AutoFitPlacedConcepts.Value;
+            this.AutoRoutePlacedLinks = ImportOptions == null || ImportOptions.AutoRoutePlacedLinks == null || ImportOptions.AutoRoutePlacedLinks.Value;
+            this.UseActiveCompositionAsContainer = ImportOptions != null && ImportOptions.UseActiveCompositionAsContainer.IsTrue();
+            this.TreatMissingFullStateItemsAsCreates = ImportOptions != null && ImportOptions.TreatMissingFullStateItemsAsCreates.IsTrue();
+            this.PreventSelfRecursiveCompositeViews = ImportOptions == null || ImportOptions.PreventSelfRecursiveCompositeViews == null || ImportOptions.PreventSelfRecursiveCompositeViews.Value;
+            this.RepairRecursiveVisuals = ImportOptions == null || ImportOptions.RepairRecursiveVisuals == null || ImportOptions.RepairRecursiveVisuals.Value;
+            this.LayoutMode = NormalizeLayoutMode(ImportOptions == null ? null : ImportOptions.LayoutMode);
+            this.RelationshipDefinitionFallbackTechName = ImportOptions == null ? null : ImportOptions.RelationshipDefinitionFallbackTechName;
+            this.DetailFallbackMode = NormalizeDetailFallbackMode(ImportOptions == null ? null : ImportOptions.DetailFallbackMode);
+            this.DomainCompatibilityPolicy = NormalizeCompatibilityPolicy(ImportOptions == null ? null : ImportOptions.DomainCompatibilityPolicy, "domainCompatibilityPolicy");
+            this.CompositionVersionPolicy = NormalizeCompatibilityPolicy(ImportOptions == null ? null : ImportOptions.CompositionVersionPolicy, "compositionVersionPolicy");
+            this.StrictRelationshipCompatibility = ImportOptions != null && ImportOptions.StrictRelationshipCompatibility.IsTrue();
+            this.AbortOnRelationshipCompatibilityFailure = ImportOptions != null && ImportOptions.AbortOnRelationshipCompatibilityFailure.IsTrue();
+            this.StrictDetailsCompatibility = ImportOptions != null && ImportOptions.StrictDetailsCompatibility.IsTrue();
+            this.AbortOnDetailCompatibilityFailure = ImportOptions != null && ImportOptions.AbortOnDetailCompatibilityFailure.IsTrue();
             this.VisualStrategy = BuildVisualStrategy(Document);
-            this.RelationshipVisualPlacementOptions = BuildRelationshipVisualPlacementOptions(Document);
+            this.RelationshipVisualPlacementOptions = BuildRelationshipVisualPlacementOptions(ImportOptions);
             this.Report.VisualStrategyMode = this.VisualStrategy.IsActive ? this.VisualStrategy.Mode : null;
-            this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
-                            ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
-                            ", autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
-                            ", useActiveCompositionAsContainer=" + (this.UseActiveCompositionAsContainer ? "true" : "false") +
-                            ", treatMissingFullStateItemsAsCreates=" + (this.TreatMissingFullStateItemsAsCreates ? "true" : "false") +
-                            ", relationshipDefinitionFallbackTechName=" + this.RelationshipDefinitionFallbackTechName.ToStringAlways("<none>") +
-                            ", detailFallbackMode=" + this.DetailFallbackMode +
-                            ", domainCompatibilityPolicy=" + this.DomainCompatibilityPolicy +
-                            ", compositionVersionPolicy=" + this.CompositionVersionPolicy +
-                            ", strictRelationshipCompatibility=" + (this.StrictRelationshipCompatibility ? "true" : "false") +
-                            ", abortOnRelationshipCompatibilityFailure=" + (this.AbortOnRelationshipCompatibilityFailure ? "true" : "false") +
-                            ", strictDetailsCompatibility=" + (this.StrictDetailsCompatibility ? "true" : "false") +
-                            ", abortOnDetailCompatibilityFailure=" + (this.AbortOnDetailCompatibilityFailure ? "true" : "false") +
-                            ", relationshipVisualPlacementMode=" + this.RelationshipVisualPlacementOptions.PlacementMode +
-                            ", recomputeSuspiciousRelationshipVisuals=" + (this.RelationshipVisualPlacementOptions.RecomputeSuspiciousRelationshipVisuals ? "true" : "false") +
-                            ", hideGenericRelationshipCenters=" + (this.RelationshipVisualPlacementOptions.HideGenericRelationshipCenters ? "true" : "false") +
-                            ", maxRelationshipCenterDisplacement=" + this.RelationshipVisualPlacementOptions.MaxRelationshipCenterDisplacement.ToString(CultureInfo.InvariantCulture) +
-                            ", layoutMode=" + this.LayoutMode +
-                            ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
-                            ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") +
-                            ", treatMissingComplementFieldsAsNull=" + (this.TreatMissingComplementFieldsAsNull ? "true" : "false") + ".");
-            LogVisualStrategyOptions();
+            if (!this.Report.QuietLogging)
+            {
+                this.Report.Log("JSON import options: autoPlaceNewItems=" + (this.AutoPlaceNewItems ? "true" : "false") +
+                                ", autoFitPlacedConcepts=" + (this.AutoFitPlacedConcepts ? "true" : "false") +
+                                ", autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
+                                ", useActiveCompositionAsContainer=" + (this.UseActiveCompositionAsContainer ? "true" : "false") +
+                                ", treatMissingFullStateItemsAsCreates=" + (this.TreatMissingFullStateItemsAsCreates ? "true" : "false") +
+                                ", relationshipDefinitionFallbackTechName=" + this.RelationshipDefinitionFallbackTechName.ToStringAlways("<none>") +
+                                ", detailFallbackMode=" + this.DetailFallbackMode +
+                                ", domainCompatibilityPolicy=" + this.DomainCompatibilityPolicy +
+                                ", compositionVersionPolicy=" + this.CompositionVersionPolicy +
+                                ", strictRelationshipCompatibility=" + (this.StrictRelationshipCompatibility ? "true" : "false") +
+                                ", abortOnRelationshipCompatibilityFailure=" + (this.AbortOnRelationshipCompatibilityFailure ? "true" : "false") +
+                                ", strictDetailsCompatibility=" + (this.StrictDetailsCompatibility ? "true" : "false") +
+                                ", abortOnDetailCompatibilityFailure=" + (this.AbortOnDetailCompatibilityFailure ? "true" : "false") +
+                                ", relationshipVisualPlacementMode=" + this.RelationshipVisualPlacementOptions.PlacementMode +
+                                ", recomputeSuspiciousRelationshipVisuals=" + (this.RelationshipVisualPlacementOptions.RecomputeSuspiciousRelationshipVisuals ? "true" : "false") +
+                                ", hideGenericRelationshipCenters=" + (this.RelationshipVisualPlacementOptions.HideGenericRelationshipCenters ? "true" : "false") +
+                                ", maxRelationshipCenterDisplacement=" + this.RelationshipVisualPlacementOptions.MaxRelationshipCenterDisplacement.ToString(CultureInfo.InvariantCulture) +
+                                ", layoutMode=" + this.LayoutMode +
+                                ", preventSelfRecursiveCompositeViews=" + (this.PreventSelfRecursiveCompositeViews ? "true" : "false") +
+                                ", repairRecursiveVisuals=" + (this.RepairRecursiveVisuals ? "true" : "false") +
+                                ", treatMissingComplementFieldsAsNull=" + (this.TreatMissingComplementFieldsAsNull ? "true" : "false") + ".");
+                LogVisualStrategyOptions();
+            }
 
             EvaluateCompatibilityRequirements(Document);
-            RunPreflight(Document);
+            if (!this.NativeRehydration)
+                RunPreflight(Document);
 
             if (this.Report.CompatibilityBlocked)
                 return;
 
-            if (this.RepairRecursiveVisuals)
+            // Native persistence always targets a newly-created Composition. Scanning that
+            // empty target before importing cannot repair anything and becomes costly for
+            // large documents; manual merge/preview retains both safety scans.
+            if (this.RepairRecursiveVisuals && !this.NativeRehydration)
                 RepairRecursiveVisualsBeforeImport();
 
-            RepairInvalidVisualRepresentationsBeforeImport();
+            if (!this.NativeRehydration)
+                RepairInvalidVisualRepresentationsBeforeImport();
 
             if (Document.Warnings != null)
                 foreach (var Warning in Document.Warnings)
@@ -453,19 +501,49 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 ApplyComposition(Document.Composition);
 
             if (Document.Ideas != null)
-                foreach (var Idea in Document.Ideas)
+            {
+                var Total = Document.Ideas.Count;
+                this.ReportProgress(PersistenceOperationStages.RebuildConcepts, 5,
+                                    "Rebuilding concepts", 0, Total);
+                for (int Index = 0; Index < Total; Index++)
+                {
+                    var Idea = Document.Ideas[Index];
                     if (StringEquals(Idea.Kind, "Relationship"))
                         this.Report.Warn("Relationship-like item appeared in ideas[] and was skipped. Put relationships in relationships[].");
                     else
                         ApplyConcept(Idea);
+                    this.ReportProgress(PersistenceOperationStages.RebuildConcepts, 5,
+                                        "Rebuilding concepts", Index + 1, Total);
+                }
+            }
 
             if (Document.Relationships != null)
-                foreach (var Relationship in Document.Relationships)
-                    ApplyRelationship(Relationship);
+            {
+                var Total = Document.Relationships.Count;
+                this.ReportProgress(PersistenceOperationStages.RebuildRelationships, 6,
+                                    "Rebuilding relationships", 0, Total);
+                for (int Index = 0; Index < Total; Index++)
+                {
+                    ApplyRelationship(Document.Relationships[Index]);
+                    this.ReportProgress(PersistenceOperationStages.RebuildRelationships, 6,
+                                        "Rebuilding relationships", Index + 1, Total);
+                }
+            }
 
             if (Document.Views != null)
+            {
+                this.ViewProgressCurrent = 0;
+                this.ViewProgressTotal = Document.Views.Count + Document.Views.Sum(View => View == null || View.Visuals == null ? 0 : View.Visuals.Count);
+                this.ReportProgress(PersistenceOperationStages.RebuildViews, 7,
+                                    "Rebuilding views and visuals", 0, this.ViewProgressTotal);
                 foreach (var View in Document.Views)
+                {
                     ApplyView(View);
+                    this.ViewProgressCurrent++;
+                    this.ReportProgress(PersistenceOperationStages.RebuildViews, 7,
+                                        "Rebuilding views and visuals", this.ViewProgressCurrent, this.ViewProgressTotal);
+                }
+            }
 
             if (Document.Operations != null)
             {
@@ -483,10 +561,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             RestoreCompositionViewReferences();
 
+            if (this.ProgressContext != null)
+                this.ProgressContext.ReportStage(PersistenceOperationStages.FinalizeModel, 8,
+                                                 PersistenceOperationStages.LoadStageCount,
+                                                 "Repairing and finalizing the model");
+
             if (this.RepairRecursiveVisuals && !this.IsPreview)
                 RepairRecursiveVisualsAfterImport();
 
-            if (!this.IsPreview)
+            // Native rehydration is always followed by the owning ModelFixes pass (normal
+            // materialization or embedded-template finalization), which performs this same
+            // full invalid-visual scan.  Interactive imports retain their post-apply repair.
+            if (!this.IsPreview && !this.NativeRehydration)
                 RepairInvalidVisualRepresentationsAfterImport();
 
             if (!this.IsPreview)
@@ -552,10 +638,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                        VisualCount >= Plan.VisualsThreshold
                        ? VisualStrategyPlan.ModeOverviewAndModel
                        : VisualStrategyPlan.ModeExactFullVisual;
-                this.Report.Log("JSON import visualStrategy auto mode selected '" + Mode +
-                                "' from counts concepts=" + ConceptCount.ToString(CultureInfo.InvariantCulture) +
-                                ", relationships=" + RelationshipCount.ToString(CultureInfo.InvariantCulture) +
-                                ", visualRequests=" + VisualCount.ToString(CultureInfo.InvariantCulture) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import visualStrategy auto mode selected '" + Mode +
+                                    "' from counts concepts=" + ConceptCount.ToString(CultureInfo.InvariantCulture) +
+                                    ", relationships=" + RelationshipCount.ToString(CultureInfo.InvariantCulture) +
+                                    ", visualRequests=" + VisualCount.ToString(CultureInfo.InvariantCulture) + ".");
             }
 
             Plan.Mode = Mode;
@@ -598,10 +685,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Plan;
         }
 
-        private RelationshipVisualPlacementOptions BuildRelationshipVisualPlacementOptions(CompositionJsonDocument Document)
+        private void ReportProgress(string StageId, int StageIndex, string Message, long Current, long Total)
+        {
+            if (this.ProgressContext == null)
+                return;
+
+            this.ProgressContext.ReportItems(StageId, StageIndex,
+                                             PersistenceOperationStages.LoadStageCount,
+                                             Message, Current, Total);
+        }
+
+        private RelationshipVisualPlacementOptions BuildRelationshipVisualPlacementOptions(CompositionJsonImportOptions ImportOptions)
         {
             var Options = new RelationshipVisualPlacementOptions();
-            var ImportOptions = Document == null ? null : Document.ImportOptions;
 
             Options.PlacementMode = NormalizeRelationshipVisualPlacementMode(this.VisualStrategy == null
                                                                              ? null
@@ -832,6 +928,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void EvaluateCompatibilityRequirements(CompositionJsonDocument Document)
         {
+            // Native package loading supplies ignore policies and has already validated the
+            // authoritative JSON schema. Avoid rebuilding the active Domain signature solely
+            // for compatibility diagnostics that cannot affect the result.
+            if (this.NativeRehydration &&
+                StringEquals(this.DomainCompatibilityPolicy, "ignore") &&
+                StringEquals(this.CompositionVersionPolicy, "ignore"))
+                return;
+
             var Context = Document == null
                 ? null
                 : (HasTargetContext(Document.Requires)
@@ -1207,31 +1311,35 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void RepairRecursiveVisualsBeforeImport()
         {
-            this.Report.Log("JSON import recursive visual repair scan started.");
+            if (!this.Report.QuietLogging)
+                this.Report.Log("JSON import recursive visual repair scan started.");
             var Repairs = CompositeViewIntegrity.RepairRecursiveVisuals(this.Composition,
                 Message =>
                 {
-                    this.Report.Log("JSON import repair: " + Message);
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log("JSON import repair: " + Message);
                     this.Report.CountRepairedRecursiveVisual();
                 },
                 this.IsPreview);
 
-            if (Repairs < 1)
+            if (Repairs < 1 && !this.Report.QuietLogging)
                 this.Report.Log("JSON import recursive visual repair scan found no repairs.");
         }
 
         private void RepairRecursiveVisualsAfterImport()
         {
-            this.Report.Log("JSON import post-apply recursive visual repair scan started.");
+            if (!this.Report.QuietLogging)
+                this.Report.Log("JSON import post-apply recursive visual repair scan started.");
             var Repairs = CompositeViewIntegrity.RepairRecursiveVisuals(this.Composition,
                 Message =>
                 {
-                    this.Report.Log("JSON import post-apply repair: " + Message);
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log("JSON import post-apply repair: " + Message);
                     this.Report.CountRepairedRecursiveVisual();
                 },
                 false);
 
-            if (Repairs < 1)
+            if (Repairs < 1 && !this.Report.QuietLogging)
                 this.Report.Log("JSON import post-apply recursive visual repair scan found no repairs.");
         }
 
@@ -1364,6 +1472,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void LogFullStateCreateDecision(string Entity, string TechName, bool IsNew)
         {
+            if (this.Report.QuietLogging)
+                return;
+
             this.Report.Log("Full-state " + Entity + " '" + TechName.ToStringAlways() +
                             "' was missing; treating as create because " +
                             (IsNew ? "isNew=true" : "treatMissingFullStateItemsAsCreates=true") + ".");
@@ -1608,19 +1719,25 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private RelationshipLinkApplyResult RepairRelationshipLinks(Relationship Relationship, RelationshipLinkImportPlan LinkPlan)
         {
-            this.Report.Log(FormatOperationPrefix() + "existing relationship matched for repair " + DescribeTarget(Relationship) + ".");
-            this.Report.Log(FormatOperationPrefix() + "relationship links source=" +
-                            (LinkPlan == null ? "none" : LinkPlan.SourceName.NullDefault("none")) +
-                            " for relationship techName=" + Relationship.TechName.ToStringAlways() + ".");
-            this.Report.Log(FormatOperationPrefix() + "relationship links before repair: " + DescribeRelationshipLinks(Relationship) + ".");
+            if (!this.Report.QuietLogging)
+            {
+                this.Report.Log(FormatOperationPrefix() + "existing relationship matched for repair " + DescribeTarget(Relationship) + ".");
+                this.Report.Log(FormatOperationPrefix() + "relationship links source=" +
+                                (LinkPlan == null ? "none" : LinkPlan.SourceName.NullDefault("none")) +
+                                " for relationship techName=" + Relationship.TechName.ToStringAlways() + ".");
+                this.Report.Log(FormatOperationPrefix() + "relationship links before repair: " + DescribeRelationshipLinks(Relationship) + ".");
+            }
 
             var Result = ApplyRelationshipLinks(Relationship, LinkPlan);
 
-            this.Report.Log(FormatOperationPrefix() + "relationship links added=" + Result.Added.ToString(CultureInfo.InvariantCulture) +
-                            ", duplicates=" + Result.Duplicate.ToString(CultureInfo.InvariantCulture) +
-                            ", metadataUpdated=" + Result.Updated.ToString(CultureInfo.InvariantCulture) +
-                            ", unresolved=" + Result.Unresolved.ToString(CultureInfo.InvariantCulture) + ".");
-            this.Report.Log(FormatOperationPrefix() + "relationship links after repair: " + DescribeRelationshipLinks(Relationship) + ".");
+            if (!this.Report.QuietLogging)
+            {
+                this.Report.Log(FormatOperationPrefix() + "relationship links added=" + Result.Added.ToString(CultureInfo.InvariantCulture) +
+                                ", duplicates=" + Result.Duplicate.ToString(CultureInfo.InvariantCulture) +
+                                ", metadataUpdated=" + Result.Updated.ToString(CultureInfo.InvariantCulture) +
+                                ", unresolved=" + Result.Unresolved.ToString(CultureInfo.InvariantCulture) + ".");
+                this.Report.Log(FormatOperationPrefix() + "relationship links after repair: " + DescribeRelationshipLinks(Relationship) + ".");
+            }
 
             if (Result.Added > 0 || Result.Updated > 0)
             {
@@ -1713,7 +1830,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 }
             }
 
-            if (Changed)
+            if (Changed && !this.Report.QuietLogging)
                 this.Report.Log(FormatOperationPrefix() + "relationship link metadata updated: relationship=" +
                                 (Link.OwnerRelationship == null ? "<none>" : Link.OwnerRelationship.TechName.ToStringAlways()) +
                                 " endpoint=" + (Link.AssociatedIdea == null ? "<none>" : Link.AssociatedIdea.TechName.ToStringAlways()) +
@@ -1827,11 +1944,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     continue;
                 }
 
-                this.Report.Log(FormatOperationPrefix() + "relationship role resolved: roleType='" +
-                                Spec.RoleTypeName.ToStringAlways() +
-                                "', roleDefinitionTechName='" + Spec.RoleDefinitionTechName.ToStringAlways() +
-                                "', matched='" + Role.TechName.ToStringAlways() +
-                                "', type=" + Role.RoleType.GetFieldName() + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "relationship role resolved: roleType='" +
+                                    Spec.RoleTypeName.ToStringAlways() +
+                                    "', roleDefinitionTechName='" + Spec.RoleDefinitionTechName.ToStringAlways() +
+                                    "', matched='" + Role.TechName.ToStringAlways() +
+                                    "', type=" + Role.RoleType.GetFieldName() + ".");
 
                 Spec.ResolvedRoleVariant = ResolveLinkRoleVariant(Role, Spec, Plan);
 
@@ -1854,10 +1972,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     else
                         Plan.ResolvedOriginCount++;
 
-                    this.Report.Log(FormatOperationPrefix() + "relationship endpoint '" +
-                                    Describe(Spec.IdeaId, Spec.IdeaTechName) +
-                                    "' resolved from planned concept map by " +
-                                    (!String.IsNullOrEmpty(Spec.IdeaId) ? "id" : "techName") + ".");
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log(FormatOperationPrefix() + "relationship endpoint '" +
+                                        Describe(Spec.IdeaId, Spec.IdeaTechName) +
+                                        "' resolved from planned concept map by " +
+                                        (!String.IsNullOrEmpty(Spec.IdeaId) ? "id" : "techName") + ".");
                     continue;
                 }
 
@@ -1870,9 +1989,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 else
                     Plan.ResolvedOriginCount++;
 
-                this.Report.Log(FormatOperationPrefix() + "relationship endpoint '" +
-                                Describe(Spec.IdeaId, Spec.IdeaTechName) +
-                                "' resolved from existing idea " + DescribeTarget(Idea) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "relationship endpoint '" +
+                                    Describe(Spec.IdeaId, Spec.IdeaTechName) +
+                                    "' resolved from existing idea " + DescribeTarget(Idea) + ".");
             }
         }
 
@@ -1915,9 +2035,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private RelationshipLinkValidationStatus ValidateRelationshipLinkPlan(RelationshipDefinition Definition, string RelationshipTechName, RelationshipLinkImportPlan LinkPlan)
         {
-            this.Report.Log(FormatOperationPrefix() + "relationship links source=" +
-                            (LinkPlan == null ? "none" : LinkPlan.SourceName.NullDefault("none")) +
-                            " for relationship techName=" + RelationshipTechName.ToStringAlways() + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "relationship links source=" +
+                                (LinkPlan == null ? "none" : LinkPlan.SourceName.NullDefault("none")) +
+                                " for relationship techName=" + RelationshipTechName.ToStringAlways() + ".");
 
             if (LinkPlan == null || !LinkPlan.HasConnectivityInput)
                 return RelationshipLinkValidationStatus.NoConnectivityInput;
@@ -2270,8 +2391,55 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
+            this.UnregisterIdea(Target);
             Target.RemoveFromComposite(false, false);
+            // Removing a concept can cascade into relationship/link/visual deletion, and removing
+            // any idea detaches its composite views. Rebuild from the surviving model so no
+            // cascade-deleted object remains resolvable through an import index. Deletes are rare
+            // compared with native reconstruction, so correctness here is worth the bounded scan.
+            this.RebuildLookupIndexes();
             this.Report.CountDeleted();
+        }
+
+        private void UnregisterIdea(Idea Target)
+        {
+            if (Target == null)
+                return;
+
+            Idea IndexedIdea;
+            if (this.IdeasById.TryGetValue(Target.GlobalId, out IndexedIdea) && Object.ReferenceEquals(IndexedIdea, Target))
+                this.IdeasById.Remove(Target.GlobalId);
+            if (!String.IsNullOrEmpty(Target.TechName) && this.IdeasByTechName.TryGetValue(Target.TechName, out IndexedIdea) && Object.ReferenceEquals(IndexedIdea, Target))
+            {
+                this.IdeasByTechName.Remove(Target.TechName);
+                this.RestoreFirstIdeaTechNameMatch(Target.TechName, Target);
+            }
+
+            UniqueElement IndexedElement;
+            if (this.UniqueElementsById.TryGetValue(Target.GlobalId, out IndexedElement) && Object.ReferenceEquals(IndexedElement, Target))
+                this.UniqueElementsById.Remove(Target.GlobalId);
+
+            var Relationship = Target as Relationship;
+            if (Relationship != null)
+                foreach (var Link in Relationship.Links.ToList())
+                    if (this.UniqueElementsById.TryGetValue(Link.GlobalId, out IndexedElement) && Object.ReferenceEquals(IndexedElement, Link))
+                        this.UniqueElementsById.Remove(Link.GlobalId);
+
+            foreach (var Representation in Target.VisualRepresentators.ToList())
+            {
+                VisualRepresentation IndexedRepresentation;
+                if (this.VisualRepresentationsById.TryGetValue(Representation.GlobalId, out IndexedRepresentation) && Object.ReferenceEquals(IndexedRepresentation, Representation))
+                    this.VisualRepresentationsById.Remove(Representation.GlobalId);
+                if (this.UniqueElementsById.TryGetValue(Representation.GlobalId, out IndexedElement) && Object.ReferenceEquals(IndexedElement, Representation))
+                    this.UniqueElementsById.Remove(Representation.GlobalId);
+
+                Dictionary<Guid, VisualRepresentation> ByIdea;
+                if (Representation.DisplayingView != null &&
+                    this.VisualRepresentationsByViewAndIdea.TryGetValue(Representation.DisplayingView, out ByIdea) &&
+                    ByIdea.TryGetValue(Target.GlobalId, out IndexedRepresentation) &&
+                    Object.ReferenceEquals(IndexedRepresentation, Representation))
+                    ByIdea.Remove(Target.GlobalId);
+            }
         }
 
         private void ApplyMarkers(Idea Idea, IList<CompositionJsonMarker> Markers)
@@ -2466,10 +2634,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 SetKnownIdeaField(Idea, Source.TargetPropertyTechName, Source.Text.NullDefault("")))
             {
                 this.Report.CountUpdated();
-                this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") +
-                                " text detail '" + Source.DesignatorTechName.ToStringAlways() +
-                                "' to known idea field '" + Source.TargetPropertyTechName + "' for idea '" +
-                                Idea.TechName + "'.");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") +
+                                    " text detail '" + Source.DesignatorTechName.ToStringAlways() +
+                                    "' to known idea field '" + Source.TargetPropertyTechName + "' for idea '" +
+                                    Idea.TechName + "'.");
                 return;
             }
 
@@ -2667,7 +2836,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                               : Source.Visuals;
 
                 foreach (var Visual in Visuals)
+                {
                     ApplyVisual(Existing, Visual);
+                    if (this.ViewProgressTotal > 0)
+                    {
+                        this.ViewProgressCurrent++;
+                        this.ReportProgress(PersistenceOperationStages.RebuildViews, 7,
+                                            "Rebuilding views and visuals", this.ViewProgressCurrent, this.ViewProgressTotal);
+                    }
+                }
             }
 
             ApplyViewZOrder(Existing, Source);
@@ -2689,17 +2866,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (!this.IsPreview)
                     AssignImportedId(RootView, Source.Id);
 
-                this.Report.Log("JSON import full-state view reuse: source root view '" +
-                                Describe(Source.Id, Source.TechName) + "' mapped to existing active/root view " +
-                                DescribeView(RootView) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import full-state view reuse: source root view '" +
+                                    Describe(Source.Id, Source.TechName) + "' mapped to existing active/root view " +
+                                    DescribeView(RootView) + ".");
                 return RootView;
             }
 
             if (this.IsPreview)
             {
                 this.Report.CountCreated();
-                this.Report.Log("JSON import full-state planned view create: " + Describe(Source.Id, Source.TechName) +
-                                " owner=" + DescribeTarget(Owner) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import full-state planned view create: " + Describe(Source.Id, Source.TechName) +
+                                    " owner=" + DescribeTarget(Owner) + ".");
                 return Owner.CompositeActiveView.NullDefault(this.Composition.RootView).NullDefault(GetPreferredActiveView());
             }
 
@@ -2714,8 +2893,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Owner.CompositeActiveView = Created;
 
             this.Report.CountCreated();
-            this.Report.Log("JSON import full-state created view: " + DescribeView(Created) +
-                            " owner=" + DescribeTarget(Owner) + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log("JSON import full-state created view: " + DescribeView(Created) +
+                                " owner=" + DescribeTarget(Owner) + ".");
             return Created;
         }
 
@@ -2743,7 +2923,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 String.Equals(Source.Id, this.SourceRootViewId, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            if (!String.IsNullOrEmpty(Source.OwnerIdeaId) &&
+            // When the authoritative document declares an explicit root-view id, only that
+            // exact view may be mapped onto the target's constructor-created root view.  The
+            // owner/count heuristic exists for older interchange documents without a root id;
+            // applying it to modern full-state documents collapses every additional
+            // Composition-owned view into the root while the target still has one view.
+            if (String.IsNullOrEmpty(this.SourceRootViewId) &&
+                !String.IsNullOrEmpty(Source.OwnerIdeaId) &&
                 String.Equals(Source.OwnerIdeaId, this.Composition.GlobalId.ToString("D"), StringComparison.OrdinalIgnoreCase) &&
                 this.Composition.RootView != null &&
                 (String.IsNullOrEmpty(Source.Id) || this.Composition.CompositeViews.Count <= 1))
@@ -2762,7 +2948,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 this.Composition.RootView = RootView;
                 this.Report.CountUpdated();
-                this.Report.Log("JSON import restored composition root view: " + DescribeView(RootView) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import restored composition root view: " + DescribeView(RootView) + ".");
             }
 
             var ActiveView = FindView(this.SourceActiveViewId, null).NullDefault(RootView);
@@ -2770,7 +2957,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 this.Composition.ActiveView = ActiveView;
                 this.Report.CountUpdated();
-                this.Report.Log("JSON import restored composition active view: " + DescribeView(ActiveView) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import restored composition active view: " + DescribeView(ActiveView) + ".");
             }
         }
 
@@ -2782,7 +2970,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (ApplyVersionFields(this.Composition, SourceVersion))
             {
                 this.Report.CountUpdated();
-                this.Report.Log("JSON import restored composition version metadata: " + DescribeVersion(this.Composition) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import restored composition version metadata: " + DescribeVersion(this.Composition) + ".");
             }
         }
 
@@ -2794,9 +2983,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (TryPlaceMissingFullStateVisual(View, Source))
                     return;
 
-                CountDependentVisualSkip("Visual representation '" + Source.RepresentationId.ToStringAlways() +
-                                         "' was not found in view '" + View.TechName +
-                                         "', and the represented idea/relationship was not created or matched.");
+                CountDependentVisualSkip(Source, View);
                 return;
             }
 
@@ -3270,7 +3457,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 {
                     var Owner = Ownership.Create<View, VisualSymbol>(View);
                     Existing = new VisualComplement(Kind, Owner, GetComplementCenter(Source, null), Source.Width.GetValueOrDefault(0.0));
-                    AssignVisualObjectId(Existing, Source.Id);
+                    this.AssignImportedId(Existing, Source.Id);
                     Changed = true;
                 }
 
@@ -3305,7 +3492,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 {
                     var Owner = Ownership.Create<View, VisualSymbol>(Symbol);
                     Existing = new VisualComplement(Kind, Owner, GetComplementCenter(Source, Symbol), Source.Width.GetValueOrDefault(0.0));
-                    AssignVisualObjectId(Existing, Source.Id);
+                    this.AssignImportedId(Existing, Source.Id);
                     Symbol.AddComplement(Existing);
                     Changed = true;
                 }
@@ -3318,7 +3505,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Changed;
         }
 
-        private static void ShowOrRegisterComplement(View View, VisualComplement Complement)
+        private void ShowOrRegisterComplement(View View, VisualComplement Complement)
         {
             if (View == null || Complement == null)
                 return;
@@ -3329,18 +3516,26 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return;
             }
 
-            RegisterHeadlessComplement(View, Complement);
+            this.RegisterHeadlessComplement(View, Complement);
         }
 
-        private static void RegisterHeadlessComplement(View View, VisualComplement Complement)
+        private void RegisterHeadlessComplement(View View, VisualComplement Complement)
         {
-            var Index = View.ViewChildren.IndexOfMatch(Child => Child != null && Child.Key.IsEqual(Complement));
+            HashSet<VisualObject> NativeKeys = null;
+            var MayAlreadyExist = !this.NativeRehydration ||
+                                  !this.NativeViewChildKeys.TryGetValue(View, out NativeKeys) ||
+                                  NativeKeys.Contains(Complement);
+            var Index = MayAlreadyExist
+                      ? View.ViewChildren.IndexOfMatch(Child => Child != null && Child.Key.IsEqual(Complement))
+                      : -1;
             Complement.GenerateGraphic(null, false);
             var ChildRegistration = ViewChild.Create(Complement, Complement.Graphic);
 
             if (Index >= 0)
             {
                 View.ViewChildren[Index] = ChildRegistration;
+                if (this.NativeRehydration && NativeKeys != null)
+                    NativeKeys.Add(Complement);
                 return;
             }
 
@@ -3382,6 +3577,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
             else
                 View.ViewChildren.Add(ChildRegistration);
+
+            if (this.NativeRehydration)
+            {
+                if (!this.NativeViewChildKeys.TryGetValue(View, out NativeKeys))
+                {
+                    NativeKeys = new HashSet<VisualObject>();
+                    this.NativeViewChildKeys.Add(View, NativeKeys);
+                }
+                NativeKeys.Add(Complement);
+            }
 
             Complement.IsRelatedVisible = true;
         }
@@ -3669,7 +3874,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Changed = ApplyConnectorPoint(Source.TargetPosition, delegate(Point Point) { Connector.TargetPosition = Point; }) || Changed;
                 Changed = ApplyConnectorPoint(Source.TargetEdgePosition, delegate(Point Point) { Connector.TargetEdgePosition = Point; }) || Changed;
                 Changed = ApplyConnectorPoint(Source.IntermediatePosition, delegate(Point Point) { Connector.IntermediatePosition = Point; }) || Changed;
-                AssignVisualObjectId(Connector, Source.Id);
+                this.AssignImportedId(Connector, Source.Id);
                 Connector.RenderElement();
             }
 
@@ -3775,13 +3980,6 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                    (String.IsNullOrWhiteSpace(Source.RoleType) ||
                     Connector.RepresentedLink.RoleDefinitor == null ||
                     StringEquals(Connector.RepresentedLink.RoleDefinitor.RoleType.ToString(), Source.RoleType)));
-        }
-
-        private static void AssignVisualObjectId(VisualObject Target, string Id)
-        {
-            Guid Parsed;
-            if (Target != null && !String.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out Parsed))
-                Target.GlobalId = Parsed;
         }
 
         private static Brush ImportBrush(object Source)
@@ -3932,11 +4130,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             PlanOrQueueAutoRoute(Planned.TechName, null, View, Operation, true, "planned full-state new relationship visual");
         }
 
-        private void CountDependentVisualSkip(string Message)
+        private void CountDependentVisualSkip(CompositionJsonVisual Source, View View)
         {
             this.FullStateDependentVisualSkips++;
             this.Report.CountSkipped();
             this.Report.CountVisualSkipped();
+            if (this.FullStateDependentVisualSkips > 8 && this.Report.QuietLogging)
+                return;
+
+            var Message = "Visual representation '" + (Source == null ? null : Source.RepresentationId).ToStringAlways() +
+                          "' was not found in view '" + (View == null ? null : View.TechName).ToStringAlways() +
+                          "', and the represented idea/relationship was not created or matched.";
             if (this.FullStateDependentVisualSkips <= 8)
                 this.Report.SkippedMessage(Message);
             else
@@ -4026,6 +4230,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         {
             this.Report.CountVisualSkipped();
             this.Report.VisualsSuppressedByStrategy++;
+
+            if (this.Report.VisualsSuppressedByStrategy > 8 && this.Report.QuietLogging)
+                return;
 
             var Message = "Visual strategy suppressed " + Entity.ToStringAlways("visual") +
                           " visual for '" + TechName.ToStringAlways("<unnamed>") +
@@ -4611,7 +4818,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 else
                 {
                     PlanAutoFitForConcept(Concept.TechName, View, Operation, false, "existing concept visual");
-                    this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
                 }
                 return;
             }
@@ -4667,7 +4875,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             else
             {
                 AutoFitPlacedConceptIfNeeded(Concept, TargetRepresentation == null ? null : TargetRepresentation.MainSymbol, Operation, false, "existing concept visual");
-                this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "concept '" + Concept.TechName + "' is already visible in " + DescribeView(View) + ".");
             }
         }
 
@@ -4688,8 +4897,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Existing = FindRelationshipVisualRepresentationForPlacement(Relationship, View, Operation, ShortcutRequest);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
 
-            this.Report.Log(FormatOperationPrefix() + "relationship endpoints for '" + Relationship.TechName +
-                            "' target view=" + DescribeView(View) + ": " + DescribeRelationshipEndpointStatus(Relationship, View) + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "relationship endpoints for '" + Relationship.TechName +
+                                "' target view=" + DescribeView(View) + ": " + DescribeRelationshipEndpointStatus(Relationship, View) + ".");
 
             if (Relationship.Links == null || Relationship.Links.Count < 1)
             {
@@ -4729,7 +4939,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 else
                 {
                     PlanOrQueueAutoRoute(Relationship.TechName, Existing, View, Operation, false, "existing relationship visual");
-                    this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
                 }
                 return;
             }
@@ -4790,7 +5001,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             else
             {
                 PlanOrQueueAutoRoute(Relationship.TechName, TargetRepresentation, View, Operation, false, "existing relationship visual");
-                this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "relationship '" + Relationship.TechName + "' is already visible in " + DescribeView(View) + ".");
             }
         }
 
@@ -4858,8 +5070,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                         continue;
                     }
 
-                    this.Report.Log(FormatOperationPrefix() + "auto-placing relationship endpoint '" + Endpoint.TechName +
-                                    "' into " + DescribeView(View) + ".");
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log(FormatOperationPrefix() + "auto-placing relationship endpoint '" + Endpoint.TechName +
+                                        "' into " + DescribeView(View) + ".");
                     var EndpointOperation = new CompositionJsonOperation();
                     EndpointOperation.ViewId = View.GlobalId.ToString("D");
                     EndpointOperation.AutoPlace = true;
@@ -4903,8 +5116,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return false;
 
             var Changed = false;
+            HashSet<VisualObject> NativeKeys = null;
+            if (this.NativeRehydration &&
+                !this.NativeViewChildKeys.TryGetValue(Representation.DisplayingView, out NativeKeys))
+            {
+                NativeKeys = new HashSet<VisualObject>(Representation.DisplayingView.ViewChildren
+                    .Where(Child => Child != null && Child.Key is VisualObject)
+                    .Select(Child => (VisualObject)Child.Key));
+                this.NativeViewChildKeys.Add(Representation.DisplayingView, NativeKeys);
+            }
+
             foreach (var Part in Representation.VisualParts.OrderBy(Part => !(Part is VisualSymbol)))
-                if (!Representation.DisplayingView.ViewChildren.Any(Child => Child != null && Child.Key == Part))
+                if ((NativeKeys != null && NativeKeys.Add(Part)) ||
+                    (NativeKeys == null && !Representation.DisplayingView.ViewChildren.Any(Child => Child != null && Child.Key == Part)))
                 {
                     Representation.DisplayingView.ViewChildren.Add(ViewChild.Create(Part, Part.Graphic));
                     Changed = true;
@@ -4934,17 +5158,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (StringEquals(Entity, "relationship") && IsRelationshipHiddenOrDeferred(Visual))
                     this.Report.CountRelationshipHiddenOrDeferredByExplicitControl();
 
-                this.Report.Log(FormatOperationPrefix() + "JSON import visual control: entity=" + Entity.ToStringAlways() +
-                                " techName=" + TechName.ToStringAlways() +
-                                " role=" + Visual.Role.ToStringAlways("<none>") +
-                                " display=" + Visual.Display.ToStringAlways("<none>") +
-                                " includeInArrangement=" + FormatNullableBool(Visual.IncludeInArrangement) +
-                                " includeInRouting=" + FormatNullableBool(Visual.IncludeInRouting) +
-                                " includeInAutoFit=" + FormatNullableBool(Visual.IncludeInAutoFit) +
-                                " includeInOverview=" + FormatNullableBool(Visual.IncludeInOverview) +
-                                " includeInFullView=" + FormatNullableBool(Visual.IncludeInFullView) +
-                                " relationshipCenterPlacement=" + Visual.RelationshipCenterPlacement.ToStringAlways("<none>") +
-                                " reason=explicit JSON metadata.");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "JSON import visual control: entity=" + Entity.ToStringAlways() +
+                                    " techName=" + TechName.ToStringAlways() +
+                                    " role=" + Visual.Role.ToStringAlways("<none>") +
+                                    " display=" + Visual.Display.ToStringAlways("<none>") +
+                                    " includeInArrangement=" + FormatNullableBool(Visual.IncludeInArrangement) +
+                                    " includeInRouting=" + FormatNullableBool(Visual.IncludeInRouting) +
+                                    " includeInAutoFit=" + FormatNullableBool(Visual.IncludeInAutoFit) +
+                                    " includeInOverview=" + FormatNullableBool(Visual.IncludeInOverview) +
+                                    " includeInFullView=" + FormatNullableBool(Visual.IncludeInFullView) +
+                                    " relationshipCenterPlacement=" + Visual.RelationshipCenterPlacement.ToStringAlways("<none>") +
+                                    " reason=explicit JSON metadata.");
 
                 if (StringEquals(Entity, "relationship") &&
                     !String.IsNullOrWhiteSpace(Visual.RelationshipCenterPlacement))
@@ -4955,9 +5180,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 if (!String.IsNullOrEmpty(TechName))
                     this.LayoutRolesByRelationshipTechName[TechName] = LayoutRole;
-                this.Report.Log(FormatOperationPrefix() + "JSON import layout role: relationship=" + TechName.ToStringAlways() +
-                                " layoutRole=" + LayoutRole +
-                                " reason=explicit JSON metadata.");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "JSON import layout role: relationship=" + TechName.ToStringAlways() +
+                                    " layoutRole=" + LayoutRole +
+                                    " reason=explicit JSON metadata.");
             }
         }
 
@@ -4992,9 +5218,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return null;
             }
 
-            this.Report.Log(FormatOperationPrefix() + "relationship link role variant resolved: requested='" +
-                            Spec.RoleVariantTechName.ToStringAlways(Spec.RoleVariantName) +
-                            "', matched='" + Variant.TechName.ToStringAlways(Variant.Name) + "'.");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "relationship link role variant resolved: requested='" +
+                                Spec.RoleVariantTechName.ToStringAlways(Spec.RoleVariantName) +
+                                "', matched='" + Variant.TechName.ToStringAlways(Variant.Name) + "'.");
             return Variant;
         }
 
@@ -5089,13 +5316,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Visual == null || !IsVisualSuppressed(Visual))
                 return false;
 
-            this.Report.Log(FormatOperationPrefix() + "JSON import visual control suppressed visual placement: entity=" +
-                            Entity.ToStringAlways() +
-                            " techName=" + TechName.ToStringAlways() +
-                            " role=" + Visual.Role.ToStringAlways("<none>") +
-                            " display=" + Visual.Display.ToStringAlways("<none>") +
-                            " includeInView=" + FormatNullableBool(Visual.IncludeInView) +
-                            " reason=" + Reason.ToStringAlways("explicit JSON metadata") + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "JSON import visual control suppressed visual placement: entity=" +
+                                Entity.ToStringAlways() +
+                                " techName=" + TechName.ToStringAlways() +
+                                " role=" + Visual.Role.ToStringAlways("<none>") +
+                                " display=" + Visual.Display.ToStringAlways("<none>") +
+                                " includeInView=" + FormatNullableBool(Visual.IncludeInView) +
+                                " reason=" + Reason.ToStringAlways("explicit JSON metadata") + ".");
             return true;
         }
 
@@ -5314,12 +5542,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var Column = Index % 4;
             var Row = Index / 4;
 
-            this.Report.Log("JSON import layout: target view='" + View.TechName.ToStringAlways() +
-                            "', mode='" + this.LayoutMode +
-                            "', origin=(" + Origin.X.ToString("0.###", CultureInfo.InvariantCulture) +
-                            "," + Origin.Y.ToString("0.###", CultureInfo.InvariantCulture) +
-                            "), ignoredOutliers=" + this.AutoPlacementIgnoredOutliers[View] +
-                            ", placed=" + (Index + 1).ToString(CultureInfo.InvariantCulture) + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log("JSON import layout: target view='" + View.TechName.ToStringAlways() +
+                                "', mode='" + this.LayoutMode +
+                                "', origin=(" + Origin.X.ToString("0.###", CultureInfo.InvariantCulture) +
+                                "," + Origin.Y.ToString("0.###", CultureInfo.InvariantCulture) +
+                                "), ignoredOutliers=" + this.AutoPlacementIgnoredOutliers[View] +
+                                ", placed=" + (Index + 1).ToString(CultureInfo.InvariantCulture) + ".");
 
             return new Rect(Origin.X + Column * SpacingX, Origin.Y + Row * SpacingY, Width, Height);
         }
@@ -5446,6 +5675,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.Report.CountVisualPlaced();
             if (!this.IsPreview && StringEquals(Phase, "applied"))
                 MarkAffectedView(View, null);
+            if (this.Report.QuietLogging)
+                return;
+
             this.Report.Log(FormatOperationPrefix() + Phase + " visual placement " + Entity +
                             " techName=" + TechName.ToStringAlways() +
                             " view=" + DescribeView(View) +
@@ -5526,9 +5758,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (AutoFit == true || this.AutoFitPlacedConcepts)
             {
                 this.Report.CountAutoFitConcept();
-                this.Report.Log(FormatOperationPrefix() + "planned concept auto-fit techName=" + TechName.ToStringAlways() +
-                                " view=" + DescribeView(View) +
-                                " reason=" + Reason.ToStringAlways() + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "planned concept auto-fit techName=" + TechName.ToStringAlways() +
+                                    " view=" + DescribeView(View) +
+                                    " reason=" + Reason.ToStringAlways() + ".");
             }
             else
                 SkipAutoFitForConcept(TechName, View, "importOptions.autoFitPlacedConcepts=false", true);
@@ -5595,11 +5828,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var View = Symbol.GetDisplayingView();
             var OldWidth = Symbol.BaseWidth;
-            this.Report.Log(FormatOperationPrefix() + "applying concept auto-fit techName=" +
-                            (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
-                            " view=" + DescribeView(View) +
-                            " oldWidth=" + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) +
-                            " reason=" + Reason.ToStringAlways() + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "applying concept auto-fit techName=" +
+                                (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
+                                " view=" + DescribeView(View) +
+                                " oldWidth=" + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) +
+                                " reason=" + Reason.ToStringAlways() + ".");
 
             var Result = ConceptAutoFitService.FitSingleConceptWidth(this.Engine, Symbol, "JSON import " + Reason.ToStringAlways());
             var NewWidth = Symbol.BaseWidth;
@@ -5608,21 +5842,23 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 this.Report.CountAutoFitConcept();
                 MarkAffectedView(View, Symbol);
-                this.Report.Log(FormatOperationPrefix() + "applied concept auto-fit techName=" +
-                                (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
-                                " view=" + DescribeView(View) +
-                                " width " + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) +
-                                " -> " + NewWidth.ToString("0.###", CultureInfo.InvariantCulture) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "applied concept auto-fit techName=" +
+                                    (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
+                                    " view=" + DescribeView(View) +
+                                    " width " + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) +
+                                    " -> " + NewWidth.ToString("0.###", CultureInfo.InvariantCulture) + ".");
                 return true;
             }
 
             if (Result.SymbolsSkipped > 0)
             {
                 this.Report.CountAutoFitConceptSkipped();
-                this.Report.Log(FormatOperationPrefix() + "skipped concept auto-fit techName=" +
-                                (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
-                                " view=" + DescribeView(View) +
-                                " width=" + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "skipped concept auto-fit techName=" +
+                                    (Concept == null ? "<none>" : Concept.TechName.ToStringAlways()) +
+                                    " view=" + DescribeView(View) +
+                                    " width=" + OldWidth.ToString("0.###", CultureInfo.InvariantCulture) + ".");
             }
 
             foreach (var Warning in Result.Warnings)
@@ -5657,9 +5893,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Count)
                 this.Report.CountAutoFitConceptSkipped();
 
-            this.Report.Log(FormatOperationPrefix() + "skipped concept auto-fit techName=" + TechName.ToStringAlways() +
-                            " view=" + DescribeView(View) +
-                            " reason=" + Reason.ToStringAlways() + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "skipped concept auto-fit techName=" + TechName.ToStringAlways() +
+                                " view=" + DescribeView(View) +
+                                " reason=" + Reason.ToStringAlways() + ".");
         }
 
         private bool? GetOperationAutoRoute(CompositionJsonOperation Operation)
@@ -5733,12 +5970,13 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             var AutoRoute = GetOperationAutoRoute(Operation);
-            this.Report.Log(FormatOperationPrefix() + "auto-route check relationship techName=" + RelationshipTechName.ToStringAlways() +
-                            " view=" + DescribeView(View) +
-                            " touchedByImport=" + (TouchedByImport ? "true" : "false") +
-                            " operationAutoRoute=" + (AutoRoute == null ? "<default>" : (AutoRoute.Value ? "true" : "false")) +
-                            " importOptions.autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
-                            " reason=" + Reason.ToStringAlways() + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "auto-route check relationship techName=" + RelationshipTechName.ToStringAlways() +
+                                " view=" + DescribeView(View) +
+                                " touchedByImport=" + (TouchedByImport ? "true" : "false") +
+                                " operationAutoRoute=" + (AutoRoute == null ? "<default>" : (AutoRoute.Value ? "true" : "false")) +
+                                " importOptions.autoRoutePlacedLinks=" + (this.AutoRoutePlacedLinks ? "true" : "false") +
+                                " reason=" + Reason.ToStringAlways() + ".");
 
             if (ShouldDeferAutoRouteByStrategy())
             {
@@ -5775,10 +6013,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     return false;
 
                 this.Report.CountAutoRouteLink();
-                this.Report.Log(FormatOperationPrefix() + "planned link auto-route relationship techName=" +
-                                RelationshipTechName.ToStringAlways() +
-                                " view=" + DescribeView(View) +
-                                " reason=" + Reason.ToStringAlways() + ".");
+                if (!this.Report.QuietLogging)
+                    this.Report.Log(FormatOperationPrefix() + "planned link auto-route relationship techName=" +
+                                    RelationshipTechName.ToStringAlways() +
+                                    " view=" + DescribeView(View) +
+                                    " reason=" + Reason.ToStringAlways() + ".");
                 return true;
             }
 
@@ -5799,10 +6038,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
 
             Representations.Add(Representation);
-            this.Report.Log(FormatOperationPrefix() + "queued link auto-route relationship techName=" +
-                            RelationshipTechName.ToStringAlways() +
-                            " view=" + DescribeView(View) +
-                            " reason=" + Reason.ToStringAlways() + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "queued link auto-route relationship techName=" +
+                                RelationshipTechName.ToStringAlways() +
+                                " view=" + DescribeView(View) +
+                                " reason=" + Reason.ToStringAlways() + ".");
             return true;
         }
 
@@ -6103,9 +6343,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Count)
                 this.Report.CountAutoRouteLinkSkipped();
 
-            this.Report.Log(FormatOperationPrefix() + "skipped link auto-route relationship techName=" + TechName.ToStringAlways() +
-                            " view=" + DescribeView(View) +
-                            " reason=" + Reason.ToStringAlways() + ".");
+            if (!this.Report.QuietLogging)
+                this.Report.Log(FormatOperationPrefix() + "skipped link auto-route relationship techName=" + TechName.ToStringAlways() +
+                                " view=" + DescribeView(View) +
+                                " reason=" + Reason.ToStringAlways() + ".");
         }
 
         private string GetAutoRouteKey(string RelationshipTechName, RelationshipVisualRepresentation Representation, View View)
@@ -6199,6 +6440,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private bool ApplyFormalSet(FormalElement Target, string Name, string TechName, string Summary, string Description, string TechSpec, string VersionAnnotation, string VersionNumber = null)
         {
             var Changed = false;
+            var PreviousTechName = Target == null ? null : Target.TechName;
 
             if (Name != null && Target.Name != Name)
             {
@@ -6229,7 +6471,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     if (!this.IsPreview)
                         Target.Description = StorageDescription;
 
-                    this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") + " description for " + DescribeTarget(Target));
+                    if (!this.Report.QuietLogging)
+                        this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") + " description for " + DescribeTarget(Target));
                     Changed = true;
                 }
             }
@@ -6239,7 +6482,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 if (!this.IsPreview)
                     Target.TechSpec = TechSpec;
 
-                this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") + " techSpec for " + DescribeTarget(Target));
+                if (!this.Report.QuietLogging)
+                    this.Report.Log("JSON import " + (this.IsPreview ? "planned" : "applied") + " techSpec for " + DescribeTarget(Target));
                 Changed = true;
             }
 
@@ -6267,6 +6511,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     }
                 }
             }
+
+            if (!this.IsPreview && !String.Equals(PreviousTechName, Target.TechName, StringComparison.OrdinalIgnoreCase))
+                this.RefreshTechNameIndex(Target, PreviousTechName);
 
             return Changed;
         }
@@ -6385,7 +6632,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (StringEquals(PropertyTechName, FormalElement.__TechName.TechName))
             {
                 if (!this.IsPreview)
+                {
+                    var PreviousTechName = Idea.TechName;
                     Idea.TechName = Value;
+                    this.RefreshTechNameIndex(Idea, PreviousTechName);
+                }
                 return true;
             }
 
@@ -6415,46 +6666,262 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void AssignImportedId(UniqueElement Target, string Id)
         {
-            if (String.IsNullOrEmpty(Id))
+            if (Target == null)
                 return;
+
+            if (String.IsNullOrEmpty(Id))
+            {
+                this.RegisterUniqueElement(Target);
+                return;
+            }
 
             Guid Parsed;
             if (!Guid.TryParse(Id, out Parsed))
             {
                 this.Report.Warn("Imported id '" + Id + "' is not a valid GUID; a new id was assigned.");
+                this.RegisterUniqueElement(Target);
                 return;
             }
 
-            if (KnownUniqueElements().Any(Element => Element != null &&
-                                                     !Object.ReferenceEquals(Element, Target) &&
-                                                     Element.GlobalId == Parsed))
+            UniqueElement Existing;
+            if (this.UniqueElementsById.TryGetValue(Parsed, out Existing) &&
+                !Object.ReferenceEquals(Existing, Target))
             {
                 this.Report.Warn("Imported id '" + Id + "' already exists in the composition; a new id was assigned.");
+                this.RegisterUniqueElement(Target);
                 return;
             }
 
+            this.UnregisterElementId(Target, Target.GlobalId);
+
             Target.GlobalId = Parsed;
+            this.RegisterUniqueElement(Target);
         }
 
-        private IEnumerable<UniqueElement> KnownUniqueElements()
+        private void UnregisterElementId(UniqueElement Target, Guid Id)
         {
-            yield return this.Composition;
+            UniqueElement IndexedElement;
+            if (this.UniqueElementsById.TryGetValue(Id, out IndexedElement) && Object.ReferenceEquals(IndexedElement, Target))
+                this.UniqueElementsById.Remove(Id);
+
+            var Idea = Target as Idea;
+            Idea IndexedIdea;
+            if (Idea != null && this.IdeasById.TryGetValue(Id, out IndexedIdea) && Object.ReferenceEquals(IndexedIdea, Idea))
+                this.IdeasById.Remove(Id);
+
+            var View = Target as View;
+            View IndexedView;
+            if (View != null && this.ViewsById.TryGetValue(Id, out IndexedView) && Object.ReferenceEquals(IndexedView, View))
+                this.ViewsById.Remove(Id);
+
+            var Representation = Target as VisualRepresentation;
+            VisualRepresentation IndexedRepresentation;
+            if (Representation != null && this.VisualRepresentationsById.TryGetValue(Id, out IndexedRepresentation) && Object.ReferenceEquals(IndexedRepresentation, Representation))
+                this.VisualRepresentationsById.Remove(Id);
+        }
+
+        private void InitializeLookupIndexes()
+        {
+            this.RegisterUniqueElement(this.Composition);
 
             foreach (var Idea in this.Composition.DeclaredIdeas)
             {
-                yield return Idea;
+                this.RegisterUniqueElement(Idea);
 
                 var Relationship = Idea as Relationship;
                 if (Relationship != null)
                     foreach (var Link in Relationship.Links)
-                        yield return Link;
+                        this.RegisterUniqueElement(Link);
 
                 foreach (var Representation in Idea.VisualRepresentators)
-                    yield return Representation;
+                    this.RegisterUniqueElement(Representation);
             }
 
+            var ExistingRepresentationsByView = this.Composition.DeclaredIdeas
+                                                        .SelectMany(Idea => Idea.VisualRepresentators)
+                                                        .Where(Item => Item != null && Item.DisplayingView != null)
+                                                        .ToLookup(Item => Item.DisplayingView);
             foreach (var View in this.Composition.GetSubgraphChildren().SelectMany(Idea => Idea.CompositeViews).Distinct())
-                yield return View;
+            {
+                this.RegisterUniqueElement(View);
+                var ExistingVisualObjects = View.ViewChildren
+                                                .Where(Child => Child.Key is VisualObject)
+                                                .Select(Child => (VisualObject)Child.Key)
+                                                .ToList();
+                foreach (var VisualObject in ExistingVisualObjects)
+                    this.RegisterUniqueElement(VisualObject);
+
+                // Headless views can retain semantic visual collections without a presenter-backed
+                // ViewChildren entry. Include those objects too so connector/complement IDs
+                // participate in the same operation-wide occupied-GUID index.
+                foreach (var Complement in View.GetFreeComplements())
+                    this.RegisterUniqueElement(Complement);
+                foreach (var Representation in ExistingRepresentationsByView[View])
+                {
+                    this.RegisterUniqueElement(Representation);
+                    if (Representation.MainSymbol != null)
+                    {
+                        this.RegisterUniqueElement(Representation.MainSymbol);
+                        foreach (var Complement in Representation.MainSymbol.AttachedComplements)
+                            this.RegisterUniqueElement(Complement);
+                    }
+
+                    var RelationshipRepresentation = Representation as RelationshipVisualRepresentation;
+                    if (RelationshipRepresentation != null)
+                        foreach (var Connector in RelationshipRepresentation.VisualConnectors)
+                            this.RegisterUniqueElement(Connector);
+                }
+
+                if (this.NativeRehydration)
+                    this.NativeViewChildKeys[View] = new HashSet<VisualObject>(ExistingVisualObjects);
+            }
+
+            foreach (var Definition in GetAllDefinitions(this.Composition.CompositeContentDomain))
+            {
+                if (!this.DefinitionsById.ContainsKey(Definition.GlobalId))
+                    this.DefinitionsById.Add(Definition.GlobalId, Definition);
+                if (!String.IsNullOrEmpty(Definition.TechName) && !this.DefinitionsByTechName.ContainsKey(Definition.TechName))
+                    this.DefinitionsByTechName.Add(Definition.TechName, Definition);
+                if (!String.IsNullOrEmpty(Definition.Name) && !this.DefinitionsByName.ContainsKey(Definition.Name))
+                    this.DefinitionsByName.Add(Definition.Name, Definition);
+            }
+
+            if (this.Composition.CompositeContentDomain != null && this.Composition.CompositeContentDomain.MarkerDefinitions != null)
+                foreach (var Definition in this.Composition.CompositeContentDomain.MarkerDefinitions)
+                {
+                    // MarkerDefinition is a SimpleElement and therefore has no persistent GUID.
+                    // Preserve the previous list lookup's first-match behavior for duplicate keys.
+                    if (!String.IsNullOrEmpty(Definition.TechName) && !this.MarkerDefinitionsByTechName.ContainsKey(Definition.TechName))
+                        this.MarkerDefinitionsByTechName.Add(Definition.TechName, Definition);
+                    if (!String.IsNullOrEmpty(Definition.Name) && !this.MarkerDefinitionsByName.ContainsKey(Definition.Name))
+                        this.MarkerDefinitionsByName.Add(Definition.Name, Definition);
+                }
+        }
+
+        private void RebuildLookupIndexes()
+        {
+            this.UniqueElementsById.Clear();
+            this.IdeasById.Clear();
+            this.IdeasByTechName.Clear();
+            this.ViewsById.Clear();
+            this.ViewsByTechName.Clear();
+            this.VisualRepresentationsById.Clear();
+            this.VisualRepresentationsByViewAndIdea.Clear();
+            this.DefinitionsById.Clear();
+            this.DefinitionsByTechName.Clear();
+            this.DefinitionsByName.Clear();
+            this.MarkerDefinitionsByTechName.Clear();
+            this.MarkerDefinitionsByName.Clear();
+            this.NativeViewChildKeys.Clear();
+            this.InitializeLookupIndexes();
+        }
+
+        private void RegisterUniqueElement(UniqueElement Target)
+        {
+            if (Target == null)
+                return;
+
+            if (!this.UniqueElementsById.ContainsKey(Target.GlobalId))
+                this.UniqueElementsById.Add(Target.GlobalId, Target);
+
+            var Idea = Target as Idea;
+            if (Idea != null)
+            {
+                if (!this.IdeasById.ContainsKey(Idea.GlobalId))
+                    this.IdeasById.Add(Idea.GlobalId, Idea);
+                if (!String.IsNullOrEmpty(Idea.TechName) && !this.IdeasByTechName.ContainsKey(Idea.TechName))
+                    this.IdeasByTechName.Add(Idea.TechName, Idea);
+            }
+
+            var View = Target as View;
+            if (View != null)
+            {
+                if (!this.ViewsById.ContainsKey(View.GlobalId))
+                    this.ViewsById.Add(View.GlobalId, View);
+                if (!String.IsNullOrEmpty(View.TechName) && !this.ViewsByTechName.ContainsKey(View.TechName))
+                    this.ViewsByTechName.Add(View.TechName, View);
+                if (this.NativeRehydration && !this.NativeViewChildKeys.ContainsKey(View))
+                    this.NativeViewChildKeys.Add(View, new HashSet<VisualObject>());
+            }
+
+            var Representation = Target as VisualRepresentation;
+            if (Representation != null)
+            {
+                if (!this.VisualRepresentationsById.ContainsKey(Representation.GlobalId))
+                    this.VisualRepresentationsById.Add(Representation.GlobalId, Representation);
+
+                if (Representation.DisplayingView != null && Representation.RepresentedIdea != null)
+                {
+                    Dictionary<Guid, VisualRepresentation> ByIdea;
+                    if (!this.VisualRepresentationsByViewAndIdea.TryGetValue(Representation.DisplayingView, out ByIdea))
+                    {
+                        ByIdea = new Dictionary<Guid, VisualRepresentation>();
+                        this.VisualRepresentationsByViewAndIdea.Add(Representation.DisplayingView, ByIdea);
+                    }
+
+                    if (!ByIdea.ContainsKey(Representation.RepresentedIdea.GlobalId))
+                        ByIdea.Add(Representation.RepresentedIdea.GlobalId, Representation);
+                }
+            }
+        }
+
+        private void RefreshTechNameIndex(FormalElement Target, string PreviousTechName)
+        {
+            var Idea = Target as Idea;
+            if (Idea != null)
+            {
+                Idea Indexed;
+                if (!String.IsNullOrEmpty(PreviousTechName) && this.IdeasByTechName.TryGetValue(PreviousTechName, out Indexed) && Object.ReferenceEquals(Indexed, Idea))
+                {
+                    this.IdeasByTechName.Remove(PreviousTechName);
+                    this.RestoreFirstIdeaTechNameMatch(PreviousTechName, Idea);
+                }
+                if (!String.IsNullOrEmpty(Idea.TechName))
+                    this.RestoreFirstIdeaTechNameMatch(Idea.TechName, null, Idea);
+            }
+
+            var View = Target as View;
+            if (View != null)
+            {
+                View Indexed;
+                if (!String.IsNullOrEmpty(PreviousTechName) && this.ViewsByTechName.TryGetValue(PreviousTechName, out Indexed) && Object.ReferenceEquals(Indexed, View))
+                {
+                    this.ViewsByTechName.Remove(PreviousTechName);
+                    this.RestoreFirstViewTechNameMatch(PreviousTechName, View);
+                }
+                if (!String.IsNullOrEmpty(View.TechName))
+                    this.RestoreFirstViewTechNameMatch(View.TechName, null, View);
+            }
+        }
+
+        private void RestoreFirstIdeaTechNameMatch(string TechName, Idea Excluded, Idea Fallback = null)
+        {
+            if (String.IsNullOrEmpty(TechName))
+                return;
+
+            var First = (new Idea[] { this.Composition }).Concat(this.Composition.DeclaredIdeas)
+                            .FirstOrDefault(Candidate => Candidate != null &&
+                                                         !Object.ReferenceEquals(Candidate, Excluded) &&
+                                                         StringEquals(Candidate.TechName, TechName));
+            First = First.NullDefault(Fallback);
+            if (First != null)
+                this.IdeasByTechName[TechName] = First;
+        }
+
+        private void RestoreFirstViewTechNameMatch(string TechName, View Excluded, View Fallback = null)
+        {
+            if (String.IsNullOrEmpty(TechName))
+                return;
+
+            var First = this.Composition.GetSubgraphChildren()
+                            .SelectMany(Idea => Idea.CompositeViews)
+                            .Distinct()
+                            .FirstOrDefault(Candidate => Candidate != null &&
+                                                         !Object.ReferenceEquals(Candidate, Excluded) &&
+                                                         StringEquals(Candidate.TechName, TechName));
+            First = First.NullDefault(Fallback);
+            if (First != null)
+                this.ViewsByTechName[TechName] = First;
         }
 
         private Idea ResolveContainer(string ContainerId, string ContainerTechName, Domain ExpectedDomain)
@@ -6708,38 +7175,62 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private Idea FindIdea(string Id, string TechName)
         {
-            var Ideas = (new Idea[] { this.Composition }).Concat(this.Composition.DeclaredIdeas);
-            var Match = FindById<Idea>(Ideas, Id);
-            if (Match != null)
+            Guid Parsed;
+            Idea Match;
+            if (!String.IsNullOrEmpty(Id) && Guid.TryParse(Id, out Parsed) && this.IdeasById.TryGetValue(Parsed, out Match))
                 return Match;
 
             if (String.IsNullOrEmpty(Id) && !String.IsNullOrEmpty(TechName))
-                return Ideas.FirstOrDefault(Idea => StringEquals(Idea.TechName, TechName));
+            {
+                if (this.IdeasByTechName.TryGetValue(TechName, out Match))
+                {
+                    if (StringEquals(Match.TechName, TechName))
+                        return Match;
+                    this.IdeasByTechName.Remove(TechName);
+                }
+
+                Match = (new Idea[] { this.Composition }).Concat(this.Composition.DeclaredIdeas)
+                            .FirstOrDefault(Idea => StringEquals(Idea.TechName, TechName));
+                if (Match != null && !this.IdeasByTechName.ContainsKey(TechName))
+                    this.IdeasByTechName.Add(TechName, Match);
+                return Match;
+            }
 
             return null;
         }
 
         private View FindView(string Id, string TechName)
         {
-            var Views = this.Composition.GetSubgraphChildren().SelectMany(Idea => Idea.CompositeViews).Distinct();
-            var Match = FindById<View>(Views, Id);
-            if (Match != null)
+            Guid Parsed;
+            View Match;
+            if (!String.IsNullOrEmpty(Id) && Guid.TryParse(Id, out Parsed) && this.ViewsById.TryGetValue(Parsed, out Match))
                 return Match;
 
             if (String.IsNullOrEmpty(Id) && !String.IsNullOrEmpty(TechName))
-                return Views.FirstOrDefault(View => StringEquals(View.TechName, TechName));
+            {
+                if (this.ViewsByTechName.TryGetValue(TechName, out Match))
+                {
+                    if (StringEquals(Match.TechName, TechName))
+                        return Match;
+                    this.ViewsByTechName.Remove(TechName);
+                }
+
+                Match = this.Composition.GetSubgraphChildren().SelectMany(Idea => Idea.CompositeViews).Distinct()
+                            .FirstOrDefault(View => StringEquals(View.TechName, TechName));
+                if (Match != null && !this.ViewsByTechName.ContainsKey(TechName))
+                    this.ViewsByTechName.Add(TechName, Match);
+                return Match;
+            }
 
             return null;
         }
 
         private VisualRepresentation FindVisualRepresentation(View View, string RepresentationId, string IdeaId, string IdeaTechName)
         {
-            var Representations = this.Composition.DeclaredIdeas
-                                      .SelectMany(DeclaredIdea => DeclaredIdea.VisualRepresentators)
-                                      .Where(Representation => Representation.DisplayingView == View);
-
-            var Match = FindById<VisualRepresentation>(Representations, RepresentationId);
-            if (Match != null)
+            VisualRepresentation Match;
+            Guid Parsed;
+            if (!String.IsNullOrEmpty(RepresentationId) && Guid.TryParse(RepresentationId, out Parsed) &&
+                this.VisualRepresentationsById.TryGetValue(Parsed, out Match) && Match.DisplayingView == View)
                 return Match;
 
             if (this.TreatMissingFullStateItemsAsCreates && !String.IsNullOrWhiteSpace(RepresentationId))
@@ -6749,7 +7240,15 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Idea == null)
                 return null;
 
-            return Idea.VisualRepresentators.FirstOrDefault(Representation => Representation.DisplayingView == View);
+            Dictionary<Guid, VisualRepresentation> ByIdea;
+            if (View != null && this.VisualRepresentationsByViewAndIdea.TryGetValue(View, out ByIdea) &&
+                ByIdea.TryGetValue(Idea.GlobalId, out Match) && Match.DisplayingView == View)
+                return Match;
+
+            Match = Idea.VisualRepresentators.FirstOrDefault(Representation => Representation.DisplayingView == View);
+            if (Match != null)
+                this.RegisterUniqueElement(Match);
+            return Match;
         }
 
         private TElement FindById<TElement>(IEnumerable<TElement> Source, string Id)
@@ -6778,10 +7277,28 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private TDefinition FindDefinition<TDefinition>(string Id, string TechName, string Name)
             where TDefinition : IdeaDefinition
         {
-            var Definitions = GetAllDefinitions(this.Composition.CompositeContentDomain).OfType<TDefinition>();
-            var Match = FindById<TDefinition>(Definitions, Id);
-            if (Match != null)
+            Guid Parsed;
+            IdeaDefinition Indexed;
+            TDefinition Match;
+            if (!String.IsNullOrEmpty(Id) && Guid.TryParse(Id, out Parsed) &&
+                this.DefinitionsById.TryGetValue(Parsed, out Indexed) && (Match = Indexed as TDefinition) != null)
                 return Match;
+
+            if (!String.IsNullOrEmpty(TechName) && this.DefinitionsByTechName.TryGetValue(TechName, out Indexed) &&
+                (Match = Indexed as TDefinition) != null && StringEquals(Match.TechName, TechName))
+                return Match;
+
+            if (!String.IsNullOrEmpty(Name) && this.DefinitionsByName.TryGetValue(Name, out Indexed) &&
+                (Match = Indexed as TDefinition) != null && StringEquals(Match.Name, Name))
+                return Match;
+
+            var Definitions = GetAllDefinitions(this.Composition.CompositeContentDomain).OfType<TDefinition>();
+            if (!String.IsNullOrEmpty(Id))
+            {
+                Match = FindById<TDefinition>(Definitions, Id);
+                if (Match != null)
+                    return Match;
+            }
 
             if (!String.IsNullOrEmpty(TechName))
                 return Definitions.FirstOrDefault(Definition => StringEquals(Definition.TechName, TechName));
@@ -6839,16 +7356,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private MarkerDefinition FindMarkerDefinition(string Id, string TechName, string Name)
         {
-            if (this.Composition.CompositeContentDomain == null || this.Composition.CompositeContentDomain.MarkerDefinitions == null)
-                return null;
-
-            var Definitions = this.Composition.CompositeContentDomain.MarkerDefinitions;
-
+            MarkerDefinition Definition;
             if (!String.IsNullOrEmpty(TechName))
-                return Definitions.FirstOrDefault(Definition => StringEquals(Definition.TechName, TechName));
+                return this.MarkerDefinitionsByTechName.TryGetValue(TechName, out Definition) && StringEquals(Definition.TechName, TechName)
+                       ? Definition
+                       : null;
 
             if (!String.IsNullOrEmpty(Name))
-                return Definitions.FirstOrDefault(Definition => StringEquals(Definition.Name, Name));
+                return this.MarkerDefinitionsByName.TryGetValue(Name, out Definition) && StringEquals(Definition.Name, Name)
+                       ? Definition
+                       : null;
 
             return null;
         }

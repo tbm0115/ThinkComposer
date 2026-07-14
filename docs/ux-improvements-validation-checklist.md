@@ -199,13 +199,27 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 ## AI-Readable Container Snapshots
 
 - [ ] Save a `.tcom` and inspect it as a package/zip.
-- [ ] Confirm `/manifest.json`, `/Composition.json`, `/Domain.json`, optional `/Composition.bin`, `/Interchange/Composition.json`, `/Interchange/Domain.json`, `/Interchange/manifest.json`, and one or more `/Previews/views/*.png` entries exist when the composition has renderable views.
-- [ ] Parse `/manifest.json` and confirm `packageKind: composition`, `persistenceFormat: json`, authoritative part metadata, and legacy fallback metadata.
+- [ ] Confirm `/manifest.json`, `/Composition.json`, `/Domain.json`, `/Interchange/Composition.json`, `/Interchange/Domain.json`, `/Interchange/manifest.json`, and one or more `/Previews/views/*.png` entries exist when the composition has renderable views; confirm `/Composition.bin` does not exist.
+- [ ] Parse `/manifest.json` and confirm `packageKind: composition`, `persistenceFormat: json`, authoritative part metadata, and `legacyBinaryFallback.present: false` with no binary URI/hash.
 - [ ] Parse `/Interchange/manifest.json`, `/Interchange/Composition.json`, and `/Interchange/Domain.json` with `ConvertFrom-Json`.
+- [ ] Confirm `/Interchange/manifest.json` uses `formatVersion: 2`, points `nativePartUri` to the authoritative root JSON part, and records `inputSha256`, `renderProfile`, and `disposition` for each preview.
 - [ ] Open the saved `.tcom` normally and confirm load behavior uses root `/Composition.json` without requiring the sidecar JSON or binary fallback.
-- [ ] Save a `.tdom` without a template composition and confirm `/manifest.json`, `/Domain.json`, optional `/Domain.bin`, `/Interchange/Domain.json`, and `/Interchange/manifest.json` exist, with template composition sidecars skipped as a manifest/log warning.
+- [ ] Save a `.tdom` without a template composition and confirm `/manifest.json`, `/Domain.json`, `/Interchange/Domain.json`, and `/Interchange/manifest.json` exist, `/Domain.bin` does not, and template composition sidecars are skipped as a manifest/log warning.
 - [ ] Save a `.tdom` with the template composition option enabled and confirm `/Interchange/TemplateComposition.json` and any safe template view previews are present.
 - [ ] For a large composition, confirm preview generation is capped/skipped safely and save still succeeds with sidecar warnings rather than failing the native save.
+- [ ] Save an unchanged package twice and confirm the second manifest reports `disposition: reused` with byte-identical PNG hashes.
+- [ ] Change one view and save again; confirm only that view or a conservatively dependent view is rerendered.
+- [ ] Corrupt or remove a cached PNG/manifest entry and confirm ThinkComposer rerenders it instead of copying unverified bytes.
+- [ ] Run both JSON persistence validators and confirm their injected required-writer failure preserves the original byte-for-byte while their injected optional-writer failure leaves a readable package with its required payload.
+
+## Large JSON Open Responsiveness and Performance
+
+- [ ] Open large `.tcom` and `.tdom` packages from menu, recent list, startup/command line, and merge paths where applicable.
+- [ ] Confirm the independent splash paints promptly, shows the current stage, animates elapsed time during an indeterminate parse, advances item counts during reconstruction, and has no Cancel button.
+- [ ] Confirm the splash closes exactly once on success, corrupt JSON, legacy fallback, and no-fallback failure, leaving no orphaned splash thread or partially registered workspace document.
+- [ ] Run `thinkcomposer performance prepare-json-persistence-corpus --mode certification` with repository examples, predefined Domains, and at least one sanitized slow package. Confirm every case's whole-package SHA-256 and actual byte length remain locked.
+- [ ] Run a one-warmup/five-iteration pre-optimization baseline with `--allow-legacy-baseline-output` when its JSON-authoritative writer retains the exact matching legacy binary fallback; run the candidate without that flag and with `--baseline`. Confirm corpus mode, per-case hashes/sizes, machine fingerprint, and run counts match; every candidate sample is JSON-only; and both aggregate median load and first-save speedups meet `2.0`.
+- [ ] Capture baseline/candidate WPR traces around the sanitized slow-package run with CPU, file/disk I/O, allocation/.NET activity, and UI/WPF responsiveness enabled; compare the dominant stages in WPA.
 
 ## Documentation and Skill Bundle
 

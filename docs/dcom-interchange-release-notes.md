@@ -82,7 +82,7 @@ The bundled `thinkcomposer-json-interchange` Skill is maintained with the schema
 - Live automatic `.tdom` synchronization is not implemented.
 - Custom domain shape import is not implemented.
 - Rich/binary content is summarized as metadata and warnings unless a JSON field explicitly covers it; binary attachment/image payloads are not reconstructed by JSON persistence.
-- Embedded container JSON/previews are synchronized snapshots only. Modern native packages use root `/Composition.json` and `/Domain.json`; `/Composition.bin` and `/Domain.bin` are retained only as legacy fallback/recovery payloads during the transition.
+- Embedded container JSON/previews are synchronized snapshots only. Modern native packages use root `/Composition.json` and `/Domain.json`; current saves omit `/Composition.bin` and `/Domain.bin`, while older binary-only or transitional packages remain readable until resaved.
 - Embedded previews are PNG v1. SVG/vector previews remain backlog unless a safe WPF Drawing-to-SVG export path is added.
 - General full multi-bend connector routing and full graph crossing minimization remain backlog.
 - Spider, Hierarchy, Flowchart, and System Map are manual Appearance commands; JSON import currently integrates auto-placement, concept auto-fit, and link auto-route only.

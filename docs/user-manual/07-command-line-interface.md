@@ -25,6 +25,7 @@ Use the CLI for:
 - importing Domain JSON through the compatibility merge path
 - updating a composition's embedded domain directly from a native `.tdom`
 - inspecting, converting, and validating JSON-authoritative `.tcom` and `.tdom` packages
+- preparing and benchmarking a reproducible JSON-persistence performance corpus
 - linking packages to Git remotes, pulling linked packages, and pushing linked compositions
 - generating a standard composition report as PDF or XPS
 - generating files from output templates without opening the desktop shell
@@ -87,6 +88,7 @@ thinkcomposer domain --help
 thinkcomposer git --help
 thinkcomposer report --help
 thinkcomposer output --help
+thinkcomposer performance --help
 ```
 
 Quote paths that contain spaces:
@@ -234,7 +236,33 @@ thinkcomposer composition validate-json-persistence --input "Models\ServiceMap.t
 thinkcomposer domain validate-json-persistence --input "Domains\ServiceDesign.tdom" --output-dir "Validation\ServiceDesign"
 ```
 
-The validation commands save a modern package, reopen it through normal load, fail if binary fallback was used, save again, and compare canonical root JSON payloads.
+The validation commands save a modern package, reopen it through normal load, fail if binary fallback was used, save again, compare canonical root JSON payloads, and verify that the result is binary-free. New saves omit `/Composition.bin` and `/Domain.bin`; opening and resaving an older binary-backed package is its migration to JSON-only persistence.
+
+## JSON Persistence Performance
+
+The performance commands are developer diagnostics for reproducible load/save measurement. Development mode is the default and permits a repository-only corpus. Certification mode requires at least one sanitized slow package, tags it for the splash gate, and combines it with the repository examples, predefined Domains, and deterministic large synthetic cases:
+
+```cmd
+thinkcomposer performance prepare-json-persistence-corpus --source-root "C:\src\ThinkComposer" --output-dir "C:\bench\tc-corpus" --mode certification --real-package "C:\bench\sanitized-slow.tcom"
+```
+
+Run one warmup and five measured iterations:
+
+```cmd
+thinkcomposer performance benchmark-json-persistence --corpus "C:\bench\tc-corpus\corpus.json" --output "C:\bench\baseline.json" --warmup 1 --iterations 5 --allow-legacy-baseline-output
+```
+
+To enforce the standard target, compare a candidate on the same machine and unchanged corpus:
+
+```cmd
+thinkcomposer performance benchmark-json-persistence --corpus "C:\bench\tc-corpus\corpus.json" --output "C:\bench\candidate.json" --warmup 1 --iterations 5 --baseline "C:\bench\baseline.json" --minimum-speedup 2.0
+```
+
+Each sample runs in a fresh process. The report records authoritative-payload and whole-package SHA-256 hashes, exact byte lengths, machine details, raw stage timings, per-case and aggregate median/p95 load, first-save and steady-save measurements, per-sample output validation, plus splash first-paint, heartbeat-gap, and clean-shutdown telemetry. Corpus validation rejects any package whose full hash or actual byte length changed after preparation. Use `--allow-legacy-baseline-output` only for a pre-optimization baseline whose JSON-authoritative save still retains the matching legacy binary fallback. Baseline workers do not require the candidate-only v2 preview-reuse contract; candidate workers do, and every measured candidate package is inspected for strict JSON-only output. JSON/hash parity is still required, binary-only or unrelated binary output is rejected, and the option cannot be combined with `--baseline`.
+
+A `2.0` gate requires both aggregate median load and first-save time to be no more than half of the baseline. Certification corpora apply the splash gate to every tagged sanitized slow package; development corpora apply it to all cases. Each selected splash must paint within 250 ms, keep heartbeat gaps within 500 ms, and stop its dispatcher cleanly. Use `--skip-splash-responsiveness-gate` only when a constrained CI/headless environment cannot host the splash; telemetry then remains diagnostic.
+
+For final certification, capture separate baseline and candidate Windows Performance Recorder traces around the sanitized-package benchmark with CPU, file/disk I/O, allocation/.NET activity, and UI/WPF responsiveness enabled, then inspect them in Windows Performance Analyzer. Keep sanitized customer packages and trace files outside version control.
 
 ## Git Sync
 

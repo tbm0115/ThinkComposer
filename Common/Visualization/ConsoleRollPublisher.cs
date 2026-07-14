@@ -41,6 +41,14 @@ namespace Instrumind.Common.Visualization
         private int CurrentIndex = -1;
         private bool LastCompletedLineWasWhitespaceOnly = false;
 
+        private readonly object PendingWritesLock = new object();
+        private readonly Queue<PendingWrite> PendingWrites = new Queue<PendingWrite>();
+        private readonly DispatcherTimer PendingWritesDrainTimer;
+        private bool PendingClear = false;
+        private bool PendingWritesDrainActive = false;
+
+        private static readonly TimeSpan PendingWritesDrainInterval = TimeSpan.FromMilliseconds(100);
+
         /// <summary>
         /// Default maximum lines for console output.
         /// </summary>
@@ -65,85 +73,179 @@ namespace Instrumind.Common.Visualization
             General.ContractRequiresNotNull(TargetPresenter);
 
             this.TargetPresenter = TargetPresenter;
-            this.MaxLines = MaxLines;
+            this.MaxLines = Math.Min(MAX_CONSOLE_OUTPUT_LINES, Math.Max(1, MaxLines));
 
             this.TargetPresenter.Items.Clear();
             this.TargetPresenter.ItemsSource = TextRollList;
+
+            this.PendingWritesDrainTimer = new DispatcherTimer(DispatcherPriority.Background,
+                                                               this.TargetPresenter.Dispatcher);
+            this.PendingWritesDrainTimer.Interval = PendingWritesDrainInterval;
+            this.PendingWritesDrainTimer.Tick += this.PendingWritesDrainTimer_Tick;
         }
 
         public void Clear()
         {
-            this.TextRollList.Clear();
-            this.CurrentLine = null;
-            this.CurrentIndex = -1;
+            bool ActivateDrain;
+
+            lock (this.PendingWritesLock)
+            {
+                this.PendingWrites.Clear();
+                this.PendingClear = true;
+                ActivateDrain = !this.PendingWritesDrainActive;
+                this.PendingWritesDrainActive = true;
+            }
+
+            if (ActivateDrain)
+                this.ActivatePendingWritesDrain();
         }
 
         protected override void ApplyWrite(string Value, bool AddNewLine = false)
         {
+            bool ActivateDrain;
+
+            lock (this.PendingWritesLock)
+            {
+                var PendingCapacity = Math.Max(1, this.MaxLines);
+
+                // Console output is intentionally lossy once it exceeds the visible roll.  Keeping the
+                // newest writes prevents a verbose import from growing memory without bound while the
+                // UI dispatcher is busy materializing a document.
+                while (this.PendingWrites.Count >= PendingCapacity)
+                    this.PendingWrites.Dequeue();
+
+                this.PendingWrites.Enqueue(new PendingWrite(Value, AddNewLine));
+                ActivateDrain = !this.PendingWritesDrainActive;
+                this.PendingWritesDrainActive = true;
+            }
+
+            if (ActivateDrain)
+                this.ActivatePendingWritesDrain();
+        }
+
+        private void ActivatePendingWritesDrain()
+        {
             try
             {
-                if (Thread.CurrentThread != TargetPresenter.Dispatcher.Thread)
-                {
-                    // IMPORTANT: This solve the exception thrown after editing an Attachment and calling Console.WriteX(). See FilesWatcher_Changed().
-                    // Exception message: "This type of CollectionView does not support changes to its SourceCollection from a thread different from the Dispatcher thread."
-                    TargetPresenter.Dispatcher.BeginInvoke(new Action(() => ApplyWrite(Value, AddNewLine)), DispatcherPriority.Background);
+                if (this.TargetPresenter.Dispatcher.HasShutdownStarted ||
+                    this.TargetPresenter.Dispatcher.HasShutdownFinished)
                     return;
-                }
 
-                if (this.CurrentLine == null && AddNewLine && String.IsNullOrWhiteSpace(Value))
+                this.TargetPresenter.Dispatcher.BeginInvoke(
+                    new Action(() =>
+                    {
+                        if (!this.PendingWritesDrainTimer.IsEnabled)
+                            this.PendingWritesDrainTimer.Start();
+                    }), DispatcherPriority.Background);
+            }
+            catch
+            {
+                lock (this.PendingWritesLock)
+                    this.PendingWritesDrainActive = false;
+            }
+        }
+
+        private void PendingWritesDrainTimer_Tick(object Sender, EventArgs Args)
+        {
+            PendingWrite[] Writes;
+            bool ClearRequested;
+
+            lock (this.PendingWritesLock)
+            {
+                Writes = this.PendingWrites.ToArray();
+                this.PendingWrites.Clear();
+                ClearRequested = this.PendingClear;
+                this.PendingClear = false;
+
+                if (this.PendingWrites.Count < 1 && !this.PendingClear)
                 {
-                    if (this.LastCompletedLineWasWhitespaceOnly)
-                        return;
-
-                    Value = String.Empty;
+                    this.PendingWritesDrainActive = false;
+                    this.PendingWritesDrainTimer.Stop();
                 }
+            }
 
-                if (this.CurrentLine == null)
-                {
-                    /* Needed only for Server type software
-                    var FormattedDateTime = DateTime.Now.AsCommonDateTime(false, true);
-                    Value = FormattedDateTime + ". " + Value; */
-                    this.CurrentLine = new TextLine(Value);
-                    this.AppendLine();
-                }
-                else
-                {
-                    this.CurrentLine.Extend(Value);
+            try
+            {
+                if (ClearRequested)
+                    this.ClearOnDispatcher();
 
-                    // Enforces the update and show of the collection item.
-                    this.TextRollList[CurrentIndex] = DummyTextLine;
-                    this.TextRollList[CurrentIndex] = this.CurrentLine;
-                }
+                foreach (var Write in Writes)
+                    this.ApplyWriteOnDispatcher(Write.Value, Write.AddNewLine);
 
-                if (AddNewLine)
-                {
-                    this.LastCompletedLineWasWhitespaceOnly = String.IsNullOrWhiteSpace(this.CurrentLine.ToString());
-                    this.CurrentLine = null;
-                }
+                // Scrolling once per drained batch avoids repeated measure/layout work for verbose
+                // persistence diagnostics.
+                if (this.TextRollList.Count > 0)
+                    this.TargetPresenter.ScrollIntoView(this.TextRollList[this.TextRollList.Count - 1]);
             }
             catch (Exception Problem)
             {
                 AppExec.LogException(Problem, "ConsoleRollPublisher");
             }
         }
+
+        private void ClearOnDispatcher()
+        {
+            this.TextRollList.Clear();
+            this.CurrentLine = null;
+            this.CurrentIndex = -1;
+            this.LastCompletedLineWasWhitespaceOnly = false;
+        }
+
+        private void ApplyWriteOnDispatcher(string Value, bool AddNewLine)
+        {
+            if (this.CurrentLine == null && AddNewLine && String.IsNullOrWhiteSpace(Value))
+            {
+                if (this.LastCompletedLineWasWhitespaceOnly)
+                    return;
+
+                Value = String.Empty;
+            }
+
+            if (this.CurrentLine == null)
+            {
+                /* Needed only for Server type software
+                var FormattedDateTime = DateTime.Now.AsCommonDateTime(false, true);
+                Value = FormattedDateTime + ". " + Value; */
+                this.CurrentLine = new TextLine(Value);
+                this.AppendLine();
+            }
+            else
+            {
+                this.CurrentLine.Extend(Value);
+
+                // Enforces the update and show of the collection item.
+                this.TextRollList[CurrentIndex] = DummyTextLine;
+                this.TextRollList[CurrentIndex] = this.CurrentLine;
+            }
+
+            if (AddNewLine)
+            {
+                this.LastCompletedLineWasWhitespaceOnly = String.IsNullOrWhiteSpace(this.CurrentLine.ToString());
+                this.CurrentLine = null;
+            }
+        }
         private static TextLine DummyTextLine = new TextLine();
 
         private void AppendLine()
         {
-            // Append new line at the end, if still the limit is not reached.
-            if (this.CurrentIndex < this.MaxLines - 1)
-            {
-                this.CurrentIndex++;
-                this.TextRollList.Add(this.CurrentLine);
-                this.TargetPresenter.ScrollIntoView(this.CurrentLine);
-                return;
-            }
-            
-            // Move all lines up but the first, and updates the last.
-            for (int IndLine = 0; IndLine < this.MaxLines - 1; IndLine++)
-                this.TextRollList[IndLine] = this.TextRollList[IndLine + 1];
+            var VisibleCapacity = Math.Max(1, this.MaxLines);
+            if (this.TextRollList.Count >= VisibleCapacity)
+                this.TextRollList.RemoveAt(0);
 
-            this.TextRollList[this.CurrentIndex] = this.CurrentLine;
+            this.TextRollList.Add(this.CurrentLine);
+            this.CurrentIndex = this.TextRollList.Count - 1;
+        }
+
+        private sealed class PendingWrite
+        {
+            public PendingWrite(string Value, bool AddNewLine)
+            {
+                this.Value = Value;
+                this.AddNewLine = AddNewLine;
+            }
+
+            public string Value { get; private set; }
+            public bool AddNewLine { get; private set; }
         }
 
         /// <summary>

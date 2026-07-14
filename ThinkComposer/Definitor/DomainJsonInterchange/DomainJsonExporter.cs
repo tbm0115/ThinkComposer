@@ -32,12 +32,20 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (Domain == null)
                 throw new ArgumentNullException("Domain");
 
+            return Export(Domain, DomainJsonCompatibility.ComputeSignature(Domain));
+        }
+
+        internal static DomainJsonDocument Export(Domain Domain, string CompatibilitySignature)
+        {
+            if (Domain == null)
+                throw new ArgumentNullException("Domain");
+
             var Warnings = new List<string>();
             var WarningCollector = new DomainJsonExportWarningCollector();
             var Document = new DomainJsonDocument();
             Document.ExportedAtUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
             Document.Domain = ExportDomain(Domain);
-            Document.Domain.CompatibilitySignature = DomainJsonCompatibility.ComputeSignature(Domain);
+            Document.Domain.CompatibilitySignature = CompatibilitySignature;
 
             Document.ExternalLanguages = Existing(Domain.ExternalLanguages).OrderBy(Item => StableKey(Item)).Select(ExportExternalLanguage).ToList();
             Document.LinkRoleVariants = Existing(Domain.LinkRoleVariants).OrderBy(Item => StableKey(Item)).Select(Item => ExportSimple(Item, "linkRoleVariant")).ToList();

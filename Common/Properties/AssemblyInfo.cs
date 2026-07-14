@@ -35,5 +35,6 @@ using System.Windows;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.*")]
+[assembly: InternalsVisibleTo("Instrumind.ThinkComposer")]
 // MUST BE REMOVED TO AUTO-INCREMENT ASSEMBLY VERSION NUMBER
 // [assembly: AssemblyFileVersion("1.0.0.0")]

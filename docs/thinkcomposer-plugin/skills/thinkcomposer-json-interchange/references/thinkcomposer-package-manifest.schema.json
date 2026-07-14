@@ -129,6 +129,7 @@
     },
     "legacyBinaryFallback": {
       "type": "object",
+      "description": "Legacy recovery metadata. Current saves emit only { present: false }; true is accepted when inspecting an older transitional package.",
       "required": [
         "present"
       ],
@@ -143,7 +144,33 @@
         "sha256": {
           "$ref": "#/$defs/sha256"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "present": {
+                "const": true
+              }
+            },
+            "required": [
+              "present"
+            ]
+          },
+          "then": {
+            "required": [
+              "partUri",
+              "sha256"
+            ]
+          },
+          "else": {
+            "properties": {
+              "partUri": false,
+              "sha256": false
+            }
+          }
+        }
+      ]
     },
     "source": {
       "type": "object",

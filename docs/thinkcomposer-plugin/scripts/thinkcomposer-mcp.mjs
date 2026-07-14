@@ -352,6 +352,8 @@ async function summarizeContainer(file, options = {}) {
     source: manifest.source || null,
     nativePartUri: manifest.nativePartUri || null,
     nativePartSha256: manifest.nativePartSha256 || null,
+    snapshotManifestFormat: sidecarManifest?.format || (manifest.format === "ThinkComposer.ContainerSnapshot" ? manifest.format : null),
+    snapshotManifestFormatVersion: sidecarManifest?.formatVersion ?? (manifest.format === "ThinkComposer.ContainerSnapshot" ? manifest.formatVersion : null),
     legacyBinaryFallback: manifest.legacyBinaryFallback || null,
     sidecars: manifest.sidecars || null,
     counts: {
@@ -422,9 +424,15 @@ async function validateContainerFile(file) {
     } else {
       errors.push("Package manifest packageKind must be composition or domain.");
     }
+    if (summary.snapshotManifestFormat && summary.snapshotManifestFormat !== "ThinkComposer.ContainerSnapshot") {
+      errors.push("Sidecar manifest format must be ThinkComposer.ContainerSnapshot.");
+    }
+    if (summary.snapshotManifestFormatVersion != null && ![1, 2].includes(summary.snapshotManifestFormatVersion)) {
+      errors.push("Sidecar manifest formatVersion must be 1 or 2.");
+    }
   } else if (summary.format === "ThinkComposer.ContainerSnapshot") {
-    if (summary.formatVersion !== 1) {
-      errors.push("Container manifest formatVersion must be 1.");
+    if (![1, 2].includes(summary.formatVersion)) {
+      errors.push("Container manifest formatVersion must be 1 or 2.");
     }
     if (!summary.embedded.composition) {
       errors.push("Container is missing embedded composition JSON.");
@@ -453,9 +461,32 @@ async function validateContainerFile(file) {
     warnings.push("Container has no renderable preview screenshots.");
   }
   const entryNames = new Set((summary.entries || []).map((entry) => entry.name));
+  const snapshotVersion = summary.snapshotManifestFormatVersion ??
+    (summary.format === "ThinkComposer.ContainerSnapshot" ? summary.formatVersion : null);
+  if (snapshotVersion === 1) {
+    warnings.push("Container snapshot manifest v1 has no verified preview cache metadata; current saves regenerate it as v2.");
+  }
   for (const preview of summary.previews) {
     if (!preview.skipped && preview.partUri && !entryNames.has(normalizePartUri(preview.partUri))) {
       errors.push(`Preview part is listed but missing: ${preview.partUri}`);
+    }
+    if (snapshotVersion === 2) {
+      if (!/^[0-9a-f]{64}$/i.test(preview.inputSha256 || "")) {
+        errors.push(`Preview inputSha256 is missing or invalid for view ${preview.viewId || preview.viewTechName || "<unknown>"}.`);
+      }
+      if (typeof preview.renderProfile !== "string" || preview.renderProfile.length === 0) {
+        errors.push(`Preview renderProfile is missing for view ${preview.viewId || preview.viewTechName || "<unknown>"}.`);
+      }
+      if (preview.disposition != null && !["rendered", "reused", "empty"].includes(preview.disposition)) {
+        errors.push(`Preview disposition is invalid for view ${preview.viewId || preview.viewTechName || "<unknown>"}.`);
+      }
+      if (["rendered", "reused"].includes(preview.disposition)) {
+        if (preview.skipped || !preview.partUri || !/^[0-9a-f]{64}$/i.test(preview.sha256 || "") || !Number.isInteger(preview.bytes)) {
+          errors.push(`Rendered/reused preview metadata is incomplete for view ${preview.viewId || preview.viewTechName || "<unknown>"}.`);
+        }
+      } else if (preview.disposition === "empty" && !preview.skipped) {
+        errors.push(`Empty preview must be marked skipped for view ${preview.viewId || preview.viewTechName || "<unknown>"}.`);
+      }
     }
   }
 
@@ -499,8 +530,10 @@ async function extractContainerArtifacts(args) {
     }
   }
 
-  if (includePreviews && Array.isArray(manifest.previews)) {
-    for (const preview of manifest.previews) {
+  if (includePreviews) {
+    const sidecarManifest = manifest.format === "ThinkComposer.Package" ? tryReadJsonZipPart(zip, "Interchange/manifest.json") : null;
+    const previews = Array.isArray(manifest.previews) ? manifest.previews : Array.isArray(sidecarManifest?.previews) ? sidecarManifest.previews : [];
+    for (const preview of previews) {
       if (preview.skipped || !preview.partUri) continue;
       if (args.viewTechName && preview.viewTechName !== args.viewTechName) continue;
       const partName = normalizePartUri(preview.partUri);

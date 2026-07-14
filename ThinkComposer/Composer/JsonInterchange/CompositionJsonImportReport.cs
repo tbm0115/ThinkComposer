@@ -29,6 +29,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         public bool IsPreview { get; set; }
 
+        /// <summary>
+        /// Suppresses high-volume informational logging for native package rehydration.
+        /// Warnings/skips are still retained in their report collections and a bounded
+        /// sample is written to the application log; errors are always written.
+        /// </summary>
+        public bool QuietLogging { get; set; }
+
+        private int QuietDiagnosticsWritten { get; set; }
+        private const int MaximumQuietDiagnostics = 8;
+
         public int PlannedUpdated { get; set; }
         public int PlannedCreated { get; set; }
         public int PlannedConceptsCreated { get; set; }
@@ -160,8 +170,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (String.IsNullOrEmpty(message))
                 return;
 
-            this.InfoLogLines.Add(message);
-            Console.WriteLine(message);
+            if (!this.QuietLogging)
+            {
+                this.InfoLogLines.Add(message);
+                Console.WriteLine(message);
+            }
         }
 
         public void Warn(string warning)
@@ -177,6 +190,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.SourceWarnings.Add(warning);
             this.Warnings.Add(warning);
             this.Log("JSON import source warning: " + warning);
+            this.WriteQuietDiagnostic("JSON import source warning: " + warning);
         }
 
         public void ImportWarning(string warning)
@@ -187,6 +201,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.ImportWarnings.Add(warning);
             this.Warnings.Add(warning);
             this.Log("JSON import warning: " + warning);
+            this.WriteQuietDiagnostic("JSON import warning: " + warning);
         }
 
         public void Note(string message)
@@ -206,6 +221,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             this.SkippedMessages.Add(message);
             this.Warnings.Add(message);
             this.Log("JSON import skipped: " + message);
+            this.WriteQuietDiagnostic("JSON import skipped: " + message);
         }
 
         public void Error(string error)
@@ -215,6 +231,19 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             this.Errors.Add(error);
             this.Log("JSON import error: " + error);
+            if (this.QuietLogging)
+                Console.WriteLine("JSON import error: " + error);
+        }
+
+        private void WriteQuietDiagnostic(string message)
+        {
+            if (!this.QuietLogging || this.QuietDiagnosticsWritten >= MaximumQuietDiagnostics)
+                return;
+
+            Console.WriteLine(message);
+            this.QuietDiagnosticsWritten++;
+            if (this.QuietDiagnosticsWritten == MaximumQuietDiagnostics)
+                Console.WriteLine("JSON persistence rehydration: further warnings/skips are retained in the summary but omitted from the live log.");
         }
 
         public void CountUpdated()

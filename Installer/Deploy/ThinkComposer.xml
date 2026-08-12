@@ -85,21 +85,20 @@
   <Issues>0</Issues>
   <Program_Info>
     <Program_Name>ThinkComposer</Program_Name>
-    <Program_Version>2.0.000000</Program_Version>
-    <Program_Release_Month>07</Program_Release_Month>
-    <Program_Release_Day>14</Program_Release_Day>
+    <Program_Version>2.1.000000</Program_Version>
+    <Program_Release_Month>08</Program_Release_Month>
+    <Program_Release_Day>12</Program_Release_Day>
     <Program_Release_Year>2026</Program_Release_Year>
     <Program_Cost_Dollars>0</Program_Cost_Dollars>
     <Program_Type>Freeware</Program_Type>
-    <Program_Release_Status>Major Update</Program_Release_Status>
+    <Program_Release_Status>Minor Update</Program_Release_Status>
     <Program_Install_Support>Install and Uninstall</Program_Install_Support>
     <Program_OS_Support>WinXP,WinVista,WinVista x64,Win7 x32,Win7 x64</Program_OS_Support>
     <Program_Language>English</Program_Language>
-    <Program_Change_Info>Version 2.0.000;
-- Changed: JSON is now the authoritative native persistence architecture for new Composition and Domain saves.
-- New: Responsive, thread-safe loading progress for Composition and Domain packages.
-- Improved: Indexed JSON materialization, transactional package writes, and selective preview reuse.
-- New: Fresh-process JSON persistence performance corpus and benchmark commands.</Program_Change_Info>
+    <Program_Change_Info>Version 2.1.000;
+- New: Deterministic multi-point Relationship routing and route editing across automatic layouts.
+- Fixed: Concept and Relationship Definition Details, including Table Details, persist across save and reopen.
+- Improved: Safe JSON patch workflows, route-health validation, schemas, and plugin guidance.</Program_Change_Info>
     <Program_System_Requirements>2GB of RAM, 2.2 GHz of speed, 500MB of Disk, 1024x768 Screen, .NET Framework 4.0 (full) preinstalled</Program_System_Requirements>
     <Program_Category_Class>Graphic Apps::Other</Program_Category_Class>
     <File_Info>

@@ -50,7 +50,6 @@ using System.Windows;
 //      Build Number
 //      Revision
 //
-// ThinkComposer 2.0 establishes a new architectural compatibility boundary for
-// JSON-authoritative persistence and responsive loading.
-[assembly: AssemblyVersion("2.0.0.0")]
-[assembly: AssemblyFileVersion("2.0.0.0")]
+// ThinkComposer 2.x is the JSON-authoritative compatibility generation.
+[assembly: AssemblyVersion("2.1.0.0")]
+[assembly: AssemblyFileVersion("2.1.0.0")]

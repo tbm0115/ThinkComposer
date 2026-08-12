@@ -1,4 +1,9 @@
-﻿# 2.0.000
+﻿# 2.1.000
+- New: Deterministic multi-point Relationship routing and route editing across automatic layouts.
+- Fixed: Concept and Relationship Definition Details, including Table Details, persist across save and reopen.
+- Improved: Safe JSON patch workflows, route-health validation, schemas, and plugin guidance.
+
+# 2.0.000
 - Changed: JSON is now the authoritative native persistence architecture for new Composition and Domain saves.
 - New: Responsive, thread-safe loading progress for Composition and Domain packages.
 - Improved: Indexed JSON materialization, transactional package writes, and selective preview reuse.

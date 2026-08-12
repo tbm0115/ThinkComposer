@@ -72,7 +72,7 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
         /// (Forces at least one minor-revision increment per year)
         /// </summary>
         // FIRST NUMBER SEGMENT USED TO VALIDATE LICENSE (Do not prefix with letter).
-        public const string APPLICATION_VERSION = "2.0.000";
+        public const string APPLICATION_VERSION = "2.1.000";
         public const string APPLICATION_PRODUCT_ID = "{FDB01C2C-23A9-49BB-9033-5F22F975984F}"; // "{D7FD5CA0-38FE-41D8-B765-ECD3820FAD7E}"; // "{D280D13F-58EC-4A78-8358-908520DEE0B6}";
 
         /// <summary>

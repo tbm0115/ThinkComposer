@@ -18,7 +18,7 @@ Use Windows application management or the installed uninstaller to remove the pr
 
 ### Version Update
 
-The release notes in this repository identify the current maintained fork build as `2.0.000`. This major version marks the JSON-authoritative persistence architecture and responsive Composition/Domain loading pipeline. Older manuals may still show document version `1.5.13.1127`; this Markdown manual is the maintained source intended to replace that static PDF.
+The release notes in this repository identify the current maintained fork build as `2.1.000`. The 2.x generation uses JSON-authoritative persistence; this minor release adds deterministic multi-point Relationship routing and reliable Definition Detail persistence. Older manuals may still show document version `1.5.13.1127`; this Markdown manual is the maintained source intended to replace that static PDF.
 
 Before updating a production installation, save or copy important `.tcom` and `.tdom` files.
 

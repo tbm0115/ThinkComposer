@@ -1,4 +1,4 @@
-﻿Instrumind ThinkComposer v2.0.000
+﻿Instrumind ThinkComposer v2.1.000
 ==================================
 
 Copyright (C) 2011-2016 Néstor Marcel Sánchez Ahumada
@@ -35,6 +35,11 @@ KNOWN ISSUES: Installer is alerted as untrusted software by web Browsers and Win
 
 VERSIONS HISTORY:
 *****************
+Version 2.1.000;
+- New: Deterministic multi-point Relationship routing and route editing across automatic layouts.
+- Fixed: Concept and Relationship Definition Details, including Table Details, persist across save and reopen.
+- Improved: Safe JSON patch workflows, route-health validation, schemas, and plugin guidance.
+
 Version 2.0.000;
 - Changed: JSON is now the authoritative native persistence architecture for new Composition and Domain saves.
 - New: Responsive, thread-safe loading progress for Composition and Domain packages.

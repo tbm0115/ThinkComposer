@@ -4,7 +4,7 @@ This manual is the maintained Markdown source for the ThinkComposer user documen
 
 This source set is maintained for the `tbm0115/ThinkComposer` fork. See [Fork Maintenance](../../FORK.md) for attribution, support scope, and release policy.
 
-The original source PDF is `Installer/InstrumindThinkComposer_Manual.pdf`, document version `1.5.13.1127`, created in November 2013. The current repository release is `2.0.000`, reflecting the JSON-authoritative persistence architecture and responsive package-processing pipeline. This manual keeps the original product model and application guide while integrating JSON interchange, Domain JSON, layout, output-generation, Git synchronization, command-line, and large-file persistence workflows.
+The original source PDF is `Installer/InstrumindThinkComposer_Manual.pdf`, document version `1.5.13.1127`, created in November 2013. The current repository release is `2.1.000`, adding deterministic multi-point Relationship routing and lossless Definition Detail persistence to the JSON-authoritative architecture. This manual keeps the original product model and application guide while integrating JSON interchange, Domain JSON, layout, output-generation, Git synchronization, command-line, and large-file persistence workflows.
 
 ## Manual Map
 

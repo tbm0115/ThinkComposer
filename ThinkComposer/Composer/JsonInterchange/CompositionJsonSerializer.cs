@@ -74,8 +74,54 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Document.Format != CompositionJsonDocument.CurrentFormat)
                 throw new InvalidDataException("Unsupported JSON format. Expected '" + CompositionJsonDocument.CurrentFormat + "'.");
 
-            if (Document.FormatVersion != CompositionJsonDocument.CurrentFormatVersion)
-                throw new InvalidDataException("Unsupported JSON formatVersion. Expected " + CompositionJsonDocument.CurrentFormatVersion + ".");
+            if (Document.FormatVersion < CompositionJsonDocument.MinimumSupportedFormatVersion ||
+                Document.FormatVersion > CompositionJsonDocument.CurrentFormatVersion)
+                throw new InvalidDataException("Unsupported JSON formatVersion " +
+                                               Document.FormatVersion.ToString(CultureInfo.InvariantCulture) +
+                                               ". Supported versions are " +
+                                               CompositionJsonDocument.MinimumSupportedFormatVersion.ToString(CultureInfo.InvariantCulture) +
+                                               " through " +
+                                               CompositionJsonDocument.CurrentFormatVersion.ToString(CultureInfo.InvariantCulture) + ".");
+
+            ValidateConnectorRoutes(Document);
+        }
+
+        private static void ValidateConnectorRoutes(CompositionJsonDocument Document)
+        {
+            if (Document == null || Document.Views == null)
+                return;
+
+            foreach (var View in Document.Views.Where(Item => Item != null))
+                foreach (var Visual in (View.Visuals ?? new List<CompositionJsonVisual>()).Where(Item => Item != null))
+                    foreach (var Connector in (Visual.Connectors ?? new List<CompositionJsonConnector>()).Where(Item => Item != null))
+                    {
+                        if (Document.FormatVersion < 2 && Connector.RoutePointsSpecified)
+                            throw new InvalidDataException("Connector routePoints requires Composition JSON formatVersion 2. " +
+                                                           "Version 1 readers cannot preserve multi-point geometry.");
+
+                        if (!Connector.RoutePointsSpecified && Connector.RoutePoints == null)
+                            continue;
+
+                        if (Connector.RoutePoints == null)
+                            throw new InvalidDataException("Connector routePoints must be an array when present.");
+
+                        if (Connector.RoutePoints.Count > CompositionJsonConnector.MaximumRoutePoints)
+                            throw new InvalidDataException("Connector routePoints contains " +
+                                                           Connector.RoutePoints.Count.ToString(CultureInfo.InvariantCulture) +
+                                                           " points; the maximum is " +
+                                                           CompositionJsonConnector.MaximumRoutePoints.ToString(CultureInfo.InvariantCulture) + ".");
+
+                        for (var Index = 0; Index < Connector.RoutePoints.Count; Index++)
+                        {
+                            var Point = Connector.RoutePoints[Index];
+                            if (Point == null || Point.X == null || Point.Y == null ||
+                                Double.IsNaN(Point.X.Value) || Double.IsInfinity(Point.X.Value) ||
+                                Double.IsNaN(Point.Y.Value) || Double.IsInfinity(Point.Y.Value))
+                                throw new InvalidDataException("Connector routePoints[" +
+                                                               Index.ToString(CultureInfo.InvariantCulture) +
+                                                               "] must contain finite x and y coordinates.");
+                        }
+                    }
         }
 
         private static object ToGraph(CompositionJsonDocument Document)
@@ -449,7 +495,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "originEdgePosition", ToGraph(Connector.OriginEdgePosition));
             AddIf(Obj, "targetPosition", ToGraph(Connector.TargetPosition));
             AddIf(Obj, "targetEdgePosition", ToGraph(Connector.TargetEdgePosition));
-            AddIf(Obj, "intermediatePosition", ToGraph(Connector.IntermediatePosition));
+            if (Connector.RoutePointsSpecified || Connector.RoutePoints != null)
+                Add(Obj, "routePoints", ToList(Connector.RoutePoints, ToGraph));
+
+            if (Connector.IntermediatePositionSpecified ||
+                (Connector.RoutePoints == null && Connector.IntermediatePosition != null))
+                AddIf(Obj, "intermediatePosition", ToGraph(Connector.IntermediatePosition));
             return Obj;
         }
 
@@ -903,7 +954,35 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.OriginEdgePosition = ReadPoint(GetDictionary(Source, "originEdgePosition"));
             Result.TargetPosition = ReadPoint(GetDictionary(Source, "targetPosition"));
             Result.TargetEdgePosition = ReadPoint(GetDictionary(Source, "targetEdgePosition"));
+            Result.RoutePointsSpecified = Source != null && Source.ContainsKey("routePoints");
+            Result.RoutePoints = Result.RoutePointsSpecified ? ReadRequiredPointList(Source, "routePoints") : null;
+            Result.IntermediatePositionSpecified = Source != null && Source.ContainsKey("intermediatePosition");
             Result.IntermediatePosition = ReadPoint(GetDictionary(Source, "intermediatePosition"));
+            return Result;
+        }
+
+        private static List<CompositionJsonPoint> ReadRequiredPointList(IDictionary<string, object> Source, string Key)
+        {
+            if (Source == null || !Source.ContainsKey(Key) || Source[Key] == null)
+                return null;
+
+            var Items = Source[Key] as IEnumerable;
+            if (Items == null || Source[Key] is string)
+                return null;
+
+            var Result = new List<CompositionJsonPoint>();
+            foreach (var Item in Items)
+            {
+                var ItemDictionary = Item as IDictionary<string, object>;
+                if (ItemDictionary == null)
+                {
+                    Result.Add(null);
+                    continue;
+                }
+
+                Result.Add(ReadPoint(ItemDictionary));
+            }
+
             return Result;
         }
 

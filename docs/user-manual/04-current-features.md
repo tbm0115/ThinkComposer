@@ -25,7 +25,7 @@ They move, resize, or route visible representations. They do not change concept 
 | Command | Use when | Changes |
 |---|---|---|
 | Fit Concept Width to Text | Labels are clipped, too wide, or recently edited. | Selected concept symbol widths. |
-| Route Links with Obstacle Avoidance | Connector lines cross concept symbols. | Connector intermediate points and hidden relationship junctions. |
+| Route Links with Obstacle Avoidance | Connector lines cross symbols or contain stale bends. | Ordered route points and Relationship hubs. |
 | Arrange as Spider Map | One central idea should radiate to related ideas. | Concept positions and routed links. |
 | Arrange as Hierarchy Map | Roots and parents should appear above children/dependencies. | Concept rows, relationship bubbles, and routed links. |
 | Arrange as Flowchart | A process should read left to right. | Flow steps, feedback lanes, relationship bubbles, and routed links. |
@@ -45,9 +45,11 @@ This command measures the visible concept title text, applies conservative paddi
 
 ### Route Links With Obstacle Avoidance
 
-The router uses the existing connector route model. It preserves valid hand-routed connectors, uses straight routes when possible, and otherwise tries simple orthogonal candidates.
+The router preserves untouched hand-routed connectors, uses straight routes when clear, and otherwise plans a deterministic multi-point orthogonal route around concept and visible Relationship-symbol obstacles. Spider, Hierarchy, Flowchart, System Map, JSON import, and the manual command share the same routing coordinator.
 
-For simple relationships with a hidden central symbol, routing treats the relationship as one unit. The hidden relationship symbol may become the route junction, allowing practical dogleg behavior without adding a new multi-point route model.
+For simple Relationships with a hidden central symbol, routing and manual editing treat the two native connector halves plus junction as one logical route. Automatically routed corners are rounded; migrated legacy routes keep their sharp free-angle appearance.
+
+Selected connectors expose bend and segment-midpoint handles. The route commands include `Edit Route`, `Remove Bend`, `Simplify Route`, `Straighten Route`, and `Auto-route`. All route-point edits are undoable together.
 
 ### Arrange As Spider Map
 
@@ -71,30 +73,30 @@ The Group Region is visual only. It does not change semantic containment, compos
 
 Composition JSON Interchange exports a `.tcom` composition to editable JSON and safely applies edited JSON into an updated package.
 
-Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. Current saves are JSON-only and do not write `/Composition.bin`; opening and resaving an older binary-backed file migrates it. Desktop Composition JSON import/export buttons are deprecated; use package root JSON for native persistence review and the command-line interface for explicit Composition JSON interchange.
+Modern `.tcom` packages also use root `/Composition.json` and `/Domain.json` as their authoritative Open/Save payloads. Current saves are JSON-only and do not write `/Composition.bin`; opening and resaving an older binary-backed file migrates it. Root Composition JSON is an exact saved snapshot, not an edit queue: native load does not execute `importOptions` or `visualStrategy`. Use package root JSON for review and a standalone operations patch through the command-line interface for edits.
 
 Native JSON package persistence preserves supported visual state such as positions, colors, connector paths, grouping complements, shortcut visuals, active/root view identity, and visible detail posters. Binary package parts, when present, are legacy fallback only.
 
 ### Workflow
 
-1. Open a composition in ThinkComposer.
-2. Run `thinkcomposer composition export-json --input <file.tcom> --output <file.json>`.
-3. Edit the JSON manually, with tools, or with AI assistance.
-4. Run `thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <updated-file.tcom>`.
-5. Review the diagnostics.
-6. Open the updated `.tcom` file when the result is correct.
+1. Inspect or export the composition for stable ids and context.
+2. Write a separate JSON file containing `operations[]`.
+3. Preview it with `composition import-json --preview-only`.
+4. Apply it through the safe output or explicit in-place path.
+5. Run `composition validate-routing` and export the affected view image.
+6. Open/save the updated canonical `.tcom` when the result is correct.
 
 Every supported document starts with:
 
 ```json
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "application": "ThinkComposer"
 }
 ```
 
-Unknown JSON fields are ignored. The schema is maintained at [../thinkcomposer-json-interchange.schema.json](../thinkcomposer-json-interchange.schema.json).
+Composition v2 adds ordered connector `routePoints`; v1 `intermediatePosition` remains readable and migrates to a singleton route. Older applications reject v2 rather than silently losing multi-point geometry. Unknown JSON fields are ignored. The schema is maintained at [../thinkcomposer-json-interchange.schema.json](../thinkcomposer-json-interchange.schema.json).
 
 ### Full-State Merge
 
@@ -172,6 +174,14 @@ Recommended setting:
 
 Use `explicit` only when coordinates are intentionally curated.
 
+Operation `visual.relationshipCenterPlacement` overrides the global mode for that touched Relationship. Generated Relationship operations should set `autoRoute:true` and `relationshipCenterPlacement:endpointCorridor`, and omit explicit hub coordinates and connector route geometry.
+
+### Connector Route Points
+
+Composition JSON v2 stores each connector's interior bends in ordered `routePoints`. Zero points means straight. At most 32 finite points are accepted. In a patch, omission preserves the route while `routePoints:[]` straightens it. If both v2 `routePoints` and deprecated `intermediatePosition` appear, route points win with a warning.
+
+AI-generated route coordinates are disabled by default because obstacle bounds and anchors come from the live view. Request automatic routing instead, then use `composition validate-routing` and an exported PNG to verify route health.
+
 ### Shortcuts
 
 Composition JSON exports shortcut visual representations with:
@@ -242,6 +252,7 @@ Supported domain work includes:
 - link role definitions
 - marker definitions
 - table definitions and fields
+- ordered definition-level Table, Link, and Attachment Detail declarations, including stable ids and Table-Structure references
 - visual symbol and connector formats
 - report configuration
 - base tables
@@ -253,9 +264,11 @@ Domain JSON documents use:
 ```json
 {
   "format": "ThinkComposer.DomainJsonInterchange",
-  "formatVersion": 1
+  "formatVersion": 2
 }
 ```
+
+Version 1 Domain JSON remains readable for migration. Version 2 is required for current saves because it preserves the stable Detail designator identities used to reconnect Composition table values after save/reopen.
 
 The schema is maintained at [../thinkcomposer-domain-json-interchange.schema.json](../thinkcomposer-domain-json-interchange.schema.json).
 

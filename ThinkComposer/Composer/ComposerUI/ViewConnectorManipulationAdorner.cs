@@ -53,6 +53,36 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
         public Point ManipulConnDisplacingPos;
         public Point ManipulConnRelinkingPos;
 
+        /// <summary>
+        /// Index of the bend currently being dragged, or -1 when a segment handle is active.
+        /// </summary>
+        public int ManipulatedRoutePointIndex { get; internal set; }
+
+        /// <summary>
+        /// Origin-to-target segment index currently being dragged. Inserting on segment N
+        /// creates route point N.
+        /// </summary>
+        public int ManipulatedSegmentIndex { get; internal set; }
+
+        /// <summary>
+        /// Connector which owns the active bend/segment. For a hidden simple Relationship this
+        /// can be the opposite leg, while ManipulatedConnector remains the selected visual.
+        /// </summary>
+        public VisualConnector ManipulatedRouteConnector { get; internal set; }
+
+        private sealed class RouteHandleBinding
+        {
+            public VisualConnector Connector;
+            public int Index;
+        }
+
+        private readonly Dictionary<DrawingVisual, RouteHandleBinding> RoutePointIndicators =
+            new Dictionary<DrawingVisual, RouteHandleBinding>();
+        private readonly Dictionary<DrawingVisual, RouteHandleBinding> SegmentIndicators =
+            new Dictionary<DrawingVisual, RouteHandleBinding>();
+        private readonly Dictionary<DrawingVisual, VisualConnector> ConnectorPathIndicators =
+            new Dictionary<DrawingVisual, VisualConnector>();
+
         public EConnectorManipulationAction IntendedAction { get { return (EConnectorManipulationAction)this.IntendedAction_; } set { this.IntendedAction_ = (byte)value; } }
         public EConnectorManipulationAction TentativeAction { get { return (EConnectorManipulationAction)this.TentativeAction_; } set { this.TentativeAction_ = (byte)value; } }
 
@@ -85,10 +115,13 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
 
             this.ManipulationOperation = ManipulationOperation;
 
-            var OriginEdgePoint = WorkingConnector.OriginPosition.DetermineNearestIntersectingPoint(WorkingConnector.TargetPosition, OwnerManager.OwnerView.Presenter,
-                                                                                                   WorkingConnector.OriginSymbol.Graphic, OwnerManager.OwnerView.VisualHitTestFilter);
-            var TargetEdgePoint = WorkingConnector.TargetPosition.DetermineNearestIntersectingPoint(WorkingConnector.OriginPosition, OwnerManager.OwnerView.Presenter,
-                                                                                                   WorkingConnector.TargetSymbol.Graphic, OwnerManager.OwnerView.VisualHitTestFilter);
+            this.ManipulatedRoutePointIndex = -1;
+            this.ManipulatedSegmentIndex = -1;
+            this.ManipulatedRouteConnector = WorkingConnector;
+
+            var PathPoints = WorkingConnector.GetPathPoints();
+            var OriginEdgePoint = PathPoints[0];
+            var TargetEdgePoint = PathPoints[PathPoints.Count - 1];
 
             var ViewPosition = Mouse.GetPosition(this.OwnerManager.OwnerView.Presenter);
             var DistanceToOrigin = (ViewPosition - OriginEdgePoint).Length;
@@ -97,13 +130,26 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
             this.ManipulationAlternatePosition = (WorkingConnector.OriginSymbol == WorkingConnector.OwnerRelationshipRepresentation.MainSymbol
                                                   ? WorkingConnector.OriginPosition : WorkingConnector.TargetPosition);
 
-            this.ManipulConnDisplacingPos = (this.ManipulatedConnector.IntermediatePosition == Display.NULL_POINT
-                                                  ? (WorkingConnector.OriginSymbol == WorkingConnector.OwnerRelationshipRepresentation.MainSymbol
-                                                     ? new Point((this.ManipulationAlternatePosition.X + TargetEdgePoint.X) / 2.0,
-                                                                 (this.ManipulationAlternatePosition.Y + TargetEdgePoint.Y) / 2.0)
-                                                     : new Point((OriginEdgePoint.X + this.ManipulationAlternatePosition.X) / 2.0,
-                                                                 (OriginEdgePoint.Y + this.ManipulationAlternatePosition.Y) / 2.0))
-                                                  : this.ManipulatedConnector.IntermediatePosition);
+            Point ClosestPoint;
+            this.ManipulatedSegmentIndex = FindNearestSegment(PathPoints, ViewPosition, out ClosestPoint);
+            this.ManipulConnDisplacingPos = ClosestPoint;
+
+            if (IsHiddenSimpleRelationship(WorkingConnector))
+            {
+                var OppositeConnector = GetOppositeConnector(WorkingConnector);
+                if (OppositeConnector != null)
+                {
+                    Point OppositeClosestPoint;
+                    var OppositeSegment = FindNearestSegment(GetConnectorPathPoints(OppositeConnector), ViewPosition,
+                                                             out OppositeClosestPoint);
+                    if ((ViewPosition - OppositeClosestPoint).Length < (ViewPosition - ClosestPoint).Length)
+                    {
+                        this.ManipulatedRouteConnector = OppositeConnector;
+                        this.ManipulatedSegmentIndex = OppositeSegment;
+                        this.ManipulConnDisplacingPos = OppositeClosestPoint;
+                    }
+                }
+            }
             //T Console.WriteLine("ManConnDisPos=" + this.ManipulConnDisplacingPos + "     at " + DateTime.Now.Ticks);
 
             if (DistanceToOrigin < DistanceToTarget)
@@ -126,6 +172,9 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
         public override void Visualize(bool Show = true, bool OnlyAdornAsSelected = false)
         {
             this.AlternateActions.Clear();
+            this.RoutePointIndicators.Clear();
+            this.SegmentIndicators.Clear();
+            this.ConnectorPathIndicators.Clear();
             this.ClearAllIndicators();
             //T Console.WriteLine("Visualizing 111 ..." + DateTime.Now.Ticks);
 
@@ -191,7 +240,7 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                 this.CurrentManipulationAction = EConnectorManipulationAction.Remove;
             else
                 if ((Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
-                     && (this.ManipulatedConnector.IntermediatePosition != Display.NULL_POINT
+                     && (this.ManipulatedConnector.RoutePoints.Count > 0
                          || (RelDef.IsSimple && RelDef.HideCentralSymbolWhenSimple)))
                     this.CurrentManipulationAction = EConnectorManipulationAction.StraightenLine;
                 else
@@ -232,47 +281,40 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
             PencilYellow.StartLineCap = PenLineCap.Round;
             PencilYellow.EndLineCap = PenLineCap.Round;
 
-            // NOTE: Yellow and Red are always from origin to target, over the side where the mouse pointer is working on.
-            var PencilRed = PencilYellow;   // new Pen(Brushes.Red, MANIPULATING_CONNECTOR_WIDTH);
-            var PencilGreen = PencilYellow; // new Pen(Brushes.Green, MANIPULATING_CONNECTOR_WIDTH);
-            var PencilBlue = PencilYellow;  // new Pen(Brushes.Blue, MANIPULATING_CONNECTOR_WIDTH);
-
-            var StartPoint = (this.ManipulatedConnector.OriginSymbol == this.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol
-                              ? this.ManipulationAlternatePosition
-                              : this.ManipulatedConnector.OriginPosition);
-
-            var EndPoint = (this.ManipulatedConnector.OriginSymbol == this.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol
-                            ? this.ManipulatedConnector.TargetPosition
-                            : this.ManipulationAlternatePosition);
-
-            DrawingVisual IndConnectCurrentLine = null;
-
             var CommonPoint = this.ManipulConnDisplacingPos;
 
             // PENDING: Solve ungly misplaced indicator at the previous intermediate-position
             if (RelDef.IsSimple && RelDef.HideCentralSymbolWhenSimple
-                && this.ManipulatedConnector.IntermediatePosition == Display.NULL_POINT
+                && this.ManipulatedRouteConnector.RoutePoints.Count == 0
                 && this.IsWorkingOnAlternateTarget)
-                CommonPoint = new Point((StartPoint.X + EndPoint.X) / 2.0,
-                                        (StartPoint.Y + EndPoint.Y) / 2.0);
+            {
+                var RouteEndpoints = GetConnectorPathPoints(this.ManipulatedRouteConnector);
+                CommonPoint = RouteEndpoints[0].DetermineCenterRespect(RouteEndpoints[RouteEndpoints.Count - 1]);
+            }
 
             //T Console.WriteLine("Visualizing Compoint=" + CommonPoint.ToString() + ". NEW  At " + DateTime.Now.Ticks);
 
-            this.DefaultActionIndicator = CreateActioner(CommonPoint.X - ACTIONER_SIZE / 2.0, CommonPoint.Y - ACTIONER_SIZE / 2.0,
-                                                         this.CurrentManipulationAction, true, Brushes.Blue);
-            this.Indicators.Add(this.DefaultActionIndicator);
-            this.ExclusivePointingIndicators.Add(this.DefaultActionIndicator);
+            if (this.CurrentManipulationAction != EConnectorManipulationAction.Displace)
+            {
+                this.DefaultActionIndicator = CreateActioner(CommonPoint.X - ACTIONER_SIZE / 2.0, CommonPoint.Y - ACTIONER_SIZE / 2.0,
+                                                             this.CurrentManipulationAction, true, Brushes.Blue);
+                this.Indicators.Add(this.DefaultActionIndicator);
+                this.ExclusivePointingIndicators.Add(this.DefaultActionIndicator);
+            }
+            else
+                this.DefaultActionIndicator = null;
 
-            /*T if (StartPoint == EndPoint)
-                    Console.WriteLine("EqualPoints"); */
+            AddConnectorRouteVisualization(this.ManipulatedConnector, PencilYellow, PaintBrush);
 
-            IndConnectCurrentLine = (new GeometryDrawing(PaintBrush, PencilYellow, new LineGeometry(StartPoint, CommonPoint))).RenderToDrawingVisual();
-            this.Indicators.Insert(0, IndConnectCurrentLine);
-
-            IndConnectCurrentLine = (new GeometryDrawing(PaintBrush, PencilRed, new LineGeometry(CommonPoint, EndPoint))).RenderToDrawingVisual();
-            this.Indicators.Insert(0, IndConnectCurrentLine);
-
-            var Connectors = this.ManipulatedConnector.OwnerRelationshipRepresentation.VisualConnectors;
+            // A hidden simple Relationship is exposed as one logical editable path. Both legs
+            // receive indexed bend and segment handles; each handle retains its owning connector
+            // and local index so edits are persisted in the correct origin-to-target collection.
+            if (RelDef.IsSimple && RelDef.HideCentralSymbolWhenSimple)
+            {
+                var OppositeConnector = GetOppositeConnector(this.ManipulatedConnector);
+                if (OppositeConnector != null)
+                    AddConnectorRouteVisualization(OppositeConnector, PencilYellow, PaintBrush);
+            }
 
             // Indicators for re-linking
             if (this.CurrentManipulationAction != EConnectorManipulationAction.CycleThroughVariants
@@ -301,64 +343,161 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                 this.Indicators.Add(this.RelinkActionOriginIndicator);
             }
 
-            if (RelDef.IsSimple && RelDef.HideCentralSymbolWhenSimple
-                && Connectors.Count() > 1)
-            {
-                var OppositeConnector = (this.ManipulatedConnector == Connectors.First() ? Connectors.Skip(1).First() : Connectors.First());
-
-                StartPoint = (this.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol == OppositeConnector.TargetSymbol
-                                ? OppositeConnector.OriginIntermediateOrFinalPosition
-                                : this.ManipulationAlternatePosition);
-
-                EndPoint = (this.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol == OppositeConnector.TargetSymbol
-                            ? this.ManipulationAlternatePosition
-                            : OppositeConnector.TargetIntermediateOrFinalPosition);
-
-                var IndConnectOppositeLine = (new GeometryDrawing(PaintBrush, PencilGreen, new LineGeometry(StartPoint, EndPoint))).RenderToDrawingVisual();
-                this.Indicators.Insert(0, IndConnectOppositeLine);
-                this.AlternateActions.Add(IndConnectOppositeLine);
-
-                Point OppositeCenter = OppositeConnector.IntermediatePosition;
-
-                if (OppositeCenter == Display.NULL_POINT)
-                {
-                    StartPoint = (this.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol == OppositeConnector.TargetSymbol
-                                    ? OppositeConnector.OriginIntermediateOrFinalPosition
-                                        .DetermineNearestIntersectingPoint(EndPoint, this.OwnerManager.OwnerView.Presenter,
-                                                                           OppositeConnector.OriginSymbol.Graphic, this.OwnerManager.OwnerView.VisualHitTestFilter)
-                                    : this.ManipulationAlternatePosition);
-
-                    EndPoint = (this.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol == OppositeConnector.TargetSymbol
-                                ? this.ManipulationAlternatePosition
-                                : OppositeConnector.TargetIntermediateOrFinalPosition
-                                        .DetermineNearestIntersectingPoint(StartPoint, this.OwnerManager.OwnerView.Presenter,
-                                                                           OppositeConnector.TargetSymbol.Graphic, this.OwnerManager.OwnerView.VisualHitTestFilter));
-
-                    OppositeCenter = StartPoint.DetermineCenterRespect(EndPoint);
-                }
-
-                if (OppositeConnector.IntermediatePosition != Display.NULL_POINT)
-                {
-                    StartPoint = OppositeConnector.IntermediatePosition;
-                    EndPoint = (this.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol == OppositeConnector.TargetSymbol
-                                ? OppositeConnector.OriginPosition : OppositeConnector.TargetPosition);
-
-                    var IndConnectOppositeFarthestLine = (new GeometryDrawing(PaintBrush, PencilBlue, new LineGeometry(StartPoint, EndPoint))).RenderToDrawingVisual();
-                    this.Indicators.Insert(0, IndConnectOppositeFarthestLine);
-                    this.AlternateActions.Add(IndConnectOppositeFarthestLine);
-                }
-
-                OppositeCenter.X -= ACTIONER_SIZE / 2.0;
-                OppositeCenter.Y -= ACTIONER_SIZE / 2.0;
-                var OppositeActionIndicator = CreateActioner(OppositeCenter.X, OppositeCenter.Y, this.CurrentManipulationAction, true, Brushes.Violet);
-                this.Indicators.Add(OppositeActionIndicator);
-                this.ExclusivePointingIndicators.Add(OppositeActionIndicator);
-            }
-
             //T Console.WriteLine("Visualizing 555 ..." + DateTime.Now.Ticks);
 
             // Needed in order to show this adorner's indicators on top of a potentially selected visual element
             this.RefreshAdorner();
+        }
+
+        private void AddConnectorRouteVisualization(VisualConnector Connector, Pen Pencil, Brush PaintBrush)
+        {
+            if (Connector == null)
+                return;
+
+            var PreviewRoutePoints = Connector.RoutePoints.ToList();
+            if (this.IsManipulating && this.IntendedAction == EConnectorManipulationAction.Displace
+                && !this.IsWorkingOnAlternateTarget
+                && Connector == this.ManipulatedRouteConnector
+                && !this.MousePositionCurrent.IsNear(this.PointedLocationWhileClicking))
+            {
+                if (this.ManipulatedRoutePointIndex >= 0 && this.ManipulatedRoutePointIndex < PreviewRoutePoints.Count)
+                    PreviewRoutePoints[this.ManipulatedRoutePointIndex] = this.ManipulConnDisplacingPos;
+                else if (this.ManipulatedSegmentIndex >= 0 && PreviewRoutePoints.Count < VisualConnector.MAX_ROUTE_POINTS)
+                    PreviewRoutePoints.Insert(Math.Min(this.ManipulatedSegmentIndex, PreviewRoutePoints.Count),
+                                              this.ManipulConnDisplacingPos);
+            }
+
+            var CompletePreviewPath = GetConnectorPathPoints(Connector, PreviewRoutePoints);
+            var PreviewPath = PathDrawer.CreatePath(EPathStyle.MultilineFreeAngled, EPathCorner.Sharp,
+                                                    Pencil, PaintBrush,
+                                                    CompletePreviewPath[CompletePreviewPath.Count - 1],
+                                                    CompletePreviewPath[0], PreviewRoutePoints)
+                                        .RenderToDrawingVisual();
+            this.Indicators.Insert(0, PreviewPath);
+            this.ConnectorPathIndicators[PreviewPath] = Connector;
+            this.ExclusivePointingIndicators.Add(PreviewPath);
+
+            // Bend handles are solid squares. Segment handles are smaller diamonds and
+            // insert a new point when dragged. Indices always match the owning connector's
+            // persisted origin-to-target RoutePoints collection.
+            for (int Index = 0; Index < PreviewRoutePoints.Count; Index++)
+            {
+                var RouteHandle = CreateRouteHandle(PreviewRoutePoints[Index], false);
+                this.RoutePointIndicators.Add(RouteHandle, new RouteHandleBinding
+                {
+                    Connector = Connector,
+                    Index = Index
+                });
+                this.Indicators.Add(RouteHandle);
+                this.ExclusivePointingIndicators.Add(RouteHandle);
+            }
+
+            for (int Index = 0; Index < CompletePreviewPath.Count - 1; Index++)
+            {
+                var SegmentCenter = CompletePreviewPath[Index].DetermineCenterRespect(CompletePreviewPath[Index + 1]);
+                var SegmentHandle = CreateRouteHandle(SegmentCenter, true);
+                this.SegmentIndicators.Add(SegmentHandle, new RouteHandleBinding
+                {
+                    Connector = Connector,
+                    Index = Index
+                });
+                this.Indicators.Add(SegmentHandle);
+                this.ExclusivePointingIndicators.Add(SegmentHandle);
+            }
+        }
+
+        private IList<Point> GetConnectorPathPoints(VisualConnector Connector, IEnumerable<Point> RoutePoints = null)
+        {
+            var MainSymbol = Connector.OwnerRelationshipRepresentation.MainSymbol;
+            var Origin = (Connector.OriginSymbol == MainSymbol
+                          ? this.ManipulationAlternatePosition : Connector.OriginPosition);
+            var Target = (Connector.TargetSymbol == MainSymbol
+                          ? this.ManipulationAlternatePosition : Connector.TargetPosition);
+            var Result = new List<Point> { Origin };
+            Result.AddRange(RoutePoints ?? Connector.RoutePoints);
+            Result.Add(Target);
+            return Result;
+        }
+
+        private static bool IsHiddenSimpleRelationship(VisualConnector Connector)
+        {
+            if (Connector == null || Connector.OwnerRelationshipRepresentation == null
+                || Connector.OwnerRelationshipRepresentation.MainSymbol == null
+                || !Connector.OwnerRelationshipRepresentation.MainSymbol.IsHidden)
+                return false;
+
+            var Definition = Connector.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value;
+            return Definition.IsSimple && Definition.HideCentralSymbolWhenSimple;
+        }
+
+        private static VisualConnector GetOppositeConnector(VisualConnector Connector)
+        {
+            if (!IsHiddenSimpleRelationship(Connector))
+                return null;
+
+            return Connector.OwnerRelationshipRepresentation.VisualConnectors
+                            .FirstOrDefault(Candidate => Candidate != null && Candidate != Connector);
+        }
+
+        private DrawingVisual CreateRouteHandle(Point Center, bool IsSegmentHandle)
+        {
+            var Size = (IsSegmentHandle ? 8.0 : 11.0);
+            var Half = Size / 2.0;
+            Geometry Shape;
+
+            if (IsSegmentHandle)
+            {
+                var Diamond = new StreamGeometry();
+                using (var Context = Diamond.Open())
+                {
+                    Context.BeginFigure(new Point(Center.X, Center.Y - Half), true, true);
+                    Context.LineTo(new Point(Center.X + Half, Center.Y), true, false);
+                    Context.LineTo(new Point(Center.X, Center.Y + Half), true, false);
+                    Context.LineTo(new Point(Center.X - Half, Center.Y), true, false);
+                }
+                Shape = Diamond;
+            }
+            else
+                Shape = new RectangleGeometry(new Rect(Center.X - Half, Center.Y - Half, Size, Size), 2.0, 2.0);
+
+            var Fill = (IsSegmentHandle ? Brushes.LightCyan : Brushes.White);
+            return new GeometryDrawing(Fill, new Pen(Brushes.RoyalBlue, 1.0), Shape).RenderToDrawingVisual();
+        }
+
+        private static int FindNearestSegment(IList<Point> PathPoints, Point TestPoint, out Point ClosestPoint)
+        {
+            var BestIndex = 0;
+            var BestDistance = double.MaxValue;
+            ClosestPoint = (PathPoints != null && PathPoints.Count > 0 ? PathPoints[0] : TestPoint);
+
+            if (PathPoints == null || PathPoints.Count < 2)
+                return BestIndex;
+
+            for (int Index = 0; Index < PathPoints.Count - 1; Index++)
+            {
+                var Start = PathPoints[Index];
+                var End = PathPoints[Index + 1];
+                var Segment = End - Start;
+                var LengthSquared = Segment.X * Segment.X + Segment.Y * Segment.Y;
+                var Position = Start;
+
+                if (LengthSquared > double.Epsilon)
+                {
+                    var Offset = TestPoint - Start;
+                    var Ratio = ((Offset.X * Segment.X + Offset.Y * Segment.Y) / LengthSquared).EnforceRange(0.0, 1.0);
+                    Position = Start + Segment * Ratio;
+                }
+
+                var Distance = (TestPoint - Position).Length;
+                if (Distance < BestDistance)
+                {
+                    BestDistance = Distance;
+                    BestIndex = Index;
+                    ClosestPoint = Position;
+                }
+            }
+
+            return BestIndex;
         }
 
         public DrawingVisual CreateActioner(double PosX, double PosY, EConnectorManipulationAction Manipulation,
@@ -429,11 +568,51 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
 
                 if (NewPointed != null /* && !NewPointed.IsOneOf(IndOriginPoint, IndTargetPoint)*/ )
                 {
-                    if (NewPointed == this.DefaultActionIndicator || NewPointed.IsIn(AlternateActions))
+                    RouteHandleBinding RouteBinding;
+                    RouteHandleBinding SegmentBinding;
+                    VisualConnector PathConnector;
+                    if (NewPointed is DrawingVisual
+                        && this.RoutePointIndicators.TryGetValue((DrawingVisual)NewPointed, out RouteBinding))
+                    {
+                        this.ManipulatedRouteConnector = RouteBinding.Connector;
+                        this.ManipulatedRoutePointIndex = RouteBinding.Index;
+                        this.ManipulatedSegmentIndex = -1;
+                        this.ManipulConnDisplacingPos = RouteBinding.Connector.RoutePoints[RouteBinding.Index];
+                        this.TentativeAction = EConnectorManipulationAction.Displace;
+                    }
+                    else if (NewPointed is DrawingVisual
+                             && this.SegmentIndicators.TryGetValue((DrawingVisual)NewPointed, out SegmentBinding))
+                    {
+                        this.ManipulatedRouteConnector = SegmentBinding.Connector;
+                        this.ManipulatedRoutePointIndex = -1;
+                        this.ManipulatedSegmentIndex = SegmentBinding.Index;
+                        var Path = GetConnectorPathPoints(SegmentBinding.Connector);
+                        if (SegmentBinding.Index >= 0 && SegmentBinding.Index < Path.Count - 1)
+                            this.ManipulConnDisplacingPos = Path[SegmentBinding.Index]
+                                                            .DetermineCenterRespect(Path[SegmentBinding.Index + 1]);
+                        this.TentativeAction = this.CurrentManipulationAction;
+                    }
+                    else if (NewPointed is DrawingVisual
+                             && this.ConnectorPathIndicators.TryGetValue((DrawingVisual)NewPointed, out PathConnector))
+                    {
+                        this.ManipulatedRouteConnector = PathConnector;
+                        this.ManipulatedRoutePointIndex = -1;
+                        Point ClosestPoint;
+                        this.ManipulatedSegmentIndex = FindNearestSegment(GetConnectorPathPoints(PathConnector), Position,
+                                                                          out ClosestPoint);
+                        this.ManipulConnDisplacingPos = ClosestPoint;
+                        this.TentativeAction = this.CurrentManipulationAction;
+                    }
+                    else if (NewPointed == this.DefaultActionIndicator || NewPointed.IsIn(AlternateActions))
                         this.TentativeAction = this.CurrentManipulationAction;
                     else
                         if (NewPointed == this.RelinkActionTargetIndicator || NewPointed == this.RelinkActionOriginIndicator)
+                        {
+                            this.ManipulatedRouteConnector = this.ManipulatedConnector;
+                            this.ManipulatedRoutePointIndex = -1;
+                            this.ManipulatedSegmentIndex = -1;
                             this.TentativeAction = EConnectorManipulationAction.ReLink;
+                        }
 
                     if (this.TentativeAction == EConnectorManipulationAction.Displace)
                         this.Cursor = Cursors.ScrollAll;
@@ -447,7 +626,9 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                 var IndDescription = this.TentativeAction.GetDescription();
 
                 if (this.TentativeAction == EConnectorManipulationAction.Displace)
-                    IndDescription = IndDescription + " Double-click for Edit. " +
+                    IndDescription = IndDescription + (this.ManipulatedRoutePointIndex >= 0
+                                      ? " Drag to move this bend; double-click to remove it. "
+                                      : " Drag a diamond to insert a bend; double-click the connector for Edit. ") +
                     "Action icons: [Ctrl]=Straighten line, [Shift]=Delete connector, [Alt]=Cycle variant plugs.";
 
                 ProductDirector.ShowAssistance(IndDescription);
@@ -476,7 +657,30 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
         {
             base.OnMouseRightButtonUp(e);
 
-            this.OwnerManager.OwnerView.Engine.ShowContextMenu(this.OwnerManager.OwnerView.Presenter, this.ManipulatedConnector, this.OwnerManager.OwnerView);
+            RouteHandleBinding BendBinding;
+            RouteHandleBinding SegmentBinding;
+            VisualConnector PathConnector;
+            var ContextConnector = this.ManipulatedRouteConnector ?? this.ManipulatedConnector;
+            var BendIndex = -1;
+            if (this.CurrentPointedVisual is DrawingVisual
+                && this.RoutePointIndicators.TryGetValue((DrawingVisual)this.CurrentPointedVisual, out BendBinding))
+            {
+                ContextConnector = BendBinding.Connector;
+                BendIndex = BendBinding.Index;
+            }
+            else if (this.CurrentPointedVisual is DrawingVisual
+                     && this.SegmentIndicators.TryGetValue((DrawingVisual)this.CurrentPointedVisual, out SegmentBinding))
+                ContextConnector = SegmentBinding.Connector;
+            else if (this.CurrentPointedVisual is DrawingVisual
+                     && this.ConnectorPathIndicators.TryGetValue((DrawingVisual)this.CurrentPointedVisual, out PathConnector))
+                ContextConnector = PathConnector;
+
+            ContextConnector.ContextRoutePointIndex = BendIndex;
+
+            this.OwnerManager.OwnerView.Engine.ShowContextMenu(this.OwnerManager.OwnerView.Presenter,
+                                                               ContextConnector,
+                                                               this.OwnerManager.OwnerView,
+                                                               () => ContextConnector.ContextRoutePointIndex = -1);
         }
 
         //------------------------------------------------------------------------------------------------------------------------

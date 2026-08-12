@@ -11,7 +11,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
     public class CompositionJsonDocument
     {
         public const string CurrentFormat = "ThinkComposer.JsonInterchange";
-        public const int CurrentFormatVersion = 1;
+        public const int MinimumSupportedFormatVersion = 1;
+        public const int CurrentFormatVersion = 2;
 
         public CompositionJsonDocument()
         {
@@ -369,6 +370,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
     public class CompositionJsonConnector
     {
+        public const int MaximumRoutePoints = 32;
+
         public string Id { get; set; }
         public string LinkId { get; set; }
         public string RoleType { get; set; }
@@ -387,7 +390,18 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         public CompositionJsonPoint OriginEdgePosition { get; set; }
         public CompositionJsonPoint TargetPosition { get; set; }
         public CompositionJsonPoint TargetEdgePosition { get; set; }
+        /// <summary>
+        /// Ordered interior route points in origin-to-target order.  In formatVersion 2 this
+        /// collection is authoritative whenever it is present, including when it is empty.
+        /// </summary>
+        public List<CompositionJsonPoint> RoutePoints { get; set; }
+        public bool RoutePointsSpecified { get; set; }
+
+        /// <summary>
+        /// Legacy formatVersion 1 single-bend field.  New exports use RoutePoints.
+        /// </summary>
         public CompositionJsonPoint IntermediatePosition { get; set; }
+        public bool IntermediatePositionSpecified { get; set; }
     }
 
     public class CompositionJsonComplement

@@ -1,6 +1,6 @@
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "application": "ThinkComposer",
   "importOptions": {
     "useActiveCompositionAsContainer": true,

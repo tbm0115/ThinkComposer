@@ -5,6 +5,7 @@
 // -------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 using Instrumind.Common;
@@ -180,7 +181,11 @@ namespace Instrumind.ThinkComposer.Composer
             TargetComposition.CompositionDefinitor.SetOwnerComposition(TargetComposition);
             TargetComposition.Initialize();
 
-            var Report = CompositionJsonImporter.RehydrateFullState(Engine, CompositionDocument, true,
+            // Authoritative /Composition.json is first treated strictly as a persisted snapshot.
+            // Import directives and legacy embedded operations must not influence this exact
+            // reconstruction pass.
+            var SnapshotDocument = CreatePersistenceSnapshotDocument(CompositionDocument);
+            var Report = CompositionJsonImporter.RehydrateFullState(Engine, SnapshotDocument, true,
                                                                     BuildPersistenceImportOptions(), true);
             if (Report.CompatibilityBlocked || Report.HasErrors)
                 throw new InvalidOperationException("Composition JSON persistence rehydration failed." + Environment.NewLine +
@@ -190,7 +195,66 @@ namespace Instrumind.ThinkComposer.Composer
             Console.WriteLine("JSON persistence composition rehydration summary: " +
                               Report.ToDetailedCountsString() + ".");
 
+            // Early JSON-authoritative packages sometimes embedded operations/groups directives
+            // in the snapshot root. Apply those only after exact state exists, using their own
+            // importOptions/visualStrategy.  A later canonical save omits operations, so mark
+            // the document modified even when every legacy operation is an idempotent no-op.
+            if ((CompositionDocument.Operations != null && CompositionDocument.Operations.Count > 0) ||
+                (CompositionDocument.Groups != null && CompositionDocument.Groups.Count > 0))
+            {
+                var OperationsDocument = CreateEmbeddedOperationsDocument(CompositionDocument);
+                var OperationsReport = CompositionJsonImporter.Import(Engine, OperationsDocument);
+                if (OperationsReport.CompatibilityBlocked || OperationsReport.HasErrors)
+                    throw new InvalidOperationException("Embedded Composition JSON operations failed." + Environment.NewLine +
+                                                        OperationsReport.ToSummaryString(true));
+
+                Engine.ExistenceStatus = EExistenceStatus.Modified;
+                Console.WriteLine("JSON persistence embedded operations summary: " +
+                                  OperationsReport.ToDetailedCountsString() +
+                                  ". The composition was marked modified so the directives are consumed on save.");
+            }
+
             return TargetComposition;
+        }
+
+        private static CompositionJsonDocument CreatePersistenceSnapshotDocument(CompositionJsonDocument Source)
+        {
+            return new CompositionJsonDocument
+            {
+                Format = Source.Format,
+                FormatVersion = Source.FormatVersion,
+                ExportedAtUtc = Source.ExportedAtUtc,
+                Application = Source.Application,
+                TargetContext = Source.TargetContext,
+                Requires = Source.Requires,
+                Composition = Source.Composition,
+                ImportOptions = null,
+                VisualStrategy = null,
+                Ideas = Source.Ideas,
+                Relationships = Source.Relationships,
+                Views = Source.Views,
+                Operations = new List<CompositionJsonOperation>(),
+                // groups[] is an import directive (it creates/updates a Group Region), not
+                // authoritative snapshot state.  It is consumed with legacy operations below.
+                Groups = new List<CompositionJsonGroup>(),
+                Warnings = Source.Warnings
+            };
+        }
+
+        private static CompositionJsonDocument CreateEmbeddedOperationsDocument(CompositionJsonDocument Source)
+        {
+            return new CompositionJsonDocument
+            {
+                Format = Source.Format,
+                FormatVersion = Source.FormatVersion,
+                Application = Source.Application,
+                TargetContext = Source.TargetContext,
+                Requires = Source.Requires,
+                ImportOptions = Source.ImportOptions,
+                VisualStrategy = Source.VisualStrategy,
+                Operations = Source.Operations,
+                Groups = Source.Groups
+            };
         }
 
         private static void FinalizeRehydratedComposition(CompositionEngine Engine, Composition TargetComposition)

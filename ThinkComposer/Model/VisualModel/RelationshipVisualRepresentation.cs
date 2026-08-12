@@ -131,10 +131,9 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             this.EditEngine.StartCommandVariation("Straighten Relationship Visual Representation");
 
             this.MainSymbol.IsAutoPositionable = true;
-            this.MainSymbol.RenderElement();
 
             foreach(var Connector in this.VisualConnectors)
-                Connector.UpdateIntermediatePoint(Display.NULL_POINT);
+                Connector.ClearRoutePoints();
 
             var OriginRepresentation = this.OriginRepresentations.FirstOrDefault();
             if (OriginRepresentation != null)
@@ -143,6 +142,9 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                 Console.WriteLine("Cannot straighten relationship visual representation for '{0}' ({1}) because it has no origin representation.",
                                   this.RepresentedRelationship.Name, this.RepresentedRelationship.TechName);
 
+            // Format overrides and the hidden junction are representation-wide. A single final
+            // render keeps every leg coherent after the logical route is straightened.
+            this.Render();
             this.DisplayingView.UpdateVersion();
             this.EditEngine.CompleteCommandVariation();
         }
@@ -157,15 +159,20 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
 
             if (RegionContainedObjects == null || !RegionContainedObjects.Contains(this.MainSymbol))
             {
+                // Moving a complete Relationship is the one case where its hand-authored
+                // routes remain valid. Snapshot them because VisualSymbol.MoveTo invalidates
+                // routes whose endpoint moved outside a known selection batch.
+                var RoutesToTranslate = this.VisualConnectors.ToDictionary(Connector => Connector,
+                                                                           Connector => Connector.RoutePoints.ToList());
+
                 this.MainSymbol.MoveTo(this.MainSymbol.BaseCenter.X + DeltaX,
                                        this.MainSymbol.BaseCenter.Y + DeltaY,
                                        false, false);
 
                 // IMPORTANT: The Origin and Target Positions are moved by the Symbol's MoveTo method
 
-                foreach (var VisConn in this.VisualConnectors)
-                    if (VisConn.IntermediatePosition != Display.NULL_POINT)
-                        VisConn.IntermediatePosition = new Point(VisConn.IntermediatePosition.X + DeltaX, VisConn.IntermediatePosition.Y + DeltaY);
+                foreach (var Route in RoutesToTranslate)
+                    Route.Key.SetRoutePoints(Route.Value.Select(Point => new Point(Point.X + DeltaX, Point.Y + DeltaY)));
             }
 
             this.MainSymbol.UpdateDependents();
@@ -190,7 +197,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                                    ? OriginConnector.TargetSymbol.BaseCenter
                                    : OriginConnector.OriginSymbol.BaseCenter);
 
-            if (OriginConnector.IntermediatePosition == Display.NULL_POINT)
+            if (OriginConnector.RoutePoints.Count == 0)
             {
                 PosX = PrimaryCenter.X;
                 PosY = SecondaryCenter.Y;
@@ -209,10 +216,10 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                     PosX = (PrimaryCenter.X + SecondaryCenter.X) / 2.0;
                 }
 
-                OriginConnector.IntermediatePosition = new Point(PosX, PosY);
+                OriginConnector.SetRoutePoints(new Point(PosX, PosY).IntoEnumerable());
             }
 
-            if (TargetConnector.IntermediatePosition == Display.NULL_POINT)
+            if (TargetConnector.RoutePoints.Count == 0)
             {
                 PosX = SecondaryCenter.X;
                 PosY = PrimaryCenter.Y;
@@ -231,7 +238,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                     PosX = (PrimaryCenter.X + SecondaryCenter.X) / 2.0;
                 }
 
-                TargetConnector.IntermediatePosition = new Point(PosX, PosY);
+                TargetConnector.SetRoutePoints(new Point(PosX, PosY).IntoEnumerable());
             }
         }
 

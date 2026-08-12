@@ -216,7 +216,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 }
 
                 if (Options.RouteLinksAfterArrange)
-                    Result.RoutingResult = RouteScopeLinks(Context, InBandRelationshipRepresentations);
+                    Result.RoutingResult = RouteScopeLinks(Context, InBandRelationshipRepresentations,
+                                                          FeedbackLaneRepresentations, ScopeSymbols);
 
                 ValidateFlowchartRoutes(Graph.RelationshipInfos, ScopeSymbols, FeedbackLaneRepresentations, Options, Result);
 
@@ -964,8 +965,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
             var SourceIntermediate = new Point(SourceSymbol.BaseCenter.X, LaneCenter.Y);
             var TargetIntermediate = new Point(TargetSymbol.BaseCenter.X, LaneCenter.Y);
-            SourceConnector.UpdateIntermediatePoint(SourceIntermediate);
-            TargetConnector.UpdateIntermediatePoint(TargetIntermediate);
+            SourceConnector.SetRoutePoints(new[] { SourceIntermediate });
+            TargetConnector.SetRoutePoints(new[] { TargetIntermediate });
 
             foreach (var Connector in Info.Representation.VisualConnectors
                                               .Where(Connector => Connector != null &&
@@ -1003,6 +1004,24 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                       .Where(Item => Item != null)
                                       .FirstOrDefault(Item => (Item.OriginSymbol == Endpoint && Item.TargetSymbol == MainSymbol) ||
                                                               (Item.OriginSymbol == MainSymbol && Item.TargetSymbol == Endpoint));
+            if (Connector == null && Endpoint.OwnerRepresentation != null)
+            {
+                // The same Idea may have several visual representations in one View.  Graph
+                // analysis is Idea-based, while the relationship connector is representation-
+                // based, so fall back to the actual connected symbol for the same Idea.
+                var EndpointIdea = Endpoint.OwnerRepresentation.RepresentedIdea;
+                Connector = Representation.VisualConnectors
+                    .Where(Item => Item != null)
+                    .Where(Item => Item.OriginSymbol == MainSymbol || Item.TargetSymbol == MainSymbol)
+                    .Where(Item =>
+                    {
+                        var Other = Item.OriginSymbol == MainSymbol ? Item.TargetSymbol : Item.OriginSymbol;
+                        return Other != null && Other.OwnerRepresentation != null &&
+                               Other.OwnerRepresentation.RepresentedIdea == EndpointIdea;
+                    })
+                    .OrderBy(Item => Item.GlobalId)
+                    .FirstOrDefault();
+            }
             return Connector != null;
         }
 
@@ -1038,9 +1057,17 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         }
 
         private static LinkObstacleRoutingResult RouteScopeLinks(LayoutSelectionContext Context,
-                                                                 IEnumerable<RelationshipVisualRepresentation> RelationshipRepresentations)
+                                                                 IEnumerable<RelationshipVisualRepresentation> RelationshipRepresentations,
+                                                                 IEnumerable<RelationshipVisualRepresentation> MandatoryCorridorRelationships,
+                                                                 IEnumerable<VisualSymbol> MovedSymbols)
         {
-            var Connectors = (RelationshipRepresentations ?? Enumerable.Empty<RelationshipVisualRepresentation>())
+            var Moved = new HashSet<VisualSymbol>((MovedSymbols ?? Enumerable.Empty<VisualSymbol>()).Where(Symbol => Symbol != null));
+            var Incident = Context.VisibleRelationshipRepresentations
+                                  .Where(Representation => Representation != null &&
+                                         Representation.VisualConnectors.Any(Connector => Connector != null &&
+                                             (Moved.Contains(Connector.OriginSymbol) || Moved.Contains(Connector.TargetSymbol))));
+            var Connectors = (RelationshipRepresentations ?? Enumerable.Empty<RelationshipVisualRepresentation>()).Concat(Incident)
+                                  .Distinct()
                                   .Where(Representation => Representation != null)
                                   .SelectMany(Representation => Representation.VisualConnectors)
                                   .Where(Connector => Connector != null)
@@ -1057,8 +1084,17 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var RouteContext = LayoutSelectionContext.FromViewSelection(Context.Engine, Context.ActiveView, Connectors);
             var RouteOptions = new LinkObstacleRoutingOptions();
             RouteOptions.RouteSelectedConnectorsOnly = true;
+            RouteOptions.PreserveExistingValidRoutes = true;
+            RouteOptions.RouteIntent = RelationshipRouteIntent.Layout;
+            RouteOptions.DirtyReason = "Flowchart moved endpoint symbols; feedback-lane routes are mandatory existing corridors";
+            RouteOptions.Profile = RelationshipRoutingProfile.Flowchart;
             RouteOptions.IncludeRelationshipCentralSymbolsAsObstacles = true;
-            return LinkObstacleRoutingService.RouteVisibleConnectors(RouteContext, RouteOptions);
+            // The Flowchart pass has already positioned relationship hubs and has authored
+            // feedback-lane waypoints.  Re-running generic endpoint-corridor placement here can
+            // move the hub and clear those mandatory points before the shared router sees them.
+            RouteOptions.CorrectRelationshipCentersBeforeRouting = false;
+            RelationshipRoutingCoordinator.ConfigureMandatoryCorridors(RouteOptions, MandatoryCorridorRelationships);
+            return RelationshipRoutingCoordinator.Route(RouteContext, RouteOptions);
         }
 
         private static void ValidateFlowchartRoutes(IEnumerable<FlowRelationshipInfo> RelationshipInfos,
@@ -1147,16 +1183,26 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             Points.Add(SourceSymbol.BaseCenter);
 
             VisualConnector SourceConnector;
-            if (TryFindRelationshipConnector(Info.Representation, SourceSymbol, MainSymbol, out SourceConnector) &&
-                IsUsablePoint(SourceConnector.IntermediatePosition))
-                Points.Add(SourceConnector.IntermediatePosition);
+            if (TryFindRelationshipConnector(Info.Representation, SourceSymbol, MainSymbol, out SourceConnector))
+            {
+                var SourceRoute = SourceConnector.RoutePoints == null
+                                  ? new List<Point>() : SourceConnector.RoutePoints.ToList();
+                if (SourceConnector.OriginSymbol != SourceSymbol)
+                    SourceRoute.Reverse();
+                Points.AddRange(SourceRoute.Where(IsUsablePoint));
+            }
 
             Points.Add(MainSymbol.BaseCenter);
 
             VisualConnector TargetConnector;
-            if (TryFindRelationshipConnector(Info.Representation, TargetSymbol, MainSymbol, out TargetConnector) &&
-                IsUsablePoint(TargetConnector.IntermediatePosition))
-                Points.Add(TargetConnector.IntermediatePosition);
+            if (TryFindRelationshipConnector(Info.Representation, TargetSymbol, MainSymbol, out TargetConnector))
+            {
+                var TargetRoute = TargetConnector.RoutePoints == null
+                                  ? new List<Point>() : TargetConnector.RoutePoints.ToList();
+                if (TargetConnector.OriginSymbol != MainSymbol)
+                    TargetRoute.Reverse();
+                Points.AddRange(TargetRoute.Where(IsUsablePoint));
+            }
 
             Points.Add(TargetSymbol.BaseCenter);
             return Points;

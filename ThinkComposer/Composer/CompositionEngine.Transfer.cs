@@ -740,9 +740,8 @@ namespace Instrumind.ThinkComposer.Composer
                                                         ReappointConnectorPoint(SourceVisConn.OriginPosition, OriginWasCloned, DeltaX, DeltaY),
                                                         ReappointConnectorPoint(SourceVisConn.TargetPosition, TargetWasCloned, DeltaX, DeltaY));
 
-                ClonedVisConn.IntermediatePosition = (SourceVisConn.IntermediatePosition == Display.NULL_POINT
-                                                      ? Display.NULL_POINT
-                                                      : new Point(SourceVisConn.IntermediatePosition.X + DeltaX, SourceVisConn.IntermediatePosition.Y + DeltaY));
+                ClonedVisConn.SetRoutePoints(SourceVisConn.RoutePoints.Select(Point =>
+                                               new Point(Point.X + DeltaX, Point.Y + DeltaY)));
 
                 ClonedRelVisRep.RepresentedRelationship.AddLink(ClonedRoleLink);
                 ClonedRelVisRep.AddVisualPart(ClonedVisConn);

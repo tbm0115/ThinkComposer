@@ -78,8 +78,35 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             if (Document.Format != DomainJsonDocument.CurrentFormat)
                 throw new InvalidDataException("Unsupported Domain JSON format. Expected '" + DomainJsonDocument.CurrentFormat + "'.");
 
-            if (Document.FormatVersion != DomainJsonDocument.CurrentFormatVersion)
-                throw new InvalidDataException("Unsupported Domain JSON formatVersion. Expected " + DomainJsonDocument.CurrentFormatVersion + ".");
+            if (Document.FormatVersion < DomainJsonDocument.MinimumSupportedFormatVersion ||
+                Document.FormatVersion > DomainJsonDocument.CurrentFormatVersion)
+                throw new InvalidDataException("Unsupported Domain JSON formatVersion. Supported versions are " +
+                                               DomainJsonDocument.MinimumSupportedFormatVersion + " through " +
+                                               DomainJsonDocument.CurrentFormatVersion + ".");
+
+            ValidateDefinitionDetailDesignators(Document.ConceptDefinitions, "conceptDefinitions");
+            ValidateDefinitionDetailDesignators(Document.RelationshipDefinitions, "relationshipDefinitions");
+        }
+
+        private static void ValidateDefinitionDetailDesignators(IEnumerable<DomainJsonElement> Definitions,
+                                                                 string CollectionName)
+        {
+            var DefinitionIndex = 0;
+            foreach (var Definition in Definitions ?? Enumerable.Empty<DomainJsonElement>())
+            {
+                if (Definition != null && Definition.DetailDesignatorsSpecified)
+                {
+                    var DetailIndex = 0;
+                    foreach (var Detail in Definition.DetailDesignators ?? new List<DomainJsonDetailDesignator>())
+                    {
+                        ValidateDetailDesignator(Detail, CollectionName + "[" +
+                            DefinitionIndex.ToString(CultureInfo.InvariantCulture) + "].detailDesignators[" +
+                            DetailIndex.ToString(CultureInfo.InvariantCulture) + "]");
+                        DetailIndex++;
+                    }
+                }
+                DefinitionIndex++;
+            }
         }
 
         private static object ToGraph(DomainJsonDocument Document)
@@ -148,9 +175,35 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             AddIfNotEmpty(Obj, "allowedVariantTechNames", Element.AllowedVariantTechNames);
             AddIfNotEmpty(Obj, "associableIdeaDefinitionTechNames", Element.AssociableIdeaDefinitionTechNames);
             AddIfNotEmpty(Obj, "fields", ToList(Element.Fields, ToGraph));
+            if (Element.DetailDesignatorsSpecified)
+                Add(Obj, "detailDesignators", ToList(Element.DetailDesignators, ToGraph));
             AddIfNotEmpty(Obj, "roleDefinitions", ToList(Element.RoleDefinitions, ToGraph));
             AddIfNotEmpty(Obj, "outputTemplates", ToList(Element.OutputTemplates, ToGraph));
             AddIfNotEmpty(Obj, "set", ToOrderedDictionary(Element.Set));
+            return Obj;
+        }
+
+        private static object ToGraph(DomainJsonDetailDesignator Designator)
+        {
+            if (Designator == null)
+                return null;
+
+            var Obj = NewObject();
+            AddIf(Obj, "id", Designator.Id);
+            AddIf(Obj, "kind", Designator.Kind);
+            AddIf(Obj, "name", Designator.Name);
+            AddIf(Obj, "techName", Designator.TechName);
+            AddIf(Obj, "summary", Designator.Summary);
+            AddIf(Obj, "description", Designator.Description);
+            AddIf(Obj, "techSpec", Designator.TechSpec);
+            AddIf(Obj, "tableDefinitionId", Designator.TableDefinitionId);
+            AddIf(Obj, "tableDefinitionTechName", Designator.TableDefinitionTechName);
+            AddIf(Obj, "tableDefinitionIsOwned", Designator.TableDefinitionIsOwned);
+            AddIf(Obj, "fieldDefinitionId", Designator.FieldDefinitionId);
+            AddIf(Obj, "fieldDefinitionTechName", Designator.FieldDefinitionTechName);
+            AddIf(Obj, "order", Designator.Order);
+            AddIfNotEmpty(Obj, "appearance", ToOrderedDictionary(Designator.Appearance));
+            AddIfNotEmpty(Obj, "set", ToOrderedDictionary(Designator.Set));
             return Obj;
         }
 
@@ -235,9 +288,48 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.AllowedVariantTechNames = ReadStringList(Source, "allowedVariantTechNames");
             Result.AssociableIdeaDefinitionTechNames = ReadStringList(Source, "associableIdeaDefinitionTechNames");
             Result.Fields = ReadList(Source, "fields", ReadElement);
+            Result.DetailDesignatorsSpecified = Source.ContainsKey("detailDesignators");
+            Result.DetailDesignators = Result.DetailDesignatorsSpecified
+                                       ? ReadObjectArray(Source, "detailDesignators", ReadDetailDesignator)
+                                       : new List<DomainJsonDetailDesignator>();
             Result.RoleDefinitions = ReadList(Source, "roleDefinitions", ReadElement);
             Result.OutputTemplates = ReadList(Source, "outputTemplates", ReadElement);
             return Result;
+        }
+
+        private static DomainJsonDetailDesignator ReadDetailDesignator(IDictionary<string, object> Source)
+        {
+            var Result = new DomainJsonDetailDesignator();
+            Result.Id = GetString(Source, "id");
+            Result.Kind = GetString(Source, "kind");
+            Result.Name = GetString(Source, "name");
+            Result.TechName = GetString(Source, "techName");
+            Result.Summary = GetString(Source, "summary");
+            Result.Description = GetString(Source, "description");
+            Result.TechSpec = GetString(Source, "techSpec");
+            Result.TableDefinitionId = GetString(Source, "tableDefinitionId");
+            Result.TableDefinitionTechName = GetString(Source, "tableDefinitionTechName");
+            Result.TableDefinitionIsOwned = GetNullableBool(Source, "tableDefinitionIsOwned");
+            Result.FieldDefinitionId = GetString(Source, "fieldDefinitionId");
+            Result.FieldDefinitionTechName = GetString(Source, "fieldDefinitionTechName");
+            Result.Order = GetNullableInt(Source, "order");
+            Result.Appearance = GetObjectDictionary(Source, "appearance");
+            Result.Set = GetObjectDictionary(Source, "set");
+            ValidateDetailDesignator(Result, "detailDesignators item");
+            return Result;
+        }
+
+        private static void ValidateDetailDesignator(DomainJsonDetailDesignator Designator, string Location)
+        {
+            if (Designator == null)
+                throw new InvalidDataException("Domain JSON " + Location + " must be an object.");
+            if (String.IsNullOrWhiteSpace(Designator.Name) || String.IsNullOrWhiteSpace(Designator.TechName))
+                throw new InvalidDataException("Domain JSON " + Location + " requires non-empty name and techName.");
+
+            var Kind = Designator.Kind == null ? "" : Designator.Kind.Trim().ToLowerInvariant();
+            if (Kind != "table" && Kind != "link" && Kind != "attachment")
+                throw new InvalidDataException("Domain JSON " + Location +
+                                               " requires kind table, link, or attachment.");
         }
 
         private static DomainJsonRelationshipCompatibility ReadRelationshipCompatibility(IDictionary<string, object> Source)
@@ -296,6 +388,35 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 var Dictionary = Item as IDictionary<string, object>;
                 if (Dictionary != null)
                     Result.Add(Reader(Dictionary));
+            }
+
+            return Result;
+        }
+
+        private static List<TTarget> ReadObjectArray<TTarget>(IDictionary<string, object> Source,
+                                                               string Key,
+                                                               Func<IDictionary<string, object>, TTarget> Reader)
+        {
+            var Result = new List<TTarget>();
+            object RawValue;
+            if (Source == null || !Source.TryGetValue(Key, out RawValue) || RawValue == null ||
+                RawValue is string || RawValue is IDictionary<string, object>)
+                throw new InvalidDataException("Domain JSON field '" + Key + "' must be an array of objects when present.");
+
+            var Items = RawValue as IEnumerable;
+            if (Items == null)
+                throw new InvalidDataException("Domain JSON field '" + Key + "' must be an array of objects when present.");
+
+            var Index = 0;
+            foreach (var Item in Items)
+            {
+                var Dictionary = Item as IDictionary<string, object>;
+                if (Dictionary == null)
+                    throw new InvalidDataException("Domain JSON field '" + Key + "' item " +
+                                                   Index.ToString(CultureInfo.InvariantCulture) +
+                                                   " must be an object.");
+                Result.Add(Reader(Dictionary));
+                Index++;
             }
 
             return Result;

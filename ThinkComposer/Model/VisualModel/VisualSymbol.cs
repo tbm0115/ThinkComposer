@@ -1259,6 +1259,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                             CalculatedPosition = this.BaseCenter.FindBoundary(CalculatedPosition, this.OwnerRepresentation.DisplayingView.Presenter,
                                                                               this.Graphic, true);
 
+                        Connector.ClearRoutePoints();
                         Connector.OriginPosition = CalculatedPosition;
                     }
 
@@ -1284,6 +1285,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                             CalculatedPosition = this.BaseCenter.FindBoundary(CalculatedPosition, this.OwnerRepresentation.DisplayingView.Presenter,
                                                                               this.Graphic, true);
 
+                        Connector.ClearRoutePoints();
                         Connector.TargetPosition = CalculatedPosition;
                     }
 
@@ -1303,6 +1305,8 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         {
             if (OngoingMovingSymbols == null)
                 OngoingMovingSymbols = Enumerable.Empty<VisualSymbol>();
+
+            var MovingSymbols = new HashSet<VisualSymbol>(OngoingMovingSymbols);
 
             var AutoReferences = new RelationshipVisualRepresentation[0];
 
@@ -1334,6 +1338,11 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             {
                 foreach (var Connector in this.TargetConnections)
                 {
+                    var IsCoMovedAutoReference = Connector.OwnerRelationshipRepresentation.IsIn(AutoReferences);
+                    if (!IsCoMovedAutoReference &&
+                        !(MovingSymbols.Contains(Connector.OriginSymbol) && MovingSymbols.Contains(Connector.TargetSymbol)))
+                        Connector.ClearRoutePoints();
+
                     Connector.OriginPosition = new Point(Connector.OriginPosition.X + MoveDeltaX, Connector.OriginPosition.Y + MoveDeltaY);
                     ConnectorsToRender.AddNew(Connector);
                     //- this.UpdateConnectorVisualization(Connector, true);
@@ -1341,6 +1350,11 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
 
                 foreach (var Connector in this.OriginConnections)
                 {
+                    var IsCoMovedAutoReference = Connector.OwnerRelationshipRepresentation.IsIn(AutoReferences);
+                    if (!IsCoMovedAutoReference &&
+                        !(MovingSymbols.Contains(Connector.OriginSymbol) && MovingSymbols.Contains(Connector.TargetSymbol)))
+                        Connector.ClearRoutePoints();
+
                     Connector.TargetPosition = new Point(Connector.TargetPosition.X + MoveDeltaX, Connector.TargetPosition.Y + MoveDeltaY);
                     ConnectorsToRender.AddNew(Connector);
                     //- this.UpdateConnectorVisualization(Connector, false);
@@ -1374,7 +1388,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             // Determine whether automatic repositioning aplies
             var IntermediateSymbol = (IsOriginated ? Connector.TargetSymbol : Connector.OriginSymbol);
 
-            var DoAutomaticReposition = (Connector.IntermediatePosition == Display.NULL_POINT
+            var DoAutomaticReposition = (Connector.RoutePoints.Count == 0
                                          && IntermediateSymbol.IsAutoPositionable
                                          && (IntermediateSymbol.OwnerRepresentation is RelationshipVisualRepresentation)
                                          && (IntermediateSymbol != this)

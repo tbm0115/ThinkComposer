@@ -1,9 +1,11 @@
 # Dcom Interchange Release Notes
 
-This branch consolidates the first Domain/Composition JSON Interchange pass for ThinkComposer. Modern `.tcom` and `.tdom` packages now use root JSON as authoritative persistence; external edits should patch the authoritative package JSON and use CLI validation or compatibility import/export paths when needed.
+This branch consolidates Domain/Composition JSON Interchange and modern Relationship routing. Modern `.tcom` and `.tdom` packages use root JSON as authoritative persistence. Composition edits use standalone operations patches through CLI preview/apply so root `/Composition.json` remains exact snapshot state; deliberate Domain edits may update authoritative `/Domain.json` with matching manifest metadata.
 
 ## New Commands
 
+- `thinkcomposer composition validate-routing` runs deterministic route-health and layout-profile validation and emits structured before/after diagnostics and view images.
+- The ThinkComposer plugin MCP adds `thinkcomposer_apply_patch`, which classifies and validates a standalone patch, previews it, applies it through the CLI, validates routing, and exports the resulting view.
 - Composition JSON interchange includes TechSpec-aware composition payloads and clearer source/import warning reporting. The earlier desktop `Composition -> File -> Export JSON...` and `Composition -> File -> Import JSON...` buttons are now deprecated in favor of root package JSON and CLI `thinkcomposer composition export-json` / `thinkcomposer composition import-json` compatibility paths.
 - The earlier desktop `Domain -> Export Domain JSON...` and `Domain -> Import/Update Domain JSON...` buttons are now deprecated in favor of root `/Domain.json` package edits and CLI `thinkcomposer domain export-json` / `thinkcomposer domain import-json` compatibility paths.
 - `Composition -> Domain -> Update Embedded Domain...` and `thinkcomposer domain update-embedded` safely update an active `.tcom` composition's embedded domain snapshot from a native `.tdom`.
@@ -12,6 +14,10 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 
 ## Supported Workflows
 
+- Persist ordered Concept and Relationship Definition Details as Domain JSON v2 `detailDesignators`, including stable identity, kind, metadata, order, appearance, and shared Domain table references. Version 1 omission preserves native defaults during migration; an explicit version 2 empty array clears the authoritative list.
+- Reconnect Composition Detail instances to their exported definition-level designator identity so Table Detail rows survive save/reopen in standalone `.tdom` Domains and embedded `.tcom` Domains.
+- Persist zero-to-many connector bends as Composition JSON v2 `routePoints`, migrate v1/single-bend geometry losslessly, and edit/render the path as one continuous route.
+- Route generated, moved, and layout-affected Relationships through one deterministic bounded orthogonal coordinator while preserving untouched hand routes and translating uniformly moved connected selections.
 - Update `.tcom` composition, concept, relationship, view, and supported definition summary/description/TechSpec fields through `ThinkComposer.JsonInterchange`.
 - Create and visually place composition concepts/relationships with auto-place, auto-fit, auto-route, recursive-composite protection, and root fixture fallback via `importOptions.useActiveCompositionAsContainer`.
 - Author GPT-generated root-level `.tcom` patches with the canonical `containerTechName: "Active_Composition_Root"` sentinel so creates can target the active composition safely after preview.
@@ -37,6 +43,8 @@ This branch consolidates the first Domain/Composition JSON Interchange pass for 
 
 ## Validated Manual Scenarios
 
+- Domain JSON v2 definition-detail regressions cover serialization presence, stable shared-table references, ordering/appearance, v1 omission, and authoritative v2 empty arrays.
+- A Table Detail added to a Concept Definition, backed by a Domain-level Table-Structure Definition, retains its designator identity and instance row values through standalone `.tdom` and embedded `.tcom` save/reopen validation.
 - Domain metadata/TechSpec root JSON persistence.
 - Domain additive root JSON update with five created objects and no skips on a fresh test copy.
 - Domain save/reopen persistence after root JSON update or compatibility import.
@@ -66,7 +74,7 @@ Dialogs distinguish source warnings, import warnings, skipped operations, danger
 ## Recommended User Workflow
 
 1. Save or copy the native `.tcom` or `.tdom`.
-2. Inspect and patch root `/Composition.json`, `/Domain.json`, or `/TemplateComposition.json` as the authoritative payload.
+2. Inspect root `/Composition.json`, `/Domain.json`, or `/TemplateComposition.json` as the authoritative payload. Apply Composition changes through a standalone operations patch and the safe CLI import path; patch Domain state directly only when deliberate.
 3. Refresh root `/manifest.json` authoritative part metadata for any changed root JSON.
 4. Use CLI validation or compatibility import/export commands when preview/merge diagnostics are needed.
 5. Save the native `.tcom` or `.tdom` after successful verification.
@@ -84,7 +92,7 @@ The bundled `thinkcomposer-json-interchange` Skill is maintained with the schema
 - Rich/binary content is summarized as metadata and warnings unless a JSON field explicitly covers it; binary attachment/image payloads are not reconstructed by JSON persistence.
 - Embedded container JSON/previews are synchronized snapshots only. Modern native packages use root `/Composition.json` and `/Domain.json`; current saves omit `/Composition.bin` and `/Domain.bin`, while older binary-only or transitional packages remain readable until resaved.
 - Embedded previews are PNG v1. SVG/vector previews remain backlog unless a safe WPF Drawing-to-SVG export path is added.
-- General full multi-bend connector routing and full graph crossing minimization remain backlog.
+- Multi-point connector routing is available through the shared deterministic coordinator. Full global crossing minimization remains backlog.
 - Spider, Hierarchy, Flowchart, and System Map are manual Appearance commands; JSON import currently integrates auto-placement, concept auto-fit, and link auto-route only.
 - `visualStrategy.overviewViewTechName` prefers an existing view but does not create new views yet; full overview grouping by `groupBy` is logged as intent and remains a future layout/materialization enhancement.
 - Relationship center cleanup uses local endpoint-corridor candidate scoring and overlap penalties. It is not a full edge-label optimizer, edge bundler, or crossing-minimizing graph drawing engine.

@@ -7,7 +7,7 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 ## General
 
 - [ ] Build `ThinkComposer/ThinkComposer.csproj` with Debug configuration.
-- [ ] Open an existing composition and confirm `Edit -> Appearance` contains the v1 commands.
+- [ ] Open an existing composition and confirm `Edit -> Appearance` contains the route and layout commands.
 - [ ] Confirm each command writes useful detail to the lower-left application log.
 - [ ] Confirm every visual mutation is undoable and redoable.
 - [ ] Save, close, reopen, and confirm layout changes persist.
@@ -26,12 +26,40 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 
 - [ ] Open `Test__Object_Avoidance.tcom`.
 - [ ] Import `samples/obstacle-avoidance-regression.sample.json` if needed.
-- [ ] Route Scenario A and confirm hidden-center one-bend routing around the obstacle.
-- [ ] Route Scenario B and confirm hidden-center dogleg routing around same-row/same-column blocking.
+- [ ] Route Scenario A and confirm deterministic routing around the obstacle.
+- [ ] Route Scenario B and confirm a legible multi-bend route around same-row/same-column blocking.
 - [ ] Route Scenario C and confirm clear paths remain straight or are straightened.
 - [ ] Run with no selected links and confirm the all-visible prompt appears.
 - [ ] Undo and redo.
 - [ ] Save, reopen, and export PDF/report.
+
+## Multi-Point Routes And Manual Editing
+
+- [ ] Migrate an old binary containing null and singleton `IntermediatePosition` values; confirm they become zero and one route point without changing appearance.
+- [ ] Export/re-import Composition JSON v1 and confirm `intermediatePosition` migrates to a singleton route.
+- [ ] Round-trip Composition JSON v2 connectors with zero, one, and many `routePoints`; confirm `[]` clears while omission in a patch preserves the route.
+- [ ] Supply both fields and confirm `routePoints` wins with a warning.
+- [ ] Attempt nonfinite and 33-point updates and confirm they are rejected rather than truncated.
+- [ ] Clone and paste a connector, mutate the copy, and confirm its route collection is independent.
+- [ ] Drag indexed bend handles, drag segment-midpoint handles to insert/shift bends, and double-click a bend to remove it.
+- [ ] Exercise `Edit Route`, `Remove Bend`, `Simplify Route`, `Straighten Route`, and `Auto-route`.
+- [ ] Confirm hidden simple Relationships expose one logical editable route across both connector halves.
+- [ ] Undo/redo every insert, update, remove, clear, translate, simplify, straighten, and auto-route edit.
+- [ ] Confirm the rendered path is continuous, plugs follow the first/last nonzero segment, and role labels choose a usable central/long segment.
+- [ ] Confirm automatic right-angled paths use capped six-unit rounded corners, while migrated legacy `SinglelineStraight`/`SinglelineCurved` paths remain sharp free-angle polylines.
+
+## Routing Scope And Determinism
+
+- [ ] Move one symbol and confirm only incident links reroute; unrelated hand-routed links remain byte-for-byte unchanged.
+- [ ] Move an entire connected selection by one delta and confirm its complete routes translate intact.
+- [ ] Move one endpoint of a route with a distant stale bend and confirm the stale geometry is never restored.
+- [ ] Route the same fixture repeatedly and under reversed connector enumeration; confirm identical output.
+- [ ] Confirm visible Relationship hubs are obstacles in Route Links, Spider, Hierarchy, Flowchart, and System Map.
+- [ ] Confirm binary hubs remain inside endpoint corridors and multi-endpoint hubs use a local centroid/median star.
+- [ ] Confirm Flowchart feedback lanes remain mandatory waypoints/corridors.
+- [ ] Force work-cap exhaustion and confirm a safe outer/direct fallback plus an explicit diagnostic.
+- [ ] Run `composition validate-routing` with `route`, `spider`, `hierarchy`, `flowchart`, and `system`; inspect before/after route JSON, diagnostics, and PNGs.
+- [ ] Save/reopen each result and confirm finite/local points, idempotence, and unchanged unrelated connectors.
 
 ## Spider Map
 
@@ -84,12 +112,18 @@ For `feature/DcomInterchange`, also run the Domain JSON and embedded-domain chec
 
 ## JSON Import Visual Cleanup
 
+- [ ] Confirm root `/Composition.json` rehydrates as an exact snapshot and does not execute `importOptions` or `visualStrategy`.
+- [ ] Load a legacy root containing `operations[]`; confirm snapshot rehydration occurs first, operations apply once through the importer, and the Composition becomes dirty so save consumes the directives.
+- [ ] Place/update an existing representation using `representationId` plus view; confirm position/size updates and incident-link invalidation.
 - [ ] Import a patch that creates concepts with long names and confirm `autoFitPlacedConcepts` fits newly placed concept widths.
 - [ ] Confirm existing concepts that are only text-updated are not resized unless operation `autoFit: true` is set.
 - [ ] Confirm operation `autoFit: false` suppresses fitting for that operation.
 - [ ] Import a patch with newly placed relationships and confirm `autoRoutePlacedLinks` routes touched links only.
 - [ ] Confirm pre-existing unrelated links are not routed by JSON import.
 - [ ] Confirm operation `autoRoute: false` suppresses routing for that operation.
+- [ ] Confirm operation `visual.relationshipCenterPlacement` overrides global placement for the touched Relationship.
+- [ ] Confirm generated Relationship operations default to `endpointCorridor` and `autoRoute:true`, and reject implicit explicit hub coordinates.
+- [ ] Confirm GPT-authored `routePoints` are rejected/warned by default; generated patches request routing instead.
 - [ ] Undo import and confirm concept widths and connector routes revert.
 - [ ] Save, reopen, and export PDF/report.
 

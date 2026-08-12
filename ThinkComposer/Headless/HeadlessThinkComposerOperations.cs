@@ -25,6 +25,7 @@ using Instrumind.ThinkComposer.Composer.ContainerSnapshots;
 using Instrumind.ThinkComposer.Composer.Generation;
 using Instrumind.ThinkComposer.Composer.GitSync;
 using Instrumind.ThinkComposer.Composer.JsonInterchange;
+using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.Composer.Reporting;
 using Instrumind.ThinkComposer.Definitor;
 using Instrumind.ThinkComposer.Definitor.DomainJsonInterchange;
@@ -78,6 +79,28 @@ namespace Instrumind.ThinkComposer.Headless
         private const int MaxImageExportDimension = 10000;
         private const long MaxImageExportPixels = 100000000;
         private const double DefaultImageFitPadding = 20.0;
+
+        private sealed class RoutingGeometrySnapshot
+        {
+            public RoutingGeometrySnapshot()
+            {
+                this.Entries = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            }
+
+            public SortedDictionary<string, string> Entries { get; private set; }
+            public int ConnectorCount { get { return this.Entries.Count; } }
+        }
+
+        private sealed class RoutingGeometryComparison
+        {
+            public RoutingGeometryComparison()
+            {
+                this.Mismatches = new List<string>();
+            }
+
+            public bool Passed { get { return this.Mismatches.Count == 0; } }
+            public IList<string> Mismatches { get; private set; }
+        }
 
         public static OperationResult<string> ExportCompositionJson(string Input, string Output)
         {
@@ -352,6 +375,338 @@ namespace Instrumind.ThinkComposer.Headless
             });
         }
 
+        /// <summary>
+        /// Runs the pure planner regression corpus, validates current relationship geometry,
+        /// applies the requested shared routing/layout profile, and emits deterministic artifacts.
+        /// The input package is never modified.
+        /// </summary>
+        public static OperationResult<string> ValidateCompositionRouting(string Input, string OutputDirectory, string Layout)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Validation = ValidateExistingFile(Input, Composition.FILE_EXTENSION_COMPOSITION, "input");
+                if (!Validation.WasSuccessful)
+                    return Validation;
+                Validation = ValidateOutputDirectory(OutputDirectory);
+                if (!Validation.WasSuccessful)
+                    return Validation;
+
+                var LayoutName = String.IsNullOrWhiteSpace(Layout) ? "route" : Layout.Trim().ToLowerInvariant();
+                var Allowed = new[] { "route", "spider", "hierarchy", "flowchart", "system" };
+                if (!Allowed.Contains(LayoutName))
+                    return Fail("--layout must be route, spider, hierarchy, flowchart, or system.");
+
+                var Regressions = OrthogonalRoutePlannerRegression.RunAll();
+                var ConnectorRegressions = VisualConnectorRouteRegression.RunAll();
+                var JsonRoutePersistenceRegressions = CompositionJsonRoutePersistenceRegression.RunAll();
+                if (!Regressions.Passed || !ConnectorRegressions.Passed || !JsonRoutePersistenceRegressions.Passed)
+                {
+                    var Failures = Regressions.Failures.Select(Failure => "planner: " + Failure)
+                        .Concat(ConnectorRegressions.Failures.Select(Failure => "connector model: " + Failure))
+                        .Concat(JsonRoutePersistenceRegressions.Failures.Select(Failure => "JSON route persistence: " + Failure))
+                        .ToArray();
+                    return Fail("Relationship routing regressions failed:" + Environment.NewLine +
+                                String.Join(Environment.NewLine, Failures));
+                }
+
+                var LoadResult = LoadComposition(Input);
+                if (!LoadResult.WasSuccessful)
+                    return Fail(LoadResult.Message);
+                var Engine = LoadResult.Result;
+                var TargetComposition = Engine.TargetComposition;
+                var View = TargetComposition == null ? null : TargetComposition.RootView;
+                if (View == null)
+                    return Fail("Composition routing validation could not find a root View.");
+
+                var TargetDirectory = Path.GetFullPath(OutputDirectory);
+                Directory.CreateDirectory(TargetDirectory);
+                var BeforeJson = Path.Combine(TargetDirectory, "routing-before.json");
+                var AfterJson = Path.Combine(TargetDirectory, "routing-after-" + LayoutName + ".json");
+                var ReopenedJson = Path.Combine(TargetDirectory, "routing-reopened-" + LayoutName + ".json");
+                var SecondPassJson = Path.Combine(TargetDirectory, "routing-second-pass-" + LayoutName + ".json");
+                var OutputPackage = Path.Combine(TargetDirectory,
+                    Path.GetFileNameWithoutExtension(Input) + "-routing-" + LayoutName + ".tcom");
+                var CanonicalSeedPackage = Path.Combine(TargetDirectory, ".routing-canonical-seed.tcom");
+                var ReportPath = Path.Combine(TargetDirectory, "routing-report-" + LayoutName + ".json");
+                CompositionJsonSerializer.Save(CompositionJsonExporter.Export(TargetComposition), BeforeJson);
+
+                var EmptySelection = Enumerable.Empty<VisualObject>();
+                var Context = LayoutSelectionContext.FromViewSelection(Engine, View, EmptySelection);
+                var ValidationOptions = new LinkObstacleRoutingOptions
+                {
+                    RouteSelectedConnectorsOnly = false,
+                    IncludeRelationshipCentralSymbolsAsObstacles = true,
+                    CorrectRelationshipCentersBeforeRouting = false,
+                    Profile = RelationshipRoutingProfile.Validation
+                };
+                var BeforeHealth = RelationshipRoutingCoordinator.Validate(Context, ValidationOptions);
+                var BeforeGeometry = CaptureRoutingGeometry(Context);
+
+                // Legacy binary packages can materialize slightly different obstacle bounds than
+                // their first JSON-authoritative reopen.  Route the canonicalized clone so the
+                // produced package is validated against the same persistence model it will use.
+                SaveComposition(TargetComposition, CanonicalSeedPackage, null, null, Input);
+                var CanonicalLoadResult = LoadComposition(CanonicalSeedPackage);
+                if (!CanonicalLoadResult.WasSuccessful)
+                    return Fail("Routing validation could not reopen its canonical input clone: " +
+                                CanonicalLoadResult.Message);
+                Engine = CanonicalLoadResult.Result;
+                TargetComposition = Engine.TargetComposition;
+                View = TargetComposition == null ? null : TargetComposition.RootView;
+                if (View == null)
+                    return Fail("Routing validation canonical input clone has no root View.");
+                Context = LayoutSelectionContext.FromViewSelection(Engine, View, EmptySelection);
+                try
+                {
+                    File.Delete(CanonicalSeedPackage);
+                }
+                catch (Exception Problem)
+                {
+                    Console.WriteLine("Routing validation could not remove its canonical seed package: " + Problem.Message);
+                }
+
+                var RoutingResult = ApplyRoutingValidationProfile(LayoutName, Context,
+                                                                  "headless routing validation");
+
+                var AfterContext = LayoutSelectionContext.FromViewSelection(Engine, View, EmptySelection);
+                var AfterHealth = RelationshipRoutingCoordinator.Validate(AfterContext, ValidationOptions);
+                var AfterGeometry = CaptureRoutingGeometry(AfterContext);
+                var StabilizationRoutingResults = new List<LinkObstacleRoutingResult>();
+                var CurrentComposition = TargetComposition;
+                var SavedGeometry = AfterGeometry;
+                var StabilizationConverged = false;
+                RoutingGeometryComparison InitialPersistenceComparison = null;
+                RoutingGeometryComparison FirstRepeatComparison = null;
+                RoutingGeometryComparison PersistenceComparison = null;
+                RoutingGeometryComparison IdempotenceComparison = null;
+                RelationshipRoutingValidationResult InitialReopenedHealth = null;
+                RelationshipRoutingValidationResult ReopenedHealth = null;
+                RelationshipRoutingValidationResult SecondHealth = null;
+                RoutingGeometrySnapshot ReopenedGeometry = null;
+                RoutingGeometrySnapshot FinalGeometry = null;
+                RoutingGeometrySnapshot SecondGeometry = null;
+                LinkObstacleRoutingResult SecondRoutingResult = null;
+                Composition FinalComposition = null;
+
+                // Stabilize across actual save/reopen cycles.  This catches differences in freshly
+                // materialized obstacle bounds and proves that the persisted package itself is a
+                // fixed point for the requested profile (including Flowchart feedback corridors).
+                for (var Pass = 1; Pass <= 8; Pass++)
+                {
+                    SaveComposition(CurrentComposition, OutputPackage, null, null,
+                                    Pass == 1 ? Input : OutputPackage);
+                    var ReopenResult = LoadComposition(OutputPackage);
+                    if (!ReopenResult.WasSuccessful)
+                        return Fail("Routing validation could not reopen stabilization pass " +
+                                    Pass.ToString(CultureInfo.InvariantCulture) + ": " + ReopenResult.Message);
+                    var ReopenedEngine = ReopenResult.Result;
+                    var ReopenedComposition = ReopenedEngine.TargetComposition;
+                    var ReopenedView = ReopenedComposition == null ? null : ReopenedComposition.RootView;
+                    if (ReopenedView == null)
+                        return Fail("Routing validation stabilization package has no root View.");
+                    var ReopenedContext = LayoutSelectionContext.FromViewSelection(ReopenedEngine, ReopenedView,
+                                                                                    EmptySelection);
+                    ReopenedGeometry = CaptureRoutingGeometry(ReopenedContext);
+                    var PassPersistence = CompareRoutingGeometry(SavedGeometry, ReopenedGeometry);
+                    if (InitialPersistenceComparison == null)
+                    {
+                        InitialPersistenceComparison = PassPersistence;
+                        InitialReopenedHealth = RelationshipRoutingCoordinator.Validate(ReopenedContext,
+                                                                                        ValidationOptions);
+                    }
+
+                    var PassResult = ApplyRoutingValidationProfile(LayoutName, ReopenedContext,
+                                                                   "headless persisted stabilization pass " +
+                                                                   Pass.ToString(CultureInfo.InvariantCulture));
+                    StabilizationRoutingResults.Add(PassResult);
+                    var PassContext = LayoutSelectionContext.FromViewSelection(ReopenedEngine, ReopenedView,
+                                                                               EmptySelection);
+                    var PassGeometry = CaptureRoutingGeometry(PassContext);
+                    var PassIdempotence = CompareRoutingGeometry(ReopenedGeometry, PassGeometry);
+                    if (FirstRepeatComparison == null)
+                        FirstRepeatComparison = PassIdempotence;
+                    // Retain the latest evidence even when the diagnostic stabilization loop
+                    // does not converge; never replace a failure with an empty passing object.
+                    PersistenceComparison = PassPersistence;
+                    IdempotenceComparison = PassIdempotence;
+                    AfterHealth = RelationshipRoutingCoordinator.Validate(PassContext, ValidationOptions);
+                    AfterGeometry = PassGeometry;
+                    CurrentComposition = ReopenedComposition;
+                    SavedGeometry = PassGeometry;
+
+                    if (PassPersistence.Passed && PassIdempotence.Passed)
+                    {
+                        StabilizationConverged = true;
+                        PersistenceComparison = PassPersistence;
+                        IdempotenceComparison = PassIdempotence;
+                        ReopenedHealth = RelationshipRoutingCoordinator.Validate(ReopenedContext,
+                                                                                 ValidationOptions);
+                        SecondHealth = AfterHealth;
+                        FinalGeometry = ReopenedGeometry;
+                        SecondGeometry = PassGeometry;
+                        SecondRoutingResult = PassResult;
+                        FinalComposition = ReopenedComposition;
+                        break;
+                    }
+                }
+                var StabilizationRoutingResult = StabilizationRoutingResults.LastOrDefault();
+                InitialPersistenceComparison = InitialPersistenceComparison ?? new RoutingGeometryComparison();
+                FirstRepeatComparison = FirstRepeatComparison ?? new RoutingGeometryComparison();
+                PersistenceComparison = PersistenceComparison ?? new RoutingGeometryComparison();
+                IdempotenceComparison = IdempotenceComparison ?? new RoutingGeometryComparison();
+                ReopenedHealth = ReopenedHealth ?? AfterHealth;
+                SecondHealth = SecondHealth ?? AfterHealth;
+                FinalGeometry = FinalGeometry ?? ReopenedGeometry ?? AfterGeometry;
+                SecondGeometry = SecondGeometry ?? AfterGeometry;
+                FinalComposition = FinalComposition ?? CurrentComposition;
+                CompositionJsonSerializer.Save(CompositionJsonExporter.Export(FinalComposition), AfterJson);
+                CompositionJsonSerializer.Save(CompositionJsonExporter.Export(FinalComposition), ReopenedJson);
+                CompositionJsonSerializer.Save(CompositionJsonExporter.Export(FinalComposition), SecondPassJson);
+
+                // validate-routing always operates on the full root view; state that explicitly
+                // so consumers do not mistake a zero unrelated count for an unperformed check.
+                var UnrelatedReport = new Dictionary<string, object>
+                {
+                    { "scopeLimited", false },
+                    { "applicable", false },
+                    { "unchanged", true },
+                    { "connectorCountBefore", BeforeGeometry.ConnectorCount },
+                    { "message", "The command routed the full root view; there were no out-of-scope connectors." }
+                };
+
+                var Report = new Dictionary<string, object>();
+                Report["schema"] = "thinkcomposer.routing.validation/v2";
+                Report["input"] = Path.GetFullPath(Input);
+                Report["layout"] = LayoutName;
+                Report["plannerRegressions"] = new Dictionary<string, object>
+                {
+                    { "passed", Regressions.Passed },
+                    { "scenarios", Regressions.PassedScenarios.ToArray() },
+                    { "failures", Regressions.Failures.ToArray() }
+                };
+                Report["connectorModelRegressions"] = new Dictionary<string, object>
+                {
+                    { "passed", ConnectorRegressions.Passed },
+                    { "scenarios", ConnectorRegressions.PassedScenarios.ToArray() },
+                    { "failures", ConnectorRegressions.Failures.ToArray() }
+                };
+                Report["jsonRoutePersistenceRegressions"] = new Dictionary<string, object>
+                {
+                    { "passed", JsonRoutePersistenceRegressions.Passed },
+                    { "scenarios", JsonRoutePersistenceRegressions.PassedScenarios.ToArray() },
+                    { "failures", JsonRoutePersistenceRegressions.Failures.ToArray() }
+                };
+                Report["before"] = RoutingHealthReport(BeforeHealth);
+                Report["after"] = RoutingHealthReport(AfterHealth);
+                Report["initialReopened"] = RoutingHealthReport(InitialReopenedHealth);
+                Report["reopened"] = RoutingHealthReport(ReopenedHealth);
+                Report["secondPass"] = RoutingHealthReport(SecondHealth);
+                Report["routing"] = RoutingRunReport(RoutingResult);
+                Report["stabilizationRouting"] = RoutingRunReport(StabilizationRoutingResult);
+                Report["stabilizationRoutingPasses"] = StabilizationRoutingResults
+                    .Select(RoutingRunReport).ToArray();
+                Report["secondPassRouting"] = RoutingRunReport(SecondRoutingResult);
+                Report["verification"] = new Dictionary<string, object>
+                {
+                    { "afterHealthy", AfterHealth.IsHealthy },
+                    { "reopenedHealthy", ReopenedHealth.IsHealthy },
+                    { "secondPassHealthy", SecondHealth.IsHealthy },
+                    { "stabilizationConverged", StabilizationConverged },
+                    { "initialPersistence", RoutingComparisonReport(InitialPersistenceComparison,
+                                                                     ReopenedGeometry.ConnectorCount,
+                                                                     "initial-save-reopen") },
+                    { "firstRepeatIdempotence", RoutingComparisonReport(FirstRepeatComparison,
+                                                                         ReopenedGeometry.ConnectorCount,
+                                                                         "first-repeat-" + LayoutName + "-profile") },
+                    { "persistence", RoutingComparisonReport(PersistenceComparison, AfterGeometry.ConnectorCount,
+                                                              "stabilized-save-reopen") },
+                    { "idempotence", RoutingComparisonReport(IdempotenceComparison, FinalGeometry.ConnectorCount,
+                                                              "repeat-" + LayoutName + "-profile") },
+                    { "unrelatedConnectors", UnrelatedReport },
+                    { "batchWorkWithinCap", RoutingResult == null || RoutingResult.TotalWork <= 500000 },
+                    { "stabilizationBatchWorkWithinCap", StabilizationRoutingResults.All(Result =>
+                                                               Result == null || Result.TotalWork <= 500000) },
+                    { "secondPassBatchWorkWithinCap", SecondRoutingResult == null || SecondRoutingResult.TotalWork <= 500000 }
+                };
+                File.WriteAllText(ReportPath, new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Serialize(Report), Encoding.UTF8);
+
+                // Render from native packages after the report is complete. Image failure should
+                // fail validation because it often exposes malformed route geometry.
+                var BeforeImage = Path.Combine(TargetDirectory, "routing-before.png");
+                var AfterImage = Path.Combine(TargetDirectory, "routing-after-" + LayoutName + ".png");
+                var BeforeImageResult = ExportCompositionImage(new HeadlessImageExportOptions
+                {
+                    Input = Input,
+                    Output = BeforeImage,
+                    Width = 1600,
+                    Height = 1200,
+                    Padding = 20.0
+                });
+                if (!BeforeImageResult.WasSuccessful)
+                    return Fail("Routing validation could not render the before image: " + BeforeImageResult.Message);
+                var AfterImageResult = ExportCompositionImage(new HeadlessImageExportOptions
+                {
+                    Input = OutputPackage,
+                    Output = AfterImage,
+                    Width = 1600,
+                    Height = 1200,
+                    Padding = 20.0
+                });
+                if (!AfterImageResult.WasSuccessful)
+                    return Fail("Routing validation could not render the after image: " + AfterImageResult.Message);
+
+                var VerificationFailures = new List<string>();
+                if (!StabilizationConverged)
+                    VerificationFailures.Add("the requested routing/layout profile did not reach a fixed point within 8 stabilization passes");
+                if (!AfterHealth.IsHealthy)
+                    VerificationFailures.Add("after-routing state is unhealthy (suspicious=" + AfterHealth.Suspicious +
+                                             ", invalid=" + AfterHealth.Invalid + ")");
+                if (!ReopenedHealth.IsHealthy)
+                    VerificationFailures.Add("reopened state is unhealthy (suspicious=" + ReopenedHealth.Suspicious +
+                                             ", invalid=" + ReopenedHealth.Invalid + ")");
+                if (!SecondHealth.IsHealthy)
+                    VerificationFailures.Add("second-pass state is unhealthy (suspicious=" + SecondHealth.Suspicious +
+                                             ", invalid=" + SecondHealth.Invalid + ")");
+                if (!InitialPersistenceComparison.Passed)
+                    VerificationFailures.Add("the initial save/reopen changed " +
+                                             InitialPersistenceComparison.Mismatches.Count +
+                                             " connector route geometries");
+                if (!FirstRepeatComparison.Passed)
+                    VerificationFailures.Add("the first repeated " + LayoutName + " profile changed " +
+                                             FirstRepeatComparison.Mismatches.Count +
+                                             " connector route geometries (later stabilization does not satisfy idempotence)");
+                if (!PersistenceComparison.Passed)
+                    VerificationFailures.Add("stabilized save/reopen changed " + PersistenceComparison.Mismatches.Count +
+                                             " connector route geometries");
+                if (!IdempotenceComparison.Passed)
+                    VerificationFailures.Add("the repeated " + LayoutName + " profile changed " +
+                                             IdempotenceComparison.Mismatches.Count + " connector route geometries");
+                if (RoutingResult != null && RoutingResult.TotalWork > 500000)
+                    VerificationFailures.Add("the initial routing batch exceeded 500000 work units");
+                if (StabilizationRoutingResults.Any(Result => Result != null && Result.TotalWork > 500000))
+                    VerificationFailures.Add("a stabilization routing batch exceeded 500000 work units");
+                if (SecondRoutingResult != null && SecondRoutingResult.TotalWork > 500000)
+                    VerificationFailures.Add("the second routing batch exceeded 500000 work units");
+
+                if (VerificationFailures.Count > 0)
+                    return Fail("Composition routing validation failed:" + Environment.NewLine +
+                                String.Join(Environment.NewLine, VerificationFailures.Select(Failure => "- " + Failure).ToArray()) +
+                                Environment.NewLine + "Report: " + ReportPath);
+
+                var Summary = "Composition routing validation completed." + Environment.NewLine +
+                              "Planner regressions: " + Regressions.PassedScenarios.Count + " passed." + Environment.NewLine +
+                              "Connector model regressions: " + ConnectorRegressions.PassedScenarios.Count + " passed." + Environment.NewLine +
+                              "JSON route persistence regressions: " + JsonRoutePersistenceRegressions.PassedScenarios.Count + " passed." + Environment.NewLine +
+                              "Before: inspected=" + BeforeHealth.Inspected + ", suspicious=" + BeforeHealth.Suspicious +
+                              ", invalid=" + BeforeHealth.Invalid + "." + Environment.NewLine +
+                              "After: inspected=" + AfterHealth.Inspected + ", suspicious=" + AfterHealth.Suspicious +
+                              ", invalid=" + AfterHealth.Invalid + "." + Environment.NewLine +
+                              "Persistence: passed; second-pass idempotence: passed." + Environment.NewLine +
+                              "Artifacts: " + TargetDirectory;
+                return Succeed(Summary, ReportPath);
+            });
+        }
+
         public static OperationResult<string> ValidateCompositionJsonRoundTrip(string Input, string OutputDirectory)
         {
             return ExpectedOperation(delegate
@@ -476,7 +831,14 @@ namespace Instrumind.ThinkComposer.Headless
                                 "Artifacts: " + TargetDirectory + Environment.NewLine +
                                 DomainMismatch);
 
+                var DetailPersistenceRegressions = DomainJsonDetailPersistenceRegression.RunAll();
+                if (!DetailPersistenceRegressions.Passed)
+                    return Fail("Domain Detail Designator persistence regressions failed." + Environment.NewLine +
+                                String.Join(Environment.NewLine, DetailPersistenceRegressions.Failures.ToArray()));
+
                 return Succeed("Domain JSON round-trip parity passed." + Environment.NewLine +
+                               "Detail Designator regressions: " +
+                               DetailPersistenceRegressions.PassedScenarios.Count + " passed." + Environment.NewLine +
                                "Artifacts: " + TargetDirectory, RehydratedDomainPath);
             });
         }
@@ -940,7 +1302,14 @@ namespace Instrumind.ThinkComposer.Headless
 
                 var HardeningNotes = ValidateDomainPersistenceHardening(FirstPath, Path.GetFullPath(Input), TargetDirectory);
 
+                var DetailPersistenceRegressions = DomainJsonDetailPersistenceRegression.RunAll();
+                if (!DetailPersistenceRegressions.Passed)
+                    return Fail("Domain Detail Designator persistence regressions failed." + Environment.NewLine +
+                                String.Join(Environment.NewLine, DetailPersistenceRegressions.Failures.ToArray()));
+
                 return Succeed("Domain JSON persistence validation passed." + Environment.NewLine +
+                               "Detail Designator regressions: " +
+                               DetailPersistenceRegressions.PassedScenarios.Count + " passed." + Environment.NewLine +
                                String.Join(Environment.NewLine, HardeningNotes.ToArray()) + Environment.NewLine +
                                "Artifacts: " + TargetDirectory + Environment.NewLine +
                                JsonPackagePersistence.DescribeInspection(FirstInspection), FirstPath);
@@ -2138,6 +2507,255 @@ namespace Instrumind.ThinkComposer.Headless
                 return Fail("Input must have .tdom or .tcom extension.");
 
             return Succeed(null, null);
+        }
+
+        private static LinkObstacleRoutingResult ApplyRoutingValidationProfile(string LayoutName,
+                                                                                LayoutSelectionContext Context,
+                                                                                string DirtyReason)
+        {
+            if (LayoutName == "route")
+                return RelationshipRoutingCoordinator.Route(Context, new LinkObstacleRoutingOptions
+                {
+                    RouteSelectedConnectorsOnly = false,
+                    IncludeRelationshipCentralSymbolsAsObstacles = true,
+                    CorrectRelationshipCentersBeforeRouting = true,
+                    PreserveExistingValidRoutes = true,
+                    RouteIntent = RelationshipRouteIntent.RepairSuspicious,
+                    DirtyReason = DirtyReason,
+                    Profile = RelationshipRoutingProfile.Validation
+                });
+
+            if (LayoutName == "spider")
+                return SpiderMapLayoutService.Arrange(Context, new SpiderMapLayoutOptions
+                {
+                    ArrangeSelectedConceptsOnly = false,
+                    RevealArrangedContent = false
+                }).RoutingResult;
+            if (LayoutName == "hierarchy")
+                return HierarchyMapLayoutService.Arrange(Context, new HierarchyMapLayoutOptions
+                {
+                    ArrangeSelectedConceptsOnly = false,
+                    RevealArrangedContent = false
+                }).RoutingResult;
+            if (LayoutName == "flowchart")
+                return FlowchartLayoutService.Arrange(Context, new FlowchartLayoutOptions
+                {
+                    ArrangeSelectedConceptsOnly = false,
+                    RevealArrangedContent = false
+                }).RoutingResult;
+            if (LayoutName == "system")
+                return SystemMapLayoutService.Arrange(Context, new SystemMapLayoutOptions
+                {
+                    ArrangeSelectedConceptsOnly = false,
+                    RevealArrangedContent = false
+                }).RoutingResult;
+            return null;
+        }
+
+        private static IDictionary<string, object> RoutingHealthReport(RelationshipRoutingValidationResult Source)
+        {
+            Source = Source ?? new RelationshipRoutingValidationResult();
+            return new Dictionary<string, object>
+            {
+                { "inspected", Source.Inspected },
+                { "healthy", Source.Healthy },
+                { "suspicious", Source.Suspicious },
+                { "invalid", Source.Invalid },
+                { "staleEndpoints", Source.StaleEndpoints },
+                { "ambiguousIdentities", Source.AmbiguousIdentities },
+                { "relationshipCentersInspected", Source.RelationshipCentersInspected },
+                { "distantRelationshipCenters", Source.DistantRelationshipCenters },
+                { "warnings", Source.Warnings.ToArray() },
+                { "diagnostics", Source.Diagnostics.Select(RoutingDiagnosticReport).ToArray() }
+            };
+        }
+
+        private static IDictionary<string, object> RoutingRunReport(LinkObstacleRoutingResult Source)
+        {
+            if (Source == null)
+                return new Dictionary<string, object> { { "executed", false } };
+
+            return new Dictionary<string, object>
+            {
+                { "executed", true },
+                { "inspected", Source.Inspected },
+                { "connectorRoutesInspected", Source.ConnectorRoutesInspected },
+                { "relationshipRoutesInspected", Source.RelationshipRoutesInspected },
+                { "routed", Source.Routed },
+                { "straightened", Source.Straightened },
+                { "doglegRouted", Source.DoglegRouted },
+                { "appearanceChanged", Source.AppearanceChanged },
+                { "unchanged", Source.Unchanged },
+                { "skipped", Source.Skipped },
+                { "totalWork", Source.TotalWork },
+                { "safeFallbacks", Source.SafeFallbacks },
+                { "degradedFallbacks", Source.DegradedFallbacks },
+                { "suspiciousRoutes", Source.SuspiciousRoutes },
+                { "warnings", Source.Warnings.ToArray() },
+                { "diagnostics", Source.Diagnostics.Select(RoutingDiagnosticReport).ToArray() }
+            };
+        }
+
+        private static IDictionary<string, object> RoutingDiagnosticReport(RelationshipRouteDiagnostic Source)
+        {
+            return new Dictionary<string, object>
+            {
+                { "routeKey", Source.RouteKey },
+                { "source", RoutingPointReport(Source.Source) },
+                { "target", RoutingPointReport(Source.Target) },
+                { "intent", Source.Intent.ToString() },
+                { "dirtyReason", Source.DirtyReason },
+                { "status", Source.Status.ToString() },
+                { "oldPointCount", Source.OldPointCount },
+                { "newPointCount", Source.NewPointCount },
+                { "oldPoints", (Source.OldPoints ?? new List<Point>()).Select(RoutingPointReport).ToArray() },
+                { "newPoints", (Source.NewPoints ?? new List<Point>()).Select(RoutingPointReport).ToArray() },
+                { "bendCount", Source.BendCount },
+                { "obstacleCount", Source.ObstacleCount },
+                { "gridNodeCount", Source.GridNodeCount },
+                { "directionalStateCount", Source.DirectionalStateCount },
+                { "workCount", Source.WorkCount },
+                { "crossingCount", Source.CrossingCount },
+                { "nearMissCount", Source.NearMissCount },
+                { "detourRatio", Double.IsNaN(Source.DetourRatio) || Double.IsInfinity(Source.DetourRatio) ? null : (object)Source.DetourRatio },
+                { "capHits", new Dictionary<string, object>
+                    {
+                        { "obstacles", Source.HitObstacleCap },
+                        { "coordinates", Source.HitCoordinateCap },
+                        { "gridNodes", Source.HitGridNodeCap },
+                        { "directionalStates", Source.HitStateCap },
+                        { "batchWork", Source.HitBatchWorkCap }
+                    }
+                },
+                { "usedFallback", Source.UsedFallback },
+                { "fallbackStatus", Source.UsedFallback ? Source.Status.ToString() : null },
+                { "appearanceChanged", Source.AppearanceChanged },
+                { "distantRelationshipCenter", Source.IsDistantRelationshipCenter },
+                { "suspicious", Source.IsSuspicious },
+                { "safe", Source.IsSafe },
+                { "message", Source.Message }
+            };
+        }
+
+        private static IDictionary<string, object> RoutingPointReport(Point Source)
+        {
+            return new Dictionary<string, object>
+            {
+                { "x", Double.IsNaN(Source.X) || Double.IsInfinity(Source.X) ? null : (object)Source.X },
+                { "y", Double.IsNaN(Source.Y) || Double.IsInfinity(Source.Y) ? null : (object)Source.Y }
+            };
+        }
+
+        private static RoutingGeometrySnapshot CaptureRoutingGeometry(LayoutSelectionContext Context)
+        {
+            var Result = new RoutingGeometrySnapshot();
+            if (Context == null)
+                return Result;
+
+            var Occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+            var Connectors = (Context.VisibleRelationshipConnectors ?? new List<VisualConnector>())
+                .Where(Connector => Connector != null)
+                .OrderBy(Connector => Connector.GlobalId.ToString("D"), StringComparer.Ordinal)
+                .ThenBy(Connector => RoutingConnectorSemanticKey(Connector), StringComparer.Ordinal)
+                .ThenBy(Connector => RoutingGeometryFingerprint(Connector), StringComparer.Ordinal)
+                .ToList();
+
+            foreach (var Connector in Connectors)
+            {
+                var BaseKey = Connector.GlobalId.ToString("D") + ":" + RoutingConnectorSemanticKey(Connector);
+                int Occurrence;
+                Occurrences.TryGetValue(BaseKey, out Occurrence);
+                Occurrences[BaseKey] = Occurrence + 1;
+                Result.Entries[BaseKey + "#" + Occurrence.ToString(CultureInfo.InvariantCulture)] =
+                    RoutingGeometryFingerprint(Connector);
+            }
+            return Result;
+        }
+
+        private static RoutingGeometryComparison CompareRoutingGeometry(RoutingGeometrySnapshot Expected,
+                                                                         RoutingGeometrySnapshot Actual)
+        {
+            Expected = Expected ?? new RoutingGeometrySnapshot();
+            Actual = Actual ?? new RoutingGeometrySnapshot();
+            var Result = new RoutingGeometryComparison();
+            foreach (var Key in Expected.Entries.Keys.Concat(Actual.Entries.Keys).Distinct().OrderBy(Key => Key, StringComparer.Ordinal))
+            {
+                string ExpectedValue;
+                string ActualValue;
+                if (!Expected.Entries.TryGetValue(Key, out ExpectedValue))
+                    Result.Mismatches.Add(Key + ": connector appeared unexpectedly");
+                else if (!Actual.Entries.TryGetValue(Key, out ActualValue))
+                    Result.Mismatches.Add(Key + ": connector disappeared");
+                else if (!String.Equals(ExpectedValue, ActualValue, StringComparison.Ordinal))
+                    Result.Mismatches.Add(Key + ": route geometry changed; expected=" + ExpectedValue +
+                                          "; actual=" + ActualValue);
+            }
+            return Result;
+        }
+
+        private static IDictionary<string, object> RoutingComparisonReport(RoutingGeometryComparison Comparison,
+                                                                           int ConnectorCount,
+                                                                           string Mode)
+        {
+            Comparison = Comparison ?? new RoutingGeometryComparison();
+            return new Dictionary<string, object>
+            {
+                { "passed", Comparison.Passed },
+                { "mode", Mode },
+                { "connectorCount", ConnectorCount },
+                { "mismatchCount", Comparison.Mismatches.Count },
+                { "mismatches", Comparison.Mismatches.ToArray() }
+            };
+        }
+
+        private static string RoutingGeometryFingerprint(VisualConnector Connector)
+        {
+            var Builder = new StringBuilder();
+            AppendRoutingPoint(Builder, Connector == null ? new Point(Double.NaN, Double.NaN) : Connector.OriginPosition, 3);
+            AppendRoutingPoint(Builder, Connector == null ? new Point(Double.NaN, Double.NaN) : Connector.OriginEdgePosition, 3);
+            foreach (var Point in Connector == null || Connector.RoutePoints == null
+                                  ? Enumerable.Empty<Point>() : Connector.RoutePoints)
+                AppendRoutingPoint(Builder, Point, 6);
+            AppendRoutingPoint(Builder, Connector == null ? new Point(Double.NaN, Double.NaN) : Connector.TargetEdgePosition, 3);
+            AppendRoutingPoint(Builder, Connector == null ? new Point(Double.NaN, Double.NaN) : Connector.TargetPosition, 3);
+            return Builder.ToString();
+        }
+
+        private static void AppendRoutingPoint(StringBuilder Builder, Point Point, int DecimalPlaces)
+        {
+            if (Builder.Length > 0)
+                Builder.Append('|');
+            Builder.Append(RoutingCoordinateFingerprint(Point.X, DecimalPlaces));
+            Builder.Append(',');
+            Builder.Append(RoutingCoordinateFingerprint(Point.Y, DecimalPlaces));
+        }
+
+        private static string RoutingCoordinateFingerprint(double Value, int DecimalPlaces)
+        {
+            // Edge anchors are derived from WPF line/shape intersections and may alternate at
+            // the fifth/sixth decimal after an otherwise lossless save/reopen.  Derived anchors
+            // use a 0.001-view-unit tolerance, while authoritative route points retain six
+            // decimal places so persistence regressions remain strict for stored bends.
+            return Double.IsNaN(Value) || Double.IsInfinity(Value)
+                   ? Value.ToString(CultureInfo.InvariantCulture)
+                   : Math.Round(Value, DecimalPlaces).ToString("R", CultureInfo.InvariantCulture);
+        }
+
+        private static string RoutingConnectorSemanticKey(VisualConnector Connector)
+        {
+            var Relationship = Connector == null || Connector.OwnerRelationshipRepresentation == null
+                               ? null : Connector.OwnerRelationshipRepresentation.RepresentedRelationship;
+            var OriginIdea = Connector == null || Connector.OriginSymbol == null ||
+                             Connector.OriginSymbol.OwnerRepresentation == null
+                             ? null : Connector.OriginSymbol.OwnerRepresentation.RepresentedIdea;
+            var TargetIdea = Connector == null || Connector.TargetSymbol == null ||
+                             Connector.TargetSymbol.OwnerRepresentation == null
+                             ? null : Connector.TargetSymbol.OwnerRepresentation.RepresentedIdea;
+            var Link = Connector == null ? null : Connector.RepresentedLink;
+            return (Relationship == null ? "?" : Relationship.GlobalId.ToString("D")) + ":" +
+                   (Link == null ? "?" : Link.GlobalId.ToString("D")) + ":" +
+                   (OriginIdea == null ? "?" : OriginIdea.GlobalId.ToString("D")) + "->" +
+                   (TargetIdea == null ? "?" : TargetIdea.GlobalId.ToString("D"));
         }
 
         private static OperationResult<string> ValidateOutputDirectory(string OutputDirectory)

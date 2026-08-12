@@ -1,10 +1,14 @@
 # Appearance and Layout Tools
 
-ThinkComposer includes a v1 set of reusable appearance and layout commands under:
+ThinkComposer includes reusable appearance, route-editing, and layout commands under:
 
 `Edit -> Appearance`
 
 These commands are intended to make imported or hand-authored diagrams readable quickly, then leave room for normal manual polish. They do not change concept or relationship meaning; they move, resize, or route visual representations in the active view.
+
+## Why Generated Routes Previously Became Awkward
+
+The failure was not binary-versus-JSON coordinate conversion: JSON preserved the visible geometry exactly. Three behaviors interacted instead. Generated patches could place the central Relationship symbol far from its endpoints; native snapshot rehydration suppressed import-time endpoint-corridor placement and auto-routing directives; and moving symbols left absolute connector bends stale while the conservative one-bend router could preserve them. The modern workflow separates snapshot state from edit directives and routes only affected Relationships after current symbol and hub placement is known.
 
 ## Recommended Workflow
 
@@ -19,7 +23,7 @@ These commands are intended to make imported or hand-authored diagrams readable 
 | Command | Use When | What It Changes |
 |---|---|---|
 | Fit Concept Width to Text | Concept labels are clipped, too wide, or recently edited. | Selected concept symbol widths only. |
-| Route Links with Obstacle Avoidance | Connector lines cross concept symbols or need cleanup after moving nodes. | In-scope connector intermediate points and hidden relationship junctions. |
+| Route Links with Obstacle Avoidance | Connector lines cross symbols or need cleanup after moving nodes. | In-scope multi-point connector routes and Relationship hubs. |
 | Arrange as Spider Map | One central idea should radiate to related ideas. | In-scope concept positions and in-scope routed links. |
 | Arrange as Hierarchy Map | Roots/parents should appear above children/dependencies. | In-scope concept positions, visible relationship bubbles, and in-scope routed links. |
 | Arrange as Flowchart | A process should read left-to-right. | In-scope concept positions, feedback/cross-link bubbles, and in-scope routed links. |
@@ -30,7 +34,7 @@ These commands are intended to make imported or hand-authored diagrams readable 
 - If selected concept symbols exist, arrangement commands operate only on the selected concepts and visible relationships among them.
 - If no concept symbols are selected, arrangement commands ask before arranging all visible concepts in the active view.
 - Link routing operates on selected connectors/relationship visuals; if no routeable link is selected, it asks before routing all visible links.
-- Every command runs inside one undoable ThinkComposer command variation. Normal undo/redo should restore positions, widths, connector bends, hidden junctions, and Group Region changes.
+- Every command runs inside one undoable ThinkComposer command variation. Normal undo/redo restores positions, widths, every connector route point, hidden junctions, and Group Region changes.
 - Layout results are native visual model changes. After saving, closing, and reopening the `.tcom`, positions/routes/Group Regions are expected to persist.
 - Completion dialogs separate changed/applied counts, unchanged counts, skipped items, notes, layout warnings, and errors. If a command inspects items and leaves them unchanged because they are already valid, that is a successful no-op rather than a warning.
 - Detailed diagnostics go to the lower-left application log. Completion dialogs stay intentionally concise.
@@ -39,21 +43,20 @@ These commands are intended to make imported or hand-authored diagrams readable 
 
 | Feature | Manual Command | JSON Import Option | Current Status |
 |---|---|---|---|
-| Auto-place concepts | Import only | `autoPlaceNewItems` | v1 |
-| Auto-fit concepts | Fit Concept Width to Text | `autoFitPlacedConcepts` / operation `autoFit` | v1 |
-| Route links | Route Links with Obstacle Avoidance | `autoRoutePlacedLinks` / operation `autoRoute` | v1 |
-| Spider Map | Arrange as Spider Map | not yet | v1 manual |
-| Hierarchy Map | Arrange as Hierarchy Map | not yet | v1 manual |
-| Flowchart | Arrange as Flowchart | not yet | v1 manual |
-| System Map | Arrange as System Map | not yet | v1 manual |
+| Auto-place concepts | Import only | `autoPlaceNewItems` | shared import pipeline |
+| Auto-fit concepts | Fit Concept Width to Text | `autoFitPlacedConcepts` / operation `autoFit` | shared service |
+| Route links | Route Links with Obstacle Avoidance | `autoRoutePlacedLinks` / operation `autoRoute` | shared coordinator |
+| Spider Map | Arrange as Spider Map | CLI `--layout spider` validation | shared routing |
+| Hierarchy Map | Arrange as Hierarchy Map | CLI `--layout hierarchy` validation | shared routing |
+| Flowchart | Arrange as Flowchart | CLI `--layout flowchart` validation | shared routing with feedback lanes |
+| System Map | Arrange as System Map | CLI `--layout system` validation | shared routing |
 
 ## Backlog
 
 - Custom domain shape import.
-- Full multi-bend general connector route model.
 - Full graph crossing minimization.
 - Better layout option dialogs.
-- JSON import integration for Spider, Hierarchy, Flowchart, and System Map beyond the current auto-place, auto-fit, and auto-route options.
+- Additional domain-aware layout strategies.
 
 Package root Domain JSON updates and explicit embedded-domain updates are covered by `docs/domain-json-interchange.md` and `docs/domain-sync.md`; they are separate from these manual Appearance layout commands.
 
@@ -89,33 +92,36 @@ Selection behavior:
 
 Routing behavior:
 
-- v1 uses the existing `VisualConnector.IntermediatePosition` field only.
-- A connector is left straight when the straight segment avoids all inflated concept obstacles.
-- Otherwise, the router tries one-bend orthogonal candidates: horizontal-first and vertical-first.
-- Concept symbols are treated as obstacles, except the connector's own origin and target symbols.
-- Simple relationships that hide their central symbol are routed as one relationship-level unit. ThinkComposer represents these as two connector segments, `source concept -> hidden relationship symbol -> target concept`; the router moves that hidden relationship symbol to the midpoint for a straight route or to the chosen orthogonal elbow for an L-shaped route.
-- Before routing, the command can reposition visible relationship central symbols with the `EndpointCorridorRelationshipCenters` strategy. This places relationship bubbles near the midpoint/corridor between their visible origin and target concepts instead of leaving imported bubbles in distant global label rows.
-- Visible relationship central symbols can be included as obstacles for other connectors, while each connector excludes its own relationship center from its own obstacle set.
-- When a hidden-central simple relationship needs more than one elbow, the router can use a dogleg route without adding a new route model: the hidden relationship symbol becomes the hidden junction, and the two connector `IntermediatePosition` values become the source-side and target-side bends.
-- Selecting one segment of a hidden-central relationship routes the whole relationship once, not each hidden-endpoint segment separately.
-- Existing valid hand-routed connectors are preserved unless a candidate is materially better.
-- If no valid straight or one-bend route exists, the connector is left unchanged and a warning is logged.
+- Connectors store zero to 32 ordered interior route points. Zero points means straight.
+- A clear straight segment is preferred. Otherwise a deterministic bounded orthogonal visibility/Hanan grid finds a short route around inflated concept and visible Relationship-hub obstacles.
+- Path scoring adds 40 per bend, 50 per near miss, and 250 per crossing with an already accepted route. Stable-id order makes repeated runs deterministic.
+- Automatic routes target eight or fewer points and never exceed 16. Invalid or excessive geometry is rejected, not truncated.
+- Binary Relationship hubs remain in their endpoint corridor. Multi-endpoint hubs are placed near the endpoint centroid/geometric median and routed as a star.
+- Hidden simple Relationships expose one logical route across their two native connectors and hidden junction. Selecting either segment edits or routes the whole logical path.
+- Existing hand-routed connectors remain exact unless they are in the affected scope. Moving one endpoint invalidates incident links; moving an entire connected selection by the same delta translates its routes intact.
+- Flowchart feedback lanes are mandatory routing corridors, not suggestions discarded by generic cleanup.
+- Fallback proceeds through a safe planned path, an outer-perimeter path, a collision-free direct path, then a degraded direct path with an explicit warning. A dirty/generated link never silently restores a known-stale distant bend.
 
-The command runs as one undoable command variation. Undo/redo should restore connector intermediate points and hidden relationship junction positions. Detailed per-connector and per-relationship diagnostics are written to the lower-left application log; the completion dialog only shows a concise summary.
+The command runs as one undoable command variation. Undo/redo restores every connector route point and Relationship-junction position atomically. Detailed diagnostics include route intent, dirty reason, old/new points, status, work counts, bends, detour ratio, crossings, cap hits, and fallback reasons.
 
-v1 limitations:
+Planner bounds:
 
-- Only one bend is supported.
-- Hidden-central simple relationships can dogleg around same-row or same-column blockers, but this is still limited to one hidden junction plus one bend per connector segment.
-- Complements and group regions are not obstacles by default. Relationship central symbols may be obstacles for other links during route cleanup/import routing.
-- The native model is not extended with a serialized multi-point route, and ordinary visible-center connectors still use only one `IntermediatePosition`.
-- If a non-hidden-central link needs more than one bend to avoid obstacles, it is skipped rather than force-routed.
+- At most 64 coordinate-producing obstacles and 64 coordinates per axis.
+- At most 4,096 grid nodes, 12,288 directional states per connector, and 500,000 search-work units per batch.
+- Two fixed search envelopes plus an outer-perimeter fallback. Elapsed time is never an abort condition.
+- Crossing penalties improve readability but cannot guarantee a globally crossing-free dense graph.
 
 Troubleshooting:
 
-- For hidden-central relationships, inspect the candidate diagnostics in the application log. The log reports source, target, current hidden-center point, obstacle count, current-route validity, and straight/horizontal-first/vertical-first candidate validity.
-- A hidden relationship junction inside an inflated concept obstacle invalidates the current route. If all hidden-central relationships are reported unchanged, check whether the log still says the current hidden center is inside an obstacle; that should force a new candidate or a skipped route.
-- In `samples/obstacle-avoidance-regression.sample.json`, Scenario A is expected to route around `OA_Test_A_Obstacle` with a one-bend hidden-center route; Scenario B is expected to use a hidden-center dogleg route if adequate clearance exists; Scenario C should remain straight or be straightened.
+- Run `thinkcomposer composition validate-routing --input <file.tcom> --output-dir <dir> --layout route` to emit route diagnostics and before/after artifacts.
+- Treat invalid points, a hub far outside its endpoint corridor, an excessive detour, or stale endpoint geometry as a route-health failure.
+- In `samples/obstacle-avoidance-regression.sample.json`, Scenario A should route around its blocker, Scenario B should use the required multi-bend corridor, and Scenario C should remain straight or be simplified to straight.
+
+## Manual Route Editing
+
+A selected connector displays indexed bend handles plus segment-midpoint handles. Drag a bend handle to move that point. Drag a segment handle to insert or shift bends. Double-click a bend handle to remove it; double-clicking the connector body continues to edit its descriptor.
+
+The connector context commands are `Edit Route`, `Remove Bend`, `Simplify Route`, `Straighten Route`, and `Auto-route`. Manual free-angle editing uses `MultilineFreeAngled`. Automatically routed links use effective `MultilineRightAngled` with six-unit rounded corners, capped to one-third of each adjacent segment. Migrated `SinglelineStraight` and `SinglelineCurved` routes remain sharp free-angle polylines; `SinglelineCurved` does not acquire Bézier semantics.
 
 ## Arrange as Spider Map
 
@@ -237,7 +243,7 @@ Layout behavior:
 - The command classifies in-scope directed relationships as primary-forward, branch-forward, same-level, feedback/reverse, long-cross-link, or ambiguous.
 - Feedback/reverse and long-cross-link relationships are moved to a dedicated feedback lane outside the main process band before normal relationship-bubble decluttering runs.
 - The feedback lane prefers the top of the flow when there is safe canvas room; otherwise it uses a bottom lane and stacks multiple feedback/cross-link bubbles deterministically.
-- Feedback connector segments are routed through the relationship central symbol and each connector's existing `IntermediatePosition`, so no new route-point model is introduced.
+- Feedback connector segments retain their assigned outer lane as mandatory waypoints/corridors while the shared planner chooses the intervening multi-point orthogonal path.
 - The command auto-fits arranged concept labels first, moves concepts into flow steps, normalizes the arranged batch into reachable canvas bounds, places feedback/cross-link bubbles in their outer lane, declutters normal visible relationship central symbols, routes in-scope forward links, validates the result, then reveals the final bounds.
 
 Cycle handling:
@@ -297,13 +303,13 @@ Layout behavior:
 - Cross-boundary side lanes sit between the external actor cluster and the Group Region boundary when space permits. Candidate positions treat external concepts, internal concepts, and other visible relationship bubbles as hard obstacles, so an ingress bubble such as Package Source -> Catalog should not be placed over User.
 - When several cross-boundary bubbles share a side, the command sorts them by external endpoint height and deterministic relationship name/techName/id, then chooses non-overlapping lane slots above/below nearby actors as needed.
 - The Group Region is visual-only. It does not change semantic containment, composite ownership, or relationship links.
-- The Group Region is not treated as an obstacle for link routing in v1, so links can cross the system boundary.
+- The Group Region remains a permeable visual boundary so intentional cross-boundary links can enter and leave it; contained symbols and visible Relationship hubs remain routing obstacles.
 - Group Region creation/resizing runs inside the same undoable `Arrange as System Map` command variation; undo removes a new region or restores a resized one.
 
 Limitations:
 
 - Classification is heuristic, not a full systems-theory model.
-- Group Region labels are not authored directly by System Map v1; the boundary is attached to the root concept instead.
+- Group Region labels are not authored directly by System Map; the boundary is attached to the root concept instead.
 - Cross-boundary relationship bubble placement is local and side-lane based; very dense ingress/egress lanes may still need manual cleanup if every non-overlapping candidate would move a bubble too far from its relationship line.
 - Dense system maps may still need manual cleanup.
 - The command does not create, delete, or relink model entities.
@@ -312,11 +318,11 @@ Limitations:
 
 JSON import now uses the same auto-fit service for concept visuals created or newly placed during import when `importOptions.autoFitPlacedConcepts` is omitted or true. A patch operation can override this with `autoFit: false`, or can force fitting for an updated existing concept with `autoFit: true`.
 
-JSON import also uses the same link-routing service for relationship visuals/connectors created, placed, or repaired during import when `importOptions.autoRoutePlacedLinks` is omitted or true. A patch operation can override this with `autoRoute: false`, or can force routing for an existing visible relationship touched by an update/place operation with `autoRoute: true`. Before routing, import can apply relationship-center placement with `importOptions.relationshipVisualPlacementMode` or `visualStrategy.relationshipVisualPlacement`; `auto` preserves centers already near their endpoints, while `endpointCorridor` recomputes centers near the source/target corridor. Auto-route runs after auto-fit and relationship-center correction so obstacle bounds and relationship centers are current.
+JSON import uses the shared routing coordinator for Relationship visuals/connectors created, placed, repaired, or invalidated during import when `importOptions.autoRoutePlacedLinks` is omitted or true. A patch operation can override this with `autoRoute:false`, or force routing for a touched existing Relationship with `autoRoute:true`. Operation `visual.relationshipCenterPlacement` has precedence over `importOptions.relationshipVisualPlacementMode`, which has precedence over `visualStrategy.relationshipVisualPlacement`. Generated Relationships default to endpoint-corridor placement and auto-route. Auto-route runs after auto-fit and hub correction so all obstacle bounds are current.
 
 JSON import can also carry explicit, source-neutral layout metadata such as concept `visual.role`, relationship `layoutRole`, `visual.display`, `includeInArrangement`, `includeInRouting`, `includeInAutoFit`, and top-level `groups[]`. ThinkComposer honors these controls only when they are supplied; it does not infer layout roles or Group Regions from source formats, domains, concept names, or relationship names. The Skill or JSON generator is responsible for translating source-specific intent into those generic primitives.
 
-The auto-fit service, link-routing service, and `LayoutSelectionContext` remain UI-independent enough for JSON import layout passes and manual layout tools to share the same measurement, visible-graph, and connector-routing behavior.
+The auto-fit service, pure planner, routing coordinator, and `LayoutSelectionContext` let JSON import, manual tools, all four layouts, and headless validation share the same geometry rules.
 
 ## Manual Regression
 
@@ -331,14 +337,14 @@ The auto-fit service, link-routing service, and `LayoutSelectionContext` remain 
 9. Resize a concept normally and verify drag resizing still works.
 10. Double-click a concept's left or right resize handle and verify auto-fit runs without breaking drag resize.
 11. Select one connector crossing a concept and run `Edit -> Appearance -> Route Links with Obstacle Avoidance`.
-12. Verify it becomes straight or one-bend orthogonal without crossing concept symbols, then undo and redo.
+12. Verify it becomes straight or a legible multi-bend orthogonal path without crossing concept symbols, then undo and redo.
 13. Select multiple connectors and route them.
 14. Run routing with no selected connectors and verify the all-visible confirmation appears.
 15. Verify already valid hand-routed connectors are not changed unnecessarily.
 16. Open `Test__Object_Avoidance.tcom`, import `samples/obstacle-avoidance-regression.sample.json`, select Scenario A's visible relationship line, and run the routing command.
 17. Verify the log reports one hidden-central relationship route instead of two skipped hidden-endpoint connectors, and that Scenario A becomes L-shaped around the obstacle.
-18. Verify Scenario B chooses a horizontal or vertical hidden-center dogleg route, and Scenario C remains straight or is straightened.
-19. Save, close, reopen, and verify routed connector intermediate points or hidden junction positions persist.
+18. Verify Scenario B chooses a deterministic multi-bend route, and Scenario C remains straight or is straightened.
+19. Save, close, reopen, and verify every routed connector point and hidden junction position persists.
 20. Export PDF and verify routed connectors render.
 21. Select one central concept and several connected concepts, then run `Edit -> Appearance -> Arrange as Spider Map`.
 22. Verify the selected/root concept remains central, child concepts are placed radially, labels are readable, and links are routed after movement.

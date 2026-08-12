@@ -8,10 +8,14 @@
 // It is provided without any warranty. You should find a copy of the license in the root directory of this software product.
 // -------------------------------------------------------------------------------------------
 
+using System.Collections.Generic;
+
+using Instrumind.ThinkComposer.Model.VisualModel;
+
 namespace Instrumind.ThinkComposer.Composer.Layout
 {
     /// <summary>
-    /// Options for conservative single-bend connector routing.
+    /// Options for deterministic bounded multi-point connector routing.
     /// </summary>
     public class LinkObstacleRoutingOptions
     {
@@ -27,6 +31,19 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             this.IncludeRelationshipCentralSymbolsAsObstacles = false;
             this.CorrectRelationshipCentersBeforeRouting = true;
             this.RelationshipVisualPlacementOptions = new RelationshipVisualPlacementOptions();
+            this.RouteIntent = RelationshipRouteIntent.PreserveIfValid;
+            this.Profile = RelationshipRoutingProfile.Manual;
+            this.BendCost = 40.0;
+            this.CrossingCost = 250.0;
+            this.MaximumPreservedDetourRatio = 4.0;
+            this.TargetMaximumRoutePoints = 8;
+            this.HardMaximumRoutePoints = 16;
+            this.MaximumObstacles = 64;
+            this.MaximumCoordinatesPerAxis = 64;
+            this.MaximumGridNodes = 4096;
+            this.MaximumDirectionalStates = 12288;
+            this.MaximumBatchWork = 500000;
+            this.MandatoryWaypointRelationships = new HashSet<RelationshipVisualRepresentation>();
         }
 
         public double ObstaclePadding { get; set; }
@@ -48,5 +65,48 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         public bool CorrectRelationshipCentersBeforeRouting { get; set; }
 
         public RelationshipVisualPlacementOptions RelationshipVisualPlacementOptions { get; set; }
+
+        public RelationshipRouteIntent RouteIntent { get; set; }
+
+        public string DirtyReason { get; set; }
+
+        public RelationshipRoutingProfile Profile { get; set; }
+
+        public double BendCost { get; set; }
+
+        public double CrossingCost { get; set; }
+
+        public double MaximumPreservedDetourRatio { get; set; }
+
+        public int TargetMaximumRoutePoints { get; set; }
+
+        public int HardMaximumRoutePoints { get; set; }
+
+        public int MaximumObstacles { get; set; }
+
+        public int MaximumCoordinatesPerAxis { get; set; }
+
+        public int MaximumGridNodes { get; set; }
+
+        public int MaximumDirectionalStates { get; set; }
+
+        public int MaximumBatchWork { get; set; }
+
+        /// <summary>
+        /// Relationships whose current route points are required corridors, such as Flowchart
+        /// feedback lanes. The planner may add safe detours but must visit these points in order.
+        /// </summary>
+        public ISet<RelationshipVisualRepresentation> MandatoryWaypointRelationships { get; private set; }
+    }
+
+    public enum RelationshipRoutingProfile
+    {
+        Manual,
+        JsonImport,
+        Spider,
+        Hierarchy,
+        Flowchart,
+        SystemMap,
+        Validation
     }
 }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://thinkcomposer.local/schemas/thinkcomposer-json-interchange-1.schema.json",
+  "$id": "https://thinkcomposer.local/schemas/thinkcomposer-json-interchange-2.schema.json",
   "title": "ThinkComposer JSON Interchange",
-  "description": "Schema for ThinkComposer.JsonInterchange formatVersion 1. Use this schema to validate full-state composition payloads stored at /Composition.json in modern .tcom packages, manual full-state exports/merges, and GPT-authored patch-operation documents.",
+  "description": "Schema for ThinkComposer.JsonInterchange formatVersion 1 and 2. Version 2 adds ordered multi-point connector routes. Use this schema to validate full-state composition payloads stored at /Composition.json in modern .tcom packages, manual full-state exports/merges, and GPT-authored patch-operation documents.",
   "type": "object",
   "required": [
     "format",
@@ -15,8 +15,11 @@
       "description": "Fixed format discriminator. GPT responses must preserve this exact value."
     },
     "formatVersion": {
-      "const": 1,
-      "description": "Schema/version discriminator for this interchange format."
+      "enum": [
+        1,
+        2
+      ],
+      "description": "Schema/version discriminator. Writers emit version 2; readers accept legacy version 1 and migrate intermediatePosition to a singleton route."
     },
     "exportedAtUtc": {
       "type": "string",
@@ -119,6 +122,43 @@
           "description": "Patch-only document for GPT-authored edits."
         }
       ]
+    },
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
+            "const": 1
+          }
+        },
+        "required": [
+          "formatVersion"
+        ]
+      },
+      "then": {
+        "properties": {
+          "views": {
+            "items": {
+              "properties": {
+                "visuals": {
+                  "items": {
+                    "properties": {
+                      "connectors": {
+                        "items": {
+                          "not": {
+                            "required": [
+                              "routePoints"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -775,8 +815,6 @@
           "type": "object",
           "required": [
             "kind",
-            "originIdeaIds",
-            "targetIdeaIds",
             "links"
           ],
           "properties": {
@@ -820,17 +858,44 @@
               },
               "default": []
             }
-          }
+          },
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "required": [
+                    "originIdeaIds"
+                  ]
+                },
+                {
+                  "required": [
+                    "originIdeaTechNames"
+                  ]
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "required": [
+                    "targetIdeaIds"
+                  ]
+                },
+                {
+                  "required": [
+                    "targetIdeaTechNames"
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     },
     "ideaBase": {
       "type": "object",
       "required": [
-        "id",
-        "kind",
-        "name",
-        "techName"
+        "kind"
       ],
       "additionalProperties": false,
       "properties": {
@@ -977,7 +1042,37 @@
           "type": "boolean",
           "description": "Only set true when explicitly requesting deletion. Omission must not be interpreted as deletion."
         }
-      }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "id"
+              ]
+            },
+            {
+              "required": [
+                "techName"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "required": [
+                "name"
+              ]
+            },
+            {
+              "required": [
+                "techName"
+              ]
+            }
+          ]
+        }
+      ]
     },
     "relationshipLink": {
       "type": "object",
@@ -1085,23 +1180,11 @@
         "definitionId": {
           "$ref": "#/$defs/guid"
         },
-        "designatorId": {
-          "$ref": "#/$defs/guid",
-          "description": "Native detail designator id alias used by exports."
-        },
         "definitionTechName": {
           "$ref": "#/$defs/techName"
         },
-        "designatorTechName": {
-          "$ref": "#/$defs/techName",
-          "description": "Native detail designator techName alias. GPT-authored patches may also use techName."
-        },
         "definitionName": {
           "type": "string"
-        },
-        "designatorName": {
-          "type": "string",
-          "description": "Native detail designator display name alias. GPT-authored patches may also use name."
         },
         "name": {
           "type": "string"
@@ -1136,14 +1219,21 @@
           ],
           "description": "Editable detail kind. Prefer Text for GPT-authored content unless the export contains a more specific kind."
         },
-        "definitionId": {
-          "$ref": "#/$defs/guid"
+        "designatorId": {
+          "$ref": "#/$defs/guid",
+          "description": "Stable id of the matching Domain detailDesignator declaration."
         },
-        "definitionTechName": {
-          "$ref": "#/$defs/techName"
+        "designatorTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Technical name of the matching Domain detailDesignator declaration."
         },
-        "definitionName": {
-          "type": "string"
+        "designatorName": {
+          "type": "string",
+          "description": "Display name of the matching Domain detailDesignator declaration."
+        },
+        "detailTechName": {
+          "$ref": "#/$defs/techName",
+          "description": "Legacy alias for designatorTechName accepted by the importer."
         },
         "name": {
           "type": "string"
@@ -1166,6 +1256,15 @@
           "$ref": "#/$defs/techName",
           "description": "Optional known idea field to update, such as Name, Summary, Description, or TechSpec."
         },
+        "targetAddress": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "mimeType": {
+          "type": "string"
+        },
         "uri": {
           "type": "string"
         },
@@ -1174,6 +1273,28 @@
         },
         "fileName": {
           "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "description": "Native table field metadata emitted by authoritative exports.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/guid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "techName": {
+                "$ref": "#/$defs/techName"
+              },
+              "dataType": {
+                "type": "string"
+              }
+            }
+          }
         },
         "rows": {
           "type": "array",
@@ -1228,10 +1349,6 @@
     "view": {
       "type": "object",
       "required": [
-        "id",
-        "name",
-        "techName",
-        "ownerIdeaId",
         "visuals"
       ],
       "additionalProperties": false,
@@ -1277,13 +1394,54 @@
         "delete": {
           "type": "boolean"
         }
-      }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "id"
+              ]
+            },
+            {
+              "required": [
+                "techName"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "required": [
+                "name"
+              ]
+            },
+            {
+              "required": [
+                "techName"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "required": [
+                "ownerIdeaId"
+              ]
+            },
+            {
+              "required": [
+                "ownerIdeaTechName"
+              ]
+            }
+          ]
+        }
+      ]
     },
     "visual": {
       "type": "object",
-      "required": [
-        "ideaId"
-      ],
       "additionalProperties": false,
       "properties": {
         "ideaId": {
@@ -1369,10 +1527,38 @@
         "delete": {
           "type": "boolean"
         }
-      }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "ideaId"
+          ]
+        },
+        {
+          "required": [
+            "ideaTechName"
+          ]
+        }
+      ]
     },
     "point": {
       "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      }
+    },
+    "routePoint": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
       "additionalProperties": false,
       "properties": {
         "x": {
@@ -1443,8 +1629,18 @@
         "targetEdgePosition": {
           "$ref": "#/$defs/point"
         },
+        "routePoints": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/routePoint"
+          },
+          "description": "Version 2 authoritative ordered interior route points from origin to target. An empty array clears the route; omission in a patch leaves it unchanged. If both routePoints and intermediatePosition are present, routePoints wins."
+        },
         "intermediatePosition": {
-          "$ref": "#/$defs/point"
+          "$ref": "#/$defs/point",
+          "deprecated": true,
+          "description": "Deprecated version 1 single-bend coordinate. Readers migrate it to one route point when routePoints is absent."
         }
       }
     },
@@ -1991,7 +2187,7 @@
   "examples": [
     {
       "format": "ThinkComposer.JsonInterchange",
-      "formatVersion": 1,
+      "formatVersion": 2,
       "importOptions": {
         "autoPlaceNewItems": true,
         "autoFitPlacedConcepts": true,

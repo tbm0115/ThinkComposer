@@ -2,9 +2,9 @@
 
 ThinkComposer JSON interchange exports a `.tcom` composition to an editable text file, then safely applies edited JSON into an updated package.
 
-The same full-state JSON DTO is also used by modern native `.tcom` persistence. A newly saved `.tcom` package writes `/Composition.json` as the authoritative composition payload and `/Domain.json` as the authoritative embedded-domain payload. Normal Open/Save uses those root JSON parts first.
+The same full-state JSON DTO is also used by modern native `.tcom` persistence. A newly saved `.tcom` package writes `/Composition.json` as the authoritative composition snapshot and `/Domain.json` as the authoritative embedded-domain payload. Normal Open/Save uses those root JSON parts first. Snapshot geometry is exact saved state: native rehydration does not reinterpret `importOptions` or `visualStrategy` as load-time instructions.
 
-Desktop Composition JSON import/export buttons are deprecated. Use root package JSON for native persistence review, or use the CLI `thinkcomposer composition export-json` and `thinkcomposer composition import-json` commands for explicit interchange workflows. CLI import/export is still separate from normal package Open/Save.
+Desktop Composition JSON import/export buttons are deprecated. Inspect root package JSON for persistence review, but use a standalone operations patch plus the CLI `thinkcomposer composition import-json` command for edits. Preview the patch before applying it. Directly splicing GPT operations or import directives into `/Composition.json` is unsafe because the root is authoritative snapshot state, not a pending-work queue.
 
 Saved `.tcom` and `.tdom` packages can also contain AI-readable sidecar snapshots under `/Interchange/`. Those sidecars are inspection/context snapshots only. They are not the source of truth for native load; modern packages load root `/Composition.json` and `/Domain.json`, while legacy binary-only packages still load `/Composition.bin` as a compatibility path.
 
@@ -13,7 +13,7 @@ Saved `.tcom` and `.tdom` packages can also contain AI-readable sidecar snapshot
 Modern composition packages use this root-level contract:
 
 - `/manifest.json`: package metadata with `format: "ThinkComposer.Package"`, `packageKind: "composition"`, `persistenceFormat: "json"`, `persistenceFormatVersion`, application version, UTC save timestamp, authoritative part hashes, legacy fallback metadata, optional package-level `gitSync` linkage, and optional embedded Domain `embeddedDomainGitSync` linkage.
-- `/Composition.json`: authoritative `ThinkComposer.JsonInterchange` full-state composition payload.
+- `/Composition.json`: authoritative `ThinkComposer.JsonInterchange` full-state composition snapshot.
 - `/Domain.json`: authoritative `ThinkComposer.DomainJsonInterchange` embedded-domain payload required by `/Composition.json`.
 - `/Composition.bin`: legacy fallback found only in older binary-only or transitional packages; current saves do not write it.
 - `/Interchange/*` and `/Previews/views/*.png`: optional AI-readable sidecars generated from the same exporters, never authoritative.
@@ -22,15 +22,15 @@ When both JSON and binary payloads exist, ThinkComposer opens the root JSON payl
 
 Opening an older binary-only `.tcom` still works. Saving it again writes JSON-authoritative root parts, emits `legacyBinaryFallback.present: false`, and omits `/Composition.bin`, so normal save acts as the JSON-only migration step.
 
-The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. Optional `gitSync` metadata records the linked `.tcom` package remote, branch, and repo-relative baseline path. Optional `embeddedDomainGitSync` metadata records the embedded Domain's source `.tdom` link separately, so a Composition and its base Domain can come from different Git remotes or paths. Neither section stores credentials, tokens, last-sync commits, or package hashes; those are machine-local sync state. The root JSON payload still validates against this interchange schema; there is no separate Composition persistence payload schema in v1. The optional `/Interchange/manifest.json` uses container-snapshot format v2 so unchanged, hash-verified PNG previews can be reused across saves.
+The root package manifest schema is maintained at `docs/thinkcomposer-package-manifest.schema.json`. Optional `gitSync` metadata records the linked `.tcom` package remote, branch, and repo-relative baseline path. Optional `embeddedDomainGitSync` metadata records the embedded Domain's source `.tdom` link separately, so a Composition and its base Domain can come from different Git remotes or paths. Neither section stores credentials, tokens, last-sync commits, or package hashes; those are machine-local sync state. The root Composition JSON payload validates against this interchange schema. Composition payload format v2 adds multi-point connector routes; the package-manifest and container protocol versions do not change. The optional `/Interchange/manifest.json` uses container-snapshot format v2 so unchanged, hash-verified PNG previews can be reused across saves.
 
 ## Workflow
 
-1. Open a composition in ThinkComposer.
-2. Run `thinkcomposer composition export-json --input <file.tcom> --output <file.json>`.
-3. Edit the `.json` file manually or with GPT assistance.
-4. Run `thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <updated-file.tcom>`.
-5. Review the import diagnostics, then open the updated `.tcom` normally when you want to inspect or continue editing the result.
+1. Export or inspect the Composition to learn stable ids, definitions, containers, and views.
+2. Write a separate JSON document containing `operations[]` and its routing/placement intent.
+3. Preview with `thinkcomposer composition import-json --input <file.tcom> --json <patch.json> --preview-only`.
+4. Apply through the safe output or in-place CLI path.
+5. Run `composition validate-routing`, inspect the diagnostics, and export the affected view image before accepting the resulting canonical package.
 
 ## Format
 
@@ -39,12 +39,12 @@ Every supported file starts with:
 ```json
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "application": "ThinkComposer"
 }
 ```
 
-`formatVersion` is the interchange schema version. Version `1` supports full-state merge files and patch-operation files. Unknown JSON fields are ignored. The JSON Schema is maintained at `docs/thinkcomposer-json-interchange.schema.json`.
+`formatVersion` is the Composition interchange schema version. Version `2` is the native/export format and adds lossless multi-point connector routes. The importer also accepts v1 documents, migrating each legacy `intermediatePosition` to zero or one route point. Applications that only understand v1 reject v2 instead of silently dropping multi-point geometry. Unknown JSON fields are ignored. The JSON Schema is maintained at `docs/thinkcomposer-json-interchange.schema.json`.
 
 The repository also carries a ThinkComposer Codex plugin under `docs/thinkcomposer-plugin/`. Its bundled `thinkcomposer-json-interchange` skill lives at `docs/thinkcomposer-plugin/skills/thinkcomposer-json-interchange/` and is packaged as `docs/thinkcomposer-json-interchange.zip`; the full plugin is packaged as `docs/thinkcomposer-plugin.zip`. Keep both bundles synchronized with this document, the schema, container snapshot manifest schema, and sample JSON files when the interchange format or layout-related import behavior changes.
 
@@ -69,7 +69,7 @@ Dialogs separate `Source warnings` from `Import warnings`. Source warnings are p
 ```json
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "exportedAtUtc": "2026-05-28T00:00:00Z",
   "application": "ThinkComposer",
   "composition": {
@@ -122,6 +122,8 @@ With this option, missing top-level concepts and relationships can be created wh
 Visuals in `views[].visuals[]` that refer to newly created or planned ideas are treated as placement requests. The importer uses the visual `x`, `y`, `width`, and `height` when supplied; otherwise it falls back to normal auto-placement. If a referenced idea/relationship was skipped, dependent visual skips are grouped in the log instead of flooding the dialog.
 
 For native package persistence, the same visual records also preserve reconstructable visual state from the saved `.tcom`: `zOrder`, relationship `connectors`, symbol-attached `complements`, view-owned `complements`, custom format values, and symbol state such as `areDetailsShown`, `showCompositeContentAsDetails`, `detailsPosterHeight`, flips, tilt, and multiple-symbol display. This lets root `/Composition.json` round-trip positions, colors, grouping regions, detail posters, free text labels, and connector paths without relying on `/Composition.bin`.
+
+An authoritative `/Composition.json` normally contains snapshot arrays and no pending operations. For compatibility, a legacy root that contains `operations[]` is loaded in two stages: ThinkComposer first rehydrates the snapshot exactly, then applies those operations through the normal importer with their own placement and routing options. The Composition is marked dirty so the next save consumes the directives instead of replaying them.
 
 Patch-style `operations` remain preferred for GPT-authored creation because they make intent, ordering, and safety easier to inspect.
 
@@ -193,6 +195,26 @@ Modes:
 - `defer` skips relationship visual placement correction.
 
 `visualStrategy.relationshipVisualPlacement` provides the same intent at the large-import strategy level, while `importOptions.relationshipVisualPlacementMode` overrides it. For large or uncertain imports, do not emit exact relationship visual `x/y` coordinates unless they are intentionally curated and close to the endpoint corridor.
+
+An operation-level `visual.relationshipCenterPlacement` overrides both document-wide settings for that touched Relationship. Generated Relationship operations should use `endpointCorridor` and `autoRoute:true`; supplying explicit hub coordinates requires an explicit placement mode. Binary Relationships are kept within their endpoint corridor. Multi-endpoint Relationship hubs are placed near the endpoint centroid/geometric median and routed as a star.
+
+### Connector route points
+
+Composition JSON v2 persists connector geometry as ordered, absolute view coordinates:
+
+```json
+{
+  "connectorId": "stable-connector-guid",
+  "routePoints": [
+    { "x": 320.0, "y": 180.0 },
+    { "x": 320.0, "y": 260.0 }
+  ]
+}
+```
+
+`routePoints` contains interior bend points only; endpoint anchors are derived separately from the connected symbols. Zero points means a straight route. A connector accepts at most 32 finite points, and invalid or oversized updates are rejected rather than truncated. In a patch, omitting `routePoints` preserves the current route while `routePoints:[]` explicitly straightens it. The deprecated v1 `intermediatePosition` migrates to a singleton route. If both fields are supplied, v2 `routePoints` wins and import reports a warning.
+
+GPT-authored route coordinates are disallowed by default. Generated edits should request placement and `autoRoute:true`, allowing the shared deterministic router to account for current symbol bounds, Relationship hubs, and already accepted routes. Auto-routed paths use an orthogonal multiline presentation with rounded corners; migrated legacy single-bend paths retain their sharp free-angle appearance.
 
 Regression sample: `samples/composition-relationship-center-placement.sample.json` intentionally imports relationship centers in a top/global label band. With `relationshipVisualPlacementMode: "auto"`, the final import summary should report suspicious centers and recomputed relationship centers before routing.
 
@@ -286,7 +308,7 @@ Regression samples:
 ```json
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "importOptions": {
     "autoPlaceNewItems": true,
     "autoFitPlacedConcepts": true,
@@ -328,6 +350,10 @@ Regression samples:
       "entity": "relationship",
       "definitionTechName": "Relationship",
       "containerTechName": "root-composition-tech-name",
+      "autoRoute": true,
+      "visual": {
+        "relationshipCenterPlacement": "endpointCorridor"
+      },
       "set": {
         "name": "New relationship from GPT",
         "techName": "NewRelationshipFromGpt",
@@ -362,7 +388,7 @@ Patch semantics:
 
 - `update` operations must match an existing object by `id` or top-level `techName`; unmatched updates are skipped with warnings.
 - `create` operations require enough safe native information. Concepts require `definitionTechName` plus `containerId` or `containerTechName`. Relationships require a relationship definition, container, and valid origin/target links.
-- `place` operations create or update a visual representation for an existing concept or relationship in a target view.
+- `place` operations create or update a visual representation for an existing concept or relationship in a target view. `representationId` plus the target view identifies an existing representation; explicit position or size fields update it and invalidate only incident connector routes.
 - `delete` only runs for explicit delete operations or `delete: true`; omission never deletes native objects.
 - Existing native data that is not represented in JSON is preserved.
 
@@ -532,9 +558,11 @@ Set `"autoPlace": false` on a single create operation, or `"importOptions": { "a
 
 Concept visuals created or newly placed during import are auto-fitted to their visible text by default. This uses the same `ConceptAutoFitService` as `Edit -> Appearance -> Fit Concept Width to Text`, so connector refresh and undo/redo behavior match the manual command. Existing concepts that are only text-updated are not resized unless their operation explicitly includes `"autoFit": true`. Use `"autoFit": false` on a create or place operation to keep the supplied/default width for that operation.
 
-Relationship visuals created, placed, or repaired during import are auto-routed by default after concept auto-fit completes. This uses the same `LinkObstacleRoutingService` as `Edit -> Appearance -> Route Links with Obstacle Avoidance`, including hidden-central simple relationship routing and dogleg fallback. Existing unrelated links in the view are not routed. Use `"autoRoute": false` on an operation to preserve that operation's current connector geometry, or `"autoRoute": true` to route an existing visible relationship touched by an update/place operation.
+Relationship visuals created, placed, repaired, or invalidated by import are auto-routed by default after concept auto-fit and Relationship-hub placement complete. Import, Route Links, Spider, Hierarchy, Flowchart, and System Map all use the same deterministic routing coordinator. It plans touched Relationships in stable-id order, validates and simplifies the paths, and applies one render update inside the caller's undo command. Existing unrelated links retain their exact manual routes. If every endpoint and hub in a connected selection moves by the same delta, the existing route is translated intact; otherwise only incident routes are invalidated. Use `"autoRoute": false` on an operation to preserve valid current geometry, or `"autoRoute": true` to route an existing visible Relationship touched by an update/place operation. Dirty or generated links never fall back to a known-stale distant bend.
 
-Details can be supplied at `operation.details`, `operation.set.details`, or full-state `ideas[].details` / `relationships[].details`. The importer merges patch-operation detail forms deterministically, with operation-level details taking precedence for duplicate designators. GPT-authored details can use `name`/`techName` or native `designatorName`/`designatorTechName`, and table rows can be supplied as `rows` or `records`.
+Automatic routes prefer a clear straight segment, then use a capped orthogonal visibility grid with stable length, bend, near-miss, and crossing costs. Flowchart feedback lanes remain mandatory corridors. If the bounded search cannot find the preferred route, fallback proceeds through a safe planned path, safe outer-perimeter route, collision-free direct path, and finally a direct degraded route accompanied by an explicit warning.
+
+Details can be supplied at `operation.details`, `operation.set.details`, or full-state `ideas[].details` / `relationships[].details`. The importer merges patch-operation detail forms deterministically, with operation-level details taking precedence for duplicate designators. GPT-authored details can use `name`/`techName` or native `designatorName`/`designatorTechName`, and table rows can be supplied as `rows` or `records`. When the Domain declaration has been exported, use its `id` as the Composition detail's `designatorId`; `definitionId` is not a valid substitute.
 
 Native table/resource details require matching detail designators on the target idea definition. `Text` details can update known idea fields such as `Description`, `Summary`, or `TechSpec` when `targetPropertyTechName` is supplied. If the designator is missing or the detail shape is not implemented, the idea itself is still created/updated and the detail is reported separately. By default unsupported details are skipped:
 
@@ -559,7 +587,7 @@ Layout options:
 - `useActiveCompositionAsContainer` defaults to false. It is an opt-in convenience for root-level fixture imports into a fresh active composition.
 - `treatMissingFullStateItemsAsCreates` defaults to false. It is an opt-in for full-state-style GPT documents that should create missing top-level `ideas[]` and `relationships[]` in the active composition. Patch operations remain preferred.
 - `visualStrategy` is top-level metadata, not an `importOptions` field. Use it for large imports that should be model-only, overview-only, optimized/deferred, or exact full visual.
-- `relationshipVisualPlacementMode` defaults to `auto`. Use `endpointCorridor` for generated diagrams where relationship centers should be recomputed near the concepts they connect; use `explicit` only for curated coordinates.
+- `relationshipVisualPlacementMode` defaults to `auto`. Use `endpointCorridor` for generated diagrams where relationship centers should be recomputed near the concepts they connect; use `explicit` only for curated coordinates. `visual.relationshipCenterPlacement` on an operation has highest precedence.
 - `visual.isShortcut` on a `place` operation creates or updates a shortcut visual representation of an existing idea. A shortcut is visual identity, not a second semantic concept.
 - `relationshipDefinitionFallbackTechName` defaults to disabled. It can preserve draft graph structure by retrying compatibility-failed relationship creates with a generic relationship definition.
 - `detailFallbackMode` defaults to `skip`. `appendToTechSpec` and `appendToDescription` preserve unsupported details as delimited text on the idea.
@@ -570,12 +598,12 @@ Layout options:
 - `preventSelfRecursiveCompositeViews` defaults to true and blocks self-recursive owner-in-own-view placements.
 - `repairRecursiveVisuals` defaults to true and removes previously imported self-recursive visuals during JSON import/re-import.
 
-Manual Appearance layout commands are currently separate from JSON import layout modes. `Edit -> Appearance -> Arrange as Spider Map`, `Arrange as Hierarchy Map`, `Arrange as Flowchart`, and `Arrange as System Map` are v1 manual commands; they are not automatic JSON import `layoutMode` values yet. The current JSON import integration is limited to auto-placement, concept auto-fit, and link auto-route.
+Manual Appearance layout commands and JSON import now share Relationship placement and connector routing services. `Edit -> Appearance -> Arrange as Spider Map`, `Arrange as Hierarchy Map`, `Arrange as Flowchart`, and `Arrange as System Map` retain their specialized symbol placement policies, then feed their affected links and any mandatory lanes into the common coordinator. The CLI routing validator can exercise those layout profiles without mutating unrelated routes.
 
 GPT prompt example:
 
 ```text
-Edit this ThinkComposer JSON using patch operations only. Update existing summaries by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or relationship, include definitionTechName and containerTechName. For relationships, include origin/target links, preferably as set.links with roleType and ideaId or ideaTechName. Prefer explicit viewTechName when known; otherwise active view fallback can place root-level creates. For small diagrams, include x/y/width/height only when deliberate placement matters and leave importOptions.autoFitPlacedConcepts/autoRoutePlacedLinks true. For large model imports, prefer top-level visualStrategy mode modelOnly or overviewAndModel with deferAutoFit, deferRouting, and deferViewRefresh true instead of hand-placing/routing every item. Do not delete anything unless I explicitly request it.
+Create a standalone ThinkComposer operations patch; do not splice directives into authoritative /Composition.json. Update existing objects by id or techName. For root-level GPT patches targeting the active composition, set importOptions.useActiveCompositionAsContainer=true and use containerTechName Active_Composition_Root. For each new concept or Relationship, include definitionTechName and containerTechName. Supply Relationship endpoints as set.links with roleType and ideaId or ideaTechName. For every generated Relationship use autoRoute:true and visual.relationshipCenterPlacement:endpointCorridor, and omit hub x/y, connector routePoints, and intermediatePosition. Prefer explicit viewTechName when known. Preview before apply, validate routing afterward, and do not delete anything unless I explicitly request it.
 ```
 
 Additional sample files are available at `samples/json-interchange-patch.sample.json`, `samples/json-interchange-regression.sample.json`, `samples/composition-active-root-fallback.sample.json`, `samples/composition-description-details-regression.sample.json`, `samples/composition-relationship-fallback.sample.json`, `samples/composition-strict-domain-compatibility.sample.json`, `samples/composition-full-state-create.sample.json`, `samples/composition-shortcut-roundtrip.sample.json`, `samples/composition-large-visual-strategy.sample.json`, `samples/composition-relationship-center-placement.sample.json`, `samples/composition-intent-agnostic-groups.sample.json`, and `samples/composition-intent-agnostic-visual-controls.sample.json`. The active-root fallback sample is the smallest fixture for verifying that `Active_Composition_Root` imports into a fresh active composition and active/root view without editing every `containerTechName`. The description/details sample verifies first-class `description`, `techSpec`, `operation.details`, `set.details`, and unsupported-detail fallback. The relationship fallback sample demonstrates explicit draft fallback and detail fallback behavior when the target domain supports the referenced definitions. The strict compatibility sample demonstrates `requires.domain`, strict relationship preflight, and abort-before-apply behavior. The full-state-create sample demonstrates explicit opt-in creation from top-level `ideas[]`, `relationships[]`, and `views[]`. The shortcut round-trip sample demonstrates one semantic concept with a primary visual and a shortcut visual. The large visual strategy sample demonstrates a model import that suppresses or caps visual work so semantic data can import without forcing immediate full-diagram rendering. The intent-agnostic samples demonstrate explicit generic visual/group controls without source-specific importer behavior.

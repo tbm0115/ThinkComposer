@@ -1,16 +1,16 @@
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "application": "ThinkComposer",
   "warnings": [
-    "Sample for the JSON import patch workflow. Replace placeholder ids and container ids with values from the active composition before importing; importOptions.useActiveCompositionAsContainer only helps root container placeholders and does not replace endpoint ids.",
+    "Sample for the JSON import patch workflow. Replace the sample UUIDs and container ids with values from the active composition before importing; importOptions.useActiveCompositionAsContainer only helps root container placeholders and does not replace endpoint ids.",
     "Expected result: one composition summary update, one concept update, one new concept, and one new relationship are planned without deleting omitted native objects."
   ],
   "operations": [
     {
       "op": "update",
       "entity": "composition",
-      "id": "replace-with-root-composition-id",
+      "id": "00000000-0000-4000-8000-000000000001",
       "set": {
         "summary": "GPT-edited project summary."
       }
@@ -18,7 +18,7 @@
     {
       "op": "update",
       "entity": "concept",
-      "id": "replace-with-existing-concept-id",
+      "id": "00000000-0000-4000-8000-000000000002",
       "set": {
         "name": "Renamed concept",
         "summary": "A concise GPT-assisted summary for this concept."
@@ -28,7 +28,7 @@
       "op": "create",
       "entity": "concept",
       "definitionTechName": "Concept",
-      "containerId": "replace-with-root-composition-id",
+      "containerId": "00000000-0000-4000-8000-000000000001",
       "set": {
         "name": "New concept from GPT",
         "techName": "NewConceptFromGpt",
@@ -39,12 +39,12 @@
       "op": "create",
       "entity": "relationship",
       "definitionTechName": "Relationship",
-      "containerId": "replace-with-root-composition-id",
+      "containerId": "00000000-0000-4000-8000-000000000001",
       "originIdeaIds": [
-        "replace-with-origin-concept-id"
+        "00000000-0000-4000-8000-000000000003"
       ],
       "targetIdeaIds": [
-        "replace-with-target-concept-id"
+        "00000000-0000-4000-8000-000000000004"
       ],
       "set": {
         "name": "GPT suggested relationship",

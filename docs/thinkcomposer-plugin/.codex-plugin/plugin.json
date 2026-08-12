@@ -1,7 +1,7 @@
 {
   "name": "thinkcomposer",
-  "version": "0.2.0+codex.20260709",
-  "description": "Work with ThinkComposer .tcom/.tdom packages, authoritative root JSON, CLI validation, Git links, reports, output generation, logs, and view images.",
+  "version": "0.3.1+codex.20260727",
+  "description": "Work safely with ThinkComposer packages through canonical snapshots, operation patches, Domain definition-detail persistence, multi-point routing validation, CLI workflows, reports, logs, and previews.",
   "author": {
     "name": "Local developer"
   },
@@ -18,8 +18,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "ThinkComposer",
-    "shortDescription": "Patch .tcom/.tdom JSON and use the CLI",
-    "longDescription": "ThinkComposer lets Codex collaborate with the desktop diagramming app by reading modern .tcom/.tdom packages with authoritative root JSON and previews, patching package JSON directly, preserving Git sync manifest metadata, using the ThinkComposer CLI for package inspection, validation, Git pull/push, PDF/XPS reports, and output-template generation, inspecting copied application logs, and finding embedded or exported view images for visual verification.",
+    "shortDescription": "Safely edit and validate ThinkComposer packages",
+    "longDescription": "ThinkComposer lets Codex inspect canonical .tcom/.tdom snapshot JSON and previews, prepare standalone operation patches, preserve Domain definition Details and instance values with Domain JSON v2, preview and apply changes through the ThinkComposer CLI, validate multi-point Relationship routing, preserve Git metadata, generate reports and output files, inspect logs, and visually verify saved views.",
     "developerName": "Local developer",
     "category": "Developer Tools",
     "capabilities": [
@@ -29,8 +29,8 @@
     ],
     "defaultPrompt": [
       "Inspect my ThinkComposer .tcom",
-      "Patch a .tcom/.tdom package",
-      "Run ThinkComposer CLI validation"
+      "Apply a safe patch to a .tcom/.tdom package",
+      "Validate ThinkComposer routing and persistence"
     ],
     "brandColor": "#2E7D6B"
   },

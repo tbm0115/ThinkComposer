@@ -20,6 +20,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         public LinkObstacleRoutingResult()
         {
             this.Warnings = new List<string>();
+            this.Diagnostics = new List<RelationshipRouteDiagnostic>();
         }
 
         public int Inspected { get; set; }
@@ -36,11 +37,28 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
         public int Unchanged { get; set; }
 
+        /// <summary>
+        /// Number of connectors whose route geometry was already correct but whose effective
+        /// automatic-routing appearance changed to right-angled/rounded.  This is a real model
+        /// mutation and must participate in dirty/render decisions.
+        /// </summary>
+        public int AppearanceChanged { get; set; }
+
         public int Skipped { get; set; }
 
         public RelationshipVisualPlacementResult RelationshipCenterPlacementResult { get; set; }
 
         public IList<string> Warnings { get; private set; }
+
+        public IList<RelationshipRouteDiagnostic> Diagnostics { get; private set; }
+
+        public int TotalWork { get; set; }
+
+        public int SafeFallbacks { get; set; }
+
+        public int DegradedFallbacks { get; set; }
+
+        public int SuspiciousRoutes { get; set; }
 
         public bool HasMutations
         {
@@ -49,6 +67,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 return this.Routed > 0 ||
                        this.Straightened > 0 ||
                        this.DoglegRouted > 0 ||
+                       this.AppearanceChanged > 0 ||
                        (this.RelationshipCenterPlacementResult != null && this.RelationshipCenterPlacementResult.HasMutations);
             }
         }

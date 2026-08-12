@@ -1,26 +1,27 @@
 ---
 name: thinkcomposer-json-interchange
-description: create, edit, repair, and validate ThinkComposer authoritative package JSON and compatibility interchange documents for a custom ThinkComposer build. Use this skill for .tcom/.tdom root JSON patches, Domain JSON patches, TechSpec updates, visual placement, layout-aware import options, embedded-domain update planning, schema validation, CLI validation, Git sync, report/output generation, or import troubleshooting.
+description: Create, edit, repair, route, and validate ThinkComposer snapshot JSON and standalone operation patches. Use for .tcom/.tdom Composition JSON v1/v2, Domain JSON, multi-point routePoints, safe CLI patch application, visual placement, layout/routing diagnostics, schema validation, embedded-domain updates, Git sync, reports, or import troubleshooting.
 ---
 
 # ThinkComposer JSON Interchange
 
 ## Purpose
 
-Help users create, edit, repair, and validate ThinkComposer JSON payloads for the custom `tbm0115/ThinkComposer` build. Prefer direct edits to authoritative package root JSON for native `.tcom` and `.tdom` files; use patch-operation JSON for GPT-authored compatibility imports unless the user explicitly asks for a full-state merge document.
+Help users create, edit, repair, route, and validate ThinkComposer JSON payloads. Treat authoritative Composition JSON as canonical snapshot state. For GPT-authored Composition changes, write a standalone operations patch and materialize it through the CLI. Directly edit root `/Composition.json` only for exact snapshot recovery or deliberate expert maintenance.
 
 There are two current formats:
 
 - Composition JSON: `format: "ThinkComposer.JsonInterchange"` for root `/Composition.json` in `.tcom` and compatibility composition imports/exports.
 - Domain JSON: `format: "ThinkComposer.DomainJsonInterchange"` for root `/Domain.json` in `.tdom` or `.tcom` and compatibility domain imports/exports.
 
-Modern native `.tcom` and `.tdom` packages use root JSON payloads as authoritative persistence. Desktop Composition/Domain JSON import/export controls are deprecated; CLI import/export remains a compatibility, migration, and validation path.
+Modern native `.tcom` and `.tdom` packages use root JSON payloads as authoritative persistence. Composition JSON v2 stores ordered connector `routePoints`; the upgraded application also reads v1 `intermediatePosition`. CLI Composition import is the safe one-shot edit path because normal save consumes directives into snapshot state.
 
-Saved native packages contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. Current saves are JSON-only and emit `legacyBinaryFallback.present:false`; `/Composition.bin` and `/Domain.bin` can exist only in older binary-only/transitional packages and are never edit targets. `/manifest.json` may also include optional package-level `gitSync` metadata with a generic Git remote, branch, and repo-relative baseline package paths; `.tcom` manifests may additionally include `embeddedDomainGitSync` for the embedded Domain's source `.tdom` link. When a user provides a native `.tcom` or `.tdom`, inspect and patch root JSON first when present; treat `/Interchange/` as synchronized context snapshots. Sidecar manifest v2 preview hashes/profile/disposition support verified PNG reuse but remain non-authoritative.
+Saved native packages contain root `/manifest.json`, `/Composition.json`, `/Domain.json`, and optional `/TemplateComposition.json` authoritative payloads, plus AI-readable sidecar snapshots under `/Interchange/` and capped PNG previews under `/Previews/views/`. Current saves are JSON-only and emit `legacyBinaryFallback.present:false`; `/Composition.bin` and `/Domain.bin` can exist only in older binary-only/transitional packages and are never edit targets. `/manifest.json` may also include optional package-level `gitSync` metadata with a generic Git remote, branch, and repo-relative baseline package paths; `.tcom` manifests may additionally include `embeddedDomainGitSync` for the embedded Domain's source `.tdom` link. When a user provides a native package, inspect authoritative root JSON first. Apply Composition changes through a standalone operations patch; patch Domain root JSON only for deliberate Domain state changes. Treat `/Interchange/` as synchronized context snapshots. Sidecar manifest v2 preview hashes/profile/disposition support verified PNG reuse but remain non-authoritative.
 
-When directly editing a native package:
+When inspecting or deliberately repairing a native package:
 
-- Patch only authoritative root JSON parts: `.tcom` `/Composition.json` and `/Domain.json`; `.tdom` `/Domain.json` and optional `/TemplateComposition.json`.
+- Keep `.tcom` `/Composition.json` and optional `/TemplateComposition.json` snapshot-only. Do not embed generated `operations`, `importOptions`, or `visualStrategy`; apply those from a standalone patch.
+- Patch root `/Domain.json` directly only when the task requires Domain state changes.
 - Refresh the corresponding `/manifest.json` `authoritativeParts[]` metadata, especially `sha256` and `bytes`.
 - Preserve or intentionally update `/manifest.json` `gitSync` and `embeddedDomainGitSync` when present. Do not store Git credentials, tokens, last-sync commits, or package hashes in the package; sync state is machine-local.
 - Do not edit `/Composition.bin` or `/Domain.bin` when an older package contains them. A normal save migrates the package to JSON-only persistence.
@@ -33,6 +34,8 @@ Use the CLI for saved-package validation and headless operations that ThinkCompo
 
 ```cmd
 thinkcomposer package inspect --input <file.tcom|file.tdom>
+thinkcomposer composition import-json --input <file.tcom> --json <patch.json> --output <file.tcom> --preview-only
+thinkcomposer composition validate-routing --input <file.tcom> --output-dir <dir> [--layout route|spider|hierarchy|flowchart|system]
 thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>
 thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>
 thinkcomposer git status --input <file.tcom|file.tdom>
@@ -52,15 +55,15 @@ Rules:
 - Use `report pdf` for standard PDF/XPS reports from a saved `.tcom`.
 - Use `output generate` to render external-language output templates from a saved `.tcom`. If the requested `--language` techName is unclear, inspect root `/Domain.json` or run a compatibility `domain export-json`.
 - Use the `performance` commands only for developer benchmarking. They validate a hash-locked JSON-only corpus and run load/first-save/steady-save samples in fresh processes; a baseline comparison requires the same machine, corpus, and iteration count. `--allow-legacy-baseline-output` may be used only while recording a pre-optimization JSON-authoritative baseline that retains the exact matching legacy binary fallback. Never combine it with `--baseline`; candidate runs remain strict JSON-only.
-- Do not use `composition import-json` or `domain import-json` as the default persistence write path. They are compatibility merge/preview commands; direct package edits should patch root JSON and refresh `/manifest.json`.
+- Use `composition import-json` as the default generated Composition edit path: preview first, apply second, then validate the canonical output. Use `domain import-json` for standalone Domain operations patches when appropriate.
+- When MCP is available, `thinkcomposer_apply_patch` wraps that preview/apply sequence and follows a successful Composition apply with route-health validation and an exported view image. Inspect both results before accepting the package.
 
 ## Source-of-truth order
 
 Use the most current accessible references in this order:
 
 1. User-provided schema, docs, exports, samples, or instructions in the current conversation.
-2. Latest branch references from `tbm0115/ThinkComposer`, currently the active Dcom/Composition JSON import hardening branch, when accessible and the user has not supplied newer files.
-3. Bundled fallback references:
+2. Bundled references shipped with this skill:
    - `references/thinkcomposer-json-interchange.schema.json`
    - `references/thinkcomposer-domain-json-interchange.schema.json`
    - `references/thinkcomposer-package-manifest.schema.json`
@@ -77,16 +80,13 @@ Use the most current accessible references in this order:
    - `references/ux-improvements-validation-checklist.md`
    - `references/*.sample.json`
    - `references/test-findings.md`
+3. Optionally compare the latest branch references from `tbm0115/ThinkComposer`, currently the active Dcom/Composition JSON import hardening branch, when accessible and the user has not supplied newer files. Never replace a bundled v2 schema with an older fetched schema.
 
 If references conflict, follow the schema selected for the current task, mention the conflict, and validate against that schema.
 
 ## Additional application context
 
-The repository includes the ThinkComposer user manual at:
-
-`../../Installer/Deploy/InstrumindThinkComposer_Manual.pdf`
-
-Use it as local context for application terminology, existing UI workflows, domain/composition concepts, concept and relationship definitions, tables/details/custom fields, markers, complements such as Group Regions, output templates, reports/exports, domain editing terminology, and general user-facing behavior.
+When this skill is used from the ThinkComposer source repository, the Markdown user manual under `docs/user-manual/` is optional local context for application terminology, existing UI workflows, domain/composition concepts, concept and relationship definitions, tables/details/custom fields, markers, complements such as Group Regions, output templates, reports/exports, domain editing terminology, and general user-facing behavior. A packaged skill does not assume that repository-only path exists; use the bundled references above.
 
 The manual describes broad ThinkComposer application capabilities. Do not assume a manual feature is supported by JSON interchange unless the current JSON schemas, docs, or samples also document that support. Prefer Markdown docs when available; the PDF manual may later be migrated into Markdown under `docs/` and regenerated with Pandoc.
 
@@ -115,7 +115,7 @@ Use this top-level shape for most `.tcom` patches when the selected schema suppo
 ```json
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "importOptions": {
     "autoPlaceNewItems": true,
     "layoutMode": "gridNearViewport",
@@ -131,8 +131,8 @@ Use this top-level shape for most `.tcom` patches when the selected schema suppo
 
 Rules:
 
-- Prefer patch-style `operations` for creating content. They make intent, ordering, and diagnostics clearer than full-state arrays.
-- Preserve `format` and `formatVersion` exactly.
+- Prefer patch-style `operations` for creating content. Keep the patch standalone; never splice it into root `/Composition.json`.
+- Emit Composition `formatVersion: 2` and Domain `formatVersion: 2`; accept version 1 documents only as migration inputs.
 - Use `update` for text/TechSpec edits, `create` for new model items, `place` for diagram visibility, and `delete` only when explicitly requested.
 - Match by stable `id` when available, otherwise by top-level `techName`.
 - Put editable fields inside `set`.
@@ -149,7 +149,7 @@ Rules:
 - If the correct relationship definition is uncertain, use a generic relationship definition such as `Relationship` or `Reference` only when the user wants a draft graph, include an explicit `relationshipDefinitionFallbackTechName` for draft imports, or ask the user which definition to use. Do not use fallback silently.
 - Set `strictDefinition: true` on an operation when preserving the requested relationship definition is more important than importing a draft graph edge.
 - Use operation-level `autoFit` and `autoRoute` to override top-level import options.
-- Use `details` only when the target domain exposes matching native detail designators, or when using a known-field Text detail with `targetPropertyTechName` such as `Description`, `Summary`, or `TechSpec`.
+- Use `details` only when the target Domain exposes matching native detail designators. Preserve the exported declaration `id` and put it in the Composition value's `details[].designatorId` (with the matching `designatorTechName`); do not call this field `definitionId` or synthesize an instance-only Table designator. A version 2 Domain snapshot carries declarations under `conceptDefinitions[].detailDesignators` or `relationshipDefinitions[].detailDesignators`.
 - Use `detailFallbackMode: "appendToTechSpec"` or `"appendToDescription"` only when preserving generated detail text matters and native detail designators may be missing. Prefer first-class `summary`, `description`, or `techSpec` for important generated text unless the target domain clearly supports matching details.
 - Do not place a concept inside its own composite view.
 - For normal imports, resolve containers by exact `containerId` or `containerTechName`.
@@ -233,11 +233,21 @@ ThinkComposer relationships may have visible central symbols. Generated JSON sho
 Rules:
 
 - For generated flow, architecture, and system diagrams, place concepts deliberately and let the importer place relationship centers.
+- Omit generated Relationship `x/y`, `connectors`, `intermediatePosition`, and `routePoints`. GPTs specify routing intent; the application owns generated geometry.
 - Prefer `importOptions.relationshipVisualPlacementMode: "endpointCorridor"` for generated diagrams, or `visualStrategy.relationshipVisualPlacement: "endpointCorridor"` when using large-import visual strategy.
+- Set operation-level `visual.relationshipCenterPlacement:"endpointCorridor"` and `autoRoute:true` for each created, placed, or moved Relationship.
 - `auto` is the default and preserves relationship centers that are already near their endpoint corridor while recomputing suspicious far-away centers.
 - Use `explicit` only when the relationship visual coordinates are hand-curated and intentionally close to the relationship endpoints.
 - For medium/large diagrams, also consider `autoRoutePlacedLinks: false` or `visualStrategy.deferRouting: true`; users can run Edit -> Appearance -> Route Links with Obstacle Avoidance after import.
 - If full-state JSON includes relationship visuals, omit exact relationship visual `x/y` unless exact placement is required, or make sure every relationship center is near the midpoint/corridor between its source and target concepts.
+
+Composition JSON v2 exact snapshots may contain `connectors[].routePoints`, ordered from connector origin to target and excluding endpoint anchors:
+
+- Zero points means straight; maximum 32 points.
+- Omitted `routePoints` in a patch leaves a route unchanged; `[]` clears it.
+- `routePoints` wins over deprecated `intermediatePosition` when both appear.
+- Do not generate route points unless the user explicitly requests exact hand-authored geometry. Prefer `autoRoute:true`.
+- Validate finite coordinates, local endpoint corridors, detour length, stable connector identity, and save/reopen parity.
 
 ## Shortcuts and duplicate-looking concepts
 
@@ -365,7 +375,7 @@ Use this top-level shape for most `.tdom` or embedded-domain update patches:
 ```json
 {
   "format": "ThinkComposer.DomainJsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "operations": []
 }
 ```
@@ -374,8 +384,9 @@ Rules:
 
 - Update only explicit fields. Omission must not clear or delete native data.
 - `delete` operations are dangerous and skipped by default in the current importer.
-- Domain create/update targets include `externalLanguage`, `linkRoleVariant`, clusters/categories, `markerDefinition`, `tableDefinition`, `fieldDefinition`, `conceptDefinition`, `relationshipDefinition`, `relationshipRole`, and `outputTemplate`.
+- Domain create/update targets include `externalLanguage`, `linkRoleVariant`, clusters/categories, `markerDefinition`, `tableDefinition`, `fieldDefinition`, `detailDesignator`, `conceptDefinition`, `relationshipDefinition`, `relationshipRole`, and `outputTemplate`.
 - Child entities should include `ownerTechName` when needed, especially fields, roles, and templates.
+- A `detailDesignator` operation must identify its owning definition with `ownerId`/`ownerTechName` and preferably `ownerScope`. Put `kind` in `set`; for a Table Detail also provide `tableDefinitionId` and/or `tableDefinitionTechName` plus `tableDefinitionIsOwned`. After apply, re-export the Domain and use the emitted declaration `id` as `details[].designatorId` in later Composition operations.
 - Field data type changes, table deletion, field deletion, and incompatible relationship role changes are skipped by default.
 - Output templates are imported as text only and never executed.
 - TechSpec is imported as text only and never executed.
@@ -480,12 +491,11 @@ Manual Appearance commands in the current build:
 - `Edit -> Appearance -> Arrange as Flowchart`
 - `Edit -> Appearance -> Arrange as System Map`
 
-These are deterministic v1 layout helpers, not full graph optimizers. Spider, Hierarchy, Flowchart, and System Map are manual commands only; they are not automatic JSON import `layoutMode` values yet. JSON import currently integrates auto-placement, concept auto-fit, and link auto-route.
+These are deterministic layout helpers backed by the shared multi-bend obstacle router, not global crossing-free graph optimizers. Spider, Hierarchy, Flowchart, and System Map remain manual layout commands; JSON import integrates endpoint-corridor placement and affected-link routing.
 
 ## Backlog / not implemented yet
 
 - Custom domain shape import.
-- Full multi-bend generic connector route model.
 - Full graph crossing minimization.
 - Live automatic `.tdom` synchronization.
 - Destructive domain cleanup/migrations.
@@ -500,6 +510,12 @@ Use `scripts/validate_json.py` when validating JSON files:
 
 ```bash
 python scripts/validate_json.py path/to/document.json
+```
+
+The packaged schema is authoritative by default. Fetch an upstream schema only when the user explicitly asks to compare against it:
+
+```bash
+python scripts/validate_json.py path/to/document.json --fetch-latest
 ```
 
 Pass a schema explicitly when the user supplied one:

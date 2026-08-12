@@ -582,7 +582,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Result.OriginEdgePosition = ExportPoint(Connector.OriginEdgePosition);
             Result.TargetPosition = ExportPoint(Connector.TargetPosition);
             Result.TargetEdgePosition = ExportPoint(Connector.TargetEdgePosition);
-            Result.IntermediatePosition = ExportPoint(Connector.IntermediatePosition);
+            Result.RoutePoints = (Connector.RoutePoints == null
+                                  ? Enumerable.Empty<Point>()
+                                  : Connector.RoutePoints.AsEnumerable())
+                                 .Select(ExportPoint).ToList();
+            Result.RoutePointsSpecified = true;
             return Result;
         }
 

@@ -19,8 +19,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Windows;
 using System.Windows.Media;
 
@@ -52,6 +54,11 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         public const double VISUAL_MAGNITUDE_ADJUSTMENT = 0.65;
 
         /// <summary>
+        /// Maximum number of interior route points accepted by the visual model.
+        /// </summary>
+        public const int MAX_ROUTE_POINTS = 32;
+
+        /// <summary>
         /// Static Constructor.
         /// </summary>
         static VisualConnector()
@@ -67,6 +74,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             __ClassDefinitor.DeclareProperty(__TargetEdgePosition);
             __ClassDefinitor.DeclareProperty(__TargetSymbol);
             __ClassDefinitor.DeclareProperty(__IntermediatePosition);
+            __ClassDefinitor.DeclareCollection(__RoutePoints);
         }
 
         /// <summary>
@@ -76,6 +84,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                                VisualSymbol OriginSymbol, VisualSymbol TargetSymbol, Point OriginPosition, Point TargetPosition)
              : base(EVisualRepresentationPart.RelationshipLinkConnector)
         {
+            this.SetRoutePointsStorage(new EditableList<Point>(__RoutePoints.TechName, this, 4));
             this.OwnerRelationshipRepresentation = OwnerRelationshipRepresentation;
             this.RepresentedLink = RepresentedLink;
             this.OriginSymbol = OriginSymbol;
@@ -85,6 +94,54 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
 
             this.OriginSymbol.TargetConnections.Add(this);
             this.TargetSymbol.OriginConnections.Add(this);
+        }
+
+        /// <summary>
+        /// Minimal constructor used by dependency-free model regression checks.
+        /// </summary>
+        internal VisualConnector()
+             : base(EVisualRepresentationPart.RelationshipLinkConnector)
+        {
+            this.SetRoutePointsStorage(new EditableList<Point>(__RoutePoints.TechName, this, 4));
+        }
+
+        /// <summary>
+        /// Initializes route storage after loading an old binary Composition or cloning by serialization.
+        /// </summary>
+        [OnDeserialized]
+        private void InitializeRoutePoints(StreamingContext context = default(StreamingContext))
+        {
+            this.ContextRoutePointIndex = -1;
+
+            try
+            {
+                if (this.RoutePoints_ == null)
+                {
+                    this.SetRoutePointsStorage(new EditableList<Point>(__RoutePoints.TechName, this, 1));
+                    if (IsUsableRoutePoint(this.IntermediatePosition_))
+                        this.RoutePoints_.Add(this.IntermediatePosition_);
+                }
+                else
+                    this.SetRoutePointsStorage(this.RoutePoints_);
+
+                ValidateRoutePoints(this.RoutePoints_);
+            }
+            catch (ArgumentException Problem)
+            {
+                throw new SerializationException("The serialized connector route is invalid.", Problem);
+            }
+
+            SynchronizeLegacyIntermediatePosition();
+        }
+
+        /// <summary>
+        /// Keeps the old singleton field populated for readers of the legacy binary shape.
+        /// </summary>
+        [OnSerializing]
+        private void PrepareLegacyRoutePoint(StreamingContext context = default(StreamingContext))
+        {
+            ValidateRoutePoints(this.RoutePoints_);
+            SynchronizeLegacyIntermediatePosition();
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -109,6 +166,8 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         /// </summary>
         public override DrawingGroup CreateDraw(UIElement PresentationContext, bool ShowManipulationAdorners)
         {
+            EnsureRoutePointsCollection();
+
             // Calculate the Edge Positions
             if (this.OriginSymbol.Graphic == null)
                 this.OriginSymbol.GenerateGraphic(PresentationContext, ShowManipulationAdorners);
@@ -123,48 +182,52 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                 && (this.OriginEdgePosition == Display.NULL_POINT || this.TargetEdgePosition == Display.NULL_POINT))
                 PresentationContext = this.OwnerRepresentation.DisplayingView.Presenter;
 
-            DrawingGroup Result = null;
+            var FirstRoutePoint = FindNextDistinctPoint(this.OriginPosition, this.RoutePoints, this.TargetPosition);
+            var LastRoutePoint = FindPreviousDistinctPoint(this.TargetPosition, this.RoutePoints, this.OriginPosition);
 
-            if (this.IntermediatePosition == Display.NULL_POINT)
+            if (PresentationContext != null)
             {
-                if (PresentationContext != null)
+                if (this.OriginSymbol.IsRelatedVisible)
                 {
-                    /*T Console.WriteLine("OriSym={0}=>{1}, TarSym={2}=>{3}.",
-                                      this.OriginSymbol, this.OriginSymbol.Graphic.GetHashCode(),
-                                      this.TargetSymbol, this.TargetSymbol.Graphic.GetHashCode()); */
-
-                    if (this.OriginSymbol.IsRelatedVisible)
-                        this.OriginEdgePosition = (this.OriginSymbol.IsHidden ? this.OriginPosition :
-                                                   this.OriginPosition.DetermineNearestIntersectingPoint(this.TargetPosition, PresentationContext,
-                                                                                                         this.OriginSymbol.Graphic, this.OwnerRepresentation.DisplayingView.VisualHitTestFilter));
-
-                    if (this.TargetSymbol.IsRelatedVisible)
-                        this.TargetEdgePosition = (this.TargetSymbol.IsHidden ? this.TargetPosition :
-                                                   this.TargetPosition.DetermineNearestIntersectingPoint(this.OriginPosition, PresentationContext,
-                                                                                                         this.TargetSymbol.Graphic, this.OwnerRepresentation.DisplayingView.VisualHitTestFilter));
-
-                    // Nasty trick to compensate miscalculation of border position (or after undoing a relationship-central-symbol move)
-                    if (this.OriginEdgePosition == this.TargetSymbol.BaseCenter)
-                    {
-                        this.OriginPosition = this.OriginSymbol.BaseCenter.FindBoundary(this.OriginPosition, PresentationContext, this.OriginSymbol.Graphic, true)
-                                                                                .SubstituteFor(default(Point), this.OriginSymbol.BaseCenter);
-                        this.OriginEdgePosition = this.OriginPosition;
-                    }
-
-                    if (this.TargetEdgePosition == this.OriginSymbol.BaseCenter)
-                    {
-                        this.TargetPosition = this.TargetSymbol.BaseCenter.FindBoundary(this.TargetPosition, PresentationContext, this.TargetSymbol.Graphic, true)
-                                                                                .SubstituteFor(default(Point), this.TargetSymbol.BaseCenter);
-                        this.TargetEdgePosition = this.TargetPosition;
-                    }
+                    var EdgePosition = (this.OriginSymbol.IsHidden ? this.OriginPosition :
+                                        this.OriginPosition.DetermineNearestIntersectingPoint(FirstRoutePoint, PresentationContext,
+                                                                                              this.OriginSymbol.Graphic,
+                                                                                              this.OwnerRepresentation.DisplayingView.VisualHitTestFilter));
+                    if (EdgePosition != FirstRoutePoint)
+                        this.OriginEdgePosition = EdgePosition;
                 }
 
-                /*T Console.WriteLine("OriginEdgePoint X={0}, Y={1}. TargetEdgePoint X={2}, Y={3}",
-                                  Math.Truncate(this.OriginEdgePosition.X), Math.Truncate(this.OriginEdgePosition.Y),
-                                  Math.Truncate(this.TargetEdgePosition.X), Math.Truncate(this.TargetEdgePosition.Y)); */
+                if (this.TargetSymbol.IsRelatedVisible)
+                {
+                    var EdgePosition = (this.TargetSymbol.IsHidden ? this.TargetPosition :
+                                        this.TargetPosition.DetermineNearestIntersectingPoint(LastRoutePoint, PresentationContext,
+                                                                                              this.TargetSymbol.Graphic,
+                                                                                              this.OwnerRepresentation.DisplayingView.VisualHitTestFilter));
+                    if (EdgePosition != LastRoutePoint)
+                        this.TargetEdgePosition = EdgePosition;
+                }
 
-                // Draw the Connector line
-                Result = MasterDrawer.CreateDrawingConnector(this.OriginPlug, this.TargetPlug,
+                // Compensate a border hit-test result that points to the opposite symbol center.
+                if (this.OriginEdgePosition == this.TargetSymbol.BaseCenter)
+                {
+                    this.OriginPosition = this.OriginSymbol.BaseCenter.FindBoundary(this.OriginPosition, PresentationContext,
+                                                                                    this.OriginSymbol.Graphic, true)
+                                                                      .SubstituteFor(default(Point), this.OriginSymbol.BaseCenter);
+                    this.OriginEdgePosition = this.OriginPosition;
+                }
+
+                if (this.TargetEdgePosition == this.OriginSymbol.BaseCenter)
+                {
+                    this.TargetPosition = this.TargetSymbol.BaseCenter.FindBoundary(this.TargetPosition, PresentationContext,
+                                                                                    this.TargetSymbol.Graphic, true)
+                                                                      .SubstituteFor(default(Point), this.TargetSymbol.BaseCenter);
+                    this.TargetEdgePosition = this.TargetPosition;
+                }
+            }
+
+            // Draw one continuous geometry so joins, dashes, hit bounds and rounded corners
+            // remain coherent across every interior route point.
+            var Result = MasterDrawer.CreateDrawingConnector(this.OriginPlug, this.TargetPlug,
                                                              VisualConnectorsFormat.GetLineBrush(this),
                                                              VisualConnectorsFormat.GetLineThickness(this),
                                                              VisualConnectorsFormat.GetLineDash(this),
@@ -175,61 +238,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                                                              VisualConnectorsFormat.GetMainBackground(this),
                                                              VisualConnectorsFormat.GetOpacity(this),
                                                              this.TargetEdgePosition, this.OriginEdgePosition,
-                                                             null, VISUAL_MAGNITUDE_ADJUSTMENT);
-
-                /*T visual cue for detecting miscalculations...
-                Result.Children.Add(new GeometryDrawing(Brushes.Green, new Pen(Brushes.Red, 1.0),
-                                    new EllipseGeometry(new Point(this.OriginEdgePosition.X + 100, this.OriginEdgePosition.Y), 3, 3)));
-                Result.Children.Add(new GeometryDrawing(Brushes.Blue, new Pen(Brushes.Red, 1.0),
-                                    new EllipseGeometry(new Point(this.TargetEdgePosition.X + 100, this.TargetEdgePosition.Y), 3, 3))); */
-            }
-            else
-            {
-                if (PresentationContext != null)
-                {
-                    var EdgePos = (this.OriginSymbol.IsHidden ? this.OriginPosition :
-                                   this.OriginPosition.DetermineNearestIntersectingPoint(this.IntermediatePosition, PresentationContext,
-                                                                                         this.OriginSymbol.Graphic, this.OwnerRepresentation.DisplayingView.VisualHitTestFilter));
-                    if (EdgePos != this.IntermediatePosition)
-                        this.OriginEdgePosition = EdgePos;
-
-                    EdgePos = (this.TargetSymbol.IsHidden ? this.TargetPosition :
-                               this.TargetPosition.DetermineNearestIntersectingPoint(this.IntermediatePosition, PresentationContext,
-                                                                                     this.TargetSymbol.Graphic, this.OwnerRepresentation.DisplayingView.VisualHitTestFilter));
-                    if (EdgePos != this.IntermediatePosition)
-                        this.TargetEdgePosition = EdgePos;
-                }
-
-                //T Console.WriteLine("OriginEdgePoint X={0}, Y={1}. TargetEdgePoint X={2}, Y={3}. IP={4}", OriginEdgePoint.X, OriginEdgePoint.Y, TargetEdgePoint.X, TargetEdgePoint.Y, this.IntermediatePosition);
-
-                // Draw the Connector origin line
-                Result = MasterDrawer.CreateDrawingConnector(this.OriginPlug, Plugs.None,
-                                                             VisualConnectorsFormat.GetLineBrush(this),
-                                                             VisualConnectorsFormat.GetLineThickness(this),
-                                                             VisualConnectorsFormat.GetLineDash(this),
-                                                             VisualConnectorsFormat.GetLineJoin(this),
-                                                             VisualConnectorsFormat.GetLineCap(this),
-                                                             VisualConnectorsFormat.GetPathStyle(this),
-                                                             VisualConnectorsFormat.GetPathCorner(this),
-                                                             VisualConnectorsFormat.GetMainBackground(this),
-                                                             VisualConnectorsFormat.GetOpacity(this),
-                                                             this.IntermediatePosition, this.OriginEdgePosition,
-                                                             null, VISUAL_MAGNITUDE_ADJUSTMENT);
-                // Draw the Connector target line
-                Result.Children.Add(
-                         MasterDrawer.CreateDrawingConnector(Plugs.None, this.TargetPlug,
-                                                             VisualConnectorsFormat.GetLineBrush(this),
-                                                             VisualConnectorsFormat.GetLineThickness(this),
-                                                             VisualConnectorsFormat.GetLineDash(this),
-                                                             VisualConnectorsFormat.GetLineJoin(this),
-                                                             VisualConnectorsFormat.GetLineCap(this),
-                                                             VisualConnectorsFormat.GetPathStyle(this),
-                                                             VisualConnectorsFormat.GetPathCorner(this),
-                                                             VisualConnectorsFormat.GetMainBackground(this),
-                                                             VisualConnectorsFormat.GetOpacity(this),
-                                                             this.TargetEdgePosition, this.IntermediatePosition,
-                                                             null, VISUAL_MAGNITUDE_ADJUSTMENT));
-            }
+                                                             this.RoutePoints, VISUAL_MAGNITUDE_ADJUSTMENT);
 
             /*T Console.WriteLine("OriginEdgePosition X={0}, Y={1}. TargetEdgePosition X={2}, Y={3}. IP={4}",
                               OriginEdgePosition.X, OriginEdgePosition.Y, TargetEdgePosition.X, TargetEdgePosition.Y, this.IntermediatePosition); */
@@ -263,16 +272,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                 || this.OwnerRepresentation.DisplayingView.ShowLinkRoleDescNameLabels)
                 using (var Context = Result.Append())
                 {
-                    var DecoratorCenter = this.IntermediatePosition;
-
-                    if (DecoratorCenter == Display.NULL_POINT)
-                        DecoratorCenter = new Point((this.OriginEdgePosition.X + this.TargetEdgePosition.X) / 2.0,
-                                            (this.OriginEdgePosition.Y + this.TargetEdgePosition.Y) / 2.0);
-
-                    /*T else
-                            Console.WriteLine("DecoratorCenter = IntermediatePoint"); */
-
-                    //T Console.WriteLine("DecoratorCenter: X={0}, Y={1}", DecoratorCenter.X, DecoratorCenter.Y);
+                    var DecoratorCenter = DetermineLabelPosition(this.GetPathPoints());
 
                     var LinkDescriptorLabel = (((RelDef.DefaultConnectorsFormat.LabelLinkDescriptor
                                                || this.OwnerRepresentation.DisplayingView.ShowLinkRoleDescNameLabels)
@@ -322,6 +322,12 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         public Rect? LabelArea = null;
 
         /// <summary>
+        /// Bend index exposed temporarily while a connector context menu is open.
+        /// </summary>
+        [NonSerialized]
+        public int ContextRoutePointIndex = -1;
+
+        /// <summary>
         /// Recreates and returns the Graphic of this visual connector.
         /// </summary>
         public override ContainerVisual GenerateGraphic(UIElement PresentationContext, bool ShowManipulationAdorners)
@@ -334,10 +340,162 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         /// <summary>
         /// Updates the connector intermediate point to the specified position.
         /// </summary>
+        [Obsolete("Use SetRoutePoints or UpdateRoutePoint for multi-point routes.")]
         public void UpdateIntermediatePoint(Point NewPosition)
         {
             this.IntermediatePosition = NewPosition;
             this.RenderElement();
+        }
+
+        /// <summary>
+        /// Atomically replaces all interior route points after validating the complete input.
+        /// </summary>
+        public void SetRoutePoints(IEnumerable<Point> NewRoutePoints)
+        {
+            var ValidatedPoints = ValidateRoutePoints(NewRoutePoints);
+            EnsureRoutePointsCollection();
+
+            this.RoutePoints_.Clear();
+            this.RoutePoints_.AddRange(ValidatedPoints);
+            SynchronizeLegacyIntermediatePosition();
+        }
+
+        /// <summary>
+        /// Alias which emphasizes that the complete route is replaced.
+        /// </summary>
+        public void ReplaceRoutePoints(IEnumerable<Point> NewRoutePoints)
+        {
+            SetRoutePoints(NewRoutePoints);
+        }
+
+        /// <summary>
+        /// Clears all interior points, producing a straight connector.
+        /// </summary>
+        public void ClearRoutePoints()
+        {
+            EnsureRoutePointsCollection();
+            if (this.RoutePoints_.Count > 0)
+                this.RoutePoints_.Clear();
+
+            SynchronizeLegacyIntermediatePosition();
+        }
+
+        /// <summary>
+        /// Inserts an interior point at the supplied route index.
+        /// </summary>
+        public void InsertRoutePoint(int Index, Point NewPoint)
+        {
+            EnsureRoutePointsCollection();
+            if (Index < 0 || Index > this.RoutePoints_.Count)
+                throw new ArgumentOutOfRangeException("Index");
+            if (this.RoutePoints_.Count >= MAX_ROUTE_POINTS)
+                throw new InvalidOperationException("A connector route cannot contain more than " + MAX_ROUTE_POINTS + " interior points.");
+
+            ValidateRoutePoint(NewPoint, "NewPoint");
+            this.RoutePoints_.Insert(Index, NewPoint);
+            SynchronizeLegacyIntermediatePosition();
+        }
+
+        /// <summary>
+        /// Replaces one interior point.
+        /// </summary>
+        public void UpdateRoutePoint(int Index, Point NewPoint)
+        {
+            EnsureRoutePointsCollection();
+            if (Index < 0 || Index >= this.RoutePoints_.Count)
+                throw new ArgumentOutOfRangeException("Index");
+
+            ValidateRoutePoint(NewPoint, "NewPoint");
+            this.RoutePoints_[Index] = NewPoint;
+            SynchronizeLegacyIntermediatePosition();
+        }
+
+        /// <summary>
+        /// Removes one interior point.
+        /// </summary>
+        public void RemoveRoutePoint(int Index)
+        {
+            EnsureRoutePointsCollection();
+            if (Index < 0 || Index >= this.RoutePoints_.Count)
+                throw new ArgumentOutOfRangeException("Index");
+
+            this.RoutePoints_.RemoveAt(Index);
+            SynchronizeLegacyIntermediatePosition();
+        }
+
+        /// <summary>
+        /// Translates the complete route by the supplied delta.
+        /// </summary>
+        public void TranslateRoutePoints(double DeltaX, double DeltaY)
+        {
+            EnsureRoutePointsCollection();
+            if (double.IsNaN(DeltaX) || double.IsInfinity(DeltaX)
+                || double.IsNaN(DeltaY) || double.IsInfinity(DeltaY))
+                throw new ArgumentException("Connector route translation deltas must be finite.");
+
+            if (DeltaX == 0.0 && DeltaY == 0.0)
+                return;
+
+            // Validate the entire translated route before mutating any undo-aware item.
+            var Translated = ValidateRoutePoints(this.RoutePoints_.Select(Point =>
+                                        new Point(Point.X + DeltaX, Point.Y + DeltaY)));
+            for (int Index = 0; Index < this.RoutePoints_.Count; Index++)
+                this.RoutePoints_[Index] = Translated[Index];
+
+            SynchronizeLegacyIntermediatePosition();
+        }
+
+        /// <summary>
+        /// Returns the complete path in origin-to-target order, including endpoint anchors.
+        /// </summary>
+        public IList<Point> GetPathPoints(bool UseEdgePositions = true)
+        {
+            EnsureRoutePointsCollection();
+
+            var Origin = (UseEdgePositions && IsUsableRoutePoint(this.OriginEdgePosition)
+                          ? this.OriginEdgePosition : this.OriginPosition);
+            var Target = (UseEdgePositions && IsUsableRoutePoint(this.TargetEdgePosition)
+                          ? this.TargetEdgePosition : this.TargetPosition);
+
+            var Result = new List<Point>(this.RoutePoints.Count + 2) { Origin };
+            Result.AddRange(this.RoutePoints);
+            Result.Add(Target);
+            return Result;
+        }
+
+        /// <summary>
+        /// Removes duplicate and collinear interior points without changing the visible path.
+        /// </summary>
+        public void SimplifyRoutePoints(double Tolerance = 0.001)
+        {
+            var Points = GetPathPoints(false);
+            if (Points.Count <= 2)
+                return;
+
+            var Simplified = new List<Point>();
+            for (int Index = 1; Index < Points.Count - 1; Index++)
+            {
+                var Previous = (Simplified.Count == 0 ? Points[0] : Simplified[Simplified.Count - 1]);
+                var Current = Points[Index];
+                var Next = Points[Index + 1];
+
+                if ((Current - Previous).Length <= Tolerance)
+                    continue;
+
+                var CrossProduct = ((Current.X - Previous.X) * (Next.Y - Current.Y)
+                                    - (Current.Y - Previous.Y) * (Next.X - Current.X));
+                var IncomingX = Current.X - Previous.X;
+                var IncomingY = Current.Y - Previous.Y;
+                var OutgoingX = Next.X - Current.X;
+                var OutgoingY = Next.Y - Current.Y;
+                var DirectionDotProduct = IncomingX * OutgoingX + IncomingY * OutgoingY;
+                if (Math.Abs(CrossProduct) <= Tolerance && DirectionDotProduct >= 0.0)
+                    continue;
+
+                Simplified.Add(Current);
+            }
+
+            SetRoutePoints(Simplified);
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -346,12 +504,65 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         /// </summary>
         public void DoStraighten()
         {
+            if (IsPartOfHiddenSimpleRelationship())
+            {
+                this.OwnerRelationshipRepresentation.DoStraighten();
+                return;
+            }
+
             this.EditEngine.StartCommandVariation("Straighten Connector");
 
-            this.UpdateIntermediatePoint(Display.NULL_POINT);
+            this.ClearRoutePoints();
+            this.OwnerRelationshipRepresentation.Render();
             this.GetDisplayingView().UpdateVersion();
 
             this.EditEngine.CompleteCommandVariation();
+        }
+
+        /// <summary>
+        /// Removes one bend as a single undoable command.
+        /// </summary>
+        public void DoRemoveRoutePoint(int Index)
+        {
+            if (this.RoutePoints == null || Index < 0 || Index >= this.RoutePoints.Count)
+                return;
+
+            this.EditEngine.StartCommandVariation("Remove Connector Bend");
+            this.RemoveRoutePoint(Index);
+            this.OwnerRelationshipRepresentation.Render();
+            this.GetDisplayingView().UpdateVersion();
+            this.EditEngine.CompleteCommandVariation();
+        }
+
+        /// <summary>
+        /// Simplifies the route as a single undoable command.
+        /// </summary>
+        public void DoSimplifyRoute()
+        {
+            var LogicalConnectors = (IsPartOfHiddenSimpleRelationship()
+                                     ? this.OwnerRelationshipRepresentation.VisualConnectors.Where(Connector => Connector != null).ToList()
+                                     : this.IntoEnumerable().ToList());
+            if (!LogicalConnectors.Any(Connector => Connector.RoutePoints.Count > 0))
+                return;
+
+            this.EditEngine.StartCommandVariation("Simplify Connector Route");
+            foreach (var Connector in LogicalConnectors)
+                Connector.SimplifyRoutePoints();
+            this.OwnerRelationshipRepresentation.Render();
+            this.GetDisplayingView().UpdateVersion();
+            this.EditEngine.CompleteCommandVariation();
+        }
+
+        private bool IsPartOfHiddenSimpleRelationship()
+        {
+            if (this.OwnerRelationshipRepresentation == null
+                || this.OwnerRelationshipRepresentation.MainSymbol == null
+                || !this.OwnerRelationshipRepresentation.MainSymbol.IsHidden
+                || this.OwnerRelationshipRepresentation.RepresentedRelationship == null)
+                return false;
+
+            var Definition = this.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value;
+            return Definition.IsSimple && Definition.HideCentralSymbolWhenSimple;
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -483,13 +694,13 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
         /// Gets the connector intermediate point (if not empty/null) or the final origin position inside symbol.
         /// </summary>
         public Point OriginIntermediateOrFinalPosition
-        { get{ return (this.IntermediatePosition != Display.NULL_POINT ? this.IntermediatePosition : this.OriginPosition); } }
+        { get{ return (this.RoutePoints != null && this.RoutePoints.Count > 0 ? this.RoutePoints[0] : this.OriginPosition); } }
 
         /// <summary>
         /// Gets the connector intermediate point (if not empty/null) or the final target position inside symbol.
         /// </summary>
         public Point TargetIntermediateOrFinalPosition
-        { get{ return (this.IntermediatePosition != Display.NULL_POINT ? this.IntermediatePosition : this.TargetPosition); } }
+        { get{ return (this.RoutePoints != null && this.RoutePoints.Count > 0 ? this.RoutePoints[this.RoutePoints.Count - 1] : this.TargetPosition); } }
 
         /// <summary>
         /// Gets the connector Origin point, considering if Relationship is "Simple" and hidden, plus intermediate points of both connectors in that case.
@@ -501,8 +712,8 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                 var RelDef = this.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value;
 
                 if (RelDef.IsSimple)
-                    if (this.IntermediatePosition != Display.NULL_POINT)
-                        return this.IntermediatePosition;
+                    if (this.RoutePoints != null && this.RoutePoints.Count > 0)
+                        return this.RoutePoints[0];
                     else
                         if (!this.OriginSymbol.IsAutoPositionable)
                             return this.OriginPosition;
@@ -512,8 +723,8 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                                 var OppositeConnector = this.OwnerRelationshipRepresentation.VisualConnectors.FirstOrDefault(connector => connector != this);
                                 if (OppositeConnector != null)
                                 {
-                                    if (OppositeConnector.IntermediatePosition != Display.NULL_POINT)
-                                        return OppositeConnector.IntermediatePosition;
+                                    if (OppositeConnector.RoutePoints != null && OppositeConnector.RoutePoints.Count > 0)
+                                        return OppositeConnector.RoutePoints[OppositeConnector.RoutePoints.Count - 1];
                                     else
                                         return OppositeConnector.OriginPosition;
                                 }
@@ -535,8 +746,8 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                 var RelDef = this.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value;
 
                 if (RelDef.IsSimple)
-                    if (this.IntermediatePosition != Display.NULL_POINT)
-                        return this.IntermediatePosition;
+                    if (this.RoutePoints != null && this.RoutePoints.Count > 0)
+                        return this.RoutePoints[this.RoutePoints.Count - 1];
                     else
                         if (!this.TargetSymbol.IsAutoPositionable)
                             return this.TargetPosition;
@@ -546,8 +757,8 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                                 var OppositeConnector = this.OwnerRelationshipRepresentation.VisualConnectors.FirstOrDefault(connector => connector != this);
                                 if (OppositeConnector != null)
                                 {
-                                    if (OppositeConnector.IntermediatePosition != Display.NULL_POINT)
-                                        return OppositeConnector.IntermediatePosition;
+                                    if (OppositeConnector.RoutePoints != null && OppositeConnector.RoutePoints.Count > 0)
+                                        return OppositeConnector.RoutePoints[0];
                                     else
                                         return OppositeConnector.TargetPosition;
                                 }
@@ -666,7 +877,7 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
 
             var StandardIndicators = new List<Tuple<Drawing, bool, EManipulationDirection>>();
             double PosX, PosY;
-            Drawing IndOrigin = null, IndTarget = null, IndIntermediate = null;
+            Drawing IndOrigin = null, IndTarget = null;
 
             PosX = this.OriginEdgePosition.X - (IndicatorSize / 2.0);
             PosY = this.OriginEdgePosition.Y - (IndicatorSize / 2.0);
@@ -678,25 +889,174 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
             IndTarget = (new GeometryDrawing(IndStroke, IndPencil, GeometryCreator(new Rect(PosX, PosY, IndicatorSize, IndicatorSize))));
             StandardIndicators.Add(Tuple.Create(IndTarget, true, EManipulationDirection.BottomRight)); // Note: The Tuple Items 1 and 2 (is-main and manipulation-direction) are not currently used in the Connectors context
 
-            if (this.IntermediatePosition != Display.NULL_POINT)
-            {
-                PosX = this.IntermediatePosition.X - (IndicatorSize / 2.0);
-                PosY = this.IntermediatePosition.Y - (IndicatorSize / 2.0);
-                IndIntermediate = (new GeometryDrawing(IndStroke, IndPencil, GeometryCreator(new Rect(PosX, PosY, IndicatorSize, IndicatorSize))));
-                StandardIndicators.Add(Tuple.Create(IndIntermediate, false, EManipulationDirection.Top)); // Note: The Tuple Items 1 and 2 (is-main and manipulation-direction) are not currently used in the Connectors context
-            }
+            if (this.RoutePoints != null)
+                foreach (var RoutePoint in this.RoutePoints)
+                {
+                    PosX = RoutePoint.X - (IndicatorSize / 2.0);
+                    PosY = RoutePoint.Y - (IndicatorSize / 2.0);
+                    var RouteIndicator = (new GeometryDrawing(IndStroke, IndPencil, GeometryCreator(new Rect(PosX, PosY, IndicatorSize, IndicatorSize))));
+                    StandardIndicators.Add(Tuple.Create((Drawing)RouteIndicator, false, EManipulationDirection.Top));
+                }
 
             return StandardIndicators;
         }
 
         /// <summary>
-        /// Intermediate optional position of the connector.
+        /// Ordered interior points of the connector, from origin to target. Callers receive a
+        /// read-only view so every mutation goes through the validating, undo-aware route APIs.
         /// </summary>
-        public Point IntermediatePosition { get { return __IntermediatePosition.Get(this); } internal set { __IntermediatePosition.Set(this, value); } }
+        public IList<Point> RoutePoints
+        {
+            get
+            {
+                EnsureRoutePointsCollection();
+                return this.RoutePointsView_;
+            }
+        }
+
+        [OptionalField(VersionAdded = 2)]
+        private EditableList<Point> RoutePoints_;
+
+        [NonSerialized]
+        private ReadOnlyCollection<Point> RoutePointsView_;
+
+        public static ModelListDefinitor<VisualConnector, Point> __RoutePoints =
+                   new ModelListDefinitor<VisualConnector, Point>("RoutePoints", EEntityMembership.InternalCoreExclusive,
+                                                                  ins => ins.RoutePoints_, (ins, coll) => ins.SetRoutePointsStorage(coll),
+                                                                  "Route Points", "Ordered interior route points of the connector.");
+
+        /// <summary>
+        /// Legacy singleton intermediate position facade. A multi-point route has no
+        /// lossless singleton representation and therefore returns Display.NULL_POINT.
+        /// </summary>
+        [Obsolete("Use RoutePoints and the route editing APIs.")]
+        public Point IntermediatePosition
+        {
+            get
+            {
+                if (this.RoutePoints != null)
+                    return (this.RoutePoints.Count == 1 ? this.RoutePoints[0] : Display.NULL_POINT);
+
+                return this.IntermediatePosition_;
+            }
+            internal set
+            {
+                if (value == Display.NULL_POINT)
+                    ClearRoutePoints();
+                else
+                    SetRoutePoints(value.IntoEnumerable());
+            }
+        }
         protected Point IntermediatePosition_ = Display.NULL_POINT;
         public static readonly ModelPropertyDefinitor<VisualConnector, Point> __IntermediatePosition =
                    new ModelPropertyDefinitor<VisualConnector, Point>("IntermediatePosition", EEntityMembership.External, null, EPropertyKind.Common, ins => ins.IntermediatePosition_, (ins, val) => ins.IntermediatePosition_ = val, false, false,
                                                                       "Intermediate Position", "Intermediate optional position of the connector.");
+
+        private void EnsureRoutePointsCollection()
+        {
+            if (this.RoutePoints_ == null)
+                SetRoutePointsStorage(new EditableList<Point>(__RoutePoints.TechName, this, 4));
+            else if (this.RoutePointsView_ == null)
+                this.RoutePointsView_ = new ReadOnlyCollection<Point>(this.RoutePoints_);
+        }
+
+        private void SetRoutePointsStorage(EditableList<Point> Storage)
+        {
+            if (Storage == null)
+                Storage = new EditableList<Point>(__RoutePoints.TechName, this, 4);
+
+            ValidateRoutePoints(Storage);
+            this.RoutePoints_ = Storage;
+            this.RoutePointsView_ = new ReadOnlyCollection<Point>(this.RoutePoints_);
+        }
+
+        private void SynchronizeLegacyIntermediatePosition()
+        {
+            this.IntermediatePosition_ = (this.RoutePoints_ != null && this.RoutePoints_.Count == 1
+                                          ? this.RoutePoints_[0] : Display.NULL_POINT);
+        }
+
+        private static List<Point> ValidateRoutePoints(IEnumerable<Point> Points)
+        {
+            var Result = (Points == null ? new List<Point>() : Points.ToList());
+            if (Result.Count > MAX_ROUTE_POINTS)
+                throw new ArgumentOutOfRangeException("Points", "A connector route cannot contain more than " + MAX_ROUTE_POINTS + " interior points.");
+
+            for (int Index = 0; Index < Result.Count; Index++)
+                ValidateRoutePoint(Result[Index], "Points[" + Index + "]");
+
+            return Result;
+        }
+
+        private static void ValidateRoutePoint(Point Point, string ParameterName)
+        {
+            if (!IsUsableRoutePoint(Point))
+                throw new ArgumentException("A connector route point must contain finite coordinates and cannot be Display.NULL_POINT.", ParameterName);
+        }
+
+        private static bool IsUsableRoutePoint(Point Point)
+        {
+            return (Point != Display.NULL_POINT
+                    && !double.IsNaN(Point.X) && !double.IsInfinity(Point.X)
+                    && !double.IsNaN(Point.Y) && !double.IsInfinity(Point.Y));
+        }
+
+        private static Point FindNextDistinctPoint(Point Endpoint, IEnumerable<Point> RoutePoints, Point OppositeEndpoint)
+        {
+            foreach (var RoutePoint in RoutePoints ?? Enumerable.Empty<Point>())
+                if (RoutePoint != Endpoint)
+                    return RoutePoint;
+
+            return OppositeEndpoint;
+        }
+
+        private static Point FindPreviousDistinctPoint(Point Endpoint, IEnumerable<Point> RoutePoints, Point OppositeEndpoint)
+        {
+            var Points = (RoutePoints ?? Enumerable.Empty<Point>()).ToList();
+            for (int Index = Points.Count - 1; Index >= 0; Index--)
+                if (Points[Index] != Endpoint)
+                    return Points[Index];
+
+            return OppositeEndpoint;
+        }
+
+        private static Point DetermineLabelPosition(IList<Point> PathPoints)
+        {
+            if (PathPoints == null || PathPoints.Count < 2)
+                return default(Point);
+
+            var Lengths = new double[PathPoints.Count - 1];
+            var TotalLength = 0.0;
+            for (int Index = 0; Index < Lengths.Length; Index++)
+            {
+                Lengths[Index] = (PathPoints[Index + 1] - PathPoints[Index]).Length;
+                TotalLength += Lengths[Index];
+            }
+
+            var BestIndex = 0;
+            var BestLength = -1.0;
+            var BestMidpointDistance = double.MaxValue;
+            var Traversed = 0.0;
+            var PathMidpoint = TotalLength / 2.0;
+
+            for (int Index = 0; Index < Lengths.Length; Index++)
+            {
+                var SegmentMidpoint = Traversed + Lengths[Index] / 2.0;
+                var MidpointDistance = Math.Abs(SegmentMidpoint - PathMidpoint);
+                if (Lengths[Index] > BestLength + 0.001
+                    || (Math.Abs(Lengths[Index] - BestLength) <= 0.001 && MidpointDistance < BestMidpointDistance))
+                {
+                    BestIndex = Index;
+                    BestLength = Lengths[Index];
+                    BestMidpointDistance = MidpointDistance;
+                }
+
+                Traversed += Lengths[Index];
+            }
+
+            return new Point((PathPoints[BestIndex].X + PathPoints[BestIndex + 1].X) / 2.0,
+                             (PathPoints[BestIndex].Y + PathPoints[BestIndex + 1].Y) / 2.0);
+        }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
         /// <summary>
@@ -716,13 +1076,14 @@ namespace Instrumind.ThinkComposer.Model.VisualModel
                 TopLimit = Math.Min(TopLimit, this.TargetPosition.Y);
                 BottomLimit = Math.Max(BottomLimit, this.TargetPosition.Y);
 
-                if (this.IntermediatePosition != Display.NULL_POINT)
-                {
-                    LeftLimit = Math.Min(LeftLimit, this.IntermediatePosition.X);
-                    RightLimit = Math.Max(RightLimit, this.IntermediatePosition.X);
-                    TopLimit = Math.Min(TopLimit, this.IntermediatePosition.Y);
-                    BottomLimit = Math.Max(BottomLimit, this.IntermediatePosition.Y);
-                }
+                if (this.RoutePoints != null)
+                    foreach (var RoutePoint in this.RoutePoints)
+                    {
+                        LeftLimit = Math.Min(LeftLimit, RoutePoint.X);
+                        RightLimit = Math.Max(RightLimit, RoutePoint.X);
+                        TopLimit = Math.Min(TopLimit, RoutePoint.Y);
+                        BottomLimit = Math.Max(BottomLimit, RoutePoint.Y);
+                    }
 
                 var Result = new Rect(LeftLimit, TopLimit, (RightLimit - LeftLimit) + 1.0, (BottomLimit - TopLimit) + 1.0);
                 return Result;

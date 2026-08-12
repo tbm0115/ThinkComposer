@@ -16,13 +16,14 @@ using System.Windows;
 
 using Instrumind.Common;
 using Instrumind.Common.Visualization;
+using Instrumind.ThinkComposer.MetaModel.VisualMetaModel;
 using Instrumind.ThinkComposer.Model.GraphModel;
 using Instrumind.ThinkComposer.Model.VisualModel;
 
 namespace Instrumind.ThinkComposer.Composer.Layout
 {
     /// <summary>
-    /// Conservative connector router using one optional VisualConnector intermediate point.
+    /// Shared connector routing service backed by the deterministic multi-point planner.
     /// </summary>
     public static class LinkObstacleRoutingService
     {
@@ -130,6 +131,18 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             }
 
             var Connectors = GetConnectorsForScope(Context, Options);
+            if (Options.RouteSelectedConnectorsOnly && Result.RelationshipCenterPlacementResult != null)
+            {
+                // Placement invalidates every leg incident to a moved hub.  Expand only those
+                // relationships; otherwise unselected legs would remain cleared and stale.
+                Connectors = Connectors.Concat(Result.RelationshipCenterPlacementResult.RecomputedRepresentations
+                                  .Where(Representation => Representation != null)
+                                  .SelectMany(Representation => Representation.VisualConnectors ??
+                                                                Enumerable.Empty<VisualConnector>())
+                                  .Where(IsPotentiallyRouteable))
+                                       .Distinct()
+                                       .ToList();
+            }
             var HiddenCentralRelationships = GetHiddenCentralRelationshipsForScope(Connectors);
             var HiddenCentralSet = new HashSet<RelationshipVisualRepresentation>(HiddenCentralRelationships);
             var IndividualConnectors = Connectors.Where(Connector => Connector.OwnerRelationshipRepresentation == null ||
@@ -151,17 +164,29 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var ObstacleRectangles = ObstacleInfos.Select(Obstacle => Obstacle.Bounds).ToList();
             Console.WriteLine("Appearance: link routing obstacle count={0}.", ObstacleRectangles.Count);
 
-            foreach (var Relationship in HiddenCentralRelationships)
+            var AcceptedRoutes = new List<IList<Point>>();
+            var PendingConnectorRenders = new HashSet<VisualConnector>();
+            var PendingRepresentationRenders = new HashSet<RelationshipVisualRepresentation>();
+            foreach (var Relationship in HiddenCentralRelationships.OrderBy(GetRelationshipSortKey))
             {
                 if (Options.RouteSelectedConnectorsOnly)
                     Console.WriteLine("Appearance route relationship: selected connector belongs to hidden-central relationship; routing relationship as a whole: {0}.",
                                       DescribeIdea(Relationship == null ? null : Relationship.RepresentedRelationship));
 
-                RouteHiddenCentralRelationship(Relationship, ObstacleInfos, Options, Result);
+                RouteHiddenCentralRelationshipModern(Relationship, ObstacleInfos, Options, Result, AcceptedRoutes);
             }
 
-            foreach (var Connector in IndividualConnectors)
-                RouteConnector(Connector, ObstacleRectangles, Options, Result);
+            foreach (var Connector in IndividualConnectors.OrderBy(GetConnectorSortKey))
+                RouteConnectorModern(Connector, ObstacleRectangles, Options, Result, AcceptedRoutes,
+                                     PendingConnectorRenders, PendingRepresentationRenders);
+
+            foreach (var Representation in PendingRepresentationRenders.OrderBy(GetRelationshipSortKey))
+                Representation.Render();
+            foreach (var Connector in PendingConnectorRenders
+                                      .Where(Connector => Connector.OwnerRelationshipRepresentation == null ||
+                                                          !PendingRepresentationRenders.Contains(Connector.OwnerRelationshipRepresentation))
+                                      .OrderBy(GetConnectorSortKey))
+                Connector.RenderElement();
 
             LogSummary(Result);
             return Result;
@@ -195,7 +220,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
             if (Options.IncludeRelationshipCentralSymbolsAsObstacles)
                 foreach (var Symbol in Context.VisibleRelationshipRepresentations
-                                      .Where(Representation => Representation != null)
+                                      .Where(Representation => Representation != null &&
+                                                               !IsHiddenCentralRelationship(Representation))
                                       .Select(Representation => Representation.MainSymbol)
                                       .Where(Symbol => Symbol != null && !Symbol.IsHidden && Symbol.IsRelatedVisible))
                 {
@@ -218,6 +244,517 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 .Where(IsHiddenCentralRelationship)
                 .Distinct()
                 .ToList();
+        }
+
+        private static void RouteHiddenCentralRelationshipModern(RelationshipVisualRepresentation Representation,
+                                                                 IEnumerable<ObstacleInfo> Obstacles,
+                                                                 LinkObstacleRoutingOptions Options,
+                                                                 LinkObstacleRoutingResult Result,
+                                                                 IList<IList<Point>> AcceptedRoutes)
+        {
+            Options = Options ?? new LinkObstacleRoutingOptions();
+            Result = Result ?? new LinkObstacleRoutingResult();
+            Result.Inspected++;
+            Result.RelationshipRoutesInspected++;
+
+            if (Representation == null || Representation.MainSymbol == null)
+            {
+                Result.Skipped++;
+                Result.AddWarning("A hidden relationship has no central symbol and cannot be routed.");
+                return;
+            }
+
+            var Main = Representation.MainSymbol;
+            var Bindings = GetHiddenEndpointBindings(Representation)
+                .OrderBy(Binding => GetSymbolSortKey(Binding.EndpointSymbol))
+                .ThenBy(Binding => GetConnectorSortKey(Binding.Connector))
+                .ToList();
+            if (Bindings.Count < 2)
+            {
+                Result.Skipped++;
+                Result.AddWarning("Hidden relationship '" + GetRelationshipSortKey(Representation) +
+                                  "' has fewer than two visible endpoint connectors.");
+                return;
+            }
+
+            var FilteredObstacles = (Obstacles ?? Enumerable.Empty<ObstacleInfo>())
+                .Where(Obstacle => Obstacle != null && IsUsableRect(Obstacle.Bounds) &&
+                                   Obstacle.Symbol != Main &&
+                                   !Bindings.Any(Binding =>
+                                       Binding.EndpointSymbol == Obstacle.Symbol ||
+                                       Obstacle.Bounds.Contains(Binding.EndpointSymbol.BaseCenter)))
+                .Select(Obstacle => Obstacle.Bounds)
+                .ToList();
+
+            if (Bindings.Count == 2 && IsGenuinelySimpleRelationship(Representation))
+            {
+                if (Bindings[0].EndpointSymbol == Bindings[1].EndpointSymbol)
+                    RouteHiddenSelfRelationship(Representation, Bindings[0], Bindings[1], FilteredObstacles,
+                                                Options, Result, AcceptedRoutes);
+                else
+                    RouteHiddenBinaryRelationship(Representation, Bindings[0], Bindings[1], FilteredObstacles,
+                                                  Options, Result, AcceptedRoutes);
+                return;
+            }
+
+            // Hidden n-ary relationships are routed as a star. Coordinate medians keep a
+            // remote outlier from pulling the junction away from the endpoint cloud.
+            var XValues = Bindings.Select(Binding => Binding.EndpointSymbol.BaseCenter.X).OrderBy(Value => Value).ToList();
+            var YValues = Bindings.Select(Binding => Binding.EndpointSymbol.BaseCenter.Y).OrderBy(Value => Value).ToList();
+            var NewCenter = new Point(Median(XValues), Median(YValues));
+            if (!PointsEqual(Main.BaseCenter, NewCenter))
+                Main.MoveTo(NewCenter.X, NewCenter.Y, true);
+
+            var RoutedAny = false;
+            foreach (var Binding in Bindings)
+            {
+                var Source = GetBindingEndpoint(Binding, true);
+                var Target = GetBindingEndpoint(Binding, false);
+                var Existing = GetBindingRouteFromEndpointToHub(Binding);
+                var Request = CreatePlannerRequest(GetConnectorSortKey(Binding.Connector), Source, Target, Existing,
+                                                   FilteredObstacles, Options, AcceptedRoutes,
+                                                   Options.PreserveExistingValidRoutes
+                                                   ? Options.RouteIntent : RelationshipRouteIntent.Layout);
+                ApplyMandatoryWaypoints(Request, Options, Representation, Existing);
+                Request.RemainingBatchWork = Math.Max(0, Options.MaximumBatchWork - Result.TotalWork);
+                var Plan = OrthogonalRoutePlanner.Plan(Request);
+                ApplyBindingPlannerResult(Binding, Existing, Source, Target, Plan, Result, AcceptedRoutes);
+                RoutedAny = RoutedAny || Plan.Status != RelationshipRouteStatus.Preserved;
+            }
+
+            Representation.Render();
+            if (RoutedAny)
+                Result.DoglegRouted++;
+        }
+
+        private static void RouteHiddenSelfRelationship(RelationshipVisualRepresentation Representation,
+                                                        HiddenEndpointBinding FirstBinding,
+                                                        HiddenEndpointBinding SecondBinding,
+                                                        IList<Rect> Obstacles,
+                                                        LinkObstacleRoutingOptions Options,
+                                                        LinkObstacleRoutingResult Result,
+                                                        IList<IList<Point>> AcceptedRoutes)
+        {
+            var Main = Representation.MainSymbol;
+            var Endpoint = FirstBinding.EndpointSymbol;
+            var FirstExisting = GetBindingRouteFromEndpointToHub(FirstBinding).ToList();
+            var SecondExisting = GetBindingRouteFromEndpointToHub(SecondBinding).ToList();
+            var HubCenter = ChooseHiddenSelfRelationshipCenter(Main, Endpoint, Obstacles, Options);
+            if (!PointsEqual(Main.BaseCenter, HubCenter))
+                Main.MoveTo(HubCenter.X, HubCenter.Y, true);
+
+            var EndpointBounds = Endpoint.TotalArea;
+            var HubBounds = Main.TotalArea;
+            var Combined = EndpointBounds;
+            Combined.Union(HubBounds);
+            var Clearance = Math.Max(24.0, Options.ObstaclePadding + Options.NearMissPadding + 4.0);
+            var HorizontalLoop = Math.Abs(HubCenter.X - Endpoint.BaseCenter.X) >=
+                                 Math.Abs(HubCenter.Y - Endpoint.BaseCenter.Y);
+
+            var FirstSource = GetBindingEndpoint(FirstBinding, true);
+            var FirstTarget = GetBindingEndpoint(FirstBinding, false);
+            var SecondSource = GetBindingEndpoint(SecondBinding, true);
+            var SecondTarget = GetBindingEndpoint(SecondBinding, false);
+            var FirstWaypoints = HorizontalLoop
+                                 ? new List<Point>
+                                   {
+                                       new Point(FirstSource.X, Combined.Top - Clearance),
+                                       new Point(FirstTarget.X, Combined.Top - Clearance)
+                                   }
+                                 : new List<Point>
+                                   {
+                                       new Point(Combined.Left - Clearance, FirstSource.Y),
+                                       new Point(Combined.Left - Clearance, FirstTarget.Y)
+                                   };
+            var SecondWaypoints = HorizontalLoop
+                                  ? new List<Point>
+                                    {
+                                        new Point(SecondSource.X, Combined.Bottom + Clearance),
+                                        new Point(SecondTarget.X, Combined.Bottom + Clearance)
+                                    }
+                                  : new List<Point>
+                                    {
+                                        new Point(Combined.Right + Clearance, SecondSource.Y),
+                                        new Point(Combined.Right + Clearance, SecondTarget.Y)
+                                    };
+
+            var FirstRequest = CreatePlannerRequest(GetConnectorSortKey(FirstBinding.Connector),
+                                                    FirstSource, FirstTarget, FirstExisting,
+                                                    Obstacles, Options, AcceptedRoutes,
+                                                    RelationshipRouteIntent.Layout);
+            FirstRequest.MandatoryWaypoints = FirstWaypoints;
+            FirstRequest.DirtyReason = Options.DirtyReason.ToStringAlways() +
+                                       (String.IsNullOrWhiteSpace(Options.DirtyReason) ? "" : "; ") +
+                                       "deterministic self-reference upper/left corridor";
+            FirstRequest.RemainingBatchWork = Math.Max(0, Options.MaximumBatchWork - Result.TotalWork);
+            var FirstPlan = OrthogonalRoutePlanner.Plan(FirstRequest);
+            ApplyBindingPlannerResult(FirstBinding, FirstExisting, FirstSource, FirstTarget,
+                                      FirstPlan, Result, AcceptedRoutes);
+
+            var SecondRequest = CreatePlannerRequest(GetConnectorSortKey(SecondBinding.Connector),
+                                                     SecondSource, SecondTarget, SecondExisting,
+                                                     Obstacles, Options, AcceptedRoutes,
+                                                     RelationshipRouteIntent.Layout);
+            SecondRequest.MandatoryWaypoints = SecondWaypoints;
+            SecondRequest.DirtyReason = Options.DirtyReason.ToStringAlways() +
+                                        (String.IsNullOrWhiteSpace(Options.DirtyReason) ? "" : "; ") +
+                                        "deterministic self-reference lower/right corridor";
+            SecondRequest.RemainingBatchWork = Math.Max(0, Options.MaximumBatchWork - Result.TotalWork);
+            var SecondPlan = OrthogonalRoutePlanner.Plan(SecondRequest);
+            ApplyBindingPlannerResult(SecondBinding, SecondExisting, SecondSource, SecondTarget,
+                                      SecondPlan, Result, AcceptedRoutes);
+
+            Representation.Render();
+            Result.DoglegRouted++;
+        }
+
+        private static Point ChooseHiddenSelfRelationshipCenter(VisualSymbol Main, VisualSymbol Endpoint,
+                                                                IList<Rect> Obstacles,
+                                                                LinkObstacleRoutingOptions Options)
+        {
+            var EndpointBounds = Endpoint.TotalArea;
+            var MainBounds = Main.TotalArea;
+            var Width = IsUsableRect(MainBounds) ? MainBounds.Width : 20.0;
+            var Height = IsUsableRect(MainBounds) ? MainBounds.Height : 20.0;
+            var Clearance = Math.Max(48.0, Options.ObstaclePadding * 2.0 + Options.NearMissPadding + 12.0);
+            var PlacementOptions = Options.RelationshipVisualPlacementOptions ??
+                                   new RelationshipVisualPlacementOptions();
+            var LocalCorridor = EndpointBounds;
+            LocalCorridor.Inflate(PlacementOptions.CorridorPaddingX, PlacementOptions.CorridorPaddingY);
+            var CurrentExclusion = EndpointBounds;
+            CurrentExclusion.Inflate(Clearance / 2.0, Clearance / 2.0);
+            var CurrentBounds = new Rect(Main.BaseCenter.X - Width / 2.0,
+                                         Main.BaseCenter.Y - Height / 2.0, Width, Height);
+            var MaximumLocalDistance = Math.Max(250.0,
+                Options.RelationshipVisualPlacementOptions == null
+                ? 700.0 : Options.RelationshipVisualPlacementOptions.SuspiciousDistanceThreshold);
+            if (!CurrentExclusion.Contains(Main.BaseCenter) &&
+                LocalCorridor.Contains(Main.BaseCenter) &&
+                Distance(Main.BaseCenter, Endpoint.BaseCenter) <= MaximumLocalDistance &&
+                !(Obstacles ?? new List<Rect>()).Any(Obstacle => Obstacle.IntersectsWith(CurrentBounds)))
+                return Main.BaseCenter;
+
+            // Keep the hidden junction inside the same inflated endpoint corridor used by
+            // routing validation.  The previous fixed 48-pixel gap plus half the hub width
+            // could place an 84-pixel hub just beyond the default 80-pixel corridor.
+            var HorizontalOffset = Math.Max(1.0,
+                Math.Min(Clearance + Width / 2.0,
+                         Math.Max(1.0, PlacementOptions.CorridorPaddingX - 1.0)));
+            var VerticalOffset = Math.Max(1.0,
+                Math.Min(Clearance + Height / 2.0,
+                         Math.Max(1.0, PlacementOptions.CorridorPaddingY - 1.0)));
+            var Candidates = new[]
+            {
+                new Point(EndpointBounds.Right + HorizontalOffset, Endpoint.BaseCenter.Y),
+                new Point(Endpoint.BaseCenter.X, EndpointBounds.Bottom + VerticalOffset),
+                new Point(EndpointBounds.Left - HorizontalOffset, Endpoint.BaseCenter.Y),
+                new Point(Endpoint.BaseCenter.X, EndpointBounds.Top - VerticalOffset)
+            };
+            return Candidates.Select((Center, Index) => new
+                              {
+                                  Center,
+                                  Index,
+                                  Bounds = new Rect(Center.X - Width / 2.0, Center.Y - Height / 2.0,
+                                                    Width, Height)
+                              })
+                             .OrderBy(Item => (Obstacles ?? new List<Rect>())
+                                                  .Count(Obstacle => Obstacle.IntersectsWith(Item.Bounds)))
+                             .ThenBy(Item => Item.Index)
+                             .Select(Item => Item.Center)
+                             .First();
+        }
+
+        private static void RouteHiddenBinaryRelationship(RelationshipVisualRepresentation Representation,
+                                                          HiddenEndpointBinding SourceBinding,
+                                                          HiddenEndpointBinding TargetBinding,
+                                                          IList<Rect> Obstacles,
+                                                          LinkObstacleRoutingOptions Options,
+                                                          LinkObstacleRoutingResult Result,
+                                                          IList<IList<Point>> AcceptedRoutes)
+        {
+            var Source = GetBindingEndpoint(SourceBinding, true);
+            var Target = GetBindingEndpoint(TargetBinding, true);
+            var ExistingComplete = new List<Point> { Source };
+            ExistingComplete.AddRange(GetBindingRouteFromEndpointToHub(SourceBinding));
+            ExistingComplete.Add(Representation.MainSymbol.BaseCenter);
+            ExistingComplete.AddRange(GetBindingRouteFromEndpointToHub(TargetBinding).Reverse());
+            ExistingComplete.Add(Target);
+            ExistingComplete = OrthogonalRoutePlanner.Simplify(ExistingComplete).ToList();
+            var Existing = ExistingComplete.Count <= 2
+                           ? new List<Point>()
+                           : ExistingComplete.Skip(1).Take(ExistingComplete.Count - 2).ToList();
+
+            var Request = CreatePlannerRequest(GetRelationshipSortKey(Representation), Source, Target, Existing,
+                                               Obstacles, Options, AcceptedRoutes,
+                                               Options.PreserveExistingValidRoutes
+                                               ? Options.RouteIntent : RelationshipRouteIntent.Layout);
+            ApplyMandatoryWaypoints(Request, Options, Representation, Existing);
+            Request.RemainingBatchWork = Math.Max(0, Options.MaximumBatchWork - Result.TotalWork);
+            var Plan = OrthogonalRoutePlanner.Plan(Request);
+            var Complete = new List<Point> { Source };
+            Complete.AddRange(Plan.RoutePoints ?? new List<Point>());
+            Complete.Add(Target);
+            Complete = OrthogonalRoutePlanner.Simplify(Complete).ToList();
+
+            Point Center;
+            IList<Point> SourceInterior;
+            IList<Point> TargetInterior;
+            var HubCorridor = SourceBinding.EndpointSymbol.TotalArea;
+            HubCorridor.Union(TargetBinding.EndpointSymbol.TotalArea);
+            var PlacementOptions = Options.RelationshipVisualPlacementOptions ??
+                                   new RelationshipVisualPlacementOptions();
+            HubCorridor.Inflate(PlacementOptions.CorridorPaddingX, PlacementOptions.CorridorPaddingY);
+            var PreferredCenter = GetMidpoint(SourceBinding.EndpointSymbol.BaseCenter,
+                                              TargetBinding.EndpointSymbol.BaseCenter);
+            SplitAtPreferredCorridorPoint(Complete, PreferredCenter, HubCorridor,
+                                          out Center, out SourceInterior, out TargetInterior);
+            Representation.MainSymbol.MoveTo(Center.X, Center.Y, true);
+            SetBindingRouteFromEndpointToHub(SourceBinding, SourceInterior);
+            SetBindingRouteFromEndpointToHub(TargetBinding, TargetInterior.Reverse().ToList());
+            var AppearanceChanged = false;
+            if (Plan.Status != RelationshipRouteStatus.Preserved)
+            {
+                var SourceAppearanceChanged = SetAutomaticPathAppearance(SourceBinding.Connector);
+                var TargetAppearanceChanged = SetAutomaticPathAppearance(TargetBinding.Connector);
+                Result.AppearanceChanged += (SourceAppearanceChanged ? 1 : 0) +
+                                            (TargetAppearanceChanged ? 1 : 0);
+                AppearanceChanged = SourceAppearanceChanged || TargetAppearanceChanged;
+            }
+            Representation.Render();
+
+            Result.DoglegRouted++;
+            RecordPlan(Result, Plan, Existing, Plan.RoutePoints, AppearanceChanged);
+            var Accepted = new List<Point> { Source };
+            Accepted.AddRange(Plan.RoutePoints ?? new List<Point>());
+            Accepted.Add(Target);
+            AcceptedRoutes.Add(Accepted);
+        }
+
+        private static IList<HiddenEndpointBinding> GetHiddenEndpointBindings(RelationshipVisualRepresentation Representation)
+        {
+            var Result = new List<HiddenEndpointBinding>();
+            if (Representation == null || Representation.MainSymbol == null || Representation.VisualConnectors == null)
+                return Result;
+
+            var Main = Representation.MainSymbol;
+            foreach (var Connector in Representation.VisualConnectors.Where(Connector => Connector != null).Distinct())
+            {
+                if (Connector.OriginSymbol == Main && IsVisibleConceptSymbol(Connector.TargetSymbol))
+                    Result.Add(new HiddenEndpointBinding
+                    {
+                        Connector = Connector,
+                        EndpointSymbol = Connector.TargetSymbol,
+                        EndpointIsOrigin = false
+                    });
+                else if (Connector.TargetSymbol == Main && IsVisibleConceptSymbol(Connector.OriginSymbol))
+                    Result.Add(new HiddenEndpointBinding
+                    {
+                        Connector = Connector,
+                        EndpointSymbol = Connector.OriginSymbol,
+                        EndpointIsOrigin = true
+                    });
+            }
+            return Result;
+        }
+
+        private static Point GetBindingEndpoint(HiddenEndpointBinding Binding, bool EndpointSide)
+        {
+            var UseOrigin = EndpointSide ? Binding.EndpointIsOrigin : !Binding.EndpointIsOrigin;
+            return GetEndpoint(Binding.Connector, UseOrigin);
+        }
+
+        private static IList<Point> GetBindingRouteFromEndpointToHub(HiddenEndpointBinding Binding)
+        {
+            var Points = GetRoutePoints(Binding == null ? null : Binding.Connector);
+            return Binding != null && Binding.EndpointIsOrigin ? Points : Points.Reverse().ToList();
+        }
+
+        private static void SetBindingRouteFromEndpointToHub(HiddenEndpointBinding Binding, IEnumerable<Point> Points)
+        {
+            if (Binding == null || Binding.Connector == null)
+                return;
+            var Route = (Points ?? Enumerable.Empty<Point>()).ToList();
+            Binding.Connector.SetRoutePoints(Binding.EndpointIsOrigin ? Route : Route.AsEnumerable().Reverse());
+        }
+
+        private static void SplitAtPathMidpoint(IList<Point> Complete, out Point Center,
+                                                out IList<Point> SourceInterior, out IList<Point> TargetInterior)
+        {
+            SourceInterior = new List<Point>();
+            TargetInterior = new List<Point>();
+            if (Complete == null || Complete.Count < 2)
+            {
+                Center = new Point(0, 0);
+                return;
+            }
+
+            var Total = 0.0;
+            for (var Index = 0; Index < Complete.Count - 1; Index++)
+                Total += Distance(Complete[Index], Complete[Index + 1]);
+            var Half = Total / 2.0;
+            var Travelled = 0.0;
+            var CenterIndex = 1;
+            var Expanded = Complete.ToList();
+            Center = GetMidpoint(Complete[0], Complete[Complete.Count - 1]);
+            for (var Index = 0; Index < Complete.Count - 1; Index++)
+            {
+                var Segment = Distance(Complete[Index], Complete[Index + 1]);
+                if (Travelled + Segment + GeometryTolerance < Half)
+                {
+                    Travelled += Segment;
+                    continue;
+                }
+
+                var Fraction = Segment <= GeometryTolerance ? 0.0 : (Half - Travelled) / Segment;
+                Center = new Point(Complete[Index].X + (Complete[Index + 1].X - Complete[Index].X) * Fraction,
+                                   Complete[Index].Y + (Complete[Index + 1].Y - Complete[Index].Y) * Fraction);
+                if (PointsEqual(Center, Complete[Index]))
+                    CenterIndex = Index;
+                else if (PointsEqual(Center, Complete[Index + 1]))
+                    CenterIndex = Index + 1;
+                else
+                {
+                    CenterIndex = Index + 1;
+                    Expanded.Insert(CenterIndex, Center);
+                }
+                break;
+            }
+
+            SourceInterior = Expanded.Skip(1).Take(Math.Max(0, CenterIndex - 1)).ToList();
+            TargetInterior = Expanded.Skip(CenterIndex + 1).Take(Math.Max(0, Expanded.Count - CenterIndex - 2)).ToList();
+        }
+
+        private static void SplitAtPreferredCorridorPoint(IList<Point> Complete, Point Preferred, Rect Corridor,
+                                                          out Point Center,
+                                                          out IList<Point> SourceInterior,
+                                                          out IList<Point> TargetInterior)
+        {
+            if (Complete == null || Complete.Count < 2 || !IsUsableRect(Corridor))
+            {
+                SplitAtPathMidpoint(Complete, out Center, out SourceInterior, out TargetInterior);
+                return;
+            }
+
+            // Rect.Contains excludes the right/bottom boundary.  Splitting exactly on one
+            // of those edges therefore produces a hub which validation reports as outside
+            // the endpoint corridor even though clipping accepted it.  Search a small,
+            // scale-independent inset so the chosen junction is unambiguously local while
+            // retaining essentially the full corridor on compact diagrams.
+            var EffectiveCorridor = Corridor;
+            var InsetX = Math.Min(1.0, Math.Max(0.0, Corridor.Width / 4.0));
+            var InsetY = Math.Min(1.0, Math.Max(0.0, Corridor.Height / 4.0));
+            EffectiveCorridor.Inflate(-InsetX, -InsetY);
+            if (!IsUsableRect(EffectiveCorridor))
+                EffectiveCorridor = Corridor;
+
+            var BestIndex = -1;
+            var BestT = 0.0;
+            var BestScore = Double.PositiveInfinity;
+            for (var Index = 0; Index < Complete.Count - 1; Index++)
+            {
+                double MinimumT;
+                double MaximumT;
+                if (!TryClipSegmentToRect(Complete[Index], Complete[Index + 1], EffectiveCorridor,
+                                          out MinimumT, out MaximumT))
+                    continue;
+
+                var Start = Complete[Index];
+                var End = Complete[Index + 1];
+                var DX = End.X - Start.X;
+                var DY = End.Y - Start.Y;
+                var LengthSquared = DX * DX + DY * DY;
+                if (LengthSquared <= GeometryTolerance)
+                    continue;
+                var T = ((Preferred.X - Start.X) * DX + (Preferred.Y - Start.Y) * DY) / LengthSquared;
+                T = Math.Max(MinimumT, Math.Min(MaximumT, T));
+                // Do not collapse the hidden junction onto an endpoint when the first/last
+                // segment has a usable portion inside the corridor.  Prefer the corridor-side
+                // exit/entry point so both connector legs retain a nonzero anchor segment.
+                if (Index == 0 && T <= GeometryTolerance && MaximumT > GeometryTolerance)
+                    T = MaximumT;
+                if (Index == Complete.Count - 2 && T >= 1.0 - GeometryTolerance &&
+                    MinimumT < 1.0 - GeometryTolerance)
+                    T = MinimumT;
+                var Candidate = new Point(Start.X + DX * T, Start.Y + DY * T);
+                var EndpointPenalty = (Index == 0 && T <= GeometryTolerance) ||
+                                      (Index == Complete.Count - 2 && T >= 1.0 - GeometryTolerance)
+                                      ? 1000000.0 : 0.0;
+                var Score = Distance(Candidate, Preferred) + EndpointPenalty;
+                if (Score + GeometryTolerance < BestScore)
+                {
+                    BestScore = Score;
+                    BestIndex = Index;
+                    BestT = T;
+                }
+            }
+
+            if (BestIndex < 0)
+            {
+                SplitAtPathMidpoint(Complete, out Center, out SourceInterior, out TargetInterior);
+                return;
+            }
+
+            var SegmentStart = Complete[BestIndex];
+            var SegmentEnd = Complete[BestIndex + 1];
+            Center = new Point(SegmentStart.X + (SegmentEnd.X - SegmentStart.X) * BestT,
+                               SegmentStart.Y + (SegmentEnd.Y - SegmentStart.Y) * BestT);
+            var Expanded = Complete.ToList();
+            int CenterIndex;
+            if (PointsEqual(Center, SegmentStart))
+                CenterIndex = BestIndex;
+            else if (PointsEqual(Center, SegmentEnd))
+                CenterIndex = BestIndex + 1;
+            else
+            {
+                CenterIndex = BestIndex + 1;
+                Expanded.Insert(CenterIndex, Center);
+            }
+            SourceInterior = Expanded.Skip(1).Take(Math.Max(0, CenterIndex - 1)).ToList();
+            TargetInterior = Expanded.Skip(CenterIndex + 1)
+                                     .Take(Math.Max(0, Expanded.Count - CenterIndex - 2)).ToList();
+        }
+
+        private static bool TryClipSegmentToRect(Point Start, Point End, Rect Rectangle,
+                                                 out double MinimumT, out double MaximumT)
+        {
+            MinimumT = 0.0;
+            MaximumT = 1.0;
+            var DX = End.X - Start.X;
+            var DY = End.Y - Start.Y;
+            return ClipParameter(-DX, Start.X - Rectangle.Left, ref MinimumT, ref MaximumT) &&
+                   ClipParameter(DX, Rectangle.Right - Start.X, ref MinimumT, ref MaximumT) &&
+                   ClipParameter(-DY, Start.Y - Rectangle.Top, ref MinimumT, ref MaximumT) &&
+                   ClipParameter(DY, Rectangle.Bottom - Start.Y, ref MinimumT, ref MaximumT) &&
+                   MaximumT + GeometryTolerance >= MinimumT;
+        }
+
+        private static bool ClipParameter(double Direction, double Offset,
+                                          ref double MinimumT, ref double MaximumT)
+        {
+            if (Math.Abs(Direction) <= GeometryTolerance)
+                return Offset >= -GeometryTolerance;
+            var T = Offset / Direction;
+            if (Direction < 0.0)
+            {
+                if (T > MaximumT)
+                    return false;
+                MinimumT = Math.Max(MinimumT, T);
+            }
+            else
+            {
+                if (T < MinimumT)
+                    return false;
+                MaximumT = Math.Min(MaximumT, T);
+            }
+            return true;
+        }
+
+        private static double Median(IList<double> Values)
+        {
+            if (Values == null || Values.Count == 0)
+                return 0.0;
+            var Middle = Values.Count / 2;
+            return Values.Count % 2 == 1 ? Values[Middle] : (Values[Middle - 1] + Values[Middle]) / 2.0;
         }
 
         private static void RouteHiddenCentralRelationship(RelationshipVisualRepresentation Representation, IEnumerable<ObstacleInfo> Obstacles,
@@ -314,8 +851,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var RenderedSegments = 0;
             if (Best.IsDogleg)
             {
-                Route.SourceConnector.UpdateIntermediatePoint(Best.SourceIntermediate);
-                Route.TargetConnector.UpdateIntermediatePoint(Best.TargetIntermediate);
+                SetLegacyCandidateRoutePoint(Route.SourceConnector, Best.SourceIntermediate);
+                SetLegacyCandidateRoutePoint(Route.TargetConnector, Best.TargetIntermediate);
                 RenderedSegments = 2;
 
                 foreach (var Connector in Route.Connectors.Where(Connector => Connector != Route.SourceConnector &&
@@ -329,7 +866,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             {
                 foreach (var Connector in Route.Connectors)
                 {
-                    Connector.UpdateIntermediatePoint(Display.NULL_POINT);
+                    Connector.ClearRoutePoints();
                     RenderedSegments++;
                 }
             }
@@ -352,6 +889,30 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         }
 
         public static void RouteConnector(VisualConnector Connector, IEnumerable<Rect> Obstacles, LinkObstacleRoutingOptions Options, LinkObstacleRoutingResult Result)
+        {
+            var PendingRenders = new HashSet<VisualConnector>();
+            var PendingRepresentations = new HashSet<RelationshipVisualRepresentation>();
+            RouteConnectorModern(Connector, Obstacles, Options, Result, new List<IList<Point>>(),
+                                 PendingRenders, PendingRepresentations);
+            foreach (var Representation in PendingRepresentations)
+                Representation.Render();
+            foreach (var Pending in PendingRenders.Where(Item => Item.OwnerRelationshipRepresentation == null ||
+                                                                  !PendingRepresentations.Contains(Item.OwnerRelationshipRepresentation)))
+                Pending.RenderElement();
+        }
+
+        private sealed class HiddenEndpointBinding
+        {
+            public VisualConnector Connector;
+            public VisualSymbol EndpointSymbol;
+            public bool EndpointIsOrigin;
+        }
+
+        private static void RouteConnectorModern(VisualConnector Connector, IEnumerable<Rect> Obstacles,
+                                                 LinkObstacleRoutingOptions Options, LinkObstacleRoutingResult Result,
+                                                 IList<IList<Point>> AcceptedRoutes,
+                                                 ISet<VisualConnector> PendingRenders,
+                                                 ISet<RelationshipVisualRepresentation> PendingRepresentationRenders)
         {
             Options = Options ?? new LinkObstacleRoutingOptions();
             Result = Result ?? new LinkObstacleRoutingResult();
@@ -385,63 +946,284 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                     !RectangleContainsSymbol(Rectangle, Connector.TargetSymbol))
                 .ToList();
 
-            var Existing = BuildExistingCandidate(Source, Target, Connector.IntermediatePosition, FilteredObstacles, Options);
-            var Candidates = BuildCandidates(Source, Target, Connector.IntermediatePosition, FilteredObstacles, Options);
-            var ValidCandidates = Candidates.Where(Candidate => Candidate.IsValid).OrderBy(Candidate => Candidate.Score).ToList();
+            var ExistingPoints = GetRoutePoints(Connector);
+            var Intent = Options.PreserveExistingValidRoutes
+                         ? Options.RouteIntent
+                         : (Options.RouteIntent == RelationshipRouteIntent.PreserveIfValid
+                            ? RelationshipRouteIntent.Layout
+                            : Options.RouteIntent);
+            var Request = CreatePlannerRequest(GetConnectorSortKey(Connector), Source, Target, ExistingPoints,
+                                               FilteredObstacles, Options, AcceptedRoutes, Intent);
+            ApplyMandatoryWaypoints(Request, Options, Connector.OwnerRelationshipRepresentation, ExistingPoints);
+            Request.RemainingBatchWork = Math.Max(0, Options.MaximumBatchWork - Result.TotalWork);
+            var Plan = OrthogonalRoutePlanner.Plan(Request);
+            ApplyPlannerResult(Connector, ExistingPoints, Source, Target, Plan, Result, AcceptedRoutes,
+                               PendingRenders, PendingRepresentationRenders);
+        }
 
-            if (Existing != null && Existing.IsValid && IsExistingOrthogonal(Existing, Source, Target))
+        private static OrthogonalRouteRequest CreatePlannerRequest(string RouteKey, Point Source, Point Target,
+                                                                   IList<Point> ExistingPoints, IList<Rect> Obstacles,
+                                                                   LinkObstacleRoutingOptions Options,
+                                                                   IList<IList<Point>> AcceptedRoutes,
+                                                                   RelationshipRouteIntent Intent)
+        {
+            return new OrthogonalRouteRequest
             {
-                var BestAlternative = ValidCandidates.FirstOrDefault(Candidate => !RouteEquivalent(Candidate, Existing));
-                if (Options.PreserveExistingValidRoutes &&
-                    (BestAlternative == null ||
-                     Existing.Score <= BestAlternative.Score + Options.MinimumRouteImprovement))
+                RouteKey = RouteKey,
+                Source = Source,
+                Target = Target,
+                ExistingRoutePoints = ExistingPoints ?? new List<Point>(),
+                Obstacles = Obstacles ?? new List<Rect>(),
+                AcceptedRoutes = AcceptedRoutes ?? new List<IList<Point>>(),
+                Intent = Intent,
+                DirtyReason = Options.DirtyReason,
+                BendCost = Options.BendCost,
+                NearMissCost = 50.0,
+                CrossingCost = Options.CrossingCost,
+                NearMissPadding = Options.NearMissPadding,
+                MaximumPreservedDetourRatio = Options.MaximumPreservedDetourRatio,
+                TargetMaximumRoutePoints = Options.TargetMaximumRoutePoints,
+                HardMaximumRoutePoints = Options.HardMaximumRoutePoints,
+                MaximumObstacles = Options.MaximumObstacles,
+                MaximumCoordinatesPerAxis = Options.MaximumCoordinatesPerAxis,
+                MaximumGridNodes = Options.MaximumGridNodes,
+                MaximumDirectionalStates = Options.MaximumDirectionalStates,
+                RemainingBatchWork = Math.Max(0, Options.MaximumBatchWork)
+            };
+        }
+
+        private static void ApplyMandatoryWaypoints(OrthogonalRouteRequest Request,
+                                                    LinkObstacleRoutingOptions Options,
+                                                    RelationshipVisualRepresentation Representation,
+                                                    IEnumerable<Point> ExistingPoints)
+        {
+            if (Request == null || Options == null || Representation == null ||
+                Options.MandatoryWaypointRelationships == null ||
+                !Options.MandatoryWaypointRelationships.Contains(Representation))
+                return;
+
+            Request.MandatoryWaypoints = (ExistingPoints ?? Enumerable.Empty<Point>())
+                                         .Where(IsUsablePoint)
+                                         .ToList();
+            Request.DirtyReason = Request.DirtyReason.ToStringAlways() +
+                                  (String.IsNullOrWhiteSpace(Request.DirtyReason) ? "" : "; ") +
+                                  "mandatory relationship corridor";
+        }
+
+        private static void ApplyPlannerResult(VisualConnector Connector, IList<Point> Existing,
+                                               Point Source, Point Target, OrthogonalRouteResult Plan,
+                                               LinkObstacleRoutingResult Result,
+                                               IList<IList<Point>> AcceptedRoutes,
+                                               ISet<VisualConnector> PendingRenders,
+                                               ISet<RelationshipVisualRepresentation> PendingRepresentationRenders)
+        {
+            var NewPoints = (Plan.RoutePoints ?? new List<Point>()).ToList();
+            var AppearanceChanged = false;
+            if (RoutesEqual(Existing, NewPoints))
+            {
+                Result.Unchanged++;
+                if (Plan.Status != RelationshipRouteStatus.Preserved)
                 {
-                    Result.Unchanged++;
-                    Console.WriteLine("Appearance route link: {0}; oldIntermediate={1}; route=unchanged valid existing; score={2:0.###}.",
-                                      Description, FormatPoint(Connector.IntermediatePosition), Existing.Score);
-                    return;
+                    AppearanceChanged = SetAutomaticPathAppearance(Connector);
+                    if (AppearanceChanged)
+                        Result.AppearanceChanged++;
+                    QueueAppearanceRender(Connector, PendingRenders, PendingRepresentationRenders,
+                                          AppearanceChanged);
                 }
             }
-
-            var Best = ValidCandidates.FirstOrDefault();
-            if (Best == null)
-            {
-                Result.Skipped++;
-                SkipReason = "no valid straight or single-bend route avoids concept obstacles";
-                Result.AddWarning(SkipReason + " for " + Description + ".");
-                Console.WriteLine("Appearance route link: {0}; oldIntermediate={1}; route=skipped; reason={2}.",
-                                  Description, FormatPoint(Connector.IntermediatePosition), SkipReason);
-                return;
-            }
-
-            if (Existing != null && Existing.IsValid && RouteEquivalent(Best, Existing))
-            {
-                Result.Unchanged++;
-                Console.WriteLine("Appearance route link: {0}; oldIntermediate={1}; route=unchanged; score={2:0.###}.",
-                                  Description, FormatPoint(Connector.IntermediatePosition), Existing.Score);
-                return;
-            }
-
-            var OldIntermediate = Connector.IntermediatePosition;
-            var NewIntermediate = Best.IsStraight ? Display.NULL_POINT : Best.Intermediate;
-            if (PointsEqual(OldIntermediate, NewIntermediate))
-            {
-                Result.Unchanged++;
-                Console.WriteLine("Appearance route link: {0}; oldIntermediate={1}; route=unchanged; score={2:0.###}.",
-                                  Description, FormatPoint(OldIntermediate), Best.Score);
-                return;
-            }
-
-            Connector.UpdateIntermediatePoint(NewIntermediate);
-
-            if (NewIntermediate == Display.NULL_POINT)
-                Result.Straightened++;
             else
-                Result.Routed++;
+            {
+                Connector.SetRoutePoints(NewPoints);
+                AppearanceChanged = SetAutomaticPathAppearance(Connector);
+                if (AppearanceChanged)
+                    Result.AppearanceChanged++;
+                if (PendingRenders != null)
+                    PendingRenders.Add(Connector);
+                QueueAppearanceRender(Connector, PendingRenders, PendingRepresentationRenders,
+                                      AppearanceChanged);
+                if (NewPoints.Count == 0)
+                    Result.Straightened++;
+                else
+                    Result.Routed++;
+            }
 
-            Console.WriteLine("Appearance route link: {0}; oldIntermediate={1}; chosen={2}; newIntermediate={3}; length={4:0.###}; nearMisses={5}; score={6:0.###}.",
-                              Description, FormatPoint(OldIntermediate), Best.Kind, FormatPoint(NewIntermediate),
-                              Best.Length, Best.NearMisses, Best.Score);
+            RecordPlan(Result, Plan, Existing, NewPoints, AppearanceChanged);
+            var Accepted = new List<Point> { Source };
+            Accepted.AddRange(NewPoints);
+            Accepted.Add(Target);
+            AcceptedRoutes.Add(Accepted);
+
+            Console.WriteLine("Appearance route link: {0}; intent={1}; status={2}; oldPoints={3}; newPoints={4}; bends={5}; length={6:0.###}; detour={7:0.###}; crossings={8}; nearMisses={9}; work={10}; safe={11}.",
+                              Plan.RouteKey, Plan.Intent, Plan.Status,
+                              Existing == null ? 0 : Existing.Count, NewPoints.Count,
+                              Plan.BendCount, Plan.Length, Plan.DetourRatio, Plan.CrossingCount,
+                              Plan.NearMissCount, Plan.WorkCount, Plan.IsSafe ? "true" : "false");
+        }
+
+        private static void QueueAppearanceRender(VisualConnector Connector,
+                                                  ISet<VisualConnector> PendingConnectorRenders,
+                                                  ISet<RelationshipVisualRepresentation> PendingRepresentationRenders,
+                                                  bool AppearanceChanged)
+        {
+            if (!AppearanceChanged || Connector == null)
+                return;
+
+            // PathStyle and PathCorner are stored in the owning representation's custom format
+            // map.  Rendering only the triggering leg would leave sibling legs visually stale.
+            var Representation = Connector.OwnerRelationshipRepresentation;
+            if (Representation != null && PendingRepresentationRenders != null)
+                PendingRepresentationRenders.Add(Representation);
+            else if (PendingConnectorRenders != null)
+                PendingConnectorRenders.Add(Connector);
+        }
+
+        private static void ApplyBindingPlannerResult(HiddenEndpointBinding Binding, IList<Point> Existing,
+                                                      Point Source, Point Target, OrthogonalRouteResult Plan,
+                                                      LinkObstacleRoutingResult Result,
+                                                      IList<IList<Point>> AcceptedRoutes)
+        {
+            var NewPoints = (Plan.RoutePoints ?? new List<Point>()).ToList();
+            var AppearanceChanged = false;
+            if (RoutesEqual(Existing, NewPoints))
+            {
+                Result.Unchanged++;
+                if (Plan.Status != RelationshipRouteStatus.Preserved)
+                {
+                    AppearanceChanged = SetAutomaticPathAppearance(Binding.Connector);
+                    if (AppearanceChanged)
+                        Result.AppearanceChanged++;
+                }
+            }
+            else
+            {
+                SetBindingRouteFromEndpointToHub(Binding, NewPoints);
+                AppearanceChanged = SetAutomaticPathAppearance(Binding.Connector);
+                if (AppearanceChanged)
+                    Result.AppearanceChanged++;
+                if (NewPoints.Count == 0)
+                    Result.Straightened++;
+                else
+                    Result.Routed++;
+            }
+            RecordPlan(Result, Plan, Existing, NewPoints, AppearanceChanged);
+            var Accepted = new List<Point> { Source };
+            Accepted.AddRange(NewPoints);
+            Accepted.Add(Target);
+            AcceptedRoutes.Add(Accepted);
+        }
+
+        private static void RecordPlan(LinkObstacleRoutingResult Result, OrthogonalRouteResult Plan,
+                                       IEnumerable<Point> OldPoints, IEnumerable<Point> NewPoints,
+                                       bool AppearanceChanged = false)
+        {
+            var OldPointList = (OldPoints ?? Enumerable.Empty<Point>()).ToList();
+            var NewPointList = (NewPoints ?? Enumerable.Empty<Point>()).ToList();
+            Result.TotalWork += Plan.WorkCount;
+            if (Plan.IsSuspicious)
+                Result.SuspiciousRoutes++;
+            if (Plan.Status == RelationshipRouteStatus.OuterFallback ||
+                Plan.Status == RelationshipRouteStatus.DirectFallback)
+                Result.SafeFallbacks++;
+            if (Plan.Status == RelationshipRouteStatus.DegradedDirect)
+                Result.DegradedFallbacks++;
+
+            foreach (var Warning in Plan.Warnings)
+                Result.AddWarning((Plan.RouteKey ?? "route") + ": " + Warning);
+
+            Result.Diagnostics.Add(new RelationshipRouteDiagnostic
+            {
+                RouteKey = Plan.RouteKey,
+                Source = Plan.Source,
+                Target = Plan.Target,
+                Intent = Plan.Intent,
+                DirtyReason = Plan.DirtyReason,
+                Status = Plan.Status,
+                OldPointCount = OldPointList.Count,
+                NewPointCount = NewPointList.Count,
+                OldPoints = OldPointList.ToList(),
+                NewPoints = NewPointList.ToList(),
+                BendCount = Plan.BendCount,
+                ObstacleCount = Plan.ObstacleCount,
+                GridNodeCount = Plan.GridNodeCount,
+                DirectionalStateCount = Plan.DirectionalStateCount,
+                WorkCount = Plan.WorkCount,
+                CrossingCount = Plan.CrossingCount,
+                NearMissCount = Plan.NearMissCount,
+                DetourRatio = Plan.DetourRatio,
+                HitObstacleCap = Plan.HitObstacleCap,
+                HitCoordinateCap = Plan.HitCoordinateCap,
+                HitGridNodeCap = Plan.HitGridNodeCap,
+                HitStateCap = Plan.HitStateCap,
+                HitBatchWorkCap = Plan.HitBatchWorkCap,
+                AppearanceChanged = AppearanceChanged,
+                UsedFallback = Plan.Status == RelationshipRouteStatus.OuterFallback ||
+                               Plan.Status == RelationshipRouteStatus.DirectFallback ||
+                               Plan.Status == RelationshipRouteStatus.DegradedDirect,
+                IsSuspicious = Plan.IsSuspicious,
+                IsSafe = Plan.IsSafe,
+                Message = Plan.Warnings.Count == 0 ? null : String.Join(" ", Plan.Warnings.ToArray())
+            });
+        }
+
+        private static IList<Point> GetRoutePoints(VisualConnector Connector)
+        {
+            return Connector == null || Connector.RoutePoints == null
+                   ? new List<Point>()
+                   : Connector.RoutePoints.ToList();
+        }
+
+        private static bool RoutesEqual(IList<Point> First, IList<Point> Second)
+        {
+            First = First ?? new List<Point>();
+            Second = Second ?? new List<Point>();
+            if (First.Count != Second.Count)
+                return false;
+            for (var Index = 0; Index < First.Count; Index++)
+                if (!PointsEqual(First[Index], Second[Index]))
+                    return false;
+            return true;
+        }
+
+        private static bool SetAutomaticPathAppearance(VisualConnector Connector)
+        {
+            if (Connector == null)
+                return false;
+            var Changed = VisualConnectorsFormat.GetPathStyle(Connector) != EPathStyle.MultilineRightAngled ||
+                          VisualConnectorsFormat.GetPathCorner(Connector) != EPathCorner.Rounded;
+            if (!Changed)
+                return false;
+            VisualConnectorsFormat.SetPathStyle(Connector, EPathStyle.MultilineRightAngled);
+            VisualConnectorsFormat.SetPathCorner(Connector, EPathCorner.Rounded);
+            return true;
+        }
+
+        private static string GetRelationshipSortKey(RelationshipVisualRepresentation Representation)
+        {
+            var Relationship = Representation == null ? null : Representation.RepresentedRelationship;
+            return Relationship == null
+                   ? "~:" + (Representation == null ? "~" : Representation.GlobalId.ToString("D"))
+                   : Relationship.GlobalId.ToString("D") + ":" + Relationship.TechName.ToStringAlways() + ":" +
+                     Representation.GlobalId.ToString("D");
+        }
+
+        private static string GetConnectorSortKey(VisualConnector Connector)
+        {
+            if (Connector == null)
+                return "~";
+            return GetRelationshipSortKey(Connector.OwnerRelationshipRepresentation) + ":" +
+                   GetSymbolSortKey(Connector.OriginSymbol) + "->" + GetSymbolSortKey(Connector.TargetSymbol) + ":" +
+                   (Connector.RepresentedLink == null
+                    ? "~" : Connector.RepresentedLink.GlobalId.ToString("D")) + ":" +
+                   Connector.GlobalId.ToString("D");
+        }
+
+        private static string GetSymbolSortKey(VisualSymbol Symbol)
+        {
+            var Idea = Symbol == null || Symbol.OwnerRepresentation == null
+                       ? null : Symbol.OwnerRepresentation.RepresentedIdea;
+            return Idea == null
+                   ? "~"
+                   : Idea.GlobalId.ToString("D") + ":" + Idea.TechName.ToStringAlways();
         }
 
         public static bool SegmentIntersectsObstacle(Point Start, Point End, Rect Obstacle)
@@ -519,18 +1301,18 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         private static RouteCandidate BuildHiddenExistingCandidate(HiddenCentralRelationshipRoute Route, Point Source, Point Target, Point ExistingIntermediate,
                                                                    IList<ObstacleInfo> Obstacles, LinkObstacleRoutingOptions Options)
         {
+            var SourcePoint = GetSingletonRoutePoint(Route == null ? null : Route.SourceConnector);
+            var TargetPoint = GetSingletonRoutePoint(Route == null ? null : Route.TargetConnector);
             if (Route != null && Route.SourceConnector != null && Route.TargetConnector != null &&
-                Route.SourceConnector.IntermediatePosition != Display.NULL_POINT &&
-                Route.TargetConnector.IntermediatePosition != Display.NULL_POINT)
+                SourcePoint != Display.NULL_POINT && TargetPoint != Display.NULL_POINT)
             {
-                var ExistingDoglegKind = (NearlyEqual(Route.SourceConnector.IntermediatePosition.Y, ExistingIntermediate.Y) &&
-                                          NearlyEqual(Route.TargetConnector.IntermediatePosition.Y, ExistingIntermediate.Y))
+                var ExistingDoglegKind = (NearlyEqual(SourcePoint.Y, ExistingIntermediate.Y) &&
+                                          NearlyEqual(TargetPoint.Y, ExistingIntermediate.Y))
                                          ? RouteKind.HorizontalDogleg
                                          : RouteKind.VerticalDogleg;
 
                 return CreateHiddenDoglegCandidate(ExistingDoglegKind, ExistingIntermediate,
-                                                   Route.SourceConnector.IntermediatePosition,
-                                                   Route.TargetConnector.IntermediatePosition,
+                                                   SourcePoint, TargetPoint,
                                                    Source, Target, Obstacles, Options, ExistingIntermediate, true);
             }
 
@@ -1008,6 +1790,29 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                    DefinitionHidesSimpleCentralSymbol;
         }
 
+        private static bool IsGenuinelySimpleRelationship(RelationshipVisualRepresentation Representation)
+        {
+            var Relationship = Representation == null ? null : Representation.RepresentedRelationship;
+            var Definition = Relationship == null || Relationship.RelationshipDefinitor == null
+                             ? null : Relationship.RelationshipDefinitor.Value;
+            if (Definition == null || !Definition.IsSimple || Relationship.Links == null ||
+                Relationship.Links.Count(Link => Link != null) != 2 ||
+                Representation == null || Representation.MainSymbol == null)
+                return false;
+
+            var Connectors = (Representation.VisualConnectors ?? Enumerable.Empty<VisualConnector>())
+                .Where(Connector => Connector != null)
+                .Distinct()
+                .ToList();
+            if (Connectors.Count != 2)
+                return false;
+
+            // Exactly two semantic links/visual legs is the simple-link invariant.  Do not
+            // require two distinct endpoint Ideas: a true auto-reference has two legs attached
+            // to the same endpoint and is handled by the deterministic self-loop branch.
+            return true;
+        }
+
         private static bool TryGetHiddenCentralRelationshipRoute(RelationshipVisualRepresentation Representation,
                                                                  out HiddenCentralRelationshipRoute Route, out string Reason)
         {
@@ -1215,10 +2020,27 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             if (Candidate.IsDogleg)
                 return Route.SourceConnector != null &&
                        Route.TargetConnector != null &&
-                       PointsEqual(Route.SourceConnector.IntermediatePosition, Candidate.SourceIntermediate) &&
-                       PointsEqual(Route.TargetConnector.IntermediatePosition, Candidate.TargetIntermediate);
+                       PointsEqual(GetSingletonRoutePoint(Route.SourceConnector), Candidate.SourceIntermediate) &&
+                       PointsEqual(GetSingletonRoutePoint(Route.TargetConnector), Candidate.TargetIntermediate);
 
-            return Route.Connectors.All(Connector => Connector.IntermediatePosition == Display.NULL_POINT);
+            return Route.Connectors.All(Connector => Connector.RoutePoints == null || Connector.RoutePoints.Count == 0);
+        }
+
+        private static Point GetSingletonRoutePoint(VisualConnector Connector)
+        {
+            return Connector != null && Connector.RoutePoints != null && Connector.RoutePoints.Count == 1
+                   ? Connector.RoutePoints[0]
+                   : Display.NULL_POINT;
+        }
+
+        private static void SetLegacyCandidateRoutePoint(VisualConnector Connector, Point Point)
+        {
+            if (Connector == null)
+                return;
+            if (Point == Display.NULL_POINT)
+                Connector.ClearRoutePoints();
+            else
+                Connector.SetRoutePoints(new[] { Point });
         }
 
         private static bool SegmentIntersectsSegment(Point A, Point B, Point C, Point D)
@@ -1409,10 +2231,10 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
         private static void LogSummary(LinkObstacleRoutingResult Result)
         {
-            Console.WriteLine("Appearance: Route Links with Obstacle Avoidance completed; connector routes inspected={0}; relationship routes inspected={1}; total inspected={2}; routed={3}; dogleg routed={4}; straightened={5}; unchanged={6}; skipped={7}; warnings={8}.",
+            Console.WriteLine("Appearance: Route Links with Obstacle Avoidance completed; connector routes inspected={0}; relationship routes inspected={1}; total inspected={2}; routed={3}; dogleg routed={4}; straightened={5}; appearance changed={6}; unchanged={7}; skipped={8}; warnings={9}.",
                               Result.ConnectorRoutesInspected, Result.RelationshipRoutesInspected, Result.Inspected,
-                              Result.Routed, Result.DoglegRouted, Result.Straightened, Result.Unchanged,
-                              Result.Skipped, Result.Warnings.Count);
+                              Result.Routed, Result.DoglegRouted, Result.Straightened, Result.AppearanceChanged,
+                              Result.Unchanged, Result.Skipped, Result.Warnings.Count);
 
             if (Result.RelationshipCenterPlacementResult != null)
                 Console.WriteLine("Appearance: relationship center placement before routing; inspected={0}; recomputed={1}; preserved={2}; suspicious={3}; skipped={4}; finalOverlaps={5}.",

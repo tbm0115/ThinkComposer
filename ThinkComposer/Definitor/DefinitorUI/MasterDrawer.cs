@@ -477,6 +477,10 @@ namespace Instrumind.ThinkComposer.Definitor.DefinitorUI
         {
             DrawingGroup Result = new DrawingGroup();
 
+            var RoutePoints = (IntermediatePositions == null
+                               ? new List<Point>()
+                               : IntermediatePositions.Where(IsUsableConnectorPoint).ToList());
+
             var DrawingPathPen = new Pen(FormatLineBrush, FormatLineThickness);
             DrawingPathPen.DashStyle = FormatLineDash;
             DrawingPathPen.LineJoin = FormatLineJoin;
@@ -484,7 +488,7 @@ namespace Instrumind.ThinkComposer.Definitor.DefinitorUI
             DrawingPathPen.EndLineCap = FormatLineCap;
 
             PutConnectorPathDrawing(Result.Children, TargetPosition, SourcePosition, FormatPathStyle, FormatPathCorner, DrawingPathPen,
-                                    FormatMainBackground, IntermediatePositions, Magnitude);
+                                    FormatMainBackground, RoutePoints, Magnitude);
 
             // IMPORTANT:
             // This particular Pen (with no specific Dash-Style, Join or Caps for line) must be apart because...
@@ -492,8 +496,13 @@ namespace Instrumind.ThinkComposer.Definitor.DefinitorUI
             // - Pens are referenced (shared) until the drawing itself
             var DrawingPlugPen = new Pen(FormatLineBrush, FormatLineThickness);
 
-            PutConnectorPlugDrawing(Result.Children, TargetPosition, SourcePosition, TargetPlug, DrawingPlugPen, FormatMainBackground, Magnitude);
-            PutConnectorPlugDrawing(Result.Children, SourcePosition, TargetPosition, OriginPlug, DrawingPlugPen, FormatMainBackground, Magnitude);
+            // Orient each plug from the first/last non-zero path segment rather than from
+            // the remote endpoint. This keeps arrows and tails aligned on multi-bend paths.
+            var TargetDirectionPoint = FindPreviousDistinctPoint(TargetPosition, RoutePoints, SourcePosition);
+            var OriginDirectionPoint = FindNextDistinctPoint(SourcePosition, RoutePoints, TargetPosition);
+
+            PutConnectorPlugDrawing(Result.Children, TargetPosition, TargetDirectionPoint, TargetPlug, DrawingPlugPen, FormatMainBackground, Magnitude);
+            PutConnectorPlugDrawing(Result.Children, SourcePosition, OriginDirectionPoint, OriginPlug, DrawingPlugPen, FormatMainBackground, Magnitude);
 
             // Show Circles to notice connecting points
             //T Result.Children.Add(new GeometryDrawing(null, new Pen(Brushes.Blue, 0.5), new EllipseGeometry(SourcePosition, 3, 3)));
@@ -502,6 +511,30 @@ namespace Instrumind.ThinkComposer.Definitor.DefinitorUI
             Result.Opacity = FormatOpacity;
 
             return Result;
+        }
+
+        private static Point FindNextDistinctPoint(Point Endpoint, IList<Point> RoutePoints, Point OppositeEndpoint)
+        {
+            foreach (var Point in RoutePoints)
+                if (Point != Endpoint)
+                    return Point;
+
+            return OppositeEndpoint;
+        }
+
+        private static Point FindPreviousDistinctPoint(Point Endpoint, IList<Point> RoutePoints, Point OppositeEndpoint)
+        {
+            for (int Index = RoutePoints.Count - 1; Index >= 0; Index--)
+                if (RoutePoints[Index] != Endpoint)
+                    return RoutePoints[Index];
+
+            return OppositeEndpoint;
+        }
+
+        private static bool IsUsableConnectorPoint(Point Point)
+        {
+            return !(double.IsNaN(Point.X) || double.IsInfinity(Point.X)
+                     || double.IsNaN(Point.Y) || double.IsInfinity(Point.Y));
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------

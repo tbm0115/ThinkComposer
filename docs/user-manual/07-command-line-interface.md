@@ -21,6 +21,7 @@ Use the CLI for:
 - exporting a composition to JSON for compatibility review
 - exporting a fitted image of the main view or a selected view area
 - importing reviewed Composition JSON through the compatibility merge path
+- validating Relationship hubs and multi-point connector routes after edits or layouts
 - exporting a native `.tdom` domain or a composition's embedded domain to JSON for compatibility review
 - importing Domain JSON through the compatibility merge path
 - updating a composition's embedded domain directly from a native `.tdom`
@@ -126,7 +127,7 @@ Composition JSON export writes an editable interchange document from a `.tcom` c
 thinkcomposer composition export-json --input "Models\ServiceMap.tcom" --output "Exports\ServiceMap.composition.json"
 ```
 
-Composition JSON import merges a JSON document back into a composition and writes a `.tcom` output:
+Treat the export and root `/Composition.json` as snapshots for inspection. For an edit, write a separate document containing `operations[]`; do not splice pending directives into authoritative snapshot state. Composition JSON import applies that standalone patch and writes a `.tcom` output:
 
 ```cmd
 thinkcomposer composition import-json --input "Models\ServiceMap.tcom" --json "Patches\ServiceMap.patch.json" --output "Models\ServiceMap.updated.tcom"
@@ -144,9 +145,21 @@ Overwrite the input only when that is intentional:
 thinkcomposer composition import-json --input "Models\ServiceMap.tcom" --json "Patches\ServiceMap.patch.json" --output "Models\ServiceMap.tcom" --in-place
 ```
 
-Modern `.tcom` persistence uses root `/Composition.json` and `/Domain.json` as the native source of truth. Use the CLI import/export commands when you need a compatibility merge, preview, or standalone interchange document; patch root package JSON directly for JSON-authoritative persistence edits.
+Modern `.tcom` persistence uses root `/Composition.json` and `/Domain.json` as the native source of truth. Native load restores saved visual state exactly and does not execute `importOptions` or `visualStrategy`. The safe GPT workflow is: inspect/export, write a standalone operations patch, preview it, apply through the CLI, validate routing, then export an image for visual review. Generated Relationships should request `autoRoute:true` and endpoint-corridor hub placement while omitting explicit route coordinates.
 
 For the JSON model, patch operations, visual strategies, and diagnostics, see [Composition JSON Interchange](04-current-features.md#composition-json-interchange) and the detailed [Composition JSON Interchange reference](../json-interchange.md).
+
+## Relationship Routing Validation
+
+Validate route health after applying a generated patch or running a layout:
+
+```cmd
+thinkcomposer composition validate-routing --input "Models\ServiceMap.updated.tcom" --output-dir "Validation\ServiceMap" --layout route
+```
+
+`--layout` accepts `route`, `spider`, `hierarchy`, `flowchart`, or `system`. The validator checks nonfinite or oversized route-point collections, Relationship hubs far outside their endpoint corridor, excessive detours, stale endpoints, and ambiguous connector identities. A saved package has no route-authorship marker, so GPT-authored coordinates are rejected earlier by the plugin patch validator rather than inferred here. The command emits structured diagnostics and routing artifacts to the output directory without changing unrelated hand-routed links.
+
+The planner is deterministic: repeated runs with the same model and layout profile produce the same route decisions. Any degraded direct fallback is reported explicitly. Use `composition export-image` on the resulting package to complete visual review.
 
 ## Composition Image Export
 
@@ -363,7 +376,7 @@ where thinkcomposer
 
 Then remove the stale folder from `Path` or run `thinkcomposer --remove-from-path` from the old installation folder before adding the current one.
 
-If import fails because JSON is invalid, export a fresh JSON document from the same source file and compare the format header, `formatVersion`, identifiers, and patch operations. Use `--preview-only` before saving.
+If import fails because JSON is invalid, export a fresh JSON document from the same source file and compare the format header, `formatVersion`, identifiers, and patch operations. Composition v2 adds `routePoints`; v1 remains readable, but older applications reject v2 rather than discarding multi-point geometry. Use `--preview-only` before saving.
 
 If output generation reports an unknown language TechName, inspect root `/Domain.json` from the same `.tcom` or `.tdom`, or run `thinkcomposer domain export-json` as a compatibility export, and confirm the intended external language TechName.
 

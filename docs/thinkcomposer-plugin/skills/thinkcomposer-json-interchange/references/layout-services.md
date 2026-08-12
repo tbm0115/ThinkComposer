@@ -1,6 +1,6 @@
 # Layout Services Architecture
 
-This document summarizes the reusable v1 layout services behind `Edit -> Appearance` and the JSON import visual cleanup options.
+This document summarizes the reusable layout and Relationship-routing services behind `Edit -> Appearance`, Composition JSON import, and headless routing validation.
 
 All visual mutations must run inside an active ThinkComposer edit command/variation. Services that move symbols, resize symbols, create/update visual routes, or change Group Regions should be called from a command such as `Fit Concept Width to Text`, `Route Links with Obstacle Avoidance`, `Arrange as Spider Map`, `Arrange as Hierarchy Map`, `Arrange as Flowchart`, `Arrange as System Map`, or the JSON import command variation. Context builders and validators may inspect the model outside a command, but they must not mutate it.
 
@@ -8,13 +8,13 @@ All visual mutations must run inside an active ThinkComposer edit command/variat
 
 | Feature | Manual Command | JSON Import Option | Current Status |
 |---|---|---|---|
-| Auto-place concepts | Import only | `autoPlaceNewItems` | v1 |
-| Auto-fit concepts | Fit Concept Width to Text | `autoFitPlacedConcepts` / operation `autoFit` | v1 |
-| Route links | Route Links with Obstacle Avoidance | `autoRoutePlacedLinks` / operation `autoRoute` | v1 |
-| Spider Map | Arrange as Spider Map | not yet | v1 manual |
-| Hierarchy Map | Arrange as Hierarchy Map | not yet | v1 manual |
-| Flowchart | Arrange as Flowchart | not yet | v1 manual |
-| System Map | Arrange as System Map | not yet | v1 manual |
+| Auto-place concepts | Import only | `autoPlaceNewItems` | shared import pipeline |
+| Auto-fit concepts | Fit Concept Width to Text | `autoFitPlacedConcepts` / operation `autoFit` | shared service |
+| Route links | Route Links with Obstacle Avoidance | `autoRoutePlacedLinks` / operation `autoRoute` | shared coordinator |
+| Spider Map | Arrange as Spider Map | CLI `--layout spider` validation | shared routing coordinator |
+| Hierarchy Map | Arrange as Hierarchy Map | CLI `--layout hierarchy` validation | shared routing coordinator |
+| Flowchart | Arrange as Flowchart | CLI `--layout flowchart` validation | shared routing coordinator with lanes |
+| System Map | Arrange as System Map | CLI `--layout system` validation | shared routing coordinator |
 
 ## Services
 
@@ -38,15 +38,29 @@ JSON import integration: `importOptions.autoFitPlacedConcepts` defaults to true 
 
 Limitations: fits concept symbol text only. It skips relationships, complements, and symbols whose text/format cannot be measured safely.
 
+### OrthogonalRoutePlanner
+
+Purpose: pure, dependency-free path planning over endpoint anchors, rectangular obstacles, already accepted routes, and optional mandatory waypoints/corridors. It builds a deterministic bounded orthogonal visibility/Hanan grid and searches directional states with A*. Cost is geometric length plus 40 per bend, 50 per near miss, and 250 per crossing with an accepted route. A clear straight route always wins.
+
+Safety bounds: at most 64 coordinate-producing obstacles, 64 coordinates per axis, 4,096 grid nodes, 12,288 directional states per connector, and 500,000 search-work units per batch. Search uses two fixed envelopes and an outer-perimeter fallback; it never uses elapsed wall time as an abort condition. Automatic results target at most eight route points and never exceed 16.
+
+Result data records intent, dirty reason, old/new points, status, obstacle/work counts, bends, detour ratio, crossings, cap hits, and fallback diagnostics. Fallback order is a safe planned route, safe outer route, collision-free direct route, then a direct degraded route with an explicit warning. Stale geometry is never silently restored.
+
+### RelationshipRoutingCoordinator
+
+Purpose: owns the shared routing pipeline: determine affected scope, place and declutter Relationship hubs, build obstacles, plan in stable-id order, validate/simplify, then apply and render once. It is the only production entry point for automatic Relationship routing.
+
+Used by: Composition JSON import, Route Links, Spider, Hierarchy, Flowchart, System Map, and CLI routing validation. Specialized Flowchart feedback lanes are passed as mandatory waypoints/corridors. Visible Relationship hubs are obstacles consistently, including Spider.
+
+Preservation rules: untouched hand-routed links are unchanged. Moving a symbol or hub invalidates only incident routes. If a complete connected selection moves by one common delta, its route points translate intact. Suspicious, dirty, or generated routes never retain an invalid, distant, or excessively detoured bend.
+
+Hub rules: binary hubs remain inside their endpoint corridor; multi-endpoint hubs use the endpoint centroid/geometric median and route as a star. Binary dogleg behavior is restricted to genuinely simple two-ended Relationships.
+
 ### LinkObstacleRoutingService
 
-Purpose: routes visible relationship connectors around concept obstacles using the existing visual model. For ordinary connectors it uses `VisualConnector.IntermediatePosition`. For hidden-central simple relationships it can move the hidden relationship symbol as a junction and use dogleg bends on the two connector segments.
+Purpose: compatibility-facing service that collects visual context and delegates automatic work to `RelationshipRoutingCoordinator`. It no longer owns a separate one-bend algorithm.
 
-Used by: `Route Links with Obstacle Avoidance`, Spider Map, Hierarchy Map, Flowchart, System Map, and JSON import auto-route.
-
-JSON import integration: `importOptions.autoRoutePlacedLinks` defaults to true for relationships/connectors created, placed, or repaired by import. Operation `autoRoute` overrides the top-level behavior.
-
-Limitations: v1 does not add a new serialized multi-point route model. Non-hidden-central connectors still have at most one intermediate point.
+JSON import integration: `importOptions.autoRoutePlacedLinks` defaults to true for Relationships/connectors created, placed, repaired, or invalidated by import. Operation `autoRoute` overrides the top-level behavior.
 
 ### LayoutBoundsNormalizer
 
@@ -64,7 +78,7 @@ Purpose: moves visible relationship central symbols so relationship bubbles do n
 
 Used by: Hierarchy Map, Flowchart, and System Map.
 
-JSON import integration: not directly exposed as an import option yet. It is available for future JSON layout modes.
+JSON import integration: invoked by the shared routing pipeline before obstacle construction.
 
 Limitations: local overlap resolution only. It is not a full crossing-minimizing graph layout.
 
@@ -74,7 +88,7 @@ Purpose: chooses a root concept and places connected concepts radially in a simp
 
 Used by: `Arrange as Spider Map`.
 
-JSON import integration: not yet exposed as a JSON import layout mode.
+JSON/CLI integration: layout placement stays specialized; connector routing is shared and can be validated with `--layout spider`.
 
 Limitations: treats relationships as undirected for adjacency and does not optimize dense graphs globally.
 
@@ -84,7 +98,7 @@ Purpose: builds a directed visible concept graph, chooses root concepts, assigns
 
 Used by: `Arrange as Hierarchy Map`.
 
-JSON import integration: not yet exposed as a JSON import layout mode.
+JSON/CLI integration: layout placement stays specialized; connector routing is shared and can be validated with `--layout hierarchy`.
 
 Limitations: simple BFS hierarchy, not a Sugiyama/crossing-minimization layout. Cyclic and dense graphs may still require manual cleanup.
 
@@ -94,7 +108,7 @@ Purpose: arranges directed process flow left-to-right, separates disconnected co
 
 Used by: `Arrange as Flowchart`.
 
-JSON import integration: not yet exposed as a JSON import layout mode.
+JSON/CLI integration: layout placement stays specialized; mandatory feedback lanes and connector routing can be validated with `--layout flowchart`.
 
 Limitations: local feedback lane routing only. It does not globally minimize crossings in dense process graphs.
 
@@ -104,14 +118,12 @@ Purpose: detects a system/root concept, classifies internal and external concept
 
 Used by: `Arrange as System Map`.
 
-JSON import integration: not yet exposed as a JSON import layout mode.
+JSON/CLI integration: layout placement stays specialized; connector routing is shared and can be validated with `--layout system`.
 
 Limitations: classification is heuristic. Group Region creation is visual-only and does not change semantic containment.
 
 ## Backlog
 
-- JSON import modes for Spider, Hierarchy, Flowchart, and System Map.
-- Full multi-bend connector route model.
 - Full graph crossing minimization.
 - User-facing option dialogs for layout settings.
-- Domain-aware layout rules beyond v1 heuristics.
+- Domain-aware layout rules beyond current heuristics.

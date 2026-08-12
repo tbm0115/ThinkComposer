@@ -1,6 +1,6 @@
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "application": "ThinkComposer",
   "importOptions": {
     "autoPlaceNewItems": true,
@@ -77,6 +77,7 @@
       "id": "99000000-0000-4000-8000-000000000010",
       "name": "Main View",
       "techName": "Main_View",
+      "ownerIdeaTechName": "Full_State_Create_Sample",
       "visuals": [
         {
           "ideaTechName": "Full_State_Create_Source",

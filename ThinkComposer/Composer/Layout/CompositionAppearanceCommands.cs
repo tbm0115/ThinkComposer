@@ -77,6 +77,12 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var Options = new LinkObstacleRoutingOptions();
             Options.IncludeRelationshipCentralSymbolsAsObstacles = true;
             Options.CorrectRelationshipCentersBeforeRouting = true;
+            // This is an explicit user request to recompute the selected routes.  A valid
+            // hand route must remain untouched during incidental edits, but preserving it
+            // here would make Auto-route appear to do nothing.
+            Options.PreserveExistingValidRoutes = false;
+            Options.RouteIntent = RelationshipRouteIntent.Layout;
+            Options.DirtyReason = "explicit Route Links with Obstacle Avoidance command";
             var SelectedConnectors = Context.SelectedRouteableConnectors;
             if (SelectedConnectors.Count < 1)
             {
@@ -99,7 +105,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 if (LocalCommand)
                     Context.ActiveView.EditEngine.StartCommandVariation("Route Links with Obstacle Avoidance");
 
-                var Result = LinkObstacleRoutingService.RouteVisibleConnectors(Context, Options);
+                var Result = RelationshipRoutingCoordinator.Route(Context, Options);
 
                 if (Result.HasMutations)
                     Context.ActiveView.UpdateVersion();

@@ -334,7 +334,14 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
 
                         case EConnectorManipulationAction.Displace:
                             if (IsMouseLeftDoubleClicked)
-                                ConnectorModifier.ManipulatedConnector.DoEditDescriptor();
+                            {
+                                var RouteConnector = ConnectorModifier.ManipulatedRouteConnector
+                                                     ?? ConnectorModifier.ManipulatedConnector;
+                                if (ConnectorModifier.ManipulatedRoutePointIndex >= 0)
+                                    RouteConnector.DoRemoveRoutePoint(ConnectorModifier.ManipulatedRoutePointIndex);
+                                else
+                                    RouteConnector.DoEditDescriptor();
+                            }
                             else
                                 Displace(ConnectorModifier, IsMouseLeftButtonUp);
                             break;
@@ -351,7 +358,7 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                             break;
 
                         case EConnectorManipulationAction.StraightenLine:
-                            if (IsSimpleDirectRelationship && ConnectorModifier.IsWorkingOnAlternateTarget)
+                            if (IsSimpleDirectRelationship)
                                 ConnectorModifier.ManipulatedConnector.OwnerRelationshipRepresentation.DoStraighten();
                             else
                                 ConnectorModifier.ManipulatedConnector.DoStraighten();
@@ -454,52 +461,177 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
         }
 
         // -----------------------------------------------------------------------------------------------------------------------
-        private void ApplyMove(VisualObject ManipulatedObject, bool LockPosition,
-                               bool IncludeRelatedTargets, bool IncludeRelatedOrigins, double OffsetX, double OffsetY)
+        private sealed class RouteGeometryChangeBatch
+        {
+            public readonly HashSet<VisualSymbol> MovingSymbols = new HashSet<VisualSymbol>();
+            public readonly HashSet<VisualConnector> Connectors = new HashSet<VisualConnector>();
+            public readonly Dictionary<RelationshipVisualRepresentation, Point> RelationshipCenters =
+                new Dictionary<RelationshipVisualRepresentation, Point>();
+        }
+
+        private RouteGeometryChangeBatch CaptureRouteGeometryChanges(IEnumerable<VisualSymbol> Symbols)
+        {
+            var Result = new RouteGeometryChangeBatch();
+            foreach (var Symbol in (Symbols ?? Enumerable.Empty<VisualSymbol>()).Where(Symbol => Symbol != null).Distinct())
+                Result.MovingSymbols.Add(Symbol);
+
+            var IncidentConnectors = Result.MovingSymbols
+                                           .SelectMany(Symbol => Symbol.TargetConnections.Concat(Symbol.OriginConnections))
+                                           .Where(Connector => Connector != null)
+                                           .Distinct()
+                                           .ToList();
+            foreach (var Connector in IncidentConnectors)
+            {
+                // A connector whose complete endpoint pair moves by the same delta retains its
+                // hand-authored route. All other incident connectors are dirty and must route.
+                if (!(Result.MovingSymbols.Contains(Connector.OriginSymbol)
+                      && Result.MovingSymbols.Contains(Connector.TargetSymbol)))
+                    Result.Connectors.Add(Connector);
+
+                var Representation = Connector.OwnerRelationshipRepresentation;
+                if (Representation != null && Representation.MainSymbol != null
+                    && !Result.RelationshipCenters.ContainsKey(Representation))
+                    Result.RelationshipCenters.Add(Representation, Representation.MainSymbol.BaseCenter);
+            }
+
+            return Result;
+        }
+
+        private void RouteGeometryChanges(RouteGeometryChangeBatch Batch,
+                                          RelationshipRouteIntent Intent, string DirtyReason)
+        {
+            if (Batch == null)
+                return;
+
+            // A simple hidden hub can be auto-positioned as a consequence of moving/resizing one
+            // endpoint. In that case every non-co-moving leg incident to the hub is dirty.
+            foreach (var Entry in Batch.RelationshipCenters)
+                if (Entry.Key != null && Entry.Key.MainSymbol != null
+                    && Entry.Key.MainSymbol.BaseCenter != Entry.Value)
+                    foreach (var Connector in Entry.Key.VisualConnectors.Where(Connector => Connector != null))
+                        if (!(Batch.MovingSymbols.Contains(Connector.OriginSymbol)
+                              && Batch.MovingSymbols.Contains(Connector.TargetSymbol)))
+                            Batch.Connectors.Add(Connector);
+
+            if (Batch.Connectors.Count == 0)
+                return;
+
+            var Context = LayoutSelectionContext.FromViewSelection(this.OwnerView.Engine, this.OwnerView,
+                              Batch.Connectors.Cast<VisualObject>());
+            var Options = new LinkObstacleRoutingOptions
+            {
+                Profile = RelationshipRoutingProfile.Manual,
+                RouteIntent = Intent,
+                DirtyReason = DirtyReason,
+                PreserveExistingValidRoutes = false,
+                RouteSelectedConnectorsOnly = true,
+                IncludeRelationshipCentralSymbolsAsObstacles = true,
+                // A direct manipulation of a hub is an explicit user position. Automatic hub
+                // placement is not allowed to undo that gesture while repairing its legs.
+                CorrectRelationshipCentersBeforeRouting = false
+            };
+            RelationshipRoutingCoordinator.Route(Context, Options);
+        }
+
+        private RouteGeometryChangeBatch ApplyMove(VisualObject ManipulatedObject, bool LockPosition,
+                                                    bool IncludeRelatedTargets, bool IncludeRelatedOrigins,
+                                                    double OffsetX, double OffsetY)
         {
             // See also ViewSymbolManipulationAdorner.Visualize()
             var AllAffectedObjects = this.OwnerView.GetCurrentManipulableObjects(IncludeRelatedOrigins, IncludeRelatedTargets);
             var RegionContainedObjects = AllAffectedObjects.Where(obj => obj.Item2).Select(obj => obj.Item1).Distinct().ToList();
 
             var AffectedObjects = AllAffectedObjects.Select(obj => obj.Item1).Distinct().ToList();
+            var AffectedSymbols = AffectedObjects.OfType<VisualSymbol>().Distinct().ToList();
+
+            // A hidden simple Relationship's junction cannot normally be selected. When every
+            // visible endpoint of that logical relationship is in the move, carry its hidden hub
+            // by the same delta so the whole route qualifies for intact translation.
+            var InitiallyMovingSymbols = new HashSet<VisualSymbol>(AffectedSymbols);
+            var HiddenRelationshipHubs = AffectedSymbols
+                .SelectMany(Symbol => Symbol.TargetConnections.Concat(Symbol.OriginConnections))
+                .Where(Connector => Connector != null && Connector.OwnerRelationshipRepresentation != null)
+                .Select(Connector => Connector.OwnerRelationshipRepresentation)
+                .Distinct()
+                .Where(Representation => Representation.MainSymbol != null
+                                         && Representation.MainSymbol.IsHidden
+                                         && Representation.RepresentedRelationship.RelationshipDefinitor.Value.IsSimple
+                                         && Representation.RepresentedRelationship.RelationshipDefinitor.Value.HideCentralSymbolWhenSimple)
+                .Where(Representation => Representation.VisualConnectors
+                    .Where(Connector => Connector != null)
+                    .All(Connector => InitiallyMovingSymbols.Contains(
+                         Connector.OriginSymbol == Representation.MainSymbol
+                         ? Connector.TargetSymbol : Connector.OriginSymbol)))
+                .Select(Representation => Representation.MainSymbol)
+                .Distinct()
+                .ToList();
+
+            // Auto/self-reference hubs are also a logical part of their endpoint symbol. The
+            // legacy VisualSymbol parallel-move path translates them independently; this batch
+            // owns the movement instead so the hub and every connector route move exactly once.
+            var AutoReferenceHubs = InitiallyMovingSymbols
+                .SelectMany(Symbol => Symbol.TargetConnections.Concat(Symbol.OriginConnections))
+                .Where(Connector => Connector != null
+                                    && Connector.OwnerRelationshipRepresentation != null
+                                    && Connector.OwnerRelationshipRepresentation.RepresentedRelationship.IsAutoReference)
+                .Select(Connector => Connector.OwnerRelationshipRepresentation)
+                .Distinct()
+                .Where(Representation => Representation.MainSymbol != null
+                                         && Representation.VisualConnectors.Any(Connector =>
+                                                (Connector.OriginSymbol != Representation.MainSymbol
+                                                 && InitiallyMovingSymbols.Contains(Connector.OriginSymbol))
+                                                || (Connector.TargetSymbol != Representation.MainSymbol
+                                                    && InitiallyMovingSymbols.Contains(Connector.TargetSymbol))))
+                .Select(Representation => Representation.MainSymbol)
+                .Distinct()
+                .ToList();
+
+            foreach (var CoMovingHub in HiddenRelationshipHubs.Concat(AutoReferenceHubs).Distinct())
+            {
+                if (!AffectedSymbols.Contains(CoMovingHub))
+                    AffectedSymbols.Add(CoMovingHub);
+                if (!AffectedObjects.Contains(CoMovingHub))
+                    AffectedObjects.Add(CoMovingHub);
+            }
+
+            var RouteChanges = CaptureRouteGeometryChanges(AffectedSymbols);
+
+            // Translate every fully connected route exactly once, regardless of whether the
+            // Relationship representation itself is selected. The endpoint MoveTo calls below
+            // update anchors, while this preserves all interior geometry and cached edge anchors.
+            var FullyMovedConnectors = AffectedSymbols
+                                      .SelectMany(Symbol => Symbol.TargetConnections.Concat(Symbol.OriginConnections))
+                                      .Where(Connector => Connector != null
+                                                          && RouteChanges.MovingSymbols.Contains(Connector.OriginSymbol)
+                                                          && RouteChanges.MovingSymbols.Contains(Connector.TargetSymbol))
+                                      .Distinct()
+                                      .ToList();
+            foreach (var Connector in FullyMovedConnectors)
+            {
+                Connector.TranslateRoutePoints(OffsetX, OffsetY);
+                if (IsFinitePoint(Connector.OriginEdgePosition))
+                    Connector.OriginEdgePosition = new Point(Connector.OriginEdgePosition.X + OffsetX,
+                                                             Connector.OriginEdgePosition.Y + OffsetY);
+                if (IsFinitePoint(Connector.TargetEdgePosition))
+                    Connector.TargetEdgePosition = new Point(Connector.TargetEdgePosition.X + OffsetX,
+                                                             Connector.TargetEdgePosition.Y + OffsetY);
+            }
 
             foreach (var AffectedObject in AffectedObjects)
             {
                 var NewCenterX = OffsetX + AffectedObject.BaseLeft + (AffectedObject.BaseWidth / 2.0);
                 var NewCenterY = OffsetY + AffectedObject.BaseTop + (AffectedObject.BaseHeight / 2.0);
 
-                var RelationshipRep = (AffectedObject is VisualElement
-                                       ? ((VisualElement)AffectedObject).OwnerRepresentation as RelationshipVisualRepresentation
-                                       : null);
-
-                if (RelationshipRep != null)
-                {
-                    var MovingSymbols = AffectedObjects.Except(AffectedObject.IntoEnumerable());
-                    var MovedConnectors = RelationshipRep.MainSymbol.TargetConnections.Where(conn => conn.TargetSymbol.IsIn(MovingSymbols))
-                                            .Concat(RelationshipRep.MainSymbol.OriginConnections.Where(conn => conn.OriginSymbol.IsIn(MovingSymbols)))
-                                            .Distinct();
-
-                    foreach (var MovedConnector in MovedConnectors)
-                    {
-                        if (MovedConnector.IntermediatePosition != Display.NULL_POINT)
-                            MovedConnector.IntermediatePosition = new Point(MovedConnector.IntermediatePosition.X + OffsetX,
-                                                                            MovedConnector.IntermediatePosition.Y + OffsetY);
-
-                        MovedConnector.OriginEdgePosition = new Point(MovedConnector.OriginEdgePosition.X + OffsetX,
-                                                                      MovedConnector.OriginEdgePosition.Y + OffsetY);
-
-                        MovedConnector.TargetEdgePosition = new Point(MovedConnector.TargetEdgePosition.X + OffsetX,
-                                                                      MovedConnector.TargetEdgePosition.Y + OffsetY);
-                    }
-                }
-
                 var AffectedSymbol = AffectedObject as VisualSymbol;
 
                 if (AffectedSymbol != null)
                     AffectedSymbol.MoveTo(NewCenterX, NewCenterY,
                                           (LockPosition && AffectedObject == ManipulatedObject),
-                                          ManipulatedObject,
-                                          AffectedObjects.CastAs<VisualSymbol, VisualObject>(),
+                                          // ApplyMove explicitly includes and translates logical
+                                          // auto-reference hubs, so suppress the legacy nested
+                                          // DoParallelMove path which would move them twice.
+                                          null,
+                                          AffectedSymbols,
                                           RegionContainedObjects);
                 else
                     AffectedObject.MoveTo(NewCenterX, NewCenterY, (LockPosition && AffectedObject == ManipulatedObject));
@@ -510,6 +642,14 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                     // throw new InternalAnomaly("Manipulation target was not included in Selection.");
                 }*/
             }
+
+            return RouteChanges;
+        }
+
+        private static bool IsFinitePoint(Point Point)
+        {
+            return !(double.IsNaN(Point.X) || double.IsInfinity(Point.X)
+                     || double.IsNaN(Point.Y) || double.IsInfinity(Point.Y));
         }
 
         public void Move(ViewSymbolManipulationAdorner Modifier, bool IsDefinitive, bool LockPosition,
@@ -561,7 +701,13 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                 var OffsetX = NewX - Modifier.ManipulatedSymbol.BaseLeft;
                 var OffsetY = NewY - Modifier.ManipulatedSymbol.BaseTop;
 
-                ApplyMove(Modifier.ManipulatedSymbol, LockPosition, IncludeRelatedTargets, IncludeRelatedOrigins, OffsetX, OffsetY);
+                var RouteChanges = ApplyMove(Modifier.ManipulatedSymbol, LockPosition, IncludeRelatedTargets,
+                                             IncludeRelatedOrigins, OffsetX, OffsetY);
+                RouteGeometryChanges(RouteChanges,
+                                     Modifier.ManipulatedSymbol.OwnerRepresentation is RelationshipVisualRepresentation
+                                     ? RelationshipRouteIntent.RelationshipCenterMoved
+                                     : RelationshipRouteIntent.EndpointMoved,
+                                     "direct manipulation moved selected symbol geometry");
 
                 this.OwnerView.UpdateVersion();
 
@@ -617,7 +763,10 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                 var OffsetX = NewX - Modifier.ManipulatedComplement.BaseLeft;
                 var OffsetY = NewY - Modifier.ManipulatedComplement.BaseTop;
 
-                ApplyMove(Modifier.ManipulatedComplement, LockPosition, IncludeRelatedTargets, IncludeRelatedOrigins, OffsetX, OffsetY);
+                var RouteChanges = ApplyMove(Modifier.ManipulatedComplement, LockPosition, IncludeRelatedTargets,
+                                             IncludeRelatedOrigins, OffsetX, OffsetY);
+                RouteGeometryChanges(RouteChanges, RelationshipRouteIntent.EndpointMoved,
+                                     "direct manipulation moved related symbol geometry");
 
                 this.OwnerView.UpdateVersion();
 
@@ -728,6 +877,7 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
             if (IsDefinitive)
             {
                 this.OwnerView.EditEngine.StartCommandVariation("Resize Symbol");
+                var RouteChanges = CaptureRouteGeometryChanges(Modifier.ManipulatedSymbol.IntoEnumerable());
 
                 if (this.OwnerView.SnapToGrid)
                 {
@@ -760,6 +910,12 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                                                                NewHeight, true);
                     Modifier.ManipulatedSymbol.RenderElement();
                 }
+
+                RouteGeometryChanges(RouteChanges,
+                                     Modifier.ManipulatedSymbol.OwnerRepresentation is RelationshipVisualRepresentation
+                                     ? RelationshipRouteIntent.RelationshipCenterMoved
+                                     : RelationshipRouteIntent.EndpointMoved,
+                                     "direct manipulation resized symbol geometry");
 
                 this.OwnerView.UpdateVersion();
 
@@ -1198,7 +1354,7 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
                 Modifier.ManipulationAlternatePosition = new Point(Modifier.ManipulationAlternatePosition.X + DeltaX,
                                                                    Modifier.ManipulationAlternatePosition.Y + DeltaY);
 
-                if (Modifier.ManipulatedConnector.IntermediatePosition == Display.NULL_POINT)
+                if (Modifier.ManipulatedConnector.RoutePoints.Count == 0)
                 {
                     //T Console.WriteLine("Intermediate is empty.");
                     double CalcSumX = 0, CalcSumY = 0;
@@ -1254,17 +1410,42 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
 
                 if (Modifier.IsWorkingOnAlternateTarget)
                 {
-                    Modifier.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol.IsAutoPositionable = false;
-                    Modifier.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol
+                    var RelationshipSymbol = Modifier.ManipulatedConnector.OwnerRelationshipRepresentation.MainSymbol;
+                    var RouteChanges = CaptureRouteGeometryChanges(RelationshipSymbol.IntoEnumerable());
+                    RelationshipSymbol.IsAutoPositionable = false;
+                    RelationshipSymbol
                         .MoveTo(this.OwnerView.GetGridSnappedCoordinate(Modifier.ManipulationAlternatePosition.X, false),
                                 this.OwnerView.GetGridSnappedCoordinate(Modifier.ManipulationAlternatePosition.Y, false), true);
+                    RouteGeometryChanges(RouteChanges, RelationshipRouteIntent.RelationshipCenterMoved,
+                                         "direct manipulation moved relationship hub geometry");
                 }
                 else
                     if (!Modifier.MousePositionCurrent.IsNear(Modifier.PointedLocationWhileClicking))
-                        Modifier.ManipulatedConnector
-                            .UpdateIntermediatePoint(this.OwnerView.SnapToGrid
-                                                     ? this.OwnerView.GetGridSnappedPosition(Modifier.ManipulConnDisplacingPos, false)
-                                                     : Modifier.ManipulConnDisplacingPos);
+                    {
+                        var RouteConnector = Modifier.ManipulatedRouteConnector ?? Modifier.ManipulatedConnector;
+                        var RoutePosition = (this.OwnerView.SnapToGrid
+                                             ? this.OwnerView.GetGridSnappedPosition(Modifier.ManipulConnDisplacingPos, false)
+                                             : Modifier.ManipulConnDisplacingPos);
+
+                        if (Modifier.ManipulatedRoutePointIndex >= 0)
+                            RouteConnector.UpdateRoutePoint(Modifier.ManipulatedRoutePointIndex, RoutePosition);
+                        else if (Modifier.ManipulatedSegmentIndex >= 0)
+                        {
+                            if (RouteConnector.RoutePoints.Count < VisualConnector.MAX_ROUTE_POINTS)
+                                RouteConnector.InsertRoutePoint(Math.Min(Modifier.ManipulatedSegmentIndex,
+                                                                         RouteConnector.RoutePoints.Count),
+                                                                RoutePosition);
+                        }
+                        else
+                            RouteConnector.SetRoutePoints(RoutePosition.IntoEnumerable());
+
+                        VisualConnectorsFormat.SetPathStyle(RouteConnector, EPathStyle.MultilineFreeAngled);
+                        VisualConnectorsFormat.SetPathCorner(RouteConnector, EPathCorner.Sharp);
+                        // Connector format overrides are stored on the Relationship visual
+                        // representation. Re-render the owner once so every sibling leg observes
+                        // the new path style/corner while the edited leg shows its new geometry.
+                        RouteConnector.OwnerRelationshipRepresentation.Render();
+                    }
 
                 this.OwnerView.UpdateVersion();
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Validate a ThinkComposer JSON Interchange document against the schema.
 
-By default this script attempts to fetch the latest schema from the active
-feature/DcomInterchange branch of tbm0115/ThinkComposer. If that fails, it
-falls back to the bundled schema in references/. Composition and Domain
-interchange documents are both supported.
+The packaged schema in references/ is authoritative by default, keeping
+validation aligned with the installed skill version. An explicit option can
+check the configured upstream schema; an incompatible remote Composition
+schema is rejected in favor of the packaged v2 contract. Composition and
+Domain interchange documents are both supported.
 """
 
 from __future__ import annotations
@@ -55,13 +56,27 @@ def load_schema(args: argparse.Namespace, instance: Any) -> tuple[Any, str]:
         return load_json(path), str(path)
 
     schema_url, fallback_schema = infer_schema_sources(instance, args)
-    if not args.no_fetch:
+    if args.fetch_latest and not args.no_fetch:
         try:
-            return fetch_schema(schema_url), schema_url
+            fetched = fetch_schema(schema_url)
+            instance_format = instance.get("format") if isinstance(instance, dict) else None
+            if instance_format == "ThinkComposer.JsonInterchange" and not supports_composition_v2(fetched):
+                print("warning: fetched Composition schema does not support formatVersion 2; using bundled schema", file=sys.stderr)
+            else:
+                return fetched, schema_url
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
             print(f"warning: could not fetch latest schema ({exc}); using bundled fallback", file=sys.stderr)
 
     return load_json(fallback_schema), str(fallback_schema)
+
+
+def supports_composition_v2(schema: Any) -> bool:
+    try:
+        version = schema["properties"]["formatVersion"]
+    except (KeyError, TypeError):
+        return False
+    values = version.get("enum") if isinstance(version, dict) else None
+    return isinstance(values, list) and 2 in values
 
 
 def validate_with_jsonschema(instance: Any, schema: Any) -> list[str]:
@@ -87,7 +102,8 @@ def main() -> int:
     parser.add_argument("--schema", help="Path to a local schema file. Overrides schema fetch and fallback.")
     parser.add_argument("--composition-schema-url", default=COMPOSITION_SCHEMA_URL, help="URL for the latest composition schema")
     parser.add_argument("--domain-schema-url", default=DOMAIN_SCHEMA_URL, help="URL for the latest domain schema")
-    parser.add_argument("--no-fetch", action="store_true", help="Skip fetching the latest schema and use local schema fallback")
+    parser.add_argument("--fetch-latest", action="store_true", help="Explicitly fetch the configured upstream schema before falling back to the packaged schema")
+    parser.add_argument("--no-fetch", action="store_true", help="Compatibility flag that forces the packaged schema")
     args = parser.parse_args()
 
     document_path = Path(args.document)

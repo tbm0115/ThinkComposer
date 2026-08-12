@@ -147,6 +147,12 @@ namespace Instrumind.ThinkComposer.Cli
                     Options.Required("input"),
                     Options.Required("output-dir")));
 
+            if (Command == "validate-routing")
+                return Finish(HeadlessThinkComposerOperations.ValidateCompositionRouting(
+                    Options.Required("input"),
+                    Options.Required("output-dir"),
+                    Options.Optional("layout")));
+
             throw new UsageException("Unknown composition command: " + Args[0]);
         }
 
@@ -473,6 +479,7 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>");
             Console.WriteLine("  thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>");
+            Console.WriteLine("  thinkcomposer composition validate-routing --input <file.tcom> --output-dir <dir> [--layout route|spider|hierarchy|flowchart|system]");
             Console.WriteLine("  thinkcomposer domain export-json --input <file.tdom|file.tcom> --output <file.json>");
             Console.WriteLine("  thinkcomposer domain import-json --input <file.tdom|file.tcom> --json <file.json> --output <file.tdom|file.tcom> [--in-place] [--preview-only]");
             Console.WriteLine("  thinkcomposer domain update-embedded --input <file.tcom> --domain <file.tdom> --output <file.tcom> [--in-place] [--preview-only]");
@@ -502,6 +509,7 @@ namespace Instrumind.ThinkComposer.Cli
             Console.WriteLine("  thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>");
             Console.WriteLine("  thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>");
             Console.WriteLine("  thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>");
+            Console.WriteLine("  thinkcomposer composition validate-routing --input <file.tcom> --output-dir <dir> [--layout route|spider|hierarchy|flowchart|system]");
             Console.WriteLine();
             Console.WriteLine("Imports require --output. To overwrite --input, set --output to the input path and pass --in-place.");
             Console.WriteLine("Image export defaults to the root/main view fitted into 1600x1200 pixels. Repeat --fit to fit specific visible idea TechNames.");

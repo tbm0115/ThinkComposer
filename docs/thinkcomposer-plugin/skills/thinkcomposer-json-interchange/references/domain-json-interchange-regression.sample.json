@@ -1,6 +1,6 @@
 {
   "format": "ThinkComposer.DomainJsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "application": "ThinkComposer",
   "warnings": [
     "Sample for Domain JSON export/import regression coverage. Expected result: Domain metadata, definitions, tables, fields, roles, templates, and TechSpec merge safely without deleting omitted native objects."
@@ -68,6 +68,7 @@
   ],
   "tableDefinitions": [
     {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa10",
       "name": "Deployment Metadata",
       "techName": "Deployment_Metadata",
       "summary": "Table added by Domain JSON regression sample.",
@@ -106,6 +107,26 @@
       "isComposable": true,
       "isVersionable": true,
       "customFieldsTableTechName": "Deployment_Metadata",
+      "detailDesignators": [
+        {
+          "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa20",
+          "kind": "table",
+          "name": "Deployment Metadata",
+          "techName": "Deployment_Metadata_Detail",
+          "summary": "Structured deployment metadata for each component.",
+          "tableDefinitionId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa10",
+          "tableDefinitionTechName": "Deployment_Metadata",
+          "tableDefinitionIsOwned": false,
+          "order": 2,
+          "appearance": {
+            "isDisplayed": true,
+            "showTitle": true,
+            "isMultiRecord": false,
+            "layout": "Transposed",
+            "showFieldTitles": true
+          }
+        }
+      ],
       "outputTemplates": [
         {
           "name": "Deployment Component Markdown",

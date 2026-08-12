@@ -45,6 +45,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
         private readonly List<View> AffectedViews = new List<View>();
         private readonly Dictionary<View, List<VisualObject>> ImportedVisualObjects = new Dictionary<View, List<VisualObject>>();
         private readonly Dictionary<View, List<RelationshipVisualRepresentation>> PendingAutoRouteRelationships = new Dictionary<View, List<RelationshipVisualRepresentation>>();
+        private readonly Dictionary<View, List<RelationshipVisualRepresentation>> PendingRelationshipCenterPlacements = new Dictionary<View, List<RelationshipVisualRepresentation>>();
         private readonly HashSet<string> PendingAutoRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> PlannedAutoRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private string LastOperationOutcome = null;
@@ -3862,23 +3863,83 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return false;
 
             var Changed = false;
+            var MatchedConnectors = new HashSet<VisualConnector>();
             foreach (var Source in Connectors.Where(Connector => Connector != null))
             {
                 var Connector = FindVisualConnector(Representation, Source);
                 if (Connector == null)
                     continue;
+                if (!MatchedConnectors.Add(Connector))
+                {
+                    this.Report.Warn("Connector JSON identity '" +
+                                     Source.Id.ToStringAlways(Source.LinkId).ToStringAlways("<semantic fallback>") +
+                                     "' resolves to a connector already targeted by this update; the ambiguous duplicate was skipped.");
+                    continue;
+                }
 
                 Changed = ApplyConnectorEndpointSymbols(Representation, Connector, Source) || Changed;
                 Changed = ApplyConnectorPoint(Source.OriginPosition, delegate(Point Point) { Connector.OriginPosition = Point; }) || Changed;
                 Changed = ApplyConnectorPoint(Source.OriginEdgePosition, delegate(Point Point) { Connector.OriginEdgePosition = Point; }) || Changed;
                 Changed = ApplyConnectorPoint(Source.TargetPosition, delegate(Point Point) { Connector.TargetPosition = Point; }) || Changed;
                 Changed = ApplyConnectorPoint(Source.TargetEdgePosition, delegate(Point Point) { Connector.TargetEdgePosition = Point; }) || Changed;
-                Changed = ApplyConnectorPoint(Source.IntermediatePosition, delegate(Point Point) { Connector.IntermediatePosition = Point; }) || Changed;
+                Changed = ApplyConnectorRoutePoints(Connector, Source) || Changed;
                 this.AssignImportedId(Connector, Source.Id);
                 Connector.RenderElement();
             }
 
             return Changed;
+        }
+
+        private bool ApplyConnectorRoutePoints(VisualConnector Connector, CompositionJsonConnector Source)
+        {
+            return ApplyConnectorRoutePointsCore(Connector, Source, this.Report.Warn);
+        }
+
+        /// <summary>
+        /// Applies the version-normalized connector route contract without requiring a live
+        /// Composition. Kept internal so persistence regressions exercise the same patch logic
+        /// used by the importer rather than a test-only approximation.
+        /// </summary>
+        internal static bool ApplyConnectorRoutePointsCore(VisualConnector Connector,
+                                                            CompositionJsonConnector Source,
+                                                            Action<string> Warn)
+        {
+            if (Connector == null || Source == null)
+                return false;
+
+            if (Source.RoutePointsSpecified)
+            {
+                if (Source.IntermediatePositionSpecified && Warn != null)
+                    Warn("Connector '" + Source.Id.ToStringAlways(Source.LinkId) +
+                         "' declares both routePoints and deprecated intermediatePosition; routePoints is authoritative.");
+
+                var NewPoints = (Source.RoutePoints ?? new List<CompositionJsonPoint>())
+                    .Select(PointSource => new Point(PointSource.X.Value, PointSource.Y.Value))
+                    .ToList();
+                var ExistingPoints = Connector.RoutePoints == null
+                                     ? new List<Point>()
+                                     : Connector.RoutePoints.ToList();
+                if (ExistingPoints.Count == NewPoints.Count &&
+                    ExistingPoints.Zip(NewPoints, (Existing, New) => Existing == New).All(Equal => Equal))
+                    return false;
+
+                Connector.ReplaceRoutePoints(NewPoints);
+                return true;
+            }
+
+            // formatVersion 1 migration: a legacy intermediatePosition is a singleton route.
+            if (Source.IntermediatePosition != null &&
+                Source.IntermediatePosition.X != null && Source.IntermediatePosition.Y != null)
+            {
+                var LegacyPoint = new Point(Source.IntermediatePosition.X.Value, Source.IntermediatePosition.Y.Value);
+                if (Connector.RoutePoints != null && Connector.RoutePoints.Count == 1 && Connector.RoutePoints[0] == LegacyPoint)
+                    return false;
+
+                Connector.ReplaceRoutePoints(new[] { LegacyPoint });
+                return true;
+            }
+
+            return false;
         }
 
         private bool ApplyConnectorEndpointSymbols(RelationshipVisualRepresentation Representation, VisualConnector Connector, CompositionJsonConnector Source)
@@ -3957,20 +4018,32 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Guid Parsed;
             if (!String.IsNullOrWhiteSpace(Source.Id) && Guid.TryParse(Source.Id, out Parsed))
             {
-                var ByConnectorId = Connectors.FirstOrDefault(Connector => Connector.GlobalId == Parsed);
-                if (ByConnectorId != null)
-                    return ByConnectorId;
+                var ByConnectorId = Connectors.Where(Connector => Connector.GlobalId == Parsed).ToList();
+                if (ByConnectorId.Count > 1)
+                {
+                    this.Report.Warn("Connector id '" + Source.Id +
+                                     "' is duplicated in the target relationship; no connector geometry was changed.");
+                    return null;
+                }
+                if (ByConnectorId.Count == 1)
+                    return ByConnectorId[0];
             }
 
             if (!String.IsNullOrWhiteSpace(Source.LinkId) && Guid.TryParse(Source.LinkId, out Parsed))
             {
-                var ByLinkId = Connectors.FirstOrDefault(Connector => Connector.RepresentedLink != null &&
-                                                                      Connector.RepresentedLink.GlobalId == Parsed);
-                if (ByLinkId != null)
-                    return ByLinkId;
+                var ByLinkId = Connectors.Where(Connector => Connector.RepresentedLink != null &&
+                                                             Connector.RepresentedLink.GlobalId == Parsed).ToList();
+                if (ByLinkId.Count > 1)
+                {
+                    this.Report.Warn("Connector linkId '" + Source.LinkId +
+                                     "' is ambiguous in the target relationship; no connector geometry was changed.");
+                    return null;
+                }
+                if (ByLinkId.Count == 1)
+                    return ByLinkId[0];
             }
 
-            return Connectors.FirstOrDefault(Connector =>
+            var SemanticMatches = Connectors.Where(Connector =>
                    Connector.RepresentedLink != null &&
                    Connector.RepresentedLink.AssociatedIdea != null &&
                    (String.IsNullOrWhiteSpace(Source.AssociatedIdeaId) ||
@@ -3979,7 +4052,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                     StringEquals(Connector.RepresentedLink.AssociatedIdea.TechName, Source.AssociatedIdeaTechName)) &&
                    (String.IsNullOrWhiteSpace(Source.RoleType) ||
                     Connector.RepresentedLink.RoleDefinitor == null ||
-                    StringEquals(Connector.RepresentedLink.RoleDefinitor.RoleType.ToString(), Source.RoleType)));
+                    StringEquals(Connector.RepresentedLink.RoleDefinitor.RoleType.ToString(), Source.RoleType)))
+                    .ToList();
+            if (SemanticMatches.Count > 1)
+            {
+                this.Report.Warn("Connector semantic identity for associatedIdea '" +
+                                 Source.AssociatedIdeaId.ToStringAlways(Source.AssociatedIdeaTechName) +
+                                 "' and roleType '" + Source.RoleType.ToStringAlways("<any>") +
+                                 "' is ambiguous; provide connector id or linkId. No connector geometry was changed.");
+                return null;
+            }
+            return SemanticMatches.Count == 1 ? SemanticMatches[0] : null;
         }
 
         private static Brush ImportBrush(object Source)
@@ -4263,6 +4346,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var Op = Operation.Op.NullDefault("").ToLowerInvariant();
             var Entity = Operation.Entity.NullDefault("").ToLowerInvariant();
+            PrepareOperationRoutingDefaults(Op, Entity, Operation);
 
             if (Op == "update")
                 ApplyUpdateOperation(Entity, Operation);
@@ -4309,8 +4393,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 var Changed = ApplySetToFormal(Concept, Operation.Set);
                 CountUpdated(Changed);
-                var AutoFitChanged = AutoFitExistingConceptIfRequested(Concept, Operation, "operation autoFit=true");
-                SetOperationOutcome((Changed ? Verb("update") : (AutoFitChanged ? Verb("concept auto-fit") : "no editable changes needed")) +
+                var UpdatesVisual = HasExistingVisualUpdateRequest(Operation);
+                if (UpdatesVisual)
+                    PlaceIdeaVisual(Concept, Operation, true);
+                var AutoFitChanged = UpdatesVisual ? false : AutoFitExistingConceptIfRequested(Concept, Operation, "operation autoFit=true");
+                SetOperationOutcome((Changed ? Verb("update") : (UpdatesVisual ? Verb("visual update") : (AutoFitChanged ? Verb("concept auto-fit") : "no editable changes needed"))) +
                                     " matched " + DescribeTarget(Concept));
                 return;
             }
@@ -4327,8 +4414,16 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 var Changed = ApplySetToFormal(Relationship, Operation.Set);
                 CountUpdated(Changed);
-                var AutoRouteQueued = PlanOrQueueAutoRouteForRelationship(Relationship, Operation, false, "operation autoRoute=true update relationship");
-                SetOperationOutcome((Changed ? Verb("update") : (AutoRouteQueued ? Verb("link auto-route") : "no editable changes needed")) +
+                var UpdatesVisual = HasExistingVisualUpdateRequest(Operation);
+                if (UpdatesVisual)
+                    PlaceIdeaVisual(Relationship, Operation, true);
+                // Do not short-circuit the routing request merely because the same operation
+                // also moved/resized the existing visual.  Those are precisely the updates that
+                // leave incident absolute route points stale.
+                var ExplicitAutoRouteQueued = PlanOrQueueAutoRouteForRelationship(Relationship, Operation, false,
+                                                                                  "operation autoRoute=true update relationship");
+                var AutoRouteQueued = UpdatesVisual || ExplicitAutoRouteQueued;
+                SetOperationOutcome((Changed ? Verb("update") : (UpdatesVisual ? Verb("visual update") : (AutoRouteQueued ? Verb("link auto-route") : "no editable changes needed"))) +
                                     " matched " + DescribeTarget(Relationship));
                 return;
             }
@@ -4729,9 +4824,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (ById != null)
                 return ById;
 
-            if (this.TreatMissingFullStateItemsAsCreates &&
-                Operation != null &&
-                !String.IsNullOrWhiteSpace(Operation.RepresentationId))
+            if (Operation != null && !String.IsNullOrWhiteSpace(Operation.RepresentationId))
                 return null;
 
             if (ShortcutRequest != null)
@@ -4752,9 +4845,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (ById != null)
                 return ById;
 
-            if (this.TreatMissingFullStateItemsAsCreates &&
-                Operation != null &&
-                !String.IsNullOrWhiteSpace(Operation.RepresentationId))
+            if (Operation != null && !String.IsNullOrWhiteSpace(Operation.RepresentationId))
                 return null;
 
             if (ShortcutRequest != null)
@@ -4784,6 +4875,10 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Operation.Visual != null && Operation.Visual.IsShortcut != null)
                 return Operation.Visual.IsShortcut;
 
+            var Visual = GetOperationVisualControl(Operation);
+            if (Visual != null && Visual.IsShortcut != null)
+                return Visual.IsShortcut;
+
             return GetSetBool(Operation.Set, "isShortcut");
         }
 
@@ -4803,6 +4898,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var ShortcutRequest = GetOperationShortcutRequest(Operation);
             var Existing = FindConceptVisualRepresentationForPlacement(Concept, View, Operation, ShortcutRequest);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
+
+            if (Existing == null && Operation != null && StringEquals(Operation.Op, "update") &&
+                !String.IsNullOrWhiteSpace(Operation.RepresentationId))
+            {
+                SkipPlaceOperation("Cannot update concept visual representation '" + Operation.RepresentationId +
+                                   "' because it was not found in " + DescribeView(View) + ".");
+                return;
+            }
 
             var Width = GetOperationDouble(Operation, "width") ?? (ExistingSymbol == null ? GetConceptDefaultWidth(Concept.ConceptDefinitor.Value) : ExistingSymbol.BaseWidth);
             var Height = GetOperationDouble(Operation, "height") ?? (ExistingSymbol == null ? GetConceptDefaultHeight(Concept.ConceptDefinitor.Value) : ExistingSymbol.BaseHeight);
@@ -4853,6 +4956,8 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 TargetRepresentation.MainSymbol.ResizeTo(Width, Height);
                 TargetRepresentation.MainSymbol.MoveTo(Center.X, Center.Y, true);
+                InvalidateIncidentRelationshipRoutes(TargetRepresentation.MainSymbol, Operation,
+                                                     "concept visual geometry changed");
                 Changed = true;
             }
 
@@ -4880,6 +4985,35 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             }
         }
 
+        private void InvalidateIncidentRelationshipRoutes(VisualSymbol Symbol, CompositionJsonOperation Operation, string Reason)
+        {
+            if (Symbol == null)
+                return;
+
+            var Connectors = Symbol.TargetConnections
+                                   .Concat(Symbol.OriginConnections)
+                                   .Where(Connector => Connector != null && Connector.OwnerRelationshipRepresentation != null)
+                                   .Distinct()
+                                   .ToList();
+            var Representations = Connectors.Select(Connector => Connector.OwnerRelationshipRepresentation)
+                                            .Where(Representation => Representation != null && Representation.DisplayingView != null)
+                                            .Distinct()
+                                            .ToList();
+
+            if (!this.IsPreview)
+                foreach (var Connector in Connectors)
+                    Connector.ClearRoutePoints();
+
+            foreach (var Representation in Representations)
+            {
+                QueueRelationshipCenterPlacement(Representation);
+                PlanOrQueueAutoRoute(Representation.RepresentedRelationship == null
+                                     ? null : Representation.RepresentedRelationship.TechName,
+                                     Representation, Representation.DisplayingView,
+                                     Operation, true, Reason);
+            }
+        }
+
         private void PlaceRelationshipVisual(Relationship Relationship, View View, CompositionJsonOperation Operation, bool IsExplicitPlaceOperation)
         {
             string RecursiveWarning;
@@ -4896,6 +5030,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             var ShortcutRequest = GetOperationShortcutRequest(Operation);
             var Existing = FindRelationshipVisualRepresentationForPlacement(Relationship, View, Operation, ShortcutRequest);
             var ExistingSymbol = Existing == null ? null : Existing.MainSymbol;
+
+            if (Existing == null && Operation != null && StringEquals(Operation.Op, "update") &&
+                !String.IsNullOrWhiteSpace(Operation.RepresentationId))
+            {
+                SkipPlaceOperation("Cannot update relationship visual representation '" + Operation.RepresentationId +
+                                   "' because it was not found in " + DescribeView(View) + ".");
+                return;
+            }
 
             if (!this.Report.QuietLogging)
                 this.Report.Log(FormatOperationPrefix() + "relationship endpoints for '" + Relationship.TechName +
@@ -4971,6 +5113,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             {
                 TargetRepresentation.MainSymbol.ResizeTo(Width, Height);
                 TargetRepresentation.MainSymbol.MoveTo(Center.X, Center.Y, true);
+                foreach (var Connector in TargetRepresentation.VisualConnectors.Where(Item => Item != null))
+                    Connector.ClearRoutePoints();
+                QueueRelationshipCenterPlacement(TargetRepresentation);
                 Changed = true;
             }
 
@@ -5349,6 +5494,47 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             var AutoPlace = Operation.AutoPlace ?? GetSetBool(Operation.Set, "autoPlace");
             return AutoPlace == null ? this.AutoPlaceNewItems : AutoPlace.Value;
+        }
+
+        private void PrepareOperationRoutingDefaults(string Op, string Entity, CompositionJsonOperation Operation)
+        {
+            if (Operation == null || !StringEquals(Entity, "relationship"))
+                return;
+
+            var Visual = GetOperationVisualControl(Operation);
+            var HasVisualIntent = StringEquals(Op, "create") || StringEquals(Op, "place") ||
+                                  HasExplicitPlacement(Operation) ||
+                                  !String.IsNullOrWhiteSpace(Operation.RepresentationId) ||
+                                  Visual != null || GetOperationAutoRoute(Operation) == true;
+            if (!HasVisualIntent)
+                return;
+
+            var Id = Operation.Id;
+            var TechName = Operation.TechName.NullDefault(GetSetString(Operation.Set, "techName"));
+            var PlacementMode = Visual == null ? null : Visual.RelationshipCenterPlacement;
+            if (String.IsNullOrWhiteSpace(PlacementMode))
+            {
+                PlacementMode = RelationshipVisualPlacementOptions.ModeEndpointCorridor;
+                RegisterRelationshipCenterPlacementMode(Id, TechName, PlacementMode);
+                if ((GetOperationDouble(Operation, "x") != null || GetOperationDouble(Operation, "y") != null) &&
+                    !this.Report.QuietLogging)
+                    this.Report.Warn("Relationship operation '" + Describe(Id, TechName) +
+                                     "' supplied hub coordinates without visual.relationshipCenterPlacement='explicit'; " +
+                                     "endpoint-corridor placement will be applied.");
+            }
+            else
+                RegisterRelationshipCenterPlacementMode(Id, TechName, PlacementMode);
+
+            if (GetOperationAutoRoute(Operation) == null)
+                Operation.AutoRoute = true;
+        }
+
+        private bool HasExistingVisualUpdateRequest(CompositionJsonOperation Operation)
+        {
+            return Operation != null &&
+                   (HasExplicitPlacement(Operation) ||
+                    !String.IsNullOrWhiteSpace(Operation.RepresentationId) ||
+                    GetOperationShortcutRequest(Operation) != null);
         }
 
         private bool HasExplicitPlacement(CompositionJsonOperation Operation)
@@ -5945,12 +6131,32 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 return false;
             }
 
+            if (TouchedByImport || IsAutoRouteExplicitlyEnabled(Operation))
+                foreach (var Representation in Representations)
+                    QueueRelationshipCenterPlacement(Representation);
+
             var Queued = false;
             foreach (var Representation in Representations)
                 Queued = PlanOrQueueAutoRoute(Relationship.TechName, Representation, Representation.DisplayingView,
                                               Operation, TouchedByImport, Reason) || Queued;
 
             return Queued;
+        }
+
+        private void QueueRelationshipCenterPlacement(RelationshipVisualRepresentation Representation)
+        {
+            if (Representation == null || Representation.DisplayingView == null || Representation.MainSymbol == null)
+                return;
+
+            List<RelationshipVisualRepresentation> Pending;
+            if (!this.PendingRelationshipCenterPlacements.TryGetValue(Representation.DisplayingView, out Pending))
+            {
+                Pending = new List<RelationshipVisualRepresentation>();
+                this.PendingRelationshipCenterPlacements.Add(Representation.DisplayingView, Pending);
+            }
+
+            if (!Pending.Contains(Representation))
+                Pending.Add(Representation);
         }
 
         private bool PlanOrQueueAutoRoute(string RelationshipTechName, RelationshipVisualRepresentation Representation, View View,
@@ -5968,6 +6174,9 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 this.Report.CountRoutingExclusionByExplicitControl();
                 return false;
             }
+
+            if (TouchedByImport && Representation != null)
+                QueueRelationshipCenterPlacement(Representation);
 
             var AutoRoute = GetOperationAutoRoute(Operation);
             if (!this.Report.QuietLogging)
@@ -6218,24 +6427,30 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyRelationshipCenterPlacementBeforeRouting()
         {
-            if (this.RelationshipVisualPlacementOptions == null)
+            if (this.NativeRehydration || this.RelationshipVisualPlacementOptions == null)
                 return;
 
-            if (StringEquals(this.RelationshipVisualPlacementOptions.PlacementMode, RelationshipVisualPlacementOptions.ModeExplicit))
+            var HasPerRelationshipOverrides = this.RelationshipCenterPlacementModesByTechName.Count > 0 ||
+                                              this.PendingRelationshipCenterPlacements.Count > 0;
+            if (StringEquals(this.RelationshipVisualPlacementOptions.PlacementMode, RelationshipVisualPlacementOptions.ModeExplicit) &&
+                !HasPerRelationshipOverrides)
             {
                 this.Report.Log("JSON import relationship center placement skipped because relationshipVisualPlacementMode=explicit.");
                 return;
             }
 
-            if (StringEquals(this.RelationshipVisualPlacementOptions.PlacementMode, RelationshipVisualPlacementOptions.ModeDefer))
+            if (StringEquals(this.RelationshipVisualPlacementOptions.PlacementMode, RelationshipVisualPlacementOptions.ModeDefer) &&
+                !HasPerRelationshipOverrides)
             {
                 this.Report.Log("JSON import relationship center placement skipped because relationshipVisualPlacementMode=defer.");
                 return;
             }
 
-            var Views = this.AffectedViews
-                            .Where(View => View != null)
-                            .Concat(this.PendingAutoRouteRelationships.Keys.Where(View => View != null))
+            // Center correction is touched-relationship scoped.  An affected view alone is not
+            // authorization to recenter every visible relationship in that view.
+            var Views = this.PendingRelationshipCenterPlacements
+                            .Where(Pair => Pair.Key != null && Pair.Value != null && Pair.Value.Count > 0)
+                            .Select(Pair => Pair.Key)
                             .Distinct()
                             .ToList();
             if (Views.Count < 1)
@@ -6248,7 +6463,12 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             foreach (var View in Views)
             {
                 var Context = LayoutSelectionContext.FromViewSelection(this.Engine, View, Enumerable.Empty<VisualObject>());
-                var Result = RelationshipVisualPlacementService.PlaceVisibleRelationshipCenters(Context, this.RelationshipVisualPlacementOptions);
+                List<RelationshipVisualRepresentation> Scope;
+                if (!this.PendingRelationshipCenterPlacements.TryGetValue(View, out Scope) ||
+                    Scope == null || Scope.Count < 1)
+                    continue;
+                var Result = RelationshipVisualPlacementService.PlaceVisibleRelationshipCenters(Context, Scope,
+                                                                                                  this.RelationshipVisualPlacementOptions);
                 this.Report.AddRelationshipCenterPlacement(Result);
 
                 foreach (var Warning in Result.Warnings)
@@ -6271,7 +6491,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
         private void ApplyQueuedAutoRoutes()
         {
-            if (this.PendingAutoRouteRelationships.Count < 1)
+            if (this.NativeRehydration || this.PendingAutoRouteRelationships.Count < 1)
                 return;
 
             this.Report.Log("JSON import auto-route applying queued relationship routes; views=" +
@@ -6305,10 +6525,14 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
                 var Context = LayoutSelectionContext.FromViewSelection(this.Engine, View, Selection);
                 var Options = new LinkObstacleRoutingOptions();
+                Options.Profile = RelationshipRoutingProfile.JsonImport;
+                Options.RouteIntent = RelationshipRouteIntent.Generated;
+                Options.DirtyReason = "JSON import changed relationship or endpoint geometry";
+                Options.PreserveExistingValidRoutes = false;
                 Options.RouteSelectedConnectorsOnly = true;
                 Options.CorrectRelationshipCentersBeforeRouting = false;
                 Options.IncludeRelationshipCentralSymbolsAsObstacles = true;
-                var Result = LinkObstacleRoutingService.RouteVisibleConnectors(Context, Options);
+                var Result = RelationshipRoutingCoordinator.Route(Context, Options);
 
                 var Routed = Result.Routed + Result.Straightened + Result.DoglegRouted;
                 for (int Index = 0; Index < Routed; Index++)

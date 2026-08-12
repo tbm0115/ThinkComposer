@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://thinkcomposer.local/schemas/thinkcomposer-domain-json-interchange-1.schema.json",
+  "$id": "https://thinkcomposer.local/schemas/thinkcomposer-domain-json-interchange-2.schema.json",
   "title": "ThinkComposer Domain JSON Interchange",
-  "description": "Schema for ThinkComposer.DomainJsonInterchange formatVersion 1. Use this schema to validate full-state domain payloads stored at /Domain.json in modern .tdom/.tcom packages, manual exports/merges, and GPT-authored patch-operation documents.",
+  "description": "Schema for ThinkComposer.DomainJsonInterchange formatVersions 1 and 2. Version 2 preserves ordered definition-level Detail designators and their stable identities. Use this schema to validate full-state domain payloads stored at /Domain.json in modern .tdom/.tcom packages, manual exports/merges, and GPT-authored patch-operation documents.",
   "type": "object",
   "required": [
     "format",
@@ -15,8 +15,12 @@
       "description": "Fixed format discriminator for Domain JSON Interchange."
     },
     "formatVersion": {
-      "const": 1,
-      "description": "Schema/version discriminator for this interchange format."
+      "type": "integer",
+      "enum": [
+        1,
+        2
+      ],
+      "description": "Schema/version discriminator. Current exports use 2; version 1 remains readable."
     },
     "exportedAtUtc": {
       "type": "string",
@@ -322,12 +326,26 @@
     "detailDesignator": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "kind",
+        "name",
+        "techName"
+      ],
       "properties": {
+        "id": {
+          "$ref": "#/$defs/guid"
+        },
         "kind": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "table",
+            "link",
+            "attachment"
+          ]
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "techName": {
           "$ref": "#/$defs/techName"
@@ -335,11 +353,38 @@
         "summary": {
           "$ref": "#/$defs/editableText"
         },
+        "description": {
+          "$ref": "#/$defs/editableText"
+        },
+        "techSpec": {
+          "$ref": "#/$defs/editableText"
+        },
+        "tableDefinitionId": {
+          "$ref": "#/$defs/guid"
+        },
         "tableDefinitionTechName": {
           "$ref": "#/$defs/techName"
         },
+        "tableDefinitionIsOwned": {
+          "type": "boolean"
+        },
+        "fieldDefinitionId": {
+          "$ref": "#/$defs/guid"
+        },
         "fieldDefinitionTechName": {
           "$ref": "#/$defs/techName"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "appearance": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "set": {
+          "type": "object",
+          "additionalProperties": true
         }
       }
     },
@@ -420,6 +465,13 @@
             },
             "hideCentralSymbolWhenSimple": {
               "type": "boolean"
+            },
+            "detailDesignators": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/detailDesignator"
+              },
+              "default": []
             },
             "roles": {
               "type": "array",
@@ -653,6 +705,16 @@
         },
         "ownerTechName": {
           "$ref": "#/$defs/techName"
+        },
+        "ownerScope": {
+          "type": "string",
+          "enum": [
+            "domainConcept",
+            "domainRelationship",
+            "conceptDefinition",
+            "relationshipDefinition"
+          ],
+          "description": "Canonical owner collection for child operations such as detailDesignator and outputTemplate."
         },
         "reason": {
           "$ref": "#/$defs/editableText"

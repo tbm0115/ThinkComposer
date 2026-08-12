@@ -243,6 +243,7 @@
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ConceptDefClusters.cs" />
     <Compile Include="Definitor\DefinitorMaintenance\DomainMaintainer.ExternalLanguages.cs" />
     <Compile Include="Definitor\DomainJsonInterchange\DomainJsonDto.cs" />
+    <Compile Include="Definitor\DomainJsonInterchange\DomainJsonDetailPersistenceRegression.cs" />
     <Compile Include="Definitor\DomainJsonInterchange\DomainJsonExporter.cs" />
     <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImporter.cs" />
     <Compile Include="Definitor\DomainJsonInterchange\DomainJsonImportReport.cs" />
@@ -281,6 +282,7 @@
     <Compile Include="Composer\JsonInterchange\CompositionJsonExporter.cs" />
     <Compile Include="Composer\JsonInterchange\CompositionJsonImporter.cs" />
     <Compile Include="Composer\JsonInterchange\CompositionJsonImportReport.cs" />
+    <Compile Include="Composer\JsonInterchange\CompositionJsonRoutePersistenceRegression.cs" />
     <Compile Include="Composer\JsonInterchange\CompositionJsonSerializer.cs" />
     <Compile Include="Composer\JsonInterchange\CompositionJsonWarningFormatter.cs" />
     <Compile Include="Composer\Layout\CompositionAppearanceCommands.cs" />
@@ -296,6 +298,10 @@
     <Compile Include="Composer\Layout\LinkObstacleRoutingOptions.cs" />
     <Compile Include="Composer\Layout\LinkObstacleRoutingResult.cs" />
     <Compile Include="Composer\Layout\LinkObstacleRoutingService.cs" />
+    <Compile Include="Composer\Layout\OrthogonalRoutePlanner.cs" />
+    <Compile Include="Composer\Layout\OrthogonalRoutePlannerRegression.cs" />
+    <Compile Include="Composer\Layout\OrthogonalRoutingContracts.cs" />
+    <Compile Include="Composer\Layout\RelationshipRoutingCoordinator.cs" />
     <Compile Include="Composer\Layout\RelationshipNodeDeclutterOptions.cs" />
     <Compile Include="Composer\Layout\RelationshipNodeDeclutterResult.cs" />
     <Compile Include="Composer\Layout\RelationshipNodeDeclutterService.cs" />
@@ -493,6 +499,7 @@
     <Compile Include="Model\VisualModel\RelationshipVisualRepresentation.cs" />
     <Compile Include="Model\VisualModel\VisualSymbol.DrawDetails.cs" />
     <Compile Include="Model\VisualModel\VisualConnector.cs" />
+    <Compile Include="Model\VisualModel\VisualConnectorRouteRegression.cs" />
     <Compile Include="Model\VisualModel\VisualInert.cs" />
     <Compile Include="Model\VisualModel\VisualRepresentation.cs" />
     <Compile Include="MetaModel\VisualMetaModel\VisualSymbolFormat.cs" />

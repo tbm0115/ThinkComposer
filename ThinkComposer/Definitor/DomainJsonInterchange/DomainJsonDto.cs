@@ -11,7 +11,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
     public class DomainJsonDocument
     {
         public const string CurrentFormat = "ThinkComposer.DomainJsonInterchange";
-        public const int CurrentFormatVersion = 1;
+        public const int MinimumSupportedFormatVersion = 1;
+        public const int CurrentFormatVersion = 2;
 
         public DomainJsonDocument()
         {
@@ -64,6 +65,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         public DomainJsonElement()
         {
             this.Fields = new List<DomainJsonElement>();
+            this.DetailDesignators = new List<DomainJsonDetailDesignator>();
             this.RoleDefinitions = new List<DomainJsonElement>();
             this.OutputTemplates = new List<DomainJsonElement>();
             this.AllowedVariantTechNames = new List<string>();
@@ -104,8 +106,40 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         public List<string> AllowedVariantTechNames { get; set; }
         public List<string> AssociableIdeaDefinitionTechNames { get; set; }
         public List<DomainJsonElement> Fields { get; set; }
+        public List<DomainJsonDetailDesignator> DetailDesignators { get; set; }
+        public bool DetailDesignatorsSpecified { get; set; }
         public List<DomainJsonElement> RoleDefinitions { get; set; }
         public List<DomainJsonElement> OutputTemplates { get; set; }
+        public Dictionary<string, object> Set { get; set; }
+    }
+
+    /// <summary>
+    /// Persisted definition-level declaration for a Detail available on Concepts or Relationships.
+    /// Detail values remain in Composition JSON; this object preserves the declaration and the
+    /// stable identity that those values reference.
+    /// </summary>
+    public class DomainJsonDetailDesignator
+    {
+        public DomainJsonDetailDesignator()
+        {
+            this.Appearance = new Dictionary<string, object>();
+            this.Set = new Dictionary<string, object>();
+        }
+
+        public string Id { get; set; }
+        public string Kind { get; set; }
+        public string Name { get; set; }
+        public string TechName { get; set; }
+        public string Summary { get; set; }
+        public string Description { get; set; }
+        public string TechSpec { get; set; }
+        public string TableDefinitionId { get; set; }
+        public string TableDefinitionTechName { get; set; }
+        public bool? TableDefinitionIsOwned { get; set; }
+        public string FieldDefinitionId { get; set; }
+        public string FieldDefinitionTechName { get; set; }
+        public int? Order { get; set; }
+        public Dictionary<string, object> Appearance { get; set; }
         public Dictionary<string, object> Set { get; set; }
     }
 

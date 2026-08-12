@@ -25,6 +25,7 @@ using Instrumind.ThinkComposer.MetaModel.Configurations;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
 using Instrumind.ThinkComposer.MetaModel.VisualMetaModel;
+using Instrumind.ThinkComposer.Model.GraphModel;
 
 namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
 {
@@ -40,6 +41,10 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             this.PreserveSourceIds = PreserveSourceIds;
             this.ProgressContext = PersistenceOperationContext.Current;
             this.PlannedTableDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            this.PlannedFieldDefinitionIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            this.PlannedFieldDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            this.AmbiguousPlannedFieldDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            this.AppliedFieldDefinitionsBySourceId = new Dictionary<Guid, FieldDefinition>();
             this.PlannedConceptDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             this.PlannedRelationshipDefinitionTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             this.PlannedExternalLanguageTechNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -56,6 +61,10 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
         private DomainJsonReferenceResolver Resolver { get; set; }
         private bool PreserveSourceIds { get; set; }
         private HashSet<string> PlannedTableDefinitionTechNames { get; set; }
+        private HashSet<string> PlannedFieldDefinitionIds { get; set; }
+        private HashSet<string> PlannedFieldDefinitionTechNames { get; set; }
+        private HashSet<string> AmbiguousPlannedFieldDefinitionTechNames { get; set; }
+        private Dictionary<Guid, FieldDefinition> AppliedFieldDefinitionsBySourceId { get; set; }
         private HashSet<string> PlannedConceptDefinitionTechNames { get; set; }
         private HashSet<string> PlannedRelationshipDefinitionTechNames { get; set; }
         private HashSet<string> PlannedExternalLanguageTechNames { get; set; }
@@ -415,6 +424,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                                             " ownerTable=" + Source.OwnerTechName + " match=planned dataType=" + DataType.TechName +
                                             " dataTypeMatch=" + MatchMethodForDataType(DataType, Source.DataTypeTechName));
                         this.Report.CountCreated("fieldDefinition", this.IsPreview);
+                        TrackPlannedFieldDefinition(Source);
                         return;
                     }
 
@@ -435,6 +445,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 {
                     Existing = new FieldDefinition(Owner, Source.Name, Source.TechName, FieldType, Source.Summary.NullDefault(""));
                     AssignImportedId(Existing, Source, "fieldDefinition", "create");
+                    TrackAppliedFieldDefinition(Source, Existing);
                     if (Source.Order != null)
                         Existing.StorageIndex = Source.Order.Value;
                     ApplyFormalFields(Existing, Source);
@@ -442,6 +453,7 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                     Owner.FieldDefinitions.Add(Existing);
                 }
                 this.Report.CountCreated("fieldDefinition", this.IsPreview);
+                TrackPlannedFieldDefinition(Source);
                 return;
             }
 
@@ -512,12 +524,15 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             if (Existing != null || this.IsPreview)
+            {
+                MergeIdeaDefinitionDetailDesignators(Existing, Source);
                 foreach (var Template in Source.OutputTemplates ?? new List<DomainJsonElement>())
                 {
                     Template.OwnerScope = "conceptDefinition";
                     Template.OwnerTechName = Template.OwnerTechName.NullDefault(Source.TechName);
                     MergeOutputTemplate(Template);
                 }
+            }
         }
 
         private void MergeRelationshipDefinition(DomainJsonElement Source)
@@ -556,12 +571,626 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 MergeRelationshipRole(Role, Existing, Source.TechName);
 
             if (Existing != null || this.IsPreview)
+            {
+                MergeIdeaDefinitionDetailDesignators(Existing, Source);
                 foreach (var Template in Source.OutputTemplates ?? new List<DomainJsonElement>())
                 {
                     Template.OwnerScope = "relationshipDefinition";
                     Template.OwnerTechName = Template.OwnerTechName.NullDefault(Source.TechName);
                     MergeOutputTemplate(Template);
                 }
+            }
+        }
+
+        private void MergeIdeaDefinitionDetailDesignators(IdeaDefinition Owner, DomainJsonElement Source)
+        {
+            if (Source == null || !Source.DetailDesignatorsSpecified)
+                return;
+
+            if (!this.IsPreview && this.PreserveSourceIds && Owner != null)
+            {
+                foreach (var DetailSource in Source.DetailDesignators ?? new List<DomainJsonDetailDesignator>())
+                {
+                    string FailureReason;
+                    if (!CanMaterializeAuthoritativeDetailDesignator(Owner, DetailSource, out FailureReason))
+                    {
+                        this.Report.Error("Cannot authoritatively replace Detail Designators for definition '" +
+                                          Owner.TechName + "': " + FailureReason);
+                        return;
+                    }
+                }
+            }
+
+            var Imported = new List<DetailDesignator>();
+            foreach (var DetailSource in Source.DetailDesignators ?? new List<DomainJsonDetailDesignator>())
+            {
+                var Detail = MergeDetailDesignator(DetailSource, Owner, Source.TechName);
+                if (Detail != null && !Imported.Contains(Detail))
+                    Imported.Add(Detail);
+            }
+
+            // Root /Domain.json is authoritative during native rehydration.  Its explicit
+            // collection must therefore replace constructor defaults and retain user order.
+            // Compatibility merges remain additive and never delete by omission.
+            if (!this.IsPreview && this.PreserveSourceIds && Owner != null)
+            {
+                Owner.DetailDesignators.Clear();
+                foreach (var Detail in Imported)
+                    Owner.DetailDesignators.Add(Detail);
+            }
+        }
+
+        private DetailDesignator MergeDetailDesignator(DomainJsonDetailDesignator Source,
+                                                        IdeaDefinition Owner,
+                                                        string OwnerTechName)
+        {
+            if (Source == null)
+                return null;
+
+            var Entity = "detailDesignator";
+            if (Owner == null)
+            {
+                if (this.IsPreview && IsPlannedIdeaDefinition(OwnerTechName) &&
+                    RequireDetailDesignatorNameTech(Source))
+                {
+                    var PlannedKind = NormalizeDetailDesignatorKind(Source.Kind);
+                    if (!IsSupportedDetailDesignatorKind(PlannedKind))
+                    {
+                        Skip(Entity, "Cannot create detail designator '" + Source.TechName +
+                                     "' because kind '" + Source.Kind.ToStringAlways() + "' is unsupported.");
+                        return null;
+                    }
+
+                    if (PlannedKind == "table" &&
+                        (!String.IsNullOrWhiteSpace(Source.TableDefinitionId) ||
+                         !String.IsNullOrWhiteSpace(Source.TableDefinitionTechName)) &&
+                        this.Resolver.TableDefinition(Source.TableDefinitionId,
+                                                      Source.TableDefinitionTechName) == null &&
+                        (String.IsNullOrWhiteSpace(Source.TableDefinitionTechName) ||
+                         !this.PlannedTableDefinitionTechNames.Contains(Source.TableDefinitionTechName)))
+                    {
+                        Skip(Entity, "Cannot create table detail designator '" + Source.TechName +
+                                     "' because table definition '" +
+                                     Source.TableDefinitionTechName.ToStringAlways() + "' was not found.");
+                        return null;
+                    }
+                    if (PlannedKind == "table" &&
+                        (!String.IsNullOrWhiteSpace(Source.FieldDefinitionId) ||
+                         !String.IsNullOrWhiteSpace(Source.FieldDefinitionTechName)) &&
+                        ResolveDetailFieldDefinition(null, Source.FieldDefinitionId,
+                                                     Source.FieldDefinitionTechName) == null &&
+                        !IsPlannedFieldDefinitionReference(Source.FieldDefinitionId,
+                                                           Source.FieldDefinitionTechName))
+                    {
+                        Skip(Entity, "Cannot create table detail designator '" + Source.TechName +
+                                     "' because contained-table field definition '" +
+                                     Source.FieldDefinitionTechName.ToStringAlways() + "' was not found.");
+                        return null;
+                    }
+                    this.Report.CountCreated(Entity, true);
+                    return null;
+                }
+
+                Skip(Entity, "Cannot import detail designator '" + Source.TechName.ToStringAlways() +
+                             "' because owner idea definition '" + OwnerTechName.ToStringAlways() + "' was not found.");
+                return null;
+            }
+
+            var Existing = FindDetailDesignator(Owner, Source.Id, Source.TechName);
+            if (Existing == null)
+            {
+                if (!RequireDetailDesignatorNameTech(Source))
+                    return null;
+
+                var Kind = NormalizeDetailDesignatorKind(Source.Kind);
+                if (!IsSupportedDetailDesignatorKind(Kind))
+                {
+                    Skip(Entity, "Cannot create detail designator '" + Source.TechName +
+                                 "' because kind '" + Source.Kind.ToStringAlways() + "' is unsupported.");
+                    return null;
+                }
+
+                var TableDefinition = Kind == "table"
+                                      ? ResolveDetailTableDefinition(Owner, Source.TableDefinitionId, Source.TableDefinitionTechName)
+                                      : null;
+                var ReferencesPlannedTable = this.IsPreview &&
+                                             !String.IsNullOrWhiteSpace(Source.TableDefinitionTechName) &&
+                                             this.PlannedTableDefinitionTechNames.Contains(Source.TableDefinitionTechName);
+
+                if (Kind == "table" && TableDefinition == null &&
+                    (!String.IsNullOrWhiteSpace(Source.TableDefinitionId) ||
+                     !String.IsNullOrWhiteSpace(Source.TableDefinitionTechName)) &&
+                    !ReferencesPlannedTable)
+                {
+                    Skip(Entity, "Cannot create table detail designator '" + Source.TechName +
+                                 "' because table definition '" + Source.TableDefinitionTechName.ToStringAlways() + "' was not found.");
+                    return null;
+                }
+
+                var FieldDefinition = Kind == "table"
+                                      ? ResolveDetailFieldDefinition(Owner, Source.FieldDefinitionId,
+                                                                     Source.FieldDefinitionTechName)
+                                      : null;
+                var ReferencesPlannedField = this.IsPreview &&
+                                             IsPlannedFieldDefinitionReference(Source.FieldDefinitionId,
+                                                                               Source.FieldDefinitionTechName);
+                if (Kind == "table" && FieldDefinition == null &&
+                    (!String.IsNullOrWhiteSpace(Source.FieldDefinitionId) ||
+                     !String.IsNullOrWhiteSpace(Source.FieldDefinitionTechName)) &&
+                    !ReferencesPlannedField)
+                {
+                    Skip(Entity, "Cannot create table detail designator '" + Source.TechName +
+                                 "' because contained-table field definition '" +
+                                 Source.FieldDefinitionTechName.ToStringAlways() + "' was not found.");
+                    return null;
+                }
+
+                if (this.IsPreview)
+                {
+                    this.Report.CountCreated(Entity, true);
+                    return null;
+                }
+
+                var Ownership = Instrumind.Common.Ownership.Create<IdeaDefinition, Idea>(Owner);
+                if (Kind == "table")
+                    Existing = new TableDetailDesignator(Ownership, TableDefinition,
+                                                         Source.TableDefinitionIsOwned.GetValueOrDefault(false),
+                                                         Source.Name, Source.TechName, Source.Summary.NullDefault(""));
+                else if (Kind == "attachment")
+                    Existing = new AttachmentDetailDesignator(Ownership, Source.Name, Source.TechName,
+                                                              Source.Summary.NullDefault(""));
+                else if (Kind == "link")
+                    Existing = new LinkDetailDesignator(Ownership, Source.Name, Source.TechName,
+                                                        Source.Summary.NullDefault(""));
+
+                var Element = DetailDesignatorElement(Source);
+                AssignImportedId(Existing, Element, Entity, "create");
+                ApplyFormalFields(Existing, Element, Entity, "create");
+                ApplyDetailDesignatorFields(Existing, Source, Owner);
+                AddDetailDesignatorAtRequestedOrder(Owner, Existing, Source.Order);
+                this.Report.CountCreated(Entity, false);
+                return Existing;
+            }
+
+            var RequestedKind = NormalizeDetailDesignatorKind(Source.Kind);
+            if (!String.IsNullOrWhiteSpace(RequestedKind) && RequestedKind != DetailDesignatorKind(Existing))
+            {
+                Skip(Entity, "Cannot change detail designator '" + Existing.TechName + "' from kind '" +
+                             DetailDesignatorKind(Existing) + "' to '" + RequestedKind + "'.");
+                return Existing;
+            }
+
+            var SourceElement = DetailDesignatorElement(Source);
+            var Changed = AssignImportedId(Existing, SourceElement, Entity, MatchMethodFor(Existing, SourceElement));
+            Changed = ApplyFormalFields(Existing, SourceElement, Entity, MatchMethodFor(Existing, SourceElement)) || Changed;
+            Changed = ApplyDetailDesignatorFields(Existing, Source, Owner) || Changed;
+            Changed = ApplyDetailDesignatorOrder(Owner, Existing, Source.Order) || Changed;
+            if (Changed)
+                this.Report.CountUpdated(Entity, this.IsPreview);
+            return Existing;
+        }
+
+        private bool CanMaterializeAuthoritativeDetailDesignator(IdeaDefinition Owner,
+                                                                  DomainJsonDetailDesignator Source,
+                                                                  out string FailureReason)
+        {
+            FailureReason = null;
+            if (Source == null)
+            {
+                FailureReason = "the collection contains a null item.";
+                return false;
+            }
+            if (String.IsNullOrWhiteSpace(Source.Name) || String.IsNullOrWhiteSpace(Source.TechName))
+            {
+                FailureReason = "a Detail Designator is missing name or techName.";
+                return false;
+            }
+
+            var Kind = NormalizeDetailDesignatorKind(Source.Kind);
+            if (!IsSupportedDetailDesignatorKind(Kind))
+            {
+                FailureReason = "Detail Designator '" + Source.TechName + "' has unsupported kind '" +
+                                Source.Kind.ToStringAlways() + "'.";
+                return false;
+            }
+
+            var Existing = FindDetailDesignator(Owner, Source.Id, Source.TechName);
+            if (Existing != null && DetailDesignatorKind(Existing) != Kind)
+            {
+                FailureReason = "Detail Designator '" + Source.TechName + "' cannot change kind from '" +
+                                DetailDesignatorKind(Existing) + "' to '" + Kind + "'.";
+                return false;
+            }
+
+            if (Kind == "table" &&
+                (!String.IsNullOrWhiteSpace(Source.TableDefinitionId) ||
+                 !String.IsNullOrWhiteSpace(Source.TableDefinitionTechName)) &&
+                ResolveDetailTableDefinition(Owner, Source.TableDefinitionId,
+                                             Source.TableDefinitionTechName) == null)
+            {
+                FailureReason = "Table definition '" + Source.TableDefinitionTechName.ToStringAlways() +
+                                "' was not found for Detail Designator '" + Source.TechName + "'.";
+                return false;
+            }
+
+            if (Kind == "table" &&
+                (!String.IsNullOrWhiteSpace(Source.FieldDefinitionId) ||
+                 !String.IsNullOrWhiteSpace(Source.FieldDefinitionTechName)) &&
+                ResolveDetailFieldDefinition(Owner, Source.FieldDefinitionId,
+                                             Source.FieldDefinitionTechName) == null)
+            {
+                FailureReason = "Contained-table field definition '" +
+                                Source.FieldDefinitionTechName.ToStringAlways() +
+                                "' was not found for Detail Designator '" + Source.TechName + "'.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ApplyDetailDesignatorOrder(IdeaDefinition Owner,
+                                                DetailDesignator Designator,
+                                                int? RequestedOrder)
+        {
+            if (Owner == null || Designator == null || RequestedOrder == null ||
+                RequestedOrder.Value < 0 || Owner.DetailDesignators == null)
+                return false;
+
+            var CurrentOrder = Owner.DetailDesignators.IndexOf(Designator);
+            if (CurrentOrder < 0)
+                return false;
+
+            var TargetOrder = Math.Min(RequestedOrder.Value, Owner.DetailDesignators.Count - 1);
+            if (CurrentOrder == TargetOrder)
+                return false;
+
+            if (!this.IsPreview)
+            {
+                Owner.DetailDesignators.RemoveAt(CurrentOrder);
+                Owner.DetailDesignators.Insert(TargetOrder, Designator);
+            }
+
+            return true;
+        }
+
+        private bool ApplyDetailDesignatorFields(DetailDesignator Target,
+                                                 DomainJsonDetailDesignator Source,
+                                                 IdeaDefinition Owner)
+        {
+            var Changed = false;
+
+            var AlterabilityText = GetSetString(Source.Set, "alterability");
+            EAlterability Alterability;
+            if (!String.IsNullOrWhiteSpace(AlterabilityText) &&
+                Enum.TryParse<EAlterability>(AlterabilityText, true, out Alterability) &&
+                Target.Alterability != Alterability)
+            {
+                if (!this.IsPreview)
+                    Target.Alterability = Alterability;
+                Changed = true;
+            }
+
+            var TableTarget = Target as TableDetailDesignator;
+            if (TableTarget != null &&
+                (!String.IsNullOrWhiteSpace(Source.TableDefinitionId) ||
+                 !String.IsNullOrWhiteSpace(Source.TableDefinitionTechName)))
+            {
+                var TableDefinition = ResolveDetailTableDefinition(Owner, Source.TableDefinitionId,
+                                                                  Source.TableDefinitionTechName);
+                if (TableDefinition == null)
+                    Skip("detailDesignator", "Table definition '" + Source.TableDefinitionTechName.ToStringAlways() +
+                                             "' was not found for detail designator '" + Target.TechName + "'.");
+                else if (TableTarget.DeclaringTableDefinition != TableDefinition)
+                {
+                    if (!this.IsPreview)
+                        TableTarget.DeclaringTableDefinition = TableDefinition;
+                    Changed = true;
+                }
+
+                if (!this.IsPreview && this.PreserveSourceIds &&
+                    Source.TableDefinitionIsOwned.GetValueOrDefault(false) &&
+                    TableDefinition != null && !String.IsNullOrWhiteSpace(Source.TableDefinitionId))
+                {
+                    var TableSource = new DomainJsonElement
+                    {
+                        Id = Source.TableDefinitionId,
+                        Entity = "ownedTableDefinition",
+                        Name = TableDefinition.Name,
+                        TechName = TableDefinition.TechName
+                    };
+                    Changed = AssignImportedId(TableDefinition, TableSource, "ownedTableDefinition",
+                                               "detailDesignator table reference") || Changed;
+                }
+            }
+
+            if (TableTarget != null && Source.TableDefinitionIsOwned != null &&
+                TableTarget.TableDefIsOwned != Source.TableDefinitionIsOwned.Value)
+            {
+                if (!this.IsPreview)
+                    TableTarget.TableDefIsOwned = Source.TableDefinitionIsOwned.Value;
+                Changed = true;
+            }
+
+            if (TableTarget != null &&
+                (!String.IsNullOrWhiteSpace(Source.FieldDefinitionId) ||
+                 !String.IsNullOrWhiteSpace(Source.FieldDefinitionTechName)))
+            {
+                var Field = ResolveDetailFieldDefinition(Owner, Source.FieldDefinitionId,
+                                                        Source.FieldDefinitionTechName);
+                if (Field == null)
+                    Skip("detailDesignator", "Contained-table field definition '" +
+                                             Source.FieldDefinitionTechName.ToStringAlways() +
+                                             "' was not found for detail designator '" + Target.TechName + "'.");
+                else if (TableTarget.ContainedTableSubOwner != Field)
+                {
+                    if (!this.IsPreview)
+                        TableTarget.ContainedTableSubOwner = Field;
+                    Changed = true;
+                }
+            }
+
+            Changed = ApplyDetailAppearance(Target.DetailLook, Source.Appearance) || Changed;
+            return Changed;
+        }
+
+        private bool ApplyDetailAppearance(DetailAppearance Target, IDictionary<string, object> Source)
+        {
+            if (Target == null || Source == null || Source.Count < 1)
+                return false;
+
+            var Changed = false;
+            var IsDisplayed = GetSetBool(Source, "isDisplayed");
+            if (IsDisplayed != null && Target.IsDisplayed != IsDisplayed.Value)
+            {
+                if (!this.IsPreview)
+                    Target.IsDisplayed = IsDisplayed.Value;
+                Changed = true;
+            }
+
+            var ShowTitle = GetSetBool(Source, "showTitle");
+            if (ShowTitle != null && Target.ShowTitle != ShowTitle.Value)
+            {
+                if (!this.IsPreview)
+                    Target.ShowTitle = ShowTitle.Value;
+                Changed = true;
+            }
+
+            var TableTarget = Target as TableAppearance;
+            if (TableTarget == null)
+                return Changed;
+
+            var IsMultiRecord = GetSetBool(Source, "isMultiRecord");
+            if (IsMultiRecord != null && TableTarget.IsMultiRecord != IsMultiRecord.Value)
+            {
+                if (!this.IsPreview)
+                    TableTarget.IsMultiRecord = IsMultiRecord.Value;
+                Changed = true;
+            }
+
+            var ShowFieldTitles = GetSetBool(Source, "showFieldTitles");
+            if (ShowFieldTitles != null && TableTarget.ShowFieldTitles != ShowFieldTitles.Value)
+            {
+                if (!this.IsPreview)
+                    TableTarget.ShowFieldTitles = ShowFieldTitles.Value;
+                Changed = true;
+            }
+
+            var LayoutText = GetSetString(Source, "layout");
+            ETableLayoutStyle Layout;
+            if (!String.IsNullOrWhiteSpace(LayoutText) &&
+                Enum.TryParse<ETableLayoutStyle>(LayoutText, true, out Layout) &&
+                TableTarget.Layout != Layout)
+            {
+                if (!this.IsPreview)
+                    TableTarget.Layout = Layout;
+                Changed = true;
+            }
+
+            return Changed;
+        }
+
+        private TableDefinition ResolveDetailTableDefinition(IdeaDefinition Owner, string Id, string TechName)
+        {
+            var Candidates = DetailTableDefinitions(Owner).ToList();
+            var ById = FindById(Candidates.Cast<FormalElement>(), Id) as TableDefinition;
+            if (ById != null)
+                return ById;
+
+            return Candidates.FirstOrDefault(Item => !String.IsNullOrWhiteSpace(TechName) &&
+                                                     String.Equals(Item.TechName, TechName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private FieldDefinition ResolveDetailFieldDefinition(IdeaDefinition Owner, string Id, string TechName)
+        {
+            Guid ParsedId;
+            FieldDefinition AppliedField;
+            if (!this.IsPreview && !String.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out ParsedId) &&
+                this.AppliedFieldDefinitionsBySourceId.TryGetValue(ParsedId, out AppliedField))
+                return AppliedField;
+
+            var Fields = DetailTableDefinitions(Owner)
+                         .SelectMany(Table => Table.FieldDefinitions ?? Enumerable.Empty<FieldDefinition>())
+                         .Where(Field => Field != null)
+                         .ToList();
+            var ById = FindById(Fields.Cast<FormalElement>(), Id) as FieldDefinition;
+            if (ById != null)
+                return ById;
+
+            var Matches = Fields.Where(Field => !String.IsNullOrWhiteSpace(TechName) &&
+                                                String.Equals(Field.TechName, TechName, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+            return Matches.Count == 1 ? Matches[0] : null;
+        }
+
+        private IEnumerable<TableDefinition> DetailTableDefinitions(IdeaDefinition Owner)
+        {
+            var Seen = new HashSet<TableDefinition>();
+            if (Owner != null && Owner.CustomFieldsTableDef != null && Seen.Add(Owner.CustomFieldsTableDef))
+                yield return Owner.CustomFieldsTableDef;
+
+            if (Owner != null && Owner.TableDefinitions != null)
+                foreach (var Table in Owner.TableDefinitions)
+                    if (Table != null && Seen.Add(Table))
+                        yield return Table;
+
+            // Constructor-owned system tables can be reachable through their existing Detail
+            // Designator even when CustomFieldsTableDef has not yet been reconnected while a
+            // definition is being rebuilt. Include those references in the same identity scope.
+            if (Owner != null && Owner.DetailDesignators != null)
+                foreach (var Designator in Owner.DetailDesignators.OfType<TableDetailDesignator>())
+                    if (Designator.DeclaringTableDefinition != null &&
+                        Seen.Add(Designator.DeclaringTableDefinition))
+                        yield return Designator.DeclaringTableDefinition;
+
+            foreach (var Table in this.TargetDomain.TableDefinitions)
+                if (Table != null && Seen.Add(Table))
+                    yield return Table;
+        }
+
+        private static FormalElement FindById(IEnumerable<FormalElement> Candidates, string Id)
+        {
+            Guid Parsed;
+            if (String.IsNullOrWhiteSpace(Id) || !Guid.TryParse(Id, out Parsed))
+                return null;
+            return Candidates.FirstOrDefault(Item => Item != null && Item.GlobalId == Parsed);
+        }
+
+        private static DetailDesignator FindDetailDesignator(IdeaDefinition Owner, string Id, string TechName)
+        {
+            if (Owner == null || Owner.DetailDesignators == null)
+                return null;
+
+            var ById = FindById(Owner.DetailDesignators.Cast<FormalElement>(), Id) as DetailDesignator;
+            if (ById != null)
+                return ById;
+
+            var Matches = Owner.DetailDesignators
+                               .Where(Item => Item != null && !String.IsNullOrWhiteSpace(TechName) &&
+                                              String.Equals(Item.TechName, TechName, StringComparison.OrdinalIgnoreCase))
+                               .ToList();
+            return Matches.Count == 1 ? Matches[0] : null;
+        }
+
+        private static void AddDetailDesignatorAtRequestedOrder(IdeaDefinition Owner,
+                                                                 DetailDesignator Designator,
+                                                                 int? Order)
+        {
+            if (Owner == null || Designator == null)
+                return;
+
+            if (Order != null && Order.Value >= 0 && Order.Value < Owner.DetailDesignators.Count)
+                Owner.DetailDesignators.Insert(Order.Value, Designator);
+            else
+                Owner.DetailDesignators.Add(Designator);
+        }
+
+        private bool RequireDetailDesignatorNameTech(DomainJsonDetailDesignator Source)
+        {
+            if (Source != null && !String.IsNullOrWhiteSpace(Source.Name) &&
+                !String.IsNullOrWhiteSpace(Source.TechName))
+                return true;
+
+            Skip("detailDesignator", "Cannot create detailDesignator because name and techName are required.");
+            return false;
+        }
+
+        private static string NormalizeDetailDesignatorKind(string Kind)
+        {
+            var Normalized = Kind.NullDefault("").Trim().ToLowerInvariant();
+            if (Normalized == "table" || Normalized == "tabledetaildesignator")
+                return "table";
+            if (Normalized == "attachment" || Normalized == "attachmentdetaildesignator")
+                return "attachment";
+            if (Normalized == "link" || Normalized == "resourcelink" ||
+                Normalized == "internallink" || Normalized == "linkdetaildesignator")
+                return "link";
+            return Normalized;
+        }
+
+        private static bool IsSupportedDetailDesignatorKind(string Kind)
+        {
+            return Kind == "table" || Kind == "link" || Kind == "attachment";
+        }
+
+        private static string DetailDesignatorKind(DetailDesignator Source)
+        {
+            if (Source is TableDetailDesignator)
+                return "table";
+            if (Source is AttachmentDetailDesignator)
+                return "attachment";
+            if (Source is LinkDetailDesignator)
+                return "link";
+            return Source == null ? "" : Source.GetType().Name.ToLowerInvariant();
+        }
+
+        private static DomainJsonElement DetailDesignatorElement(DomainJsonDetailDesignator Source)
+        {
+            return new DomainJsonElement
+            {
+                Id = Source.Id,
+                Entity = "detailDesignator",
+                Name = Source.Name,
+                TechName = Source.TechName,
+                Summary = Source.Summary,
+                Description = Source.Description,
+                TechSpec = Source.TechSpec,
+                Order = Source.Order,
+                Set = Source.Set ?? new Dictionary<string, object>()
+            };
+        }
+
+        private bool IsPlannedIdeaDefinition(string TechName)
+        {
+            return this.PlannedConceptDefinitionTechNames.Contains(TechName.NullDefault("")) ||
+                   this.PlannedRelationshipDefinitionTechNames.Contains(TechName.NullDefault(""));
+        }
+
+        private void TrackPlannedFieldDefinition(DomainJsonElement Source)
+        {
+            if (Source == null)
+                return;
+
+            Guid ParsedId;
+            if (!String.IsNullOrWhiteSpace(Source.Id) && Guid.TryParse(Source.Id, out ParsedId))
+                this.PlannedFieldDefinitionIds.Add(ParsedId.ToString("D"));
+
+            if (String.IsNullOrWhiteSpace(Source.TechName))
+                return;
+            if (!this.PlannedFieldDefinitionTechNames.Add(Source.TechName))
+                this.AmbiguousPlannedFieldDefinitionTechNames.Add(Source.TechName);
+        }
+
+        private void TrackAppliedFieldDefinition(DomainJsonElement Source, FieldDefinition Target)
+        {
+            if (this.IsPreview || Source == null || Target == null || String.IsNullOrWhiteSpace(Source.Id))
+                return;
+
+            Guid ParsedId;
+            if (!Guid.TryParse(Source.Id, out ParsedId))
+                return;
+
+            FieldDefinition Existing;
+            if (this.AppliedFieldDefinitionsBySourceId.TryGetValue(ParsedId, out Existing) &&
+                !Object.ReferenceEquals(Existing, Target))
+            {
+                this.Report.ImportWarning("Domain JSON fieldDefinition source id '" + Source.Id +
+                                          "' was created more than once in the same patch; later ID-only references remain bound to the first field.");
+                return;
+            }
+
+            this.AppliedFieldDefinitionsBySourceId[ParsedId] = Target;
+        }
+
+        private bool IsPlannedFieldDefinitionReference(string Id, string TechName)
+        {
+            Guid ParsedId;
+            if (!String.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out ParsedId) &&
+                this.PlannedFieldDefinitionIds.Contains(ParsedId.ToString("D")))
+                return true;
+
+            return !String.IsNullOrWhiteSpace(TechName) &&
+                   this.PlannedFieldDefinitionTechNames.Contains(TechName) &&
+                   !this.AmbiguousPlannedFieldDefinitionTechNames.Contains(TechName);
         }
 
         private LinkRoleDefinition BuildRoleForCreate(IEnumerable<DomainJsonElement> Roles, string RoleType)
@@ -841,6 +1470,12 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 MergeTableDefinition(Source);
             else if (String.Equals(Operation.Entity, "fieldDefinition", StringComparison.OrdinalIgnoreCase))
                 MergeFieldDefinition(Source, this.Resolver.TableDefinition(Operation.OwnerId, Operation.OwnerTechName), Operation.OwnerTechName);
+            else if (String.Equals(Operation.Entity, "detailDesignator", StringComparison.OrdinalIgnoreCase))
+            {
+                var DetailOwner = ResolveDetailDesignatorOwner(Operation.OwnerId, Operation.OwnerTechName,
+                                                               Operation.OwnerScope.NullDefault(GetSetString(Operation.Set, "ownerScope")));
+                MergeDetailDesignator(DetailDesignatorFromOperation(Operation), DetailOwner, Operation.OwnerTechName);
+            }
             else if (String.Equals(Operation.Entity, "conceptDefinition", StringComparison.OrdinalIgnoreCase))
                 MergeConceptDefinition(Source);
             else if (String.Equals(Operation.Entity, "relationshipDefinition", StringComparison.OrdinalIgnoreCase))
@@ -851,6 +1486,45 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 MergeOutputTemplate(Source);
             else
                 Skip(Operation.Entity, "Unsupported Domain JSON entity '" + Operation.Entity + "'.");
+        }
+
+        private DomainJsonDetailDesignator DetailDesignatorFromOperation(DomainJsonOperation Operation)
+        {
+            var Set = Operation.Set ?? new Dictionary<string, object>();
+            var Appearance = GetSetDictionary(Set, "appearance");
+            return new DomainJsonDetailDesignator
+            {
+                Id = Operation.Id,
+                Kind = GetSetString(Set, "kind"),
+                Name = GetSetString(Set, "name"),
+                TechName = Operation.TechName.NullDefault(GetSetString(Set, "techName")),
+                Summary = GetSetString(Set, "summary"),
+                Description = GetSetString(Set, "description"),
+                TechSpec = GetSetString(Set, "techSpec"),
+                TableDefinitionId = GetSetString(Set, "tableDefinitionId"),
+                TableDefinitionTechName = GetSetString(Set, "tableDefinitionTechName")
+                                          .NullDefault(GetSetString(Set, "dataTypeTechName")),
+                TableDefinitionIsOwned = GetSetBool(Set, "tableDefinitionIsOwned"),
+                FieldDefinitionId = GetSetString(Set, "fieldDefinitionId"),
+                FieldDefinitionTechName = GetSetString(Set, "fieldDefinitionTechName"),
+                Order = GetSetInt(Set, "order"),
+                Appearance = Appearance.ToDictionary(Pair => Pair.Key, Pair => Pair.Value),
+                Set = Set
+            };
+        }
+
+        private IdeaDefinition ResolveDetailDesignatorOwner(string Id, string TechName, string Scope)
+        {
+            if (String.Equals(Scope, "conceptDefinition", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(Scope, "concept", StringComparison.OrdinalIgnoreCase))
+                return this.Resolver.ConceptDefinition(Id, TechName);
+
+            if (String.Equals(Scope, "relationshipDefinition", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(Scope, "relationship", StringComparison.OrdinalIgnoreCase))
+                return this.Resolver.RelationshipDefinition(Id, TechName);
+
+            return (IdeaDefinition)this.Resolver.ConceptDefinition(Id, TechName) ??
+                   this.Resolver.RelationshipDefinition(Id, TechName);
         }
 
         private DomainJsonElement ElementFromOperation(DomainJsonOperation Operation)
@@ -1866,11 +2540,33 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             foreach (var Definition in this.TargetDomain.ConceptDefinitions)
+            {
                 yield return Definition;
+
+                if (Definition.CustomFieldsTableDef != null)
+                {
+                    yield return Definition.CustomFieldsTableDef;
+                    foreach (var Field in Definition.CustomFieldsTableDef.FieldDefinitions)
+                        yield return Field;
+                }
+
+                foreach (var Designator in Definition.DetailDesignators)
+                    yield return Designator;
+            }
 
             foreach (var Definition in this.TargetDomain.RelationshipDefinitions)
             {
                 yield return Definition;
+
+                if (Definition.CustomFieldsTableDef != null)
+                {
+                    yield return Definition.CustomFieldsTableDef;
+                    foreach (var Field in Definition.CustomFieldsTableDef.FieldDefinitions)
+                        yield return Field;
+                }
+
+                foreach (var Designator in Definition.DetailDesignators)
+                    yield return Designator;
 
                 if (Definition.OriginOrParticipantLinkRoleDef != null)
                     yield return Definition.OriginOrParticipantLinkRoleDef;

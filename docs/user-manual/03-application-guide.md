@@ -74,6 +74,8 @@ Use the Appearance commands for larger cleanup:
 
 These commands are covered in [Current Features](04-current-features.md).
 
+When a connector is selected, route editing exposes its bend and segment handles. Use the connector route commands to add or remove a bend, simplify a path, straighten it, or run automatic routing. Automatic paths are orthogonal with rounded corners; existing legacy and free-angle manual paths retain their authored appearance until edited or rerouted.
+
 ## Creating Concepts
 
 Create concepts by using the concept palette, context menus, shortcuts, or automatic creation behavior defined by the domain.
@@ -97,7 +99,7 @@ Relationship compatibility depends on the active domain. If a relationship defin
 
 Relationships can be extended by adding or adjusting role-based links when the relationship definition allows it. Link descriptors and role variants can annotate a connector without changing the relationship's own name or summary.
 
-For generated or JSON-imported diagrams, prefer endpoint-corridor relationship placement so visible relationship centers stay near the concepts they connect.
+For generated or JSON-imported diagrams, omit exact Relationship-center and connector coordinates. Use endpoint-corridor placement and automatic routing so visible Relationship centers stay near the concepts they connect and connector bends remain local. Composition JSON v2 persists exact manual routes as ordered `routePoints` when the application saves the package.
 
 ## Converting Ideas
 

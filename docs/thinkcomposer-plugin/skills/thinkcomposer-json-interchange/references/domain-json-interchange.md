@@ -33,7 +33,16 @@ The root package manifest schema is maintained at `docs/thinkcomposer-package-ma
 
 Use `Composition -> Domain -> Update Embedded Domain...` when an existing `.tcom` should pick up safe additions or updates from a newer native `.tdom`. This UI path remains supported and does not require the deprecated Domain JSON import/export buttons.
 
-Every supported file starts with:
+Current exports use format version 2. Version 1 remains readable as a migration input, but it did not reliably carry definition-level Detail declarations. Version 2 adds the ordered `detailDesignators` snapshot needed to preserve Detail identity and reconnect Composition values. Older applications reject version 2 instead of silently discarding that state.
+
+```json
+{
+  "format": "ThinkComposer.DomainJsonInterchange",
+  "formatVersion": 2
+}
+```
+
+Legacy version 1 documents start with:
 
 ```json
 {
@@ -53,11 +62,13 @@ The first-pass exporter writes deterministic, pretty-printed JSON for text-safe 
 - Concept definition, relationship definition, marker, table, and field clusters/categories.
 - Marker definitions, excluding binary image payloads.
 - Table definitions and field definitions, including data type/category references and TechSpec where available.
-- Concept definitions, including cluster, ancestor, shape/composability/versionability metadata, visual symbol format settings, text formats, WPF brush payloads, custom field table references, detail designator summaries, and attached output templates.
-- Relationship definitions, including cluster, ancestor, shape/simple/hidden-central metadata, visual connector format settings, text formats, role definitions, allowed/default variants, and attached output templates.
+- Concept definitions, including cluster, ancestor, shape/composability/versionability metadata, visual symbol format settings, text formats, WPF brush payloads, custom field table references, ordered Detail designators, and attached output templates.
+- Relationship definitions, including cluster, ancestor, shape/simple/hidden-central metadata, visual connector format settings, text formats, ordered Detail designators, role definitions, allowed/default variants, and attached output templates.
 - Output templates as text, including owner definition and external language references.
 - A deterministic domain `compatibilitySignature` for elements that affect Composition JSON import compatibility.
 - A `relationshipCompatibility` section summarizing each relationship definition's origin/target roles, allowed endpoint concept definition techNames when discoverable, allowed role variants, and simple/directional flags.
+
+Each version 2 definition-level Detail declaration preserves its stable `id`, kind, name/techName, text metadata, user-visible order, appearance, and—when it is a Table Detail—the referenced Table-Structure techName and ownership flag. Shared Domain Table-Structures also carry their stable id; constructor-owned Custom-Fields tables reconnect by owner plus techName because they are not independent top-level Domain objects. Composition JSON continues to own the instance records and values. The shared designator id is what lets those values reconnect after the embedded Domain is rehydrated.
 
 The exporter intentionally reports source/export warnings instead of inlining unsupported domain-level binary image resources, custom domain shapes, or unsafe native object graph details. Supported native visual format settings, including text formats and WPF brushes, are represented as JSON values. Repeated missing-category notices are grouped in summaries with examples so successful exports and imports do not look like failures.
 
@@ -93,6 +104,8 @@ Patch-only files use the top-level `operations` array:
 ```
 
 Supported operation values are `update`, `create`, and `delete`. Supported entity values include `domain`, `externalLanguage`, `linkRoleVariant`, `markerCluster`, `markerDefinition`, `conceptDefinitionCluster`, `relationshipDefinitionCluster`, `tableDefinitionCategory`, `fieldDefinitionCategory`, `tableDefinition`, `fieldDefinition`, `detailDesignator`, `conceptDefinition`, `relationshipDefinition`, `relationshipRole`, and `outputTemplate`.
+
+For a `detailDesignator` operation, identify the owning Concept or Relationship definition with `ownerId`/`ownerTechName` and preferably `ownerScope`. Put `kind` (`table`, `link`, or `attachment`) in `set`. A Table Detail also uses `set.tableDefinitionId` and/or `set.tableDefinitionTechName`; request a shared Domain Table-Structure with `set.tableDefinitionIsOwned: false`. After apply, re-export the Domain and put the emitted declaration `id` in the Composition value's `details[].designatorId` (with its matching `designatorTechName`). Do not call that field `definitionId` or invent an instance-only designator.
 
 Matching order is:
 
@@ -172,10 +185,10 @@ Sample documents are maintained under `samples/`:
 
 1. Open or create a `.tdom`.
 2. Patch root `/Domain.json` or use the CLI compatibility import path to update domain summary and TechSpec.
-3. Add a concept definition, table, field, link role variant, marker definition, relationship definition, roles, and output template.
+3. Add a concept definition, table, field, definition-level Table Detail that references the table, link role variant, marker definition, relationship definition, roles, and output template.
 4. Confirm dangerous delete examples are skipped with warnings when using a merge/import path.
 5. Save and reopen the `.tdom`.
-6. Confirm changes persist and no omitted native domain objects were deleted.
+6. Confirm the Detail designator keeps the same id/order/table reference, instance table rows reconnect in a containing Composition, and no omitted native domain objects were deleted.
 
 ## Re-Export Verification
 

@@ -148,6 +148,8 @@ Relationships support:
 
 Connectors are the visual lines between symbols. A connector represents a `RoleBasedLink`, which joins a relationship to an associated idea through a Link Role Definition.
 
+A connector route may contain an ordered set of bend points between its two symbol anchors. ThinkComposer uses these points to draw one continuous path, orient endpoint plugs, place link-role labels, and avoid symbols. A simple two-ended relationship still has a central relationship junction, so its visible path can combine bend points from both connector legs. Multi-ended relationships use the same connector model around a shared hub.
+
 ![Connector examples](assets/manual/page-17-compositions-04.png)
 
 Link role definitions can constrain:
@@ -157,6 +159,8 @@ Link role definitions can constrain:
 - whether related ideas are ordered
 - which role variants are allowed
 - plug styles and connector appearance
+
+Automatic routing prefers a direct line when clear and otherwise uses a bounded orthogonal multi-bend path. Untouched hand-routed connectors are preserved; links incident to symbols moved by a layout or generated edit are recalculated so stale absolute bends do not remain behind.
 
 ## Markers
 

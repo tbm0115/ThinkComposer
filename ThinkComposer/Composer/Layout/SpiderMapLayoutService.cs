@@ -125,7 +125,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 Result.FinalBoundsWithinSafeCanvas = NormalizeResult.IsWithinSafeBounds;
 
                 if (Options.RouteLinksAfterArrange)
-                    Result.RoutingResult = RouteScopeLinks(Context, Graph);
+                    Result.RoutingResult = RouteScopeLinks(Context, Graph, ScopeSymbols);
 
                 if (Result.HasMutations)
                     View.UpdateVersion();
@@ -514,9 +514,16 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                               LayoutBoundsNormalizer.FormatRect(Bounds));
         }
 
-        private static LinkObstacleRoutingResult RouteScopeLinks(LayoutSelectionContext Context, ConceptGraph Graph)
+        private static LinkObstacleRoutingResult RouteScopeLinks(LayoutSelectionContext Context, ConceptGraph Graph,
+                                                                 IEnumerable<VisualSymbol> MovedSymbols)
         {
-            var Connectors = Graph.RelationshipRepresentations
+            var Moved = new HashSet<VisualSymbol>((MovedSymbols ?? Enumerable.Empty<VisualSymbol>()).Where(Symbol => Symbol != null));
+            var Incident = Context.VisibleRelationshipRepresentations
+                                  .Where(Representation => Representation != null &&
+                                         Representation.VisualConnectors.Any(Connector => Connector != null &&
+                                             (Moved.Contains(Connector.OriginSymbol) || Moved.Contains(Connector.TargetSymbol))));
+            var Connectors = Graph.RelationshipRepresentations.Concat(Incident)
+                                  .Distinct()
                                   .Where(Representation => Representation != null)
                                   .SelectMany(Representation => Representation.VisualConnectors)
                                   .Where(Connector => Connector != null)
@@ -533,7 +540,12 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var RouteContext = LayoutSelectionContext.FromViewSelection(Context.Engine, Context.ActiveView, Connectors);
             var RouteOptions = new LinkObstacleRoutingOptions();
             RouteOptions.RouteSelectedConnectorsOnly = true;
-            return LinkObstacleRoutingService.RouteVisibleConnectors(RouteContext, RouteOptions);
+            RouteOptions.PreserveExistingValidRoutes = false;
+            RouteOptions.RouteIntent = RelationshipRouteIntent.Layout;
+            RouteOptions.DirtyReason = "Spider Map moved endpoint symbols";
+            RouteOptions.Profile = RelationshipRoutingProfile.Spider;
+            RouteOptions.IncludeRelationshipCentralSymbolsAsObstacles = true;
+            return RelationshipRoutingCoordinator.Route(RouteContext, RouteOptions);
         }
 
         private static IEnumerable<VisualSymbol> GetNeighbors(ConceptGraph Graph, VisualSymbol Symbol)

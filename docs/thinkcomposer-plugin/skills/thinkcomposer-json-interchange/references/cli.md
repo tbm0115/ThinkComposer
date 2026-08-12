@@ -10,6 +10,7 @@ For user-facing installation, PATH, safety, and workflow guidance, see [Command-
 thinkcomposer composition export-json --input <file.tcom> --output <file.json>
 thinkcomposer composition export-image --input <file.tcom> --output <file.png|file.jpg|file.gif|file.tif|file.bmp> [--view <view-tech-name>] [--fit <idea-tech-name>] [--width <px>] [--height <px>] [--padding <px>] [--transparent]
 thinkcomposer composition import-json --input <file.tcom> --json <file.json> --output <file.tcom> [--in-place] [--preview-only]
+thinkcomposer composition validate-routing --input <file.tcom> --output-dir <dir> [--layout <route|spider|hierarchy|flowchart|system>]
 thinkcomposer composition validate-json-roundtrip --input <file.tcom> --output-dir <dir>
 thinkcomposer composition convert-json-persistence --input <file.tcom> --output <file.tcom>
 thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>
@@ -55,6 +56,23 @@ Pass `-User` after any helper command to update or check only the current user's
 Imports always require `--output`. The CLI refuses to overwrite the input path unless `--in-place` is also present and `--output` matches `--input`. `--preview-only` validates the input JSON and prints the planned import summary without saving any document.
 
 `domain update-embedded` is the CLI equivalent of `Composition -> Domain -> Update Embedded Domain...` for native `.tdom` sources. It previews or applies the safe embedded-domain merge, then writes a `.tcom` output.
+
+For GPT-assisted Composition edits, keep `/Composition.json` as an exact authoritative snapshot. Write a standalone `operations[]` patch, preview it, then apply the same patch through the safe output or explicit in-place path. Import directives embedded in root snapshot state are a legacy compatibility case, not the normal edit workflow.
+
+```cmd
+thinkcomposer composition import-json --input model.tcom --json change.patch.json --output model.updated.tcom --preview-only
+thinkcomposer composition import-json --input model.tcom --json change.patch.json --output model.updated.tcom
+thinkcomposer composition validate-routing --input model.updated.tcom --output-dir routing-check
+thinkcomposer composition export-image --input model.updated.tcom --output routing-check\result.png
+```
+
+Generated Relationship operations should request `autoRoute:true` and `visual.relationshipCenterPlacement:"endpointCorridor"`; omit explicit hub coordinates and connector route points.
+
+## Routing Validation
+
+`composition validate-routing` inspects Relationship hubs and connector geometry without rewriting unrelated manual routes. It reports nonfinite or oversized route-point collections, distant hubs, excessive detours, stale endpoints, and ambiguous connector identities. Persisted packages do not record who authored a route, so the CLI cannot infer GPT authorship; the plugin patch validator separately rejects generated `routePoints`/`intermediatePosition` by default. The output directory receives structured route-health diagnostics and, when supported by the selected profile, before/after route JSON and view images.
+
+Use `--layout route` for route-only validation, or `spider`, `hierarchy`, `flowchart`, or `system` to exercise the shared routing coordinator after that layout's placement policy. Runs are deterministic and suitable for idempotence and save/reopen checks. A degraded direct fallback is reported explicitly rather than silently accepting stale geometry.
 
 ## Image Export
 

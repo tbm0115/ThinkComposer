@@ -15,7 +15,7 @@ Use these findings to avoid failure modes observed during real ThinkComposer JSO
 
 ## Patch construction
 
-- Prefer patch-operation documents for edits to existing compositions. Avoid rewriting full exports unless the user explicitly asks.
+- Treat root `/Composition.json` as exact snapshot state. Write a standalone patch-operation document for edits and materialize it through CLI preview/apply; never leave one-shot directives in the authoritative snapshot.
 - Use ids from the export when available. Use `techName` when ids are absent or unstable.
 - Placeholder strings such as `existing-concept-guid` or `replace-with-root-composition-id` are examples only; they are not schema-valid UUIDs. Replace them before validation or explain that they intentionally require user replacement.
 - Some exports may contain `childIdeaIds` that do not appear in the exported `ideas` array. Do not chase or repair those references unless the user asks for consistency repair. Build patches against actual exported objects and include a warning if missing references affect the requested edit.
@@ -26,9 +26,13 @@ Use these findings to avoid failure modes observed during real ThinkComposer JSO
 - Prefer top-level `originIdeaIds`/`targetIdeaIds` when both endpoints have ids; otherwise use `set.links` with `roleType` and `ideaTechName`.
 - A create operation adds model data; it does not guarantee diagram visibility. Use explicit placement fields or a separate `place` operation when visibility matters.
 - Do not place a relationship visual in a composite view where one endpoint is the owner of that same view; create or repair model links and warn that the unsafe visual was skipped.
+- Generated Relationship operations should omit hub coordinates and connector geometry, set `autoRoute:true`, and request `visual.relationshipCenterPlacement:"endpointCorridor"`. Explicit hub coordinates require `relationshipCenterPlacement:"explicit"`.
+- The awkward distant sweeps observed in AI-edited diagrams were preserved faithfully by JSON; they were caused by distant authored hubs, snapshot-load suppression of requested routing/placement, and stale absolute bends after symbol movement—not by binary-to-JSON coordinate conversion.
+- Composition v2 `routePoints` are ordered interior absolute-view coordinates. Omission in a patch preserves them; `[]` clears them. Do not author them for generated routes unless exact expert-maintained geometry is explicitly requested and validated.
 
 ## Validation behavior
 
 - Run the bundled validator when possible. If the validator script is unavailable in the active environment, perform manual structural checks and state that schema validation was not executed.
 - Validate the exact JSON artifact that will be returned, not just intermediate snippets.
+- After a Composition patch, run `composition validate-routing` and inspect an exported view image. Treat nonfinite/oversized points, distant hubs, excessive detours, stale endpoints, and degraded fallbacks as actionable diagnostics.
 - When validation fails, report the schema path and the smallest repair, then regenerate and revalidate if possible.

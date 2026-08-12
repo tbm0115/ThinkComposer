@@ -36,12 +36,15 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             public VisualSymbol Symbol;
             public VisualSymbol OriginSymbol;
             public VisualSymbol TargetSymbol;
+            public IList<VisualSymbol> EndpointSymbols;
             public Rect OriginBounds;
             public Rect TargetBounds;
+            public IList<Rect> EndpointBounds;
             public Rect SymbolBounds;
             public Point OldCenter;
             public Point Midpoint;
             public Rect Corridor;
+            public bool IsSelfReference;
             public bool IsSuspicious;
             public string SuspiciousReason;
         }
@@ -125,7 +128,12 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             }
 
             var PlacedRelationshipBounds = Items.ToDictionary(Item => Item, Item => Item.SymbolBounds);
-            foreach (var Item in Items.OrderBy(Item => DescribeIdea(Item.Relationship), StringComparer.OrdinalIgnoreCase))
+            foreach (var Item in Items
+                .OrderBy(Item => Item.Relationship == null ? "~" : Item.Relationship.GlobalId.ToString("D"),
+                         StringComparer.Ordinal)
+                .ThenBy(Item => Item.Representation == null ? "~" : Item.Representation.GlobalId.ToString("D"),
+                        StringComparer.Ordinal)
+                .ThenBy(Item => DescribeIdea(Item.Relationship), StringComparer.OrdinalIgnoreCase))
             {
                 var Recompute = ShouldRecompute(Item, Options);
                 if (!Recompute)
@@ -145,11 +153,30 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                     .ToList();
                 if (!TryChooseCandidate(Item, ConceptSymbols, OtherRelationshipBounds, Options, out Best))
                 {
-                    Result.RelationshipCentersSkipped++;
-                    Result.AddWarning("No safe endpoint-corridor candidate was found for relationship '" + DescribeIdea(Item.Relationship) + "'.");
-                    Console.WriteLine("Relationship center placement warning: relationship={0}; no safe candidate near midpoint={1}; corridor={2}.",
-                                      DescribeIdea(Item.Relationship), FormatPoint(Item.Midpoint), FormatRect(Item.Corridor));
-                    continue;
+                    // Recompute is reached only for a suspicious hub or an explicitly forced
+                    // placement mode.  Preserving a known-distant center here recreates the
+                    // original giant-sweep failure, so choose the least-colliding deterministic
+                    // point inside the endpoint corridor and invalidate its stale routes.
+                    if (!TryChooseDegradedCandidate(Item, ConceptSymbols, OtherRelationshipBounds,
+                                                    Options, out Best))
+                    {
+                        Result.RelationshipCentersSkipped++;
+                        Result.AddWarning("No endpoint-corridor candidate was found for relationship '" +
+                                          DescribeIdea(Item.Relationship) + "'.");
+                        Console.WriteLine("Relationship center placement warning: relationship={0}; no corridor-local candidate near midpoint={1}; corridor={2}.",
+                                          DescribeIdea(Item.Relationship), FormatPoint(Item.Midpoint),
+                                          FormatRect(Item.Corridor));
+                        continue;
+                    }
+
+                    var DegradedWarning = "No collision-free endpoint-corridor candidate was found for relationship '" +
+                                          DescribeIdea(Item.Relationship) + "'; using deterministic degraded candidate '" +
+                                          Best.Label + "' with collision score " +
+                                          Best.CollisionScore.ToString("0.###", CultureInfo.InvariantCulture) + ".";
+                    Result.AddWarning(DegradedWarning);
+                    Console.WriteLine("Relationship center placement degraded: relationship={0}; candidate={1}; center={2}; collisions={3}; collisionScore={4:0.###}.",
+                                      DescribeIdea(Item.Relationship), Best.Label, FormatPoint(Best.Center),
+                                      Best.CollisionCount, Best.CollisionScore);
                 }
 
                 var NewBounds = BoundsAt(Item.SymbolBounds, Best.Center);
@@ -157,15 +184,32 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
                 if (Distance(Item.OldCenter, Best.Center) <= GeometryTolerance)
                 {
-                    Result.RelationshipCentersPreserved++;
-                    Item.Symbol.RenderElement();
+                    var HadStaleRoutePoints = Best.IsDegraded &&
+                        (Item.Representation.VisualConnectors ?? Enumerable.Empty<VisualConnector>())
+                        .Any(Connector => Connector != null && Connector.RoutePoints != null &&
+                                          Connector.RoutePoints.Count > 0);
+                    if (Best.IsDegraded)
+                        ClearStaleRoutePoints(Item.Representation);
+                    if (HadStaleRoutePoints)
+                    {
+                        Item.Representation.Render();
+                        Result.RelationshipCentersRecomputed++;
+                        Result.RecomputedRepresentations.Add(Item.Representation);
+                        Result.HasMutations = true;
+                    }
+                    else
+                    {
+                        Result.RelationshipCentersPreserved++;
+                        Item.Symbol.RenderElement();
+                    }
                 }
                 else
                 {
                     Item.Symbol.MoveTo(Best.Center.X, Best.Center.Y, true);
-                    ClearStaleIntermediatePositions(Item.Representation);
+                    ClearStaleRoutePoints(Item.Representation);
                     Item.Representation.Render();
                     Result.RelationshipCentersRecomputed++;
+                    Result.RecomputedRepresentations.Add(Item.Representation);
                     Result.HasMutations = true;
                 }
 
@@ -242,46 +286,187 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var OriginSymbols = OriginIdeas.Where(ConceptByIdea.ContainsKey).Select(Idea => ConceptByIdea[Idea]).Distinct().ToList();
             var TargetSymbols = TargetIdeas.Where(ConceptByIdea.ContainsKey).Select(Idea => ConceptByIdea[Idea]).Distinct().ToList();
 
-            if (OriginSymbols.Count != 1 || TargetSymbols.Count != 1)
+            // Prefer the actual endpoint representations connected to this hub. This is
+            // essential when the same Idea is represented more than once in a View and for
+            // n-ary relationships where an Idea-only lookup loses endpoint identity.
+            var VisualConnectors = Representation.VisualConnectors == null
+                                   ? new List<VisualConnector>()
+                                   : Representation.VisualConnectors.Where(Connector => Connector != null).ToList();
+            var ConnectorOrigins = VisualConnectors
+                .Where(Connector => Connector.TargetSymbol == Symbol && IsUsableVisibleSymbol(Connector.OriginSymbol))
+                .Select(Connector => Connector.OriginSymbol).Distinct().ToList();
+            var ConnectorTargets = VisualConnectors
+                .Where(Connector => Connector.OriginSymbol == Symbol && IsUsableVisibleSymbol(Connector.TargetSymbol))
+                .Select(Connector => Connector.TargetSymbol).Distinct().ToList();
+            if (ConnectorOrigins.Count > 0)
+                OriginSymbols = ConnectorOrigins;
+            if (ConnectorTargets.Count > 0)
+                TargetSymbols = ConnectorTargets;
+
+            var EndpointSymbols = OriginSymbols.Concat(TargetSymbols).Where(Endpoint => Endpoint != null).Distinct().ToList();
+            var ConnectorEndpointLegCount = VisualConnectors.Count(Connector =>
+                Connector.OriginSymbol == Symbol && IsUsableVisibleSymbol(Connector.TargetSymbol) ||
+                Connector.TargetSymbol == Symbol && IsUsableVisibleSymbol(Connector.OriginSymbol));
+            if (!IsPlaceableEndpointTopology(EndpointSymbols.Count, ConnectorEndpointLegCount))
             {
-                SkipReason = "relationship does not have exactly one visible origin and one visible target concept in the active view";
+                SkipReason = "relationship has fewer than two visible endpoint connector legs in the active view";
                 return false;
             }
 
-            var OriginBounds = OriginSymbols[0].TotalArea;
-            var TargetBounds = TargetSymbols[0].TotalArea;
+            var IsSelfReference = EndpointSymbols.Count == 1;
+            var OriginSymbol = OriginSymbols.FirstOrDefault() ?? EndpointSymbols[0];
+            var TargetSymbol = IsSelfReference
+                               ? EndpointSymbols[0]
+                               : TargetSymbols.FirstOrDefault(Endpoint => Endpoint != OriginSymbol) ??
+                                 EndpointSymbols.First(Endpoint => Endpoint != OriginSymbol);
+            var EndpointBounds = EndpointSymbols.Select(Endpoint => Endpoint.TotalArea).ToList();
+            var OriginBounds = OriginSymbol.TotalArea;
+            var TargetBounds = TargetSymbol.TotalArea;
             var SymbolBounds = Symbol.TotalArea;
-            if (!IsUsableRect(OriginBounds) || !IsUsableRect(TargetBounds) || !IsUsableRect(SymbolBounds))
+            if (EndpointBounds.Any(Bounds => !IsUsableRect(Bounds)) || !IsUsableRect(SymbolBounds))
             {
                 SkipReason = "relationship or endpoint symbol bounds are not usable";
                 return false;
             }
 
-            var Midpoint = MidpointOf(OriginSymbols[0].BaseCenter, TargetSymbols[0].BaseCenter);
-            var Corridor = Union(OriginBounds, TargetBounds);
+            var Midpoint = EndpointSymbols.Count == 2
+                           ? MidpointOf(EndpointSymbols[0].BaseCenter, EndpointSymbols[1].BaseCenter)
+                           : CoordinateMedian(EndpointSymbols.Select(Endpoint => Endpoint.BaseCenter));
+            var Corridor = EndpointBounds[0];
+            foreach (var Bounds in EndpointBounds.Skip(1))
+                Corridor.Union(Bounds);
             Corridor.Inflate(Options.CorridorPaddingX, Options.CorridorPaddingY);
 
-            var SuspiciousReason = GetSuspiciousReason(Symbol.BaseCenter, Midpoint, OriginSymbols[0].BaseCenter,
-                                                       TargetSymbols[0].BaseCenter, Corridor, Options);
+            var SuspiciousReason = IsSelfReference
+                                   ? GetSuspiciousReasonForSelfReference(Symbol.BaseCenter, Midpoint,
+                                                                        EndpointBounds[0], Corridor, Options)
+                                   : GetSuspiciousReasonForEndpoints(Symbol.BaseCenter, Midpoint,
+                                                                     EndpointSymbols.Select(Endpoint => Endpoint.BaseCenter),
+                                                                     Corridor, Options);
 
             Item = new RelationshipPlacementItem
             {
                 Representation = Representation,
                 Relationship = Representation.RepresentedRelationship,
                 Symbol = Symbol,
-                OriginSymbol = OriginSymbols[0],
-                TargetSymbol = TargetSymbols[0],
+                OriginSymbol = OriginSymbol,
+                TargetSymbol = TargetSymbol,
+                EndpointSymbols = EndpointSymbols,
                 OriginBounds = OriginBounds,
                 TargetBounds = TargetBounds,
+                EndpointBounds = EndpointBounds,
                 SymbolBounds = SymbolBounds,
                 OldCenter = Symbol.BaseCenter,
                 Midpoint = Midpoint,
                 Corridor = Corridor,
+                IsSelfReference = IsSelfReference,
                 IsSuspicious = !String.IsNullOrWhiteSpace(SuspiciousReason),
                 SuspiciousReason = SuspiciousReason
             };
 
             return true;
+        }
+
+        internal static bool IsPlaceableEndpointTopology(int DistinctEndpointCount, int ConnectorLegCount)
+        {
+            return DistinctEndpointCount >= 2 ||
+                   DistinctEndpointCount == 1 && ConnectorLegCount >= 2;
+        }
+
+        /// <summary>
+        /// Evaluates a persisted relationship hub against the actual symbols connected to it,
+        /// without moving or otherwise mutating the visual model.  The routing validator uses
+        /// this to catch the original failure mode where two individually straight connector
+        /// legs lead to a hub thousands of pixels away from both endpoint concepts.
+        /// </summary>
+        internal static bool TryEvaluateRelationshipCenter(RelationshipVisualRepresentation Representation,
+                                                           RelationshipVisualPlacementOptions Options,
+                                                           out Point ReferenceCenter,
+                                                           out Rect EndpointCorridor,
+                                                           out int EndpointCount,
+                                                           out double NormalizedDistance,
+                                                           out string SuspiciousReason)
+        {
+            ReferenceCenter = new Point(Double.NaN, Double.NaN);
+            EndpointCorridor = Rect.Empty;
+            EndpointCount = 0;
+            NormalizedDistance = 0.0;
+            SuspiciousReason = null;
+            Options = Options ?? new RelationshipVisualPlacementOptions();
+
+            // Validation also needs to inspect the hidden junction used by simple logical
+            // relationships; a distant hidden hub creates the same enormous connector sweep.
+            if (Representation == null || Representation.MainSymbol == null ||
+                !IsUsableRect(Representation.MainSymbol.TotalArea))
+                return false;
+
+            var Main = Representation.MainSymbol;
+            var EndpointLegs = (Representation.VisualConnectors ?? Enumerable.Empty<VisualConnector>())
+                .Where(Connector => Connector != null)
+                .Select(Connector => Connector.OriginSymbol == Main
+                                     ? Connector.TargetSymbol
+                                     : (Connector.TargetSymbol == Main ? Connector.OriginSymbol : null))
+                .Where(IsUsableVisibleSymbol)
+                .ToList();
+            var Endpoints = EndpointLegs
+                .Distinct()
+                .ToList();
+            if (EndpointLegs.Count < 2 || Endpoints.Count < 1)
+                return false;
+
+            var EndpointCenters = Endpoints.Select(Endpoint => Endpoint.BaseCenter).ToList();
+            var EndpointBounds = Endpoints.Select(Endpoint => Endpoint.TotalArea).ToList();
+            EndpointCount = Endpoints.Count;
+            ReferenceCenter = Endpoints.Count == 1
+                              ? EndpointCenters[0]
+                              : Endpoints.Count == 2
+                              ? MidpointOf(EndpointCenters[0], EndpointCenters[1])
+                              : CoordinateMedian(EndpointCenters);
+            EndpointCorridor = EndpointBounds[0];
+            foreach (var Bounds in EndpointBounds.Skip(1))
+                EndpointCorridor.Union(Bounds);
+            EndpointCorridor.Inflate(Options.CorridorPaddingX, Options.CorridorPaddingY);
+
+            var Span = Endpoints.Count == 1
+                       ? Math.Max(GeometryTolerance,
+                                  Math.Max(EndpointBounds[0].Width, EndpointBounds[0].Height))
+                       : GeometryTolerance;
+            for (var First = 0; First < EndpointCenters.Count; First++)
+                for (var Second = First + 1; Second < EndpointCenters.Count; Second++)
+                    Span = Math.Max(Span, Distance(EndpointCenters[First], EndpointCenters[Second]));
+            NormalizedDistance = Distance(Main.BaseCenter, ReferenceCenter) / Span;
+            SuspiciousReason = Endpoints.Count == 1
+                               ? GetSuspiciousReasonForSelfReference(Main.BaseCenter, ReferenceCenter,
+                                                                    EndpointBounds[0], EndpointCorridor, Options)
+                               : GetSuspiciousReasonForEndpoints(Main.BaseCenter, ReferenceCenter,
+                                                                 EndpointCenters, EndpointCorridor, Options);
+            return true;
+        }
+
+        internal static string GetSuspiciousRelationshipCenterReason(Point Center,
+                                                                      IEnumerable<Point> EndpointCenters,
+                                                                      IEnumerable<Rect> EndpointBounds,
+                                                                      RelationshipVisualPlacementOptions Options)
+        {
+            Options = Options ?? new RelationshipVisualPlacementOptions();
+            var Centers = (EndpointCenters ?? Enumerable.Empty<Point>()).ToList();
+            var Bounds = (EndpointBounds ?? Enumerable.Empty<Rect>()).ToList();
+            if (!IsUsablePoint(Center) || Centers.Count < 1 || Bounds.Count != Centers.Count ||
+                Centers.Any(Point => !IsUsablePoint(Point)) || Bounds.Any(Rectangle => !IsUsableRect(Rectangle)))
+                return "relationship center or endpoint geometry is invalid";
+
+            var Reference = Centers.Count == 1
+                            ? Centers[0]
+                            : Centers.Count == 2
+                            ? MidpointOf(Centers[0], Centers[1])
+                            : CoordinateMedian(Centers);
+            var Corridor = Bounds[0];
+            foreach (var Rectangle in Bounds.Skip(1))
+                Corridor.Union(Rectangle);
+            Corridor.Inflate(Options.CorridorPaddingX, Options.CorridorPaddingY);
+            return Centers.Count == 1
+                   ? GetSuspiciousReasonForSelfReference(Center, Reference, Bounds[0], Corridor, Options)
+                   : GetSuspiciousReasonForEndpoints(Center, Reference, Centers, Corridor, Options);
         }
 
         private static bool ShouldRecompute(RelationshipPlacementItem Item, RelationshipVisualPlacementOptions Options)
@@ -326,9 +511,8 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                                RelationshipVisualPlacementOptions Options,
                                                out RelationshipVisualPlacementCandidate Best)
         {
-            var ConceptObstacleBounds = ConceptSymbols.Where(Symbol => Symbol != null &&
-                                                                      Symbol != Item.OriginSymbol &&
-                                                                      Symbol != Item.TargetSymbol)
+            var EndpointSet = new HashSet<VisualSymbol>(Item.EndpointSymbols ?? new List<VisualSymbol>());
+            var ConceptObstacleBounds = ConceptSymbols.Where(Symbol => Symbol != null && !EndpointSet.Contains(Symbol))
                                                       .Select(Symbol =>
                                                       {
                                                           var Bounds = Symbol.TotalArea;
@@ -338,7 +522,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                                                       })
                                                       .ToList();
 
-            var EndpointBounds = new List<Rect> { Item.OriginBounds, Item.TargetBounds }
+            var EndpointBounds = (Item.EndpointBounds ?? new List<Rect> { Item.OriginBounds, Item.TargetBounds })
                 .Select(Bounds =>
                 {
                     Bounds.Inflate(Options.RelationshipCenterObstaclePadding, Options.RelationshipCenterObstaclePadding);
@@ -353,8 +537,10 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 Candidate.Bounds = BoundsAt(Item.SymbolBounds, Candidate.Center);
                 Candidate.InsideCorridor = Item.Corridor.Contains(Candidate.Center);
                 Candidate.DistanceFromMidpoint = Distance(Candidate.Center, Item.Midpoint);
-                Candidate.ConnectorLength = Distance(Item.OriginSymbol.BaseCenter, Candidate.Center) +
-                                            Distance(Candidate.Center, Item.TargetSymbol.BaseCenter);
+                Candidate.ConnectorLength = (Item.EndpointSymbols ?? new List<VisualSymbol>
+                                            { Item.OriginSymbol, Item.TargetSymbol })
+                                            .Where(Symbol => Symbol != null)
+                                            .Sum(Symbol => Distance(Symbol.BaseCenter, Candidate.Center));
 
                 string RejectReason;
                 if (!ValidateCandidate(Candidate, EndpointBounds, ConceptObstacleBounds, OtherRelationshipBounds, Options, out RejectReason))
@@ -374,6 +560,74 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             return Best != null;
         }
 
+        private static bool TryChooseDegradedCandidate(RelationshipPlacementItem Item,
+                                                       IList<VisualSymbol> ConceptSymbols,
+                                                       IList<Rect> OtherRelationshipBounds,
+                                                       RelationshipVisualPlacementOptions Options,
+                                                       out RelationshipVisualPlacementCandidate Best)
+        {
+            var EndpointSet = new HashSet<VisualSymbol>(Item.EndpointSymbols ?? new List<VisualSymbol>());
+            var ConceptObstacleBounds = ConceptSymbols.Where(Symbol => Symbol != null && !EndpointSet.Contains(Symbol))
+                .Select(Symbol =>
+                {
+                    var Bounds = Symbol.TotalArea;
+                    Bounds.Inflate(Options.RelationshipCenterObstaclePadding,
+                                   Options.RelationshipCenterObstaclePadding);
+                    return Bounds;
+                }).ToList();
+            var EndpointBounds = (Item.EndpointBounds ?? new List<Rect> { Item.OriginBounds, Item.TargetBounds })
+                .Select(Bounds =>
+                {
+                    Bounds.Inflate(Options.RelationshipCenterObstaclePadding,
+                                   Options.RelationshipCenterObstaclePadding);
+                    return Bounds;
+                }).ToList();
+
+            var Candidates = BuildCandidates(Item, Options).ToList();
+            foreach (var Candidate in Candidates)
+            {
+                Candidate.Bounds = BoundsAt(Item.SymbolBounds, Candidate.Center);
+                Candidate.InsideCorridor = Item.Corridor.Contains(Candidate.Center);
+                Candidate.DistanceFromMidpoint = Distance(Candidate.Center, Item.Midpoint);
+                Candidate.ConnectorLength = (Item.EndpointSymbols ?? new List<VisualSymbol>
+                                            { Item.OriginSymbol, Item.TargetSymbol })
+                                            .Where(Symbol => Symbol != null)
+                                            .Sum(Symbol => Distance(Symbol.BaseCenter, Candidate.Center));
+                var EndpointCollisions = EndpointBounds.Count(Bounds => Bounds.IntersectsWith(Candidate.Bounds));
+                var ConceptCollisions = ConceptObstacleBounds.Count(Bounds => Bounds.IntersectsWith(Candidate.Bounds));
+                var RelationshipCollisions = (OtherRelationshipBounds ?? new List<Rect>()).Count(Bounds =>
+                {
+                    var Expanded = Bounds;
+                    Expanded.Inflate(Options.RelationshipCenterOverlapPadding,
+                                     Options.RelationshipCenterOverlapPadding);
+                    return Expanded.IntersectsWith(Candidate.Bounds);
+                });
+                Candidate.CollisionCount = EndpointCollisions + ConceptCollisions + RelationshipCollisions;
+                Candidate.CollisionScore = EndpointCollisions * 1000000.0 +
+                                           ConceptCollisions * 10000.0 +
+                                           RelationshipCollisions * 100.0;
+                Candidate.Score = Candidate.CollisionScore +
+                                  ScoreCandidate(Candidate, Item, OtherRelationshipBounds, Options);
+                Candidate.IsDegraded = true;
+            }
+
+            Best = SelectLowestCollisionDegradedCandidate(Candidates);
+            return Best != null;
+        }
+
+        internal static RelationshipVisualPlacementCandidate SelectLowestCollisionDegradedCandidate(
+            IEnumerable<RelationshipVisualPlacementCandidate> Candidates)
+        {
+            return (Candidates ?? Enumerable.Empty<RelationshipVisualPlacementCandidate>())
+                .Where(Candidate => Candidate != null && Candidate.InsideCorridor &&
+                                    IsUsablePoint(Candidate.Center) && IsUsableRect(Candidate.Bounds))
+                .OrderBy(Candidate => Candidate.CollisionScore)
+                .ThenBy(Candidate => Candidate.CollisionCount)
+                .ThenBy(Candidate => Candidate.Score)
+                .ThenBy(Candidate => Candidate.Label, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+        }
+
         private static IEnumerable<RelationshipVisualPlacementCandidate> BuildCandidates(RelationshipPlacementItem Item,
                                                                                          RelationshipVisualPlacementOptions Options)
         {
@@ -384,6 +638,15 @@ namespace Instrumind.ThinkComposer.Composer.Layout
 
             Direction.Normalize();
             var Perpendicular = new Vector(-Direction.Y, Direction.X);
+
+            if (Item.IsSelfReference)
+            {
+                var SelfCenters = GetSelfReferenceCandidateCenters(Item.EndpointBounds[0], Item.SymbolBounds,
+                                                                    Item.Midpoint, Options);
+                var Labels = new[] { "self-right", "self-bottom", "self-left", "self-top" };
+                for (var Index = 0; Index < SelfCenters.Count; Index++)
+                    yield return Candidate(SelfCenters[Index], Labels[Index]);
+            }
 
             yield return Candidate(Item.Midpoint, "midpoint");
             yield return Candidate(ClampToRect(Item.Midpoint, Item.Corridor), "corridor-clamped-midpoint");
@@ -400,6 +663,21 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 yield return Candidate(Item.Midpoint + new Vector(0, Step), "vertical+" + Step.ToString("0", CultureInfo.InvariantCulture));
                 yield return Candidate(Item.Midpoint - new Vector(0, Step), "vertical-" + Step.ToString("0", CultureInfo.InvariantCulture));
             }
+        }
+
+        internal static IList<Point> GetSelfReferenceCandidateCenters(Rect EndpointBounds, Rect SymbolBounds,
+                                                                       Point EndpointCenter,
+                                                                       RelationshipVisualPlacementOptions Options)
+        {
+            Options = Options ?? new RelationshipVisualPlacementOptions();
+            var Clearance = Math.Max(1.0, Options.RelationshipCenterObstaclePadding + 1.0);
+            return new List<Point>
+            {
+                new Point(EndpointBounds.Right + Clearance + SymbolBounds.Width / 2.0, EndpointCenter.Y),
+                new Point(EndpointCenter.X, EndpointBounds.Bottom + Clearance + SymbolBounds.Height / 2.0),
+                new Point(EndpointBounds.Left - Clearance - SymbolBounds.Width / 2.0, EndpointCenter.Y),
+                new Point(EndpointCenter.X, EndpointBounds.Top - Clearance - SymbolBounds.Height / 2.0)
+            };
         }
 
         private static RelationshipVisualPlacementCandidate Candidate(Point Center, string Label)
@@ -461,14 +739,14 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             return Score;
         }
 
-        private static void ClearStaleIntermediatePositions(RelationshipVisualRepresentation Representation)
+        private static void ClearStaleRoutePoints(RelationshipVisualRepresentation Representation)
         {
             if (Representation == null)
                 return;
 
             foreach (var Connector in Representation.VisualConnectors.Where(Connector => Connector != null))
-                if (Connector.IntermediatePosition != Display.NULL_POINT)
-                    Connector.UpdateIntermediatePoint(Display.NULL_POINT);
+                if (Connector.RoutePoints != null && Connector.RoutePoints.Count > 0)
+                    Connector.ClearRoutePoints();
         }
 
         private static string GetSuspiciousReason(Point Center, Point Midpoint, Point Origin, Point Target, Rect Corridor,
@@ -477,16 +755,69 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var MidpointDistance = Distance(Center, Midpoint);
             var EndpointDistance = Math.Max(Distance(Origin, Target), GeometryTolerance);
 
-            if (MidpointDistance > Options.SuspiciousDistanceThreshold)
-                return "center is farther than suspicious distance threshold from endpoint midpoint";
-
             if (MidpointDistance > EndpointDistance * Options.SuspiciousDistanceMultiplier)
-                return "center is too far from endpoint midpoint relative to endpoint distance";
+                return MidpointDistance > Options.SuspiciousDistanceThreshold
+                       ? "center is farther than suspicious distance threshold and endpoint-relative limit"
+                       : "center is too far from endpoint midpoint relative to endpoint distance";
 
             if (!Corridor.Contains(Center))
                 return "center is outside endpoint corridor";
 
             return null;
+        }
+
+        private static string GetSuspiciousReasonForEndpoints(Point Center, Point Midpoint,
+                                                              IEnumerable<Point> Endpoints, Rect Corridor,
+                                                              RelationshipVisualPlacementOptions Options)
+        {
+            var Points = (Endpoints ?? Enumerable.Empty<Point>()).ToList();
+            if (Points.Count == 2)
+                return GetSuspiciousReason(Center, Midpoint, Points[0], Points[1], Corridor, Options);
+
+            var MidpointDistance = Distance(Center, Midpoint);
+            var EndpointSpan = GeometryTolerance;
+            for (var First = 0; First < Points.Count; First++)
+                for (var Second = First + 1; Second < Points.Count; Second++)
+                    EndpointSpan = Math.Max(EndpointSpan, Distance(Points[First], Points[Second]));
+
+            if (MidpointDistance > EndpointSpan * Options.SuspiciousDistanceMultiplier)
+                return MidpointDistance > Options.SuspiciousDistanceThreshold
+                       ? "center is farther than suspicious distance threshold and endpoint-relative limit"
+                       : "center is too far from endpoint median relative to endpoint span";
+            if (!Corridor.Contains(Center))
+                return "center is outside the multi-endpoint corridor";
+            return null;
+        }
+
+        private static string GetSuspiciousReasonForSelfReference(Point Center, Point EndpointCenter,
+                                                                  Rect EndpointBounds, Rect Corridor,
+                                                                  RelationshipVisualPlacementOptions Options)
+        {
+            var DistanceFromEndpoint = Distance(Center, EndpointCenter);
+            var EndpointSpan = Math.Max(GeometryTolerance,
+                                        Math.Max(EndpointBounds.Width, EndpointBounds.Height));
+            // A self-reference junction must sit outside its endpoint symbol so the two legs
+            // form a visible loop, but it must remain in the local inflated corridor.
+            if (DistanceFromEndpoint > Options.SuspiciousDistanceThreshold &&
+                DistanceFromEndpoint > EndpointSpan * Math.Max(4.0, Options.SuspiciousDistanceMultiplier))
+                return "self-reference center is excessively distant from its endpoint";
+            if (!Corridor.Contains(Center))
+                return "self-reference center is outside its local endpoint corridor";
+            return null;
+        }
+
+        private static Point CoordinateMedian(IEnumerable<Point> Source)
+        {
+            var Points = (Source ?? Enumerable.Empty<Point>()).ToList();
+            if (Points.Count == 0)
+                return new Point(0, 0);
+            var X = Points.Select(Point => Point.X).OrderBy(Value => Value).ToList();
+            var Y = Points.Select(Point => Point.Y).OrderBy(Value => Value).ToList();
+            var Middle = Points.Count / 2;
+            return Points.Count % 2 == 1
+                   ? new Point(X[Middle], Y[Middle])
+                   : new Point((X[Middle - 1] + X[Middle]) / 2.0,
+                               (Y[Middle - 1] + Y[Middle]) / 2.0);
         }
 
         private static int CountRelationshipOverlaps(IList<Rect> Bounds, double Padding)
@@ -517,9 +848,21 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         private static bool IsUsableRect(Rect Rect)
         {
             return !Double.IsNaN(Rect.X) &&
+                   !Double.IsInfinity(Rect.X) &&
                    !Double.IsNaN(Rect.Y) &&
+                   !Double.IsInfinity(Rect.Y) &&
+                   !Double.IsNaN(Rect.Width) &&
+                   !Double.IsInfinity(Rect.Width) &&
+                   !Double.IsNaN(Rect.Height) &&
+                   !Double.IsInfinity(Rect.Height) &&
                    Rect.Width > GeometryTolerance &&
                    Rect.Height > GeometryTolerance;
+        }
+
+        private static bool IsUsablePoint(Point Point)
+        {
+            return !Double.IsNaN(Point.X) && !Double.IsInfinity(Point.X) &&
+                   !Double.IsNaN(Point.Y) && !Double.IsInfinity(Point.Y);
         }
 
         private static Rect Union(Rect First, Rect Second)
@@ -650,6 +993,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         {
             this.Warnings = new List<string>();
             this.Issues = new List<RelationshipVisualPlacementIssue>();
+            this.RecomputedRepresentations = new List<RelationshipVisualRepresentation>();
         }
 
         public int RelationshipCentersInspected { get; set; }
@@ -662,6 +1006,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         public bool HasMutations { get; set; }
         public IList<string> Warnings { get; private set; }
         public IList<RelationshipVisualPlacementIssue> Issues { get; private set; }
+        public IList<RelationshipVisualRepresentation> RecomputedRepresentations { get; private set; }
 
         public void AddWarning(string Warning)
         {
@@ -688,6 +1033,9 @@ namespace Instrumind.ThinkComposer.Composer.Layout
         public bool InsideCorridor { get; set; }
         public double DistanceFromMidpoint { get; set; }
         public double ConnectorLength { get; set; }
+        public int CollisionCount { get; set; }
+        public double CollisionScore { get; set; }
+        public bool IsDegraded { get; set; }
         public double Score { get; set; }
     }
 

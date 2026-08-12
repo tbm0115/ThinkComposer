@@ -279,7 +279,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 ExpandGroupRegionForInternalRelationshipBubbles(GroupRegion, RelationshipInfos, Options, Result);
 
                 if (Options.RouteLinksAfterArrange)
-                    Result.RoutingResult = RouteScopeLinks(Context, Graph);
+                    Result.RoutingResult = RouteScopeLinks(Context, Graph, ScopeSymbols);
 
                 ValidateSystemMapLayout(RelationshipInfos, Placements, GroupRegion, Options, Result);
 
@@ -1521,9 +1521,16 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                    .FirstOrDefault();
         }
 
-        private static LinkObstacleRoutingResult RouteScopeLinks(LayoutSelectionContext Context, SystemGraph Graph)
+        private static LinkObstacleRoutingResult RouteScopeLinks(LayoutSelectionContext Context, SystemGraph Graph,
+                                                                 IEnumerable<VisualSymbol> MovedSymbols)
         {
-            var Connectors = Graph.RelationshipRepresentations
+            var Moved = new HashSet<VisualSymbol>((MovedSymbols ?? Enumerable.Empty<VisualSymbol>()).Where(Symbol => Symbol != null));
+            var Incident = Context.VisibleRelationshipRepresentations
+                                  .Where(Representation => Representation != null &&
+                                         Representation.VisualConnectors.Any(Connector => Connector != null &&
+                                             (Moved.Contains(Connector.OriginSymbol) || Moved.Contains(Connector.TargetSymbol))));
+            var Connectors = Graph.RelationshipRepresentations.Concat(Incident)
+                                  .Distinct()
                                   .Where(Representation => Representation != null)
                                   .SelectMany(Representation => Representation.VisualConnectors)
                                   .Where(Connector => Connector != null)
@@ -1540,8 +1547,12 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var RouteContext = LayoutSelectionContext.FromViewSelection(Context.Engine, Context.ActiveView, Connectors);
             var RouteOptions = new LinkObstacleRoutingOptions();
             RouteOptions.RouteSelectedConnectorsOnly = true;
+            RouteOptions.PreserveExistingValidRoutes = false;
+            RouteOptions.RouteIntent = RelationshipRouteIntent.Layout;
+            RouteOptions.DirtyReason = "System Map moved endpoint symbols and relationship hubs";
+            RouteOptions.Profile = RelationshipRoutingProfile.SystemMap;
             RouteOptions.IncludeRelationshipCentralSymbolsAsObstacles = true;
-            return LinkObstacleRoutingService.RouteVisibleConnectors(RouteContext, RouteOptions);
+            return RelationshipRoutingCoordinator.Route(RouteContext, RouteOptions);
         }
 
         private static void ValidateSystemMapLayout(IList<SystemRelationshipInfo> RelationshipInfos,

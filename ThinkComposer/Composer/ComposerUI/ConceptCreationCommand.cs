@@ -702,9 +702,10 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
             if (FirstConnected != null)
             {
                 var AimedQuadrant = DetermineAimedQuadrant(Source.MainSymbol.TotalArea,
-                                                           (FirstConnected.IntermediatePosition == Display.NULL_POINT
+                                                           (FirstConnected.RoutePoints.Count == 0
                                                             ? (FirstConnIsOrigin ? FirstConnected.OriginEdgePosition : FirstConnected.TargetEdgePosition)
-                                                            : FirstConnected.IntermediatePosition));
+                                                            : (FirstConnIsOrigin ? FirstConnected.RoutePoints[0]
+                                                                                 : FirstConnected.RoutePoints[FirstConnected.RoutePoints.Count - 1])));
 
                 if (Preferred == EAutoPositioningMode.HorizontalAlternated)
                 {
@@ -758,12 +759,12 @@ namespace Instrumind.ThinkComposer.Composer.ComposerUI
         {
             var UsedQuadrants = new List<EVecinityQuadrant>();
 
-            var ConnectingPoints = Source.OriginConnections.Select(conn => (conn.IntermediatePosition == Display.NULL_POINT
+            var ConnectingPoints = Source.OriginConnections.Select(conn => (conn.RoutePoints.Count == 0
                                                                                ? conn.OriginEdgePosition
-                                                                               : conn.IntermediatePosition))
-                                    .Concat(Source.TargetConnections.Select(conn => (conn.IntermediatePosition == Display.NULL_POINT
+                                                                               : conn.RoutePoints[0]))
+                                    .Concat(Source.TargetConnections.Select(conn => (conn.RoutePoints.Count == 0
                                                                                          ? conn.TargetEdgePosition
-                                                                                         : conn.IntermediatePosition)));
+                                                                                         : conn.RoutePoints[conn.RoutePoints.Count - 1])));
 
             foreach (var ConnectingPoint in ConnectingPoints)
                 UsedQuadrants.AddNew(DetermineAimedQuadrant(Source.TotalArea, ConnectingPoint));

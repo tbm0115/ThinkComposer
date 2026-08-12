@@ -6,10 +6,11 @@ import path from "node:path";
 import os from "node:os";
 import { Buffer } from "node:buffer";
 import { inflateRawSync } from "node:zlib";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const SERVER_NAME = "thinkcomposer";
-const SERVER_VERSION = "0.2.0";
+const SERVER_VERSION = "0.3.0";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = path.resolve(SCRIPT_DIR, "..");
 const DEFAULT_ROOT = process.env.THINKCOMPOSER_ROOT || findThinkComposerRoot(PLUGIN_ROOT) || process.cwd();
@@ -68,7 +69,7 @@ const tools = [
   },
   {
     name: "thinkcomposer_write_patch",
-    description: "Write a safe patch-style Composition JSON or Domain JSON document for compatibility imports or package-root JSON update planning.",
+    description: "Write a standalone, validated Composition or Domain operations patch. Apply it with thinkcomposer_apply_patch; do not splice its directives into authoritative package snapshots.",
     inputSchema: {
       type: "object",
       required: ["path", "kind", "operations"],
@@ -81,6 +82,27 @@ const tools = [
         warnings: { type: "array", items: { type: "string" } },
         extra: { type: "object", description: "Additional top-level JSON fields to merge into the patch." },
         overwrite: { type: "boolean", default: false }
+      }
+    }
+  },
+  {
+    name: "thinkcomposer_apply_patch",
+    description: "Preview and safely apply a standalone operations patch to a .tcom/.tdom package through the ThinkComposer CLI, producing a canonical saved package.",
+    inputSchema: {
+      type: "object",
+      required: ["input", "patch", "output"],
+      properties: {
+        input: { type: "string", description: "Source .tcom or .tdom package." },
+        patch: { type: "string", description: "Standalone Composition or Domain operations JSON patch." },
+        output: { type: "string", description: "Destination package. May equal input only when inPlace is true." },
+        kind: { type: "string", enum: ["composition", "domain", "auto"], default: "auto" },
+        inPlace: { type: "boolean", default: false },
+        previewOnly: { type: "boolean", default: false },
+        routingOutputDir: { type: "string", description: "Composition route-health output directory. Defaults beside the canonical output package." },
+        layout: { type: "string", enum: ["route", "spider", "hierarchy", "flowchart", "system"], default: "route" },
+        imageOutput: { type: "string", description: "Optional PNG/JPEG/etc. path for a post-apply visual export. Defaults to result.png under routingOutputDir for Composition patches." },
+        view: { type: "string", description: "Optional view TechName for the post-apply image export." },
+        cliPath: { type: "string", description: "Optional ThinkComposer.Cli.exe/thinkcomposer path override." }
       }
     }
   },
@@ -138,6 +160,8 @@ async function callTool(name, args = {}) {
       return validateJsonFile(args.path, args.kind || "auto");
     case "thinkcomposer_write_patch":
       return writePatch(args);
+    case "thinkcomposer_apply_patch":
+      return applyPatch(args);
     case "thinkcomposer_extract_container_artifacts":
       return extractContainerArtifacts(args);
     case "thinkcomposer_analyze_log":
@@ -247,6 +271,7 @@ async function summarizeJson(document, file) {
 
 function summarizeJsonDocument(document, sourceInfo) {
   const operations = Array.isArray(document.operations) ? document.operations : [];
+  const hasFullState = hasSnapshotState(document);
   const operationGroups = {};
   for (const operation of operations) {
     const key = `${operation?.op || "<missing-op>"}/${operation?.entity || "<missing-entity>"}`;
@@ -260,6 +285,7 @@ function summarizeJsonDocument(document, sourceInfo) {
     sizeBytes: sourceInfo.sizeBytes,
     warningsCount: Array.isArray(document.warnings) ? document.warnings.length : 0,
     operationsCount: operations.length,
+    documentKind: operations.length > 0 ? (hasFullState ? "hybrid" : "operationsPatch") : "snapshot",
     operationGroups
   };
 
@@ -275,6 +301,7 @@ function summarizeJsonDocument(document, sourceInfo) {
     summary.importOptions = document.importOptions || null;
     summary.visualStrategy = document.visualStrategy || null;
     summary.requires = document.requires || null;
+    summary.routeGeometry = summarizeCompositionGeometry(document);
   } else if (document.format === "ThinkComposer.DomainJsonInterchange") {
     summary.domain = pick(document.domain, ["id", "name", "techName", "summary", "version", "compatibilitySignature"]);
     summary.counts = {
@@ -290,6 +317,289 @@ function summarizeJsonDocument(document, sourceInfo) {
   }
 
   return summary;
+}
+
+function summarizeCompositionGeometry(document) {
+  const errors = [];
+  const warnings = [];
+  let connectors = 0;
+  let routePoints = 0;
+  let routePointFields = 0;
+  let suspiciousRoutes = 0;
+  let suspiciousCenters = 0;
+
+  const views = Array.isArray(document?.views) ? document.views : [];
+  const operations = Array.isArray(document?.operations) ? document.operations : [];
+  const relationships = Array.isArray(document?.relationships) ? document.relationships : [];
+  const relationshipByKey = new Map();
+  for (const relationship of relationships) {
+    for (const key of [relationship?.id, relationship?.techName]) {
+      if (isNonEmptyString(key)) relationshipByKey.set(String(key).toLowerCase(), relationship);
+    }
+  }
+
+  for (let viewIndex = 0; viewIndex < views.length; viewIndex += 1) {
+    const view = views[viewIndex] || {};
+    const visuals = Array.isArray(view.visuals) ? view.visuals : [];
+    const visualByRepresentationId = new Map();
+    const visualsByIdeaKey = new Map();
+    for (const visual of visuals) {
+      const representationKey = normalizeIdentityKey(visual?.representationId);
+      if (representationKey) visualByRepresentationId.set(representationKey, visual);
+      for (const key of [visual?.ideaId, visual?.ideaTechName]) {
+        const normalizedKey = normalizeIdentityKey(key);
+        if (!normalizedKey) continue;
+        const matches = visualsByIdeaKey.get(normalizedKey) || [];
+        matches.push(visual);
+        visualsByIdeaKey.set(normalizedKey, matches);
+      }
+    }
+    for (const matches of visualsByIdeaKey.values()) matches.sort(compareVisualIdentity);
+
+    for (let visualIndex = 0; visualIndex < visuals.length; visualIndex += 1) {
+      const visual = visuals[visualIndex] || {};
+      const visualLabel = `views[${viewIndex}].visuals[${visualIndex}]`;
+      const visualConnectors = Array.isArray(visual.connectors) ? visual.connectors : [];
+      for (let connectorIndex = 0; connectorIndex < visualConnectors.length; connectorIndex += 1) {
+        const connector = visualConnectors[connectorIndex] || {};
+        const label = `${visualLabel}.connectors[${connectorIndex}]`;
+        connectors += 1;
+
+        if (connector.routePoints !== undefined && !Array.isArray(connector.routePoints)) {
+          errors.push(`${label}.routePoints must be an array when present.`);
+          continue;
+        }
+        if (connector.routePoints !== undefined) routePointFields += 1;
+        if (Array.isArray(connector.routePoints) && connector.routePoints.length > 32) {
+          errors.push(`${label}.routePoints has ${connector.routePoints.length} points; maximum is 32.`);
+        }
+        if (Array.isArray(connector.routePoints) && connector.intermediatePosition !== undefined) {
+          warnings.push(`${label} supplies both routePoints and deprecated intermediatePosition; routePoints wins.`);
+        }
+
+        const points = Array.isArray(connector.routePoints)
+          ? connector.routePoints
+          : connector.intermediatePosition ? [connector.intermediatePosition] : [];
+        routePoints += points.length;
+        let invalid = false;
+        for (let pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
+          if (!isFinitePoint(points[pointIndex])) {
+            errors.push(`${label}.routePoints[${pointIndex}] must contain finite numeric x/y coordinates.`);
+            invalid = true;
+          }
+        }
+
+        if (points.length > 0 && !hasAny(connector, ["id", "linkId", "associatedIdeaId", "associatedIdeaTechName"])) {
+          warnings.push(`${label} contains route geometry without a stable connector/link identity.`);
+        }
+        if (operations.length > 0 && points.length > 0) {
+          warnings.push(`${label} contains explicit connector geometry in a generated/edit document; prefer endpointCorridor plus autoRoute.`);
+        }
+
+        const origin = finitePointOrNull(connector.originEdgePosition) || finitePointOrNull(connector.originPosition);
+        const target = finitePointOrNull(connector.targetEdgePosition) || finitePointOrNull(connector.targetPosition);
+        if (!invalid && origin && target && points.length > 0 && isSuspiciousRoute(origin, target, points)) {
+          suspiciousRoutes += 1;
+          warnings.push(`${label} has an excessive detour or a control point outside its endpoint corridor; queue it for auto-routing unless exact geometry is intentional.`);
+        }
+      }
+
+      const relationship = relationshipByKey.get(String(visual.ideaId || visual.ideaTechName || "").toLowerCase());
+      const relationshipCenter = visualCenter(visual);
+      if (!relationship || !relationshipCenter) continue;
+      const endpointCenters = resolveRelationshipEndpointCenters(visual, relationship, visualConnectors,
+        relationshipCenter, visualByRepresentationId, visualsByIdeaKey);
+      if (endpointCenters.length >= 2 && isSuspiciousRelationshipCenter(relationshipCenter, endpointCenters)) {
+        suspiciousCenters += 1;
+        warnings.push(`${visualLabel} places a Relationship center outside the local endpoint corridor; generated edits should omit its x/y and request endpointCorridor placement.`);
+      }
+    }
+  }
+
+  return { connectors, routePoints, routePointFields, suspiciousRoutes, suspiciousCenters, errors, warnings };
+}
+
+function resolveRelationshipEndpointCenters(relationshipVisual, relationship, connectors, relationshipCenter,
+  visualByRepresentationId, visualsByIdeaKey) {
+  const endpointVisuals = [];
+  const usedVisualKeys = new Set();
+  const links = Array.isArray(relationship?.links) ? relationship.links : [];
+  const linksById = new Map();
+  for (const link of links) {
+    const key = normalizeIdentityKey(link?.id);
+    if (key) linksById.set(key, link);
+  }
+
+  const remember = (visual) => {
+    if (!visual || visual === relationshipVisual) return;
+    const key = stableVisualKey(visual);
+    if (usedVisualKeys.has(key)) return;
+    usedVisualKeys.add(key);
+    endpointVisuals.push(visual);
+  };
+
+  for (const connector of connectors || []) {
+    remember(resolveConnectorEndpointVisual(relationshipVisual, connector, linksById, relationshipCenter,
+      visualByRepresentationId, visualsByIdeaKey, usedVisualKeys));
+  }
+
+  // Legacy and hand-authored snapshots may omit connector representation ids.  Fall
+  // back only through the semantic endpoint identity, choosing the nearest matching
+  // shortcut deterministically instead of whichever duplicate happened to be last.
+  for (const link of links) {
+    remember(chooseNearestIdentityVisual(endpointIdeaKeys(link), relationshipCenter,
+      visualsByIdeaKey, usedVisualKeys, relationshipVisual));
+  }
+
+  return endpointVisuals.map(visualCenter).filter(Boolean);
+}
+
+function resolveConnectorEndpointVisual(relationshipVisual, connector, linksById, relationshipCenter,
+  visualByRepresentationId, visualsByIdeaKey, usedVisualKeys) {
+  if (!connector || typeof connector !== "object") return null;
+  const relationshipRepresentationKey = normalizeIdentityKey(relationshipVisual?.representationId);
+  const originRepresentationKey = normalizeIdentityKey(connector.originRepresentationId);
+  const targetRepresentationKey = normalizeIdentityKey(connector.targetRepresentationId);
+  const endpointRepresentationKeys = [];
+
+  if (originRepresentationKey === relationshipRepresentationKey && targetRepresentationKey) {
+    endpointRepresentationKeys.push(targetRepresentationKey);
+  } else if (targetRepresentationKey === relationshipRepresentationKey && originRepresentationKey) {
+    endpointRepresentationKeys.push(originRepresentationKey);
+  } else {
+    for (const key of [originRepresentationKey, targetRepresentationKey]) {
+      if (key && key !== relationshipRepresentationKey && !endpointRepresentationKeys.includes(key)) {
+        endpointRepresentationKeys.push(key);
+      }
+    }
+  }
+
+  const exactMatches = endpointRepresentationKeys
+    .map((key) => visualByRepresentationId.get(key))
+    .filter((visual) => visual && visual !== relationshipVisual);
+  if (exactMatches.length > 0) {
+    return chooseNearestVisual(exactMatches, relationshipCenter, usedVisualKeys);
+  }
+
+  const semanticLink = linksById.get(normalizeIdentityKey(connector.linkId));
+  const keys = connectorEndpointIdeaKeys(connector, relationshipVisual, semanticLink);
+  return chooseNearestIdentityVisual(keys, relationshipCenter, visualsByIdeaKey,
+    usedVisualKeys, relationshipVisual);
+}
+
+function connectorEndpointIdeaKeys(connector, relationshipVisual, semanticLink) {
+  const relationshipKeys = new Set([
+    normalizeIdentityKey(relationshipVisual?.ideaId),
+    normalizeIdentityKey(relationshipVisual?.ideaTechName)
+  ].filter(Boolean));
+  const keys = [];
+  const add = (value) => {
+    const key = normalizeIdentityKey(value);
+    if (key && !relationshipKeys.has(key) && !keys.includes(key)) keys.push(key);
+  };
+  for (const value of [
+    connector?.associatedIdeaId, connector?.associatedIdeaTechName,
+    connector?.originIdeaId, connector?.originIdeaTechName,
+    connector?.targetIdeaId, connector?.targetIdeaTechName,
+    ...endpointIdeaKeys(semanticLink)
+  ]) add(value);
+  return keys;
+}
+
+function endpointIdeaKeys(link) {
+  return [link?.ideaId, link?.associatedIdeaId, link?.ideaTechName, link?.associatedIdeaTechName]
+    .map(normalizeIdentityKey)
+    .filter((key, index, keys) => key && keys.indexOf(key) === index);
+}
+
+function chooseNearestIdentityVisual(keys, referencePoint, visualsByIdeaKey, usedVisualKeys, excludedVisual) {
+  const matches = [];
+  const seen = new Set();
+  for (const key of keys || []) {
+    for (const visual of visualsByIdeaKey.get(normalizeIdentityKey(key)) || []) {
+      if (!visual || visual === excludedVisual) continue;
+      const visualKey = stableVisualKey(visual);
+      if (seen.has(visualKey)) continue;
+      seen.add(visualKey);
+      matches.push(visual);
+    }
+  }
+  return chooseNearestVisual(matches, referencePoint, usedVisualKeys);
+}
+
+function chooseNearestVisual(visuals, referencePoint, usedVisualKeys) {
+  const ranked = (visuals || [])
+    .map((visual) => ({ visual, center: visualCenter(visual), key: stableVisualKey(visual) }))
+    .filter((candidate) => candidate.center)
+    .sort((left, right) => {
+      const leftUsed = usedVisualKeys?.has(left.key) ? 1 : 0;
+      const rightUsed = usedVisualKeys?.has(right.key) ? 1 : 0;
+      if (leftUsed !== rightUsed) return leftUsed - rightUsed;
+      const distanceDelta = pointDistance(left.center, referencePoint) - pointDistance(right.center, referencePoint);
+      if (Math.abs(distanceDelta) > 1e-9) return distanceDelta;
+      return left.key.localeCompare(right.key);
+    });
+  return ranked.length > 0 ? ranked[0].visual : null;
+}
+
+function normalizeIdentityKey(value) {
+  return isNonEmptyString(value) ? String(value).trim().toLowerCase() : null;
+}
+
+function stableVisualKey(visual) {
+  const representationKey = normalizeIdentityKey(visual?.representationId);
+  if (representationKey) return `representation:${representationKey}`;
+  return `visual:${normalizeIdentityKey(visual?.ideaId) || normalizeIdentityKey(visual?.ideaTechName) || "unknown"}:` +
+    `${Number(visual?.x) || 0}:${Number(visual?.y) || 0}:${Number(visual?.width) || 0}:${Number(visual?.height) || 0}`;
+}
+
+function compareVisualIdentity(left, right) {
+  return stableVisualKey(left).localeCompare(stableVisualKey(right));
+}
+
+function isFinitePoint(value) {
+  return value && Number.isFinite(value.x) && Number.isFinite(value.y);
+}
+
+function finitePointOrNull(value) {
+  return isFinitePoint(value) ? { x: value.x, y: value.y } : null;
+}
+
+function visualCenter(visual) {
+  if (!visual || !Number.isFinite(visual.x) || !Number.isFinite(visual.y)) return null;
+  return {
+    x: visual.x + (Number.isFinite(visual.width) ? visual.width / 2 : 0),
+    y: visual.y + (Number.isFinite(visual.height) ? visual.height / 2 : 0)
+  };
+}
+
+function pointDistance(left, right) {
+  return Math.hypot(right.x - left.x, right.y - left.y);
+}
+
+function isSuspiciousRoute(origin, target, routePoints) {
+  const direct = pointDistance(origin, target);
+  const manhattan = Math.abs(target.x - origin.x) + Math.abs(target.y - origin.y);
+  const margin = Math.max(96, 0.5 * manhattan);
+  const minX = Math.min(origin.x, target.x) - margin;
+  const maxX = Math.max(origin.x, target.x) + margin;
+  const minY = Math.min(origin.y, target.y) - margin;
+  const maxY = Math.max(origin.y, target.y) + margin;
+  if (routePoints.some((point) => point.x < minX || point.x > maxX || point.y < minY || point.y > maxY)) return true;
+  const path = [origin, ...routePoints, target];
+  let length = 0;
+  for (let index = 1; index < path.length; index += 1) length += pointDistance(path[index - 1], path[index]);
+  return length > Math.max(3 * direct, direct + 384);
+}
+
+function isSuspiciousRelationshipCenter(center, endpoints) {
+  const xs = endpoints.map((point) => point.x);
+  const ys = endpoints.map((point) => point.y);
+  const width = Math.max(...xs) - Math.min(...xs);
+  const height = Math.max(...ys) - Math.min(...ys);
+  const margin = Math.max(64, 0.25 * (width + height));
+  return center.x < Math.min(...xs) - margin || center.x > Math.max(...xs) + margin ||
+    center.y < Math.min(...ys) - margin || center.y > Math.max(...ys) + margin;
 }
 
 async function summarizeContainerFile(rawPath, options = {}) {
@@ -453,8 +763,26 @@ async function validateContainerFile(file) {
     if (key === "domain" && embedded.format !== "ThinkComposer.DomainJsonInterchange") {
       errors.push("Embedded Domain JSON format must be ThinkComposer.DomainJsonInterchange.");
     }
-    if (embedded.formatVersion !== 1) {
-      errors.push(`Embedded ${key} JSON formatVersion must be 1.`);
+    const supportedVersions = key === "domain" ? [1] : [1, 2];
+    if (!supportedVersions.includes(embedded.formatVersion)) {
+      errors.push(`Embedded ${key} JSON formatVersion must be ${supportedVersions.join(" or ")}.`);
+    }
+    if ((key === "composition" || key === "templateComposition") && embedded.formatVersion === 1 &&
+        (embedded.routeGeometry?.routePointFields || 0) > 0) {
+      errors.push(`Embedded ${key} uses routePoints with formatVersion 1. Upgrade it to version 2 to prevent older readers from dropping multi-point geometry.`);
+    }
+    if ((key === "composition" || key === "templateComposition") && embedded.operationsCount > 0) {
+      warnings.push(`Authoritative ${key} JSON contains operations. Treat them as legacy one-shot edit directives and save immediately after opening to consume them.`);
+    }
+    if ((key === "composition" || key === "templateComposition") &&
+        embedded.operationsCount === 0 && (embedded.importOptions || embedded.visualStrategy)) {
+      warnings.push(`Authoritative ${key} snapshot contains importOptions/visualStrategy without operations; native snapshot rehydration ignores these edit directives.`);
+    }
+    for (const problem of embedded.routeGeometry?.errors || []) {
+      errors.push(`Embedded ${key}: ${problem}`);
+    }
+    for (const problem of embedded.routeGeometry?.warnings || []) {
+      warnings.push(`Embedded ${key}: ${problem}`);
     }
   }
   if (summary.counts.renderablePreviews < 1) {
@@ -497,7 +825,7 @@ async function validateContainerFile(file) {
     errors,
     warnings,
     summary,
-    importMenu: "Patch authoritative root JSON in the .tcom/.tdom package, refresh /manifest.json authoritative part metadata, then validate with package inspect and validate-json-persistence."
+    importMenu: "Keep authoritative root JSON as snapshot state. Write a standalone operations patch, preview/apply it through the CLI, then inspect and validate the canonical saved package."
   };
 }
 
@@ -587,8 +915,9 @@ async function validateJsonFile(rawPath, kind) {
   if (detectedKind === "unknown") {
     errors.push("Missing or unsupported ThinkComposer format field.");
   }
-  if (document.formatVersion !== 1) {
-    errors.push("formatVersion must be 1.");
+  const supportedVersions = detectedKind === "composition" ? [1, 2] : [1];
+  if (!supportedVersions.includes(document.formatVersion)) {
+    errors.push(`formatVersion must be ${supportedVersions.join(" or ")}.`);
   }
   if (document.operations !== undefined && !Array.isArray(document.operations)) {
     errors.push("operations must be an array when present.");
@@ -625,6 +954,22 @@ async function validateJsonFile(rawPath, kind) {
     }
   }
 
+  if (detectedKind === "composition") {
+    const geometry = summarizeCompositionGeometry(document);
+    errors.push(...geometry.errors);
+    warnings.push(...geometry.warnings);
+    const hasFullState = hasSnapshotState(document);
+    if (document.formatVersion === 1 && containsPropertyDeep(document.views, "routePoints")) {
+      errors.push("formatVersion 1 cannot contain routePoints. Upgrade the document to version 2 so older applications cannot silently discard multi-point geometry.");
+    }
+    if (operations.length > 0 && hasFullState) {
+      warnings.push("Document mixes full-state snapshot arrays and operations. Prefer a standalone operations-only patch for generated edits.");
+    }
+    if (operations.length === 0 && (document.importOptions || document.visualStrategy)) {
+      warnings.push("Snapshot contains importOptions/visualStrategy without operations. Native snapshot loading deliberately ignores these edit directives.");
+    }
+  }
+
   return {
     path: summary.path,
     kind: detectedKind,
@@ -633,12 +978,18 @@ async function validateJsonFile(rawPath, kind) {
     warnings,
     summary,
     importMenu: detectedKind === "domain"
-      ? "Patch root /Domain.json in the target .tdom/.tcom package and refresh /manifest.json; use thinkcomposer domain import-json only for compatibility previews."
-      : "Patch root /Composition.json in the target .tcom package and refresh /manifest.json; use thinkcomposer composition import-json only for compatibility previews."
+      ? "Apply this standalone patch with thinkcomposer domain import-json preview/apply, then validate the canonical saved package."
+      : "Apply this standalone patch with thinkcomposer composition import-json preview/apply, then validate the canonical saved package."
   };
 }
 
 function validateCompositionOperation(operation, label, errors, warnings) {
+  const placementMode = operationRelationshipPlacement(operation);
+  const autoRoute = operationAutoRoute(operation);
+  const hasVisualIntent = operationHasRelationshipVisualIntent(operation);
+  if (containsRouteGeometry(operation)) {
+    errors.push(`${label} supplies routePoints/intermediatePosition. GPT-authored connector geometry is disabled by default; request autoRoute:true instead.`);
+  }
   if (operation.op === "create" && operation.entity === "concept") {
     if (!isNonEmptyString(operation.definitionTechName)) {
       errors.push(`${label} create concept needs definitionTechName.`);
@@ -658,8 +1009,18 @@ function validateCompositionOperation(operation, label, errors, warnings) {
       errors.push(`${label} create relationship needs origin/target links.`);
     }
   }
-  if (operation.entity === "relationship" && operation.visual?.relationshipCenterPlacement === "explicit") {
+  if (operation.entity === "relationship" && placementMode === "explicit") {
     warnings.push(`${label} preserves explicit relationship-center placement; endpointCorridor or auto is usually better for generated diagrams.`);
+  }
+  if (operation.entity === "relationship" && operationHasCoordinate(operation) && placementMode !== "explicit") {
+    errors.push(`${label} supplies Relationship x/y without visual.relationshipCenterPlacement:"explicit". Omit the coordinates and request endpointCorridor, or declare explicit placement deliberately.`);
+  }
+  if (operation.entity === "relationship" && hasVisualIntent && autoRoute === false) {
+    warnings.push(`${label} disables auto-routing; generated Relationship edits normally set autoRoute:true.`);
+  }
+  if (operation.entity === "relationship" && operation.op !== "delete" && hasVisualIntent &&
+      !["explicit", "midpoint", "endpointCorridor", "auto", "hideGeneric", "defer"].includes(placementMode)) {
+    warnings.push(`${label} has no relationshipCenterPlacement; generated Relationship edits should request endpointCorridor.`);
   }
 }
 
@@ -677,6 +1038,13 @@ async function writePatch(args) {
   if (!Array.isArray(args.operations)) {
     throw new Error("operations must be an array.");
   }
+  if (kind === "composition" && args.operations.some(containsRouteGeometry)) {
+    throw new Error("Composition operations cannot author routePoints/intermediatePosition by default; request autoRoute:true instead.");
+  }
+  if (kind === "composition" && args.operations.some((operation) => operation?.entity === "relationship" &&
+      operationHasCoordinate(operation) && operationRelationshipPlacement(operation) !== "explicit")) {
+    throw new Error("Relationship x/y requires visual.relationshipCenterPlacement:\"explicit\"; otherwise omit hub coordinates and use endpointCorridor.");
+  }
 
   const target = path.resolve(String(args.path));
   if (path.extname(target).toLowerCase() !== ".json") {
@@ -687,15 +1055,53 @@ async function writePatch(args) {
     throw new Error(`Refusing to overwrite existing file: ${target}`);
   }
 
+  const normalizedOperations = args.operations.map((operation) => {
+    if (kind !== "composition" || !operation || operation.entity !== "relationship" ||
+        operation.op === "delete" || !operationHasRelationshipVisualIntent(operation)) return operation;
+    const normalized = { ...operation };
+    if (!operationHasAutoRoute(operation)) normalized.autoRoute = true;
+    if (!operationRelationshipPlacement(operation)) {
+      // Keep the default in the same visual-control location the author used.  The
+      // importer intentionally gives top-level visual precedence over set.visual, so
+      // manufacturing a top-level object here would otherwise shadow nested display,
+      // participation, and shortcut controls.
+      if (operation.visual && typeof operation.visual === "object" && !Array.isArray(operation.visual)) {
+        normalized.visual = {
+          ...operation.visual,
+          relationshipCenterPlacement: "endpointCorridor"
+        };
+      } else if (operation.set?.visual && typeof operation.set.visual === "object" && !Array.isArray(operation.set.visual)) {
+        normalized.set = {
+          ...operation.set,
+          visual: {
+            ...operation.set.visual,
+            relationshipCenterPlacement: "endpointCorridor"
+          }
+        };
+      } else {
+        normalized.visual = { relationshipCenterPlacement: "endpointCorridor" };
+      }
+    }
+    return normalized;
+  });
+  const defaultImportOptions = kind === "composition" ? {
+    autoRoutePlacedLinks: true,
+    relationshipVisualPlacementMode: "endpointCorridor",
+    recomputeSuspiciousRelationshipVisuals: true
+  } : null;
+  const extra = args.extra && typeof args.extra === "object" && !Array.isArray(args.extra) ? args.extra : {};
+  if (hasSnapshotState(extra, kind)) {
+    throw new Error(`extra cannot add ${kind === "domain" ? "Domain" : "Composition"} snapshot fields to a standalone operations patch.`);
+  }
   const document = {
+    ...extra,
     format: kind === "domain" ? "ThinkComposer.DomainJsonInterchange" : "ThinkComposer.JsonInterchange",
-    formatVersion: 1,
+    formatVersion: kind === "composition" ? 2 : 1,
     ...(kind === "composition" ? { application: "ThinkComposer" } : {}),
-    ...(args.extra && typeof args.extra === "object" && !Array.isArray(args.extra) ? args.extra : {}),
-    ...(args.importOptions ? { importOptions: args.importOptions } : {}),
+    ...(defaultImportOptions || args.importOptions ? { importOptions: { ...(defaultImportOptions || {}), ...(args.importOptions || {}) } } : {}),
     ...(args.visualStrategy ? { visualStrategy: args.visualStrategy } : {}),
     ...(Array.isArray(args.warnings) ? { warnings: args.warnings } : {}),
-    operations: args.operations
+    operations: normalizedOperations
   };
 
   await fs.writeFile(target, `${JSON.stringify(document, null, 2)}\n`, "utf8");
@@ -705,9 +1111,135 @@ async function writePatch(args) {
     bytesWritten: Buffer.byteLength(JSON.stringify(document, null, 2), "utf8") + 1,
     validation,
     importMenu: kind === "domain"
-      ? "Use this document to plan a root /Domain.json package update; CLI domain import-json remains a compatibility preview path."
-      : "Use this document to plan a root /Composition.json package update; CLI composition import-json remains a compatibility preview path."
+      ? "Preview and apply this standalone patch with thinkcomposer_apply_patch or the CLI domain import-json command."
+      : "Preview and apply this standalone patch with thinkcomposer_apply_patch or the CLI composition import-json command. Do not splice it into /Composition.json."
   };
+}
+
+async function applyPatch(args) {
+  const input = await resolveFile(args.input);
+  const patch = await resolveFile(args.patch);
+  const output = path.resolve(expandHome(String(args.output)));
+  const inPlace = args.inPlace === true;
+  const previewOnly = args.previewOnly === true;
+  const inputExtension = path.extname(input).toLowerCase();
+  if (!CONTAINER_EXTENSIONS.has(inputExtension)) throw new Error("input must be a .tcom or .tdom package.");
+  if (path.extname(output).toLowerCase() !== inputExtension) throw new Error("output must use the same package extension as input.");
+  if (path.resolve(input) === output && !inPlace) throw new Error("output may equal input only when inPlace is true.");
+
+  const patchDocument = await readJson(patch);
+  const detectedKind = patchDocument.format === "ThinkComposer.DomainJsonInterchange" ? "domain" :
+    patchDocument.format === "ThinkComposer.JsonInterchange" ? "composition" : null;
+  const requestedKind = args.kind && args.kind !== "auto" ? args.kind : detectedKind;
+  if (!requestedKind || !["composition", "domain"].includes(requestedKind)) throw new Error("Cannot determine whether patch is composition or domain JSON.");
+  if (detectedKind && requestedKind !== detectedKind) throw new Error(`Patch kind is ${detectedKind}, not ${requestedKind}.`);
+  if (!Array.isArray(patchDocument.operations) || patchDocument.operations.length < 1) {
+    throw new Error("Apply-patch requires a standalone document with at least one operation.");
+  }
+  if (hasSnapshotState(patchDocument, requestedKind)) {
+    throw new Error("Apply-patch refuses hybrid full-state documents. Supply an operations-only patch.");
+  }
+  const patchValidation = await validateJsonFile(patch, requestedKind);
+  if (!patchValidation.ok) throw new Error(`Patch validation failed: ${patchValidation.errors.join(" ")}`);
+
+  const cli = await resolveThinkComposerCli(args.cliPath);
+  await fs.mkdir(path.dirname(output), { recursive: true });
+  const commandArgs = [requestedKind, "import-json", "--input", input, "--json", patch, "--output", output];
+  if (inPlace) commandArgs.push("--in-place");
+  const preview = await runCommand(cli, [...commandArgs, "--preview-only"]);
+  if (preview.exitCode !== 0) {
+    throw new Error(`ThinkComposer patch preview failed (${preview.exitCode}). ${preview.stderr || preview.stdout}`.trim());
+  }
+  if (previewOnly) {
+    return { input, patch, output, kind: requestedKind, cli, previewOnly: true, patchValidation, preview };
+  }
+
+  const apply = await runCommand(cli, commandArgs);
+  if (apply.exitCode !== 0) {
+    throw new Error(`ThinkComposer patch apply failed (${apply.exitCode}). ${apply.stderr || apply.stdout}`.trim());
+  }
+  const packageValidation = await validateContainerFile(output);
+  let routingValidation = null;
+  let routingHealth = null;
+  let imageExport = null;
+  if (requestedKind === "composition") {
+    const routingOutputDir = path.resolve(expandHome(String(args.routingOutputDir || `${output}.routing`)));
+    const layout = args.layout || "route";
+    await fs.mkdir(routingOutputDir, { recursive: true });
+    routingValidation = await runCommand(cli, ["composition", "validate-routing", "--input", output,
+      "--output-dir", routingOutputDir, "--layout", layout]);
+    const routingReportPath = path.join(routingOutputDir, `routing-report-${layout}.json`);
+    if (await exists(routingReportPath)) {
+      try {
+        routingHealth = await readJson(routingReportPath);
+      } catch (error) {
+        routingHealth = { parseError: error instanceof Error ? error.message : String(error), path: routingReportPath };
+      }
+    }
+
+    const imageOutput = path.resolve(expandHome(String(args.imageOutput || path.join(routingOutputDir, "result.png"))));
+    await fs.mkdir(path.dirname(imageOutput), { recursive: true });
+    const imageArgs = ["composition", "export-image", "--input", output, "--output", imageOutput];
+    if (args.view) imageArgs.push("--view", String(args.view));
+    imageExport = await runCommand(cli, imageArgs);
+  }
+  const postApplyWarnings = [];
+  if (packageValidation?.ok === false) postApplyWarnings.push("Canonical package validation failed.");
+  if (routingValidation && routingValidation.exitCode !== 0) postApplyWarnings.push("Relationship route-health validation failed.");
+  if (routingHealth?.before && ((routingHealth.before.invalid || 0) > 0 || (routingHealth.before.suspicious || 0) > 0)) {
+    postApplyWarnings.push(`Canonical package route health is not clean: suspicious=${routingHealth.before.suspicious || 0}, invalid=${routingHealth.before.invalid || 0}.`);
+  }
+  if (routingHealth?.parseError) postApplyWarnings.push("Routing report could not be parsed.");
+  if (imageExport && imageExport.exitCode !== 0) postApplyWarnings.push("Post-apply view image export failed.");
+  const ok = postApplyWarnings.length === 0;
+  return {
+    ok,
+    status: ok ? "appliedAndVerified" : "appliedWithVerificationFailures",
+    input,
+    patch,
+    output,
+    kind: requestedKind,
+    cli,
+    previewOnly: false,
+    patchValidation,
+    preview,
+    apply,
+    packageValidation,
+    routingValidation,
+    routingHealth,
+    imageExport,
+    warnings: postApplyWarnings
+  };
+}
+
+async function resolveThinkComposerCli(rawPath) {
+  const explicit = rawPath || process.env.THINKCOMPOSER_CLI;
+  if (explicit) return resolveFile(explicit);
+  const candidates = [
+    path.join(DEFAULT_ROOT, "ThinkComposer.Cli", "bin", "Release", "ThinkComposer.Cli.exe"),
+    path.join(DEFAULT_ROOT, "ThinkComposer.Cli", "bin", "Debug", "ThinkComposer.Cli.exe")
+  ];
+  for (const pathDirectory of String(process.env.PATH || "").split(path.delimiter).filter(Boolean)) {
+    candidates.push(path.join(pathDirectory, "ThinkComposer.Cli.exe"));
+    candidates.push(path.join(pathDirectory, "thinkcomposer.exe"));
+  }
+  for (const candidate of candidates) {
+    if (await exists(candidate)) return path.resolve(candidate);
+  }
+  throw new Error("Cannot locate ThinkComposer.Cli.exe. Set THINKCOMPOSER_CLI or pass cliPath.");
+}
+
+function runCommand(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { windowsHide: true, shell: false });
+    let stdout = "";
+    let stderr = "";
+    const append = (current, chunk) => `${current}${chunk}`.slice(-1024 * 1024);
+    child.stdout.on("data", (chunk) => { stdout = append(stdout, chunk.toString()); });
+    child.stderr.on("data", (chunk) => { stderr = append(stderr, chunk.toString()); });
+    child.on("error", reject);
+    child.on("close", (exitCode) => resolve({ exitCode, stdout: stdout.trim(), stderr: stderr.trim() }));
+  });
 }
 
 async function analyzeLog(args) {
@@ -1024,6 +1556,78 @@ function pick(source, keys) {
 
 function hasAny(source, keys) {
   return keys.some((key) => source[key] !== undefined && source[key] !== null);
+}
+
+function hasSnapshotState(document, expectedKind = null) {
+  if (!document || typeof document !== "object" || Array.isArray(document)) return false;
+  const kind = expectedKind || (document.format === "ThinkComposer.DomainJsonInterchange" ? "domain" :
+    document.format === "ThinkComposer.JsonInterchange" ? "composition" : null);
+  const compositionKeys = ["composition", "ideas", "relationships", "views"];
+  const domainKeys = ["domain", "externalLanguages", "linkRoleVariants", "conceptDefinitionClusters",
+    "relationshipDefinitionClusters", "markerClusters", "markerDefinitions", "tableDefinitionCategories",
+    "fieldDefinitionCategories", "tableDefinitions", "conceptDefinitions", "relationshipDefinitions",
+    "conceptDefinitionOutputTemplates", "relationshipDefinitionOutputTemplates", "relationshipCompatibility"];
+  const keys = kind === "domain" ? domainKeys : kind === "composition" ? compositionKeys : compositionKeys.concat(domainKeys);
+  return keys.some((key) => Object.prototype.hasOwnProperty.call(document, key));
+}
+
+function operationVisual(operation) {
+  if (!operation || typeof operation !== "object") return null;
+  if (operation.visual && typeof operation.visual === "object" && !Array.isArray(operation.visual)) return operation.visual;
+  const nested = operation.set?.visual;
+  return nested && typeof nested === "object" && !Array.isArray(nested) ? nested : null;
+}
+
+function operationRelationshipPlacement(operation) {
+  const visual = operationVisual(operation);
+  return isNonEmptyString(visual?.relationshipCenterPlacement) ? visual.relationshipCenterPlacement : null;
+}
+
+function operationHasCoordinate(operation) {
+  return Number.isFinite(operation?.x) || Number.isFinite(operation?.y) ||
+    Number.isFinite(operation?.set?.x) || Number.isFinite(operation?.set?.y);
+}
+
+function operationHasAutoRoute(operation) {
+  return typeof operation?.autoRoute === "boolean" || typeof operation?.set?.autoRoute === "boolean";
+}
+
+function operationAutoRoute(operation) {
+  if (typeof operation?.autoRoute === "boolean") return operation.autoRoute;
+  return typeof operation?.set?.autoRoute === "boolean" ? operation.set.autoRoute : null;
+}
+
+function operationHasRelationshipVisualIntent(operation) {
+  if (!operation || operation.entity !== "relationship" || operation.op === "delete") return false;
+  if (["create", "place"].includes(operation.op)) return true;
+  if (operationVisual(operation)) return true;
+  if (operationAutoRoute(operation) === true) return true;
+  if (isNonEmptyString(operation.representationId) || isNonEmptyString(operation.set?.representationId)) return true;
+  return operationHasExplicitPlacement(operation);
+}
+
+function operationHasExplicitPlacement(operation) {
+  if (!operation || typeof operation !== "object") return false;
+  if (operationHasCoordinate(operation)) return true;
+  if (Number.isFinite(operation.width) || Number.isFinite(operation.height) ||
+      Number.isFinite(operation.set?.width) || Number.isFinite(operation.set?.height)) return true;
+  return [operation.viewId, operation.viewTechName, operation.set?.viewId, operation.set?.viewTechName]
+    .some(isNonEmptyString);
+}
+
+function containsPropertyDeep(value, propertyName) {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some((item) => containsPropertyDeep(item, propertyName));
+  if (Object.prototype.hasOwnProperty.call(value, propertyName)) return true;
+  return Object.values(value).some((item) => containsPropertyDeep(item, propertyName));
+}
+
+function containsRouteGeometry(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(containsRouteGeometry);
+  if (Object.prototype.hasOwnProperty.call(value, "routePoints") ||
+      Object.prototype.hasOwnProperty.call(value, "intermediatePosition")) return true;
+  return Object.values(value).some(containsRouteGeometry);
 }
 
 function isNonEmptyString(value) {

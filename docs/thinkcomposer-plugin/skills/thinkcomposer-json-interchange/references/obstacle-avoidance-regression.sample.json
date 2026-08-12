@@ -1,6 +1,6 @@
 {
   "format": "ThinkComposer.JsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "application": "ThinkComposer",
   "importOptions": {
     "autoPlaceNewItems": true,
@@ -73,7 +73,7 @@
       "set": {
         "name": "OA Test A Flow Should Route",
         "techName": "OA_Test_A_Flow_Should_Route",
-        "summary": "Hidden-central simple relationship expected to become one-bend L-shaped around the obstacle.",
+        "summary": "Hidden-central simple Relationship expected to take the shortest deterministic multi-point route around the obstacle.",
         "links": [
           {
             "roleType": "origin",
@@ -222,6 +222,6 @@
   ],
   "warnings": [
     "Sample for manually exercising Edit -> Appearance -> Route Links with Obstacle Avoidance. It can import into a fresh active composition because importOptions.useActiveCompositionAsContainer=true; otherwise create/open a composition with techName Test__Object_Avoidance or replace containerTechName values.",
-    "Expected result: Scenario A routes around the obstacle with a hidden-center one-bend route, Scenario B uses a hidden-center dogleg route, and Scenario C remains straight or is straightened."
+    "Expected result: Scenario A routes around the obstacle, Scenario B uses the required deterministic multi-bend corridor, and Scenario C remains straight or is simplified to straight."
   ]
 }

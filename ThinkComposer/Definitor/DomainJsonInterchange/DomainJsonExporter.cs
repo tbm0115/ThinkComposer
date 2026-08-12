@@ -262,7 +262,95 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             Result.IsVersionable = Source.IsVersionable;
             Result.CanAutomaticallyCreateRelatedConcepts = Source.CanAutomaticallyCreateRelatedConcepts;
             Result.DataTypeTechName = Source.CustomFieldsTableDef == null ? null : Source.CustomFieldsTableDef.TechName;
+            Result.DetailDesignators = ExportDetailDesignators(Source);
+            Result.DetailDesignatorsSpecified = true;
             Result.Set["visualSymbolFormat"] = ExportSymbolFormat(Source.DefaultSymbolFormat);
+            return Result;
+        }
+
+        private static List<DomainJsonDetailDesignator> ExportDetailDesignators(IdeaDefinition Source)
+        {
+            var Result = new List<DomainJsonDetailDesignator>();
+            if (Source == null || Source.DetailDesignators == null)
+                return Result;
+
+            for (var Index = 0; Index < Source.DetailDesignators.Count; Index++)
+            {
+                var Designator = Source.DetailDesignators[Index];
+                if (Designator == null)
+                    continue;
+
+                var Item = new DomainJsonDetailDesignator
+                {
+                    Id = IdOf(Designator),
+                    Kind = DetailDesignatorKind(Designator),
+                    Name = Designator.Name,
+                    TechName = Designator.TechName,
+                    Summary = Designator.Summary,
+                    Description = Display.XamlRichTextToPlainTextOrSelf(Designator.Description),
+                    TechSpec = Designator.TechSpec,
+                    Order = Index,
+                    Appearance = ExportDetailAppearance(Designator.DetailLook)
+                };
+
+                Item.Set["alterability"] = Designator.Alterability.ToString();
+
+                var TableDesignator = Designator as TableDetailDesignator;
+                if (TableDesignator != null)
+                {
+                    // Any table registered in the Domain collection is independently persisted
+                    // and therefore has a stable reference id, including a user-created table
+                    // marked as owned by this Detail. Constructor-owned CustomFields tables are
+                    // not top-level Domain objects, so their generated id is deliberately omitted
+                    // and they reconnect by owner + techName.
+                    var DeclaringTable = TableDesignator.DeclaringTableDefinition;
+                    var IsPersistedDomainTable = DeclaringTable != null && Source.OwnerDomain != null &&
+                                                 Source.OwnerDomain.TableDefinitions.Contains(DeclaringTable);
+                    Item.TableDefinitionId = IsPersistedDomainTable ? IdOf(DeclaringTable) : null;
+                    Item.TableDefinitionTechName = TableDesignator.DeclaringTableDefinition == null
+                                                   ? null
+                                                   : TableDesignator.DeclaringTableDefinition.TechName;
+                    Item.TableDefinitionIsOwned = TableDesignator.TableDefIsOwned;
+                    Item.FieldDefinitionId = IdOf(TableDesignator.ContainedTableSubOwner);
+                    Item.FieldDefinitionTechName = TableDesignator.ContainedTableSubOwner == null
+                                                   ? null
+                                                   : TableDesignator.ContainedTableSubOwner.TechName;
+                }
+
+                Result.Add(Item);
+            }
+
+            return Result;
+        }
+
+        private static string DetailDesignatorKind(DetailDesignator Source)
+        {
+            if (Source is TableDetailDesignator)
+                return "table";
+            if (Source is AttachmentDetailDesignator)
+                return "attachment";
+            if (Source is LinkDetailDesignator)
+                return "link";
+            return Source == null ? null : Source.GetType().Name;
+        }
+
+        private static Dictionary<string, object> ExportDetailAppearance(DetailAppearance Source)
+        {
+            var Result = new Dictionary<string, object>();
+            if (Source == null)
+                return Result;
+
+            Result["isDisplayed"] = Source.IsDisplayed;
+            Result["showTitle"] = Source.ShowTitle;
+
+            var TableLook = Source as TableAppearance;
+            if (TableLook != null)
+            {
+                Result["isMultiRecord"] = TableLook.IsMultiRecord;
+                Result["layout"] = TableLook.Layout.ToString();
+                Result["showFieldTitles"] = TableLook.ShowFieldTitles;
+            }
+
             return Result;
         }
 
@@ -660,10 +748,14 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                 Lines.Add("externalLanguage|id=" + IdOf(Language) + "|tech=" + Language.TechName.NullDefault(""));
 
             foreach (var ConceptDef in Existing(Domain.ConceptDefinitions).OrderBy(Item => StableKey(Item)))
+            {
                 Lines.Add("conceptDefinition|id=" + IdOf(ConceptDef) +
                           "|tech=" + ConceptDef.TechName.NullDefault("") +
                           "|ancestor=" + (ConceptDef.AncestorConceptDef == null ? "" : ConceptDef.AncestorConceptDef.TechName.NullDefault("")) +
                           "|table=" + (ConceptDef.CustomFieldsTableDef == null ? "" : ConceptDef.CustomFieldsTableDef.TechName.NullDefault("")));
+
+                AddDetailDesignatorSignatureLines(Lines, ConceptDef);
+            }
 
             foreach (var RelDef in Existing(Domain.RelationshipDefinitions).OrderBy(Item => StableKey(Item)))
             {
@@ -672,6 +764,8 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
                           "|simple=" + RelDef.IsSimple.ToString(CultureInfo.InvariantCulture) +
                           "|directional=" + RelDef.IsDirectional.ToString(CultureInfo.InvariantCulture) +
                           "|hideCentral=" + RelDef.HideCentralSymbolWhenSimple.ToString(CultureInfo.InvariantCulture));
+
+                AddDetailDesignatorSignatureLines(Lines, RelDef);
 
                 foreach (var Role in RolesOf(RelDef))
                     Lines.Add("relationshipRole|owner=" + RelDef.TechName.NullDefault("") +
@@ -736,6 +830,40 @@ namespace Instrumind.ThinkComposer.Definitor.DomainJsonInterchange
             }
 
             return Result;
+        }
+
+        private static void AddDetailDesignatorSignatureLines(List<string> Lines, IdeaDefinition Owner)
+        {
+            if (Lines == null || Owner == null || Owner.DetailDesignators == null)
+                return;
+
+            for (var Index = 0; Index < Owner.DetailDesignators.Count; Index++)
+            {
+                var Designator = Owner.DetailDesignators[Index];
+                if (Designator == null)
+                    continue;
+
+                var TableDesignator = Designator as TableDetailDesignator;
+                Lines.Add("detailDesignator|owner=" + Owner.TechName.NullDefault("") +
+                          "|order=" + Index.ToString(CultureInfo.InvariantCulture) +
+                          "|id=" + IdOf(Designator) +
+                          "|tech=" + Designator.TechName.NullDefault("") +
+                          "|kind=" + DetailKind(Designator) +
+                          "|table=" + (TableDesignator == null || TableDesignator.DeclaringTableDefinition == null
+                                       ? ""
+                                       : TableDesignator.DeclaringTableDefinition.TechName.NullDefault("")));
+            }
+        }
+
+        private static string DetailKind(DetailDesignator Source)
+        {
+            if (Source is TableDetailDesignator)
+                return "table";
+            if (Source is AttachmentDetailDesignator)
+                return "attachment";
+            if (Source is LinkDetailDesignator)
+                return "link";
+            return Source == null ? "" : Source.GetType().Name;
         }
 
         private static IEnumerable<LinkRoleDefinition> RolesOf(RelationshipDefinition Definition)

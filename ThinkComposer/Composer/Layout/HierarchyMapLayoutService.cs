@@ -146,7 +146,7 @@ namespace Instrumind.ThinkComposer.Composer.Layout
                 }
 
                 if (Options.RouteLinksAfterArrange)
-                    Result.RoutingResult = RouteScopeLinks(Context, Graph);
+                    Result.RoutingResult = RouteScopeLinks(Context, Graph, ScopeSymbols);
 
                 if (Result.HasMutations)
                     View.UpdateVersion();
@@ -603,9 +603,16 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             return Bounds ?? Rect.Empty;
         }
 
-        private static LinkObstacleRoutingResult RouteScopeLinks(LayoutSelectionContext Context, DirectedConceptGraph Graph)
+        private static LinkObstacleRoutingResult RouteScopeLinks(LayoutSelectionContext Context, DirectedConceptGraph Graph,
+                                                                 IEnumerable<VisualSymbol> MovedSymbols)
         {
-            var Connectors = Graph.RelationshipRepresentations
+            var Moved = new HashSet<VisualSymbol>((MovedSymbols ?? Enumerable.Empty<VisualSymbol>()).Where(Symbol => Symbol != null));
+            var Incident = Context.VisibleRelationshipRepresentations
+                                  .Where(Representation => Representation != null &&
+                                         Representation.VisualConnectors.Any(Connector => Connector != null &&
+                                             (Moved.Contains(Connector.OriginSymbol) || Moved.Contains(Connector.TargetSymbol))));
+            var Connectors = Graph.RelationshipRepresentations.Concat(Incident)
+                                  .Distinct()
                                   .Where(Representation => Representation != null)
                                   .SelectMany(Representation => Representation.VisualConnectors)
                                   .Where(Connector => Connector != null)
@@ -622,8 +629,12 @@ namespace Instrumind.ThinkComposer.Composer.Layout
             var RouteContext = LayoutSelectionContext.FromViewSelection(Context.Engine, Context.ActiveView, Connectors);
             var RouteOptions = new LinkObstacleRoutingOptions();
             RouteOptions.RouteSelectedConnectorsOnly = true;
+            RouteOptions.PreserveExistingValidRoutes = false;
+            RouteOptions.RouteIntent = RelationshipRouteIntent.Layout;
+            RouteOptions.DirtyReason = "Hierarchy Map moved endpoint symbols";
+            RouteOptions.Profile = RelationshipRoutingProfile.Hierarchy;
             RouteOptions.IncludeRelationshipCentralSymbolsAsObstacles = true;
-            return LinkObstacleRoutingService.RouteVisibleConnectors(RouteContext, RouteOptions);
+            return RelationshipRoutingCoordinator.Route(RouteContext, RouteOptions);
         }
 
         private static void RevealArrangedBounds(View View, HierarchyMapLayoutResult Result)

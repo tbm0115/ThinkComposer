@@ -38,6 +38,7 @@ using Instrumind.ThinkComposer;
 using Instrumind.ThinkComposer.ApplicationProduct;
 using Instrumind.ThinkComposer.Composer.ComposerUI;
 using Instrumind.ThinkComposer.Composer.ComposerUI.Widgets;
+using Instrumind.ThinkComposer.Composer.Layout;
 using Instrumind.ThinkComposer.MetaModel;
 using Instrumind.ThinkComposer.MetaModel.GraphMetaModel;
 using Instrumind.ThinkComposer.MetaModel.InformationMetaModel;
@@ -224,6 +225,42 @@ namespace Instrumind.ThinkComposer.Composer
                              (target) => target.GetDisplayingView().EditPropertiesOfVisualRepresentation(target.OwnerRepresentation)));
 
             // Connectors................................................................................................
+            ContextMenuOptionsForVisualConnectors.Add(new Tuple<SimplePresentationElement, Func<VisualConnector, FrameworkElement, bool?>, Action<VisualConnector>>
+                            (new SimplePresentationElement("Edit Route", "EditRoute", "Show bend and segment handles for this connector.", Display.GetAppImage("page_white_edit.png")),
+                             (target, vexpo) => true,
+                             (target) => target.GetDisplayingView().Manipulator.ApplySelection(target, false, false)));
+            ContextMenuOptionsForVisualConnectors.Add(new Tuple<SimplePresentationElement, Func<VisualConnector, FrameworkElement, bool?>, Action<VisualConnector>>
+                            (new SimplePresentationElement("Remove Bend", "RemoveBend", "Remove the route bend under the pointer.", Display.GetAppImage("actconn_delete.png")),
+                             (target, vexpo) => target.ContextRoutePointIndex >= 0 && target.ContextRoutePointIndex < target.RoutePoints.Count,
+                             (target) => target.DoRemoveRoutePoint(target.ContextRoutePointIndex)));
+            ContextMenuOptionsForVisualConnectors.Add(new Tuple<SimplePresentationElement, Func<VisualConnector, FrameworkElement, bool?>, Action<VisualConnector>>
+                            (new SimplePresentationElement("Simplify Route", "SimplifyRoute", "Remove duplicate and collinear route bends.", Display.GetAppImage("actconn_straighten.png")),
+                             (target, vexpo) => target.RoutePoints.Count > 0
+                                                 || (target.OwnerRelationshipRepresentation.MainSymbol.IsHidden
+                                                     && target.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value.IsSimple
+                                                     && target.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value.HideCentralSymbolWhenSimple
+                                                     && target.OwnerRelationshipRepresentation.VisualConnectors.Any(conn => conn.RoutePoints.Count > 0)),
+                             (target) => target.DoSimplifyRoute()));
+            ContextMenuOptionsForVisualConnectors.Add(new Tuple<SimplePresentationElement, Func<VisualConnector, FrameworkElement, bool?>, Action<VisualConnector>>
+                            (new SimplePresentationElement("Straighten Route", "StraightenRoute", "Remove every bend from this connector.", Display.GetAppImage("actconn_straighten.png")),
+                             (target, vexpo) => target.RoutePoints.Count > 0
+                                                 || (target.OwnerRelationshipRepresentation.MainSymbol.IsHidden
+                                                     && target.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value.IsSimple
+                                                     && target.OwnerRelationshipRepresentation.RepresentedRelationship.RelationshipDefinitor.Value.HideCentralSymbolWhenSimple
+                                                     && target.OwnerRelationshipRepresentation.VisualConnectors.Any(conn => conn.RoutePoints.Count > 0)),
+                             (target) => target.DoStraighten()));
+            ContextMenuOptionsForVisualConnectors.Add(new Tuple<SimplePresentationElement, Func<VisualConnector, FrameworkElement, bool?>, Action<VisualConnector>>
+                            (new SimplePresentationElement("Auto-route", "AutoRoute", "Route this connector around visible obstacles.", Display.GetAppImage("page_view.png")),
+                             (target, vexpo) => true,
+                             (target) =>
+                             {
+                                 var View = target.GetDisplayingView();
+                                 View.UnselectAllObjects();
+                                 View.Manipulator.ApplySelection(target, false, false);
+                                 CompositionAppearanceCommands.RouteLinksWithObstacleAvoidance(View.Engine);
+                             }));
+            ContextMenuOptionsForVisualConnectors.Add(null);
+
             ContextMenuOptionsForVisualConnectors.Add(new Tuple<SimplePresentationElement, Func<VisualConnector, FrameworkElement, bool?>, Action<VisualConnector>>
                             (new SimplePresentationElement("Link Descriptor", "LinkDescriptor", "Edit the Descriptor of this Link", Display.GetAppImage("page_white_edit.png")),
                              (target, vexpo) => true,

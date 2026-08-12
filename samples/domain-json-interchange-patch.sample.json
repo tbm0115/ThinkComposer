@@ -1,6 +1,6 @@
 {
   "format": "ThinkComposer.DomainJsonInterchange",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "warnings": [
     "Patch-only Domain JSON sample. Expected result: explicit create/update operations merge safely; delete and incompatible field changes are skipped unless future tools add explicit destructive confirmation."
   ],
@@ -66,6 +66,28 @@
         "representativeShape": "Rectangle",
         "summary": "Deployable architecture component.",
         "techSpec": "shape: rectangle\nsemantics: deployable component"
+      }
+    },
+    {
+      "op": "create",
+      "entity": "detailDesignator",
+      "techName": "Deployment_Metadata_Detail",
+      "ownerTechName": "Deployment_Component",
+      "ownerScope": "conceptDefinition",
+      "set": {
+        "kind": "table",
+        "name": "Deployment Metadata",
+        "summary": "Structured deployment metadata for each component.",
+        "tableDefinitionTechName": "Deployment_Metadata",
+        "tableDefinitionIsOwned": false,
+        "order": 2,
+        "appearance": {
+          "isDisplayed": true,
+          "showTitle": true,
+          "isMultiRecord": false,
+          "layout": "Transposed",
+          "showFieldTitles": true
+        }
       }
     },
     {

@@ -67,10 +67,10 @@ namespace Instrumind.ThinkComposer.Composer
 
             var TimingContext = PersistenceOperationContext.Current;
             PersistenceExportBundle ExportBundle = null;
-            return DocumentEngine.StorePackageToLocation<ISphereModel>(
+            var Result = ModelTracking.Save(Location, ActualLocation => DocumentEngine.StorePackageToLocation<ISphereModel>(
                 SourceComposition,
                 Composition.__ClassDefinitor.Name,
-                Location,
+                ActualLocation,
                 delegate(Package Package)
                 {
                     using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
@@ -80,7 +80,7 @@ namespace Instrumind.ThinkComposer.Composer
                                                          EmbeddedDomainGitSyncLink);
                     }
                 },
-                RegisterAsRecentDoc,
+                false,
                 SilentSave,
                 SourceComposition,
                 Snapshot,
@@ -92,7 +92,9 @@ namespace Instrumind.ThinkComposer.Composer
                                                                           ExportBundle.Composition, ExportBundle.Domain,
                                                                           PreviousPreviews);
                 },
-                CreatePackageStageTimingObserver(TimingContext));
+                CreatePackageStageTimingObserver(TimingContext)));
+            if (RegisterAsRecentDoc && String.IsNullOrEmpty(Result)) DocumentEngine.RegisterRecentDocument(Location.LocalPath);
+            return Result;
         }
 
         public static string StoreDomain(Domain SourceDomain, Uri Location,
@@ -110,10 +112,10 @@ namespace Instrumind.ThinkComposer.Composer
 
             var TimingContext = PersistenceOperationContext.Current;
             PersistenceExportBundle ExportBundle = null;
-            return DocumentEngine.StorePackageToLocation<Domain>(
+            var Result = ModelTracking.Save(Location, ActualLocation => DocumentEngine.StorePackageToLocation<Domain>(
                 SourceDomain,
                 Domain.__ClassDefinitor.Name,
-                Location,
+                ActualLocation,
                 delegate(Package Package)
                 {
                     using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
@@ -122,7 +124,7 @@ namespace Instrumind.ThinkComposer.Composer
                         WriteDomainPersistenceParts(Package, SourceDomain, IncludeTemplateComposition, ExportBundle, GitSyncLink);
                     }
                 },
-                RegisterAsRecentDoc,
+                false,
                 SilentSave,
                 SourceDomain,
                 Snapshot,
@@ -134,7 +136,9 @@ namespace Instrumind.ThinkComposer.Composer
                                                                      IncludeTemplateComposition, ExportBundle.Domain,
                                                                      ExportBundle.TemplateComposition, PreviousPreviews);
                 },
-                CreatePackageStageTimingObserver(TimingContext));
+                CreatePackageStageTimingObserver(TimingContext)));
+            if (RegisterAsRecentDoc && String.IsNullOrEmpty(Result)) DocumentEngine.RegisterRecentDocument(Location.LocalPath);
+            return Result;
         }
 
         private static Action<DocumentPackageSaveTimingStage, TimeSpan> CreatePackageStageTimingObserver(
@@ -156,6 +160,7 @@ namespace Instrumind.ThinkComposer.Composer
         {
             var Result = new CompositionPackagePayload();
             Result.FilePath = Path.GetFullPath(FilePath);
+            DocumentDiskState.Observe(Result.FilePath);
 
             using (var Pack = Package.Open(Result.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -206,6 +211,7 @@ namespace Instrumind.ThinkComposer.Composer
         {
             var Result = new DomainPackagePayload();
             Result.FilePath = Path.GetFullPath(FilePath);
+            DocumentDiskState.Observe(Result.FilePath);
 
             using (var Pack = Package.Open(Result.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -256,6 +262,7 @@ namespace Instrumind.ThinkComposer.Composer
         {
             var Result = new PackagePersistenceInspection();
             Result.FilePath = Path.GetFullPath(FilePath);
+            DocumentDiskState.Observe(Result.FilePath);
 
             using (var Pack = Package.Open(Result.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {

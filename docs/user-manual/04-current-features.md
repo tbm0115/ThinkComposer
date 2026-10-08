@@ -222,21 +222,30 @@ Import and export write detailed diagnostics to the application log. Dialogs dis
 
 Strict relationship/detail compatibility options can block partial imports before apply. Non-strict workflows still import compatible objects and report invalid relationships or unsupported details.
 
-## Git Sync
+## Git Repository Support
 
-Modern `.tcom` and `.tdom` packages can store optional Git linkage in root `/manifest.json`. Package-level links use `gitSync` to connect the package to a generic Git remote, branch, and repo-relative baseline path. A `.tcom` can also store `embeddedDomainGitSync`, copied from a linked source `.tdom`, so the Composition and its base Domain can be updated from separate Git locations. ThinkComposer uses installed `git.exe`; it does not store passwords, tokens, GitHub API credentials, or Bitbucket API credentials.
+Composition and Domain **Repository...** commands manage the visible containing Git repository. Both artifact types support the same repository workflow: branches, staging, commits, fetch/pull/push, merge, history, stash, restore/revert, and annotated release tags. Commit and push are separate.
 
-Composition Git sync supports:
+The window opens on **Changes**, with files on the left and a preview on the right. The header identifies the repository, current branch, upstream, and commits available to push or pull. **Fetch** checks the remote without changing your files. **History** shows recent commits; select one to inspect its changes.
 
-- linking the current `.tcom` to a remote path
-- pulling the linked `.tcom` as a whole-package replacement after validation
-- saving, committing, and pushing the linked `.tcom`
-- pulling a linked embedded Domain source and applying it through the existing embedded-domain update workflow
+To add a Composition you just saved inside an existing repository:
 
-Domain Git sync supports linking and pulling `.tdom` packages. Domain push is not exposed in this version.
+1. Select the Composition, labeled **New**, under **Changes**. A new file has not yet been added to Git.
+2. Choose **Stage selected files**. Use **Staged** to review what the next commit will contain. **Unstage selected files** removes a file from that commit without deleting it.
+3. Enter a required summary and an optional description, then choose **Commit**. This commits the repository's staged files, including anything staged by another Git client. Saving and staging remain separate actions.
+4. Choose **Push** to share your commits, or **Publish branch** if the branch has no upstream yet.
 
-Pull does not perform a JSON merge. It validates the pulled package, creates a backup for in-place updates, and preserves the local Git link. For safe Domain changes inside a Composition, use `Composition -> Domain -> Update Embedded Domain...` or the linked Domain pull command.
+Text files have a line-by-line preview. Packaged `.tcom` and `.tdom` files display model-specific guidance; inspect the model in ThinkComposer or explicitly enable model tracking for reviewable JSON projections. A file with both staged and unstaged edits appears in both lists, each with its own preview.
 
+Less frequent actions are grouped under **Repository**, **Branch**, **Stash**, **More** (restore, revert, and release tags), and **Model tracking**. Use the branch selector to choose an existing local branch. Operation results and errors appear in expandable **Operation details**. Buttons and selection highlights follow the application's light or dark theme.
+
+Managed model tracking is a separate per-container opt-in. It adds controlled `.tcom/` or `.tdom/` projections, shared SHA-256 fingerprints, verification, and semantic conflict resolution. Repository membership alone does not create these directories. Containers remain authoritative and portable; direct projection edits require previewed, explicit import.
+
+External Git clients can use locally installed drivers and hooks. A merge that regenerates projections may pause before commit so the corrected staged tree can be committed explicitly. Independent CI verification detects mismatched container/projection pairs. Legacy private-checkout synchronization is retired; guided migration preserves conflicting files and leaves caches intact.
+
+Open documents are monitored for changes made by other clients. Clean documents reload; unsaved work is preserved. **Compare unsaved with disk** saves a separate snapshot and shows differences before you reconcile them. The conflict resolver preserves decisions when closed, supports resuming a session, and provides original embedded previews when available.
+
+See [Command-Line Interface](07-command-line-interface.md) for setup, migration, and verification. Embedded-Domain updates remain explicit and separate from Git pulls.
 ## Domain JSON Interchange
 
 Domain JSON is the text-safe payload used by modern `.tdom` packages and compatibility merge paths. It is also the merge source for updating an existing composition's embedded domain snapshot.

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thinkcomposer.local/schemas/git-tracking-1.schema.json",
+  "title": "ThinkComposer managed Git documents, version 1",
+  "oneOf": [
+    { "$ref": "#/$defs/registry" },
+    { "$ref": "#/$defs/projection" },
+    { "$ref": "#/$defs/resolutions" },
+    { "$ref": "#/$defs/conflictReport" }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "fingerprint": {
+      "type": "object",
+      "required": ["algorithm", "formatVersion", "value"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "formatVersion": { "const": 1 },
+        "value": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "registry": {
+      "type": "object",
+      "required": ["formatVersion", "artifacts"],
+      "properties": {
+        "formatVersion": { "const": 1 },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "path", "active"],
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "path": { "type": "string", "description": "Repository-relative container path using forward slashes." },
+              "active": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "projection": {
+      "type": "object",
+      "required": ["formatVersion", "generatorVersion", "trackingId", "sourceContainer", "sourceContainerSha256", "contentFingerprint", "parts"],
+      "properties": {
+        "formatVersion": { "const": 1 },
+        "generatorVersion": { "const": 1 },
+        "trackingId": { "type": "string", "format": "uuid" },
+        "sourceContainer": { "type": "string" },
+        "sourceContainerSha256": { "$ref": "#/$defs/sha256" },
+        "contentFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "sha256"],
+            "properties": { "path": { "type": "string" }, "sha256": { "$ref": "#/$defs/sha256" } },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "resolutions": {
+      "type": "object",
+      "required": ["formatVersion", "resolutions"],
+      "properties": {
+        "formatVersion": { "const": 1 },
+        "resolutions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "choice"],
+            "properties": {
+              "path": { "type": "string" },
+              "choice": { "enum": ["current", "incoming", "ancestor", "delete", "custom"] },
+              "value": true
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "conflictReport": {
+      "type": "object",
+      "required": ["formatVersion", "conflicts"],
+      "properties": {
+        "formatVersion": { "const": 1 },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "kind"],
+            "properties": {
+              "path": { "type": "string" }, "kind": { "type": "string" }, "message": { "type": "string" },
+              "ancestorExists": { "type": "boolean" }, "currentExists": { "type": "boolean" }, "incomingExists": { "type": "boolean" },
+              "ancestor": true, "current": true, "incoming": true
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

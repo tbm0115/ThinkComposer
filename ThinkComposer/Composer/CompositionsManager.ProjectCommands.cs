@@ -934,6 +934,9 @@ namespace Instrumind.ThinkComposer.Composer
 
             // Show the new activated engine
             this.WorkspaceDirector.RemoveDocument(Engine.TargetComposition);
+            var ClosedPath = GitSync.RepositoryWindow.DocumentPath(Engine);
+            if (!this.WorkspaceDirector.Documents.Any(Document => String.Equals(GitSync.RepositoryWindow.DocumentPath(Document.DocumentEditEngine as CompositionEngine), ClosedPath, StringComparison.OrdinalIgnoreCase)))
+                GitSync.DocumentDiskState.Forget(ClosedPath);
 
             // Finally, clears the palettes if no document remains.
             Application.Current.MainWindow

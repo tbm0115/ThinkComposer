@@ -64,6 +64,25 @@
     "gitSync": {
       "$ref": "#/$defs/gitSync"
     },
+    "modelTracking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "id"],
+      "properties": {
+        "version": { "const": 1 },
+        "id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "contentFingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "formatVersion", "value"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "formatVersion": { "const": 1 },
+        "value": { "$ref": "#/$defs/sha256" }
+      }
+    },
     "embeddedDomainGitSync": {
       "$ref": "#/$defs/gitSync",
       "description": "Optional .tcom-only Git linkage for the embedded Domain source. This is separate from package-level gitSync so a Composition and its base Domain can come from different remotes or paths."

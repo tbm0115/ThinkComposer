@@ -21,11 +21,6 @@ thinkcomposer domain validate-json-roundtrip --input <file.tdom|file.tcom> --out
 thinkcomposer domain convert-json-persistence --input <file.tdom> --output <file.tdom>
 thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>
 thinkcomposer package inspect --input <file.tcom|file.tdom>
-thinkcomposer git link --input <file.tcom|file.tdom> --remote <url> --branch <branch> --path <repo-path> [--domain-path <repo-tdom-path>] --output <file> [--in-place]
-thinkcomposer git unlink --input <file.tcom|file.tdom> --output <file> [--in-place]
-thinkcomposer git status --input <file.tcom|file.tdom>
-thinkcomposer git pull --input <file.tcom|file.tdom> --output <file> [--in-place] [--backup-dir <dir>]
-thinkcomposer git push --input <file.tcom> --message <message>
 thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>
 thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name> [--relationships] [--composition-root-dir] [--use-tech-names] [--exclude <idea-id-or-tech-name>]
 thinkcomposer performance prepare-json-persistence-corpus --source-root <repo> --output-dir <dir> [--mode <development|certification>] [--real-package <sanitized-slow-file>]...
@@ -123,24 +118,22 @@ Baseline comparison requires the same corpus mode, per-case authoritative and wh
 
 For final certification, capture separate baseline and candidate Windows Performance Recorder traces around the sanitized-package benchmark. Enable CPU sampling, file/disk I/O, allocation/.NET activity, and UI/WPF responsiveness providers, then compare the traces in Windows Performance Analyzer alongside the JSON reports. Keep sanitized packages and trace files outside version control.
 
-## Git Sync
+## Git Repositories and Optional Model Tracking
 
-Git sync links a JSON-authoritative `.tcom` or `.tdom` package to a normal Git remote and repo-relative package path. ThinkComposer shells out to installed `git.exe`; GitHub, Bitbucket, Azure DevOps, SSH remotes, HTTPS remotes, and local bare repositories are all treated as generic Git remotes. Credentials are not stored by ThinkComposer; use Git Credential Manager, SSH keys, or existing Git configuration.
+Git commands now operate on the visible containing repository. Domains and Compositions have the same Git capabilities. Repository membership never implicitly enables companion folders. See [Git repositories](git-repositories.md) for the workflow, projection contract, conflict resolution, migration, and CI guidance.
 
-`git link` writes portable link metadata to root `/manifest.json`:
-
-```cmd
-thinkcomposer git link --input model.tcom --remote https://example.com/repo.git --branch main --path diagrams/model.tcom --domain-path domains/base.tdom --output model.tcom --in-place
+```text
+thinkcomposer git stage --repo <directory> --path <file> [--path <file>]
+thinkcomposer git commit --repo <directory> --message <text>
+thinkcomposer git fetch|pull|push --repo <directory>
+thinkcomposer git tracking enable|disable --input <file.tcom|file.tdom>
+thinkcomposer git projection refresh|import --input <container>
+thinkcomposer git verify --repo <directory> [--staged|--revision <ref>] [--json]
+thinkcomposer git setup --repo <directory>
+thinkcomposer git --help
 ```
 
-The manifest stores only `remote.url`, `remote.branch`, and `baselines[]` entries. Package-level Composition or Domain links live in `gitSync`. A `.tcom` may also carry `embeddedDomainGitSync`, copied from a linked source `.tdom`, so the embedded Domain can be pulled from its own Git remote independently of the Composition package link. Last-seen commit and package hash state is machine-local under the ThinkComposer user application data folder, not inside the package.
-
-`git pull` fetches the linked branch, validates the linked package as JSON-authoritative, creates a backup for in-place updates, replaces the output package, and preserves the local `gitSync` manifest link. Pull is a whole-package operation; it does not perform a JSON semantic merge. When `--backup-dir` is omitted, in-place pull backups are stored under the ThinkComposer user application data folder in `GitSync\backups`; temporary pull staging files are stored in `GitSync\temp`, not beside the `.tcom` or `.tdom`.
-
-`git push` is supported for `.tcom` compositions only. It validates the package, refuses to push when the remote branch advanced since local sync state, commits the linked `.tcom` path, and pushes. `.tdom` packages are link/pull only in this version; update a Composition from a pulled Domain with `domain update-embedded`. In the desktop UI, Domain `Pull from Git` can also use a `.tcom` package's `embeddedDomainGitSync` link to pull the source `.tdom` and run the embedded-domain update flow.
-
-For a new blank remote repository, link the package and run `git push` first; ThinkComposer creates the linked branch and baseline package path during that first push. `git pull` requires the linked branch and package path to exist already, and reports a clear warning when the remote is still empty.
-
+`--input` may locate the containing repository; it never limits repository operations to that package. Commit and push are separate. Legacy background synchronization is retired; migrate legacy package links explicitly. Embedded-Domain updates remain separate from repository pulls.
 ## Exit Codes
 
 `0` means success. `1` means usage, validation, or expected operation failure. `2` means an unexpected exception escaped the operation wrapper.

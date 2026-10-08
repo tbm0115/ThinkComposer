@@ -23,7 +23,7 @@ When inspecting or deliberately repairing a native package:
 - Keep `.tcom` `/Composition.json` and optional `/TemplateComposition.json` snapshot-only. Do not embed generated `operations`, `importOptions`, or `visualStrategy`; apply those from a standalone patch.
 - Patch root `/Domain.json` directly only when the task requires Domain state changes.
 - Refresh the corresponding `/manifest.json` `authoritativeParts[]` metadata, especially `sha256` and `bytes`.
-- Preserve or intentionally update `/manifest.json` `gitSync` and `embeddedDomainGitSync` when present. Do not store Git credentials, tokens, last-sync commits, or package hashes in the package; sync state is machine-local.
+- Preserve or intentionally update `/manifest.json` `gitSync` and `embeddedDomainGitSync` when present. Never store credentials or containing commit hashes. Tracked packages carry a versioned content fingerprint; the exact container hash belongs only in the projection manifest. Preserve legacy links unless explicitly migrating/unlinking.
 - Do not edit `/Composition.bin` or `/Domain.bin` when an older package contains them. A normal save migrates the package to JSON-only persistence.
 - Do not treat `/Interchange/*` or `/Previews/*` as authoritative. They may be stale until ThinkComposer saves the package again.
 - Validate with `package inspect` and the relevant `validate-json-persistence` CLI command after the package is patched.
@@ -39,8 +39,9 @@ thinkcomposer composition validate-routing --input <file.tcom> --output-dir <dir
 thinkcomposer composition validate-json-persistence --input <file.tcom> --output-dir <dir>
 thinkcomposer domain validate-json-persistence --input <file.tdom> --output-dir <dir>
 thinkcomposer git status --input <file.tcom|file.tdom>
-thinkcomposer git pull --input <file.tcom|file.tdom> --output <file> [--in-place]
-thinkcomposer git push --input <file.tcom> --message <message>
+thinkcomposer git pull --repo <directory>
+thinkcomposer git commit --repo <directory> --message <message>
+thinkcomposer git push --repo <directory>
 thinkcomposer report pdf --input <file.tcom> --output <file.pdf|file.xps>
 thinkcomposer output generate --input <file.tcom> --output-dir <dir> --language <language-tech-name>
 thinkcomposer performance prepare-json-persistence-corpus --source-root <repo> --output-dir <dir> [--mode <development|certification>] [--real-package <sanitized-slow-file>]...
@@ -51,7 +52,7 @@ Rules:
 
 - Use `package inspect` before and after direct package edits when practical.
 - Use `validate-json-persistence` after changing authoritative root JSON.
-- Use `git status/pull/push` only when `/manifest.json` has a package `gitSync` link or `.tcom` `embeddedDomainGitSync` for the embedded Domain source. Composition push is supported; Domain push is not supported in v1.
+- Git commands operate on the visible containing repository (`--repo`, or `--input` only for discovery). Legacy manifest links do not activate Git behavior. Save, stage, commit, and push separately. Managed projections require explicit per-container opt-in; see `references/git-repositories.md`.
 - Use `report pdf` for standard PDF/XPS reports from a saved `.tcom`.
 - Use `output generate` to render external-language output templates from a saved `.tcom`. If the requested `--language` techName is unclear, inspect root `/Domain.json` or run a compatibility `domain export-json`.
 - Use the `performance` commands only for developer benchmarking. They validate a hash-locked JSON-only corpus and run load/first-save/steady-save samples in fresh processes; a baseline comparison requires the same machine, corpus, and iteration count. `--allow-legacy-baseline-output` may be used only while recording a pre-optimization JSON-authoritative baseline that retains the exact matching legacy binary fallback. Never combine it with `--baseline`; candidate runs remain strict JSON-only.

@@ -1,4 +1,4 @@
-﻿// -------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 // Instrumind ThinkComposer
 //
 // Copyright (C) 2011-2015 Néstor Marcel Sánchez Ahumada.
@@ -194,23 +194,11 @@ namespace Instrumind.ThinkComposer.Definitor
             this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Save Domain As", ExposedWorkCommand.Name, "Saves the current Domain to the specified file.", "book_saveas.png",
                                                                                           EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
 
-            ExposedWorkCommand = new GenericCommand("LinkDomainGitRemote");
-            ExposedWorkCommand.Apply = (par => GitPackageSyncCommands.LinkActiveDomain(this.WorkspaceDirector));
-            ExposedWorkCommand.CanApply = (par => GitPackageSyncCommands.CanLinkActiveDomain(this.WorkspaceDirector));
-            var LinkDomainGitExpositor = new WorkCommandExpositor("Link Git Remote...", ExposedWorkCommand.Name, "Links the current Domain package to a Git remote path.", "link.png",
-                                                                   EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
-            LinkDomainGitExpositor.VisualStatusProvider = GitPackageSyncCommands.GetDomainLinkVisualStatus;
-            this.CommandExpositors.Add(ExposedWorkCommand.Name, LinkDomainGitExpositor);
-
-            ExposedWorkCommand = new GenericCommand("PullDomainFromGit");
-            ExposedWorkCommand.Apply = (par => GitPackageSyncCommands.PullActiveDomain(this.WorkspaceDirector));
-            ExposedWorkCommand.CanApply = (par => GitPackageSyncCommands.CanPullActiveDomain(this.WorkspaceDirector));
-            var PullDomainGitExpositor = new WorkCommandExpositor("Pull from Git", ExposedWorkCommand.Name, "Pulls the linked Domain package from Git.", "arrow_down.png",
-                                                                   EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand);
-            PullDomainGitExpositor.VisualStatusProvider = GitPackageSyncCommands.GetDomainPullVisualStatus;
-            PullDomainGitExpositor.VisualStatusRefreshRequester = GitPackageSyncCommands.RequestDomainPullVisualStatusRefresh;
-            this.CommandExpositors.Add(ExposedWorkCommand.Name, PullDomainGitExpositor);
-
+            ExposedWorkCommand = new GenericCommand("OpenDomainRepository");
+            ExposedWorkCommand.Apply = (par => RepositoryWindow.ShowFor(this.WorkspaceDirector, true));
+            ExposedWorkCommand.CanApply = (par => this.WorkspaceDirector.ActiveDocument != null);
+            this.CommandExpositors.Add(ExposedWorkCommand.Name, new WorkCommandExpositor("Repository...", ExposedWorkCommand.Name, "Manage the source Domain's containing repository. Embedded Domain refresh remains explicit.", "link.png",
+                EShellCommandCategory.Document, ExposedArea.TechName, ExposedGroup.TechName, ExposedWorkCommand));
             // Domain JSON import/export remains available to CLI/compatibility paths, but is
             // no longer exposed as a primary desktop command because package root JSON is authoritative.
 
@@ -363,7 +351,7 @@ namespace Instrumind.ThinkComposer.Definitor
 
                 var PreviousPath = Path.GetFullPath(PreviousLocation.LocalPath);
                 var TargetPath = Path.GetFullPath(TargetLocation.LocalPath);
-                if (!String.Equals(PreviousPath, TargetPath, StringComparison.OrdinalIgnoreCase) || !File.Exists(PreviousPath))
+                if (!File.Exists(PreviousPath))
                     return null;
 
                 return JsonPackagePersistence.ReadGitSyncLink(PreviousPath);

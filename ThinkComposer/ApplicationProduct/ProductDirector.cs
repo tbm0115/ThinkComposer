@@ -357,6 +357,7 @@ namespace Instrumind.ThinkComposer.ApplicationProduct
             InitializeUserInterface();
 
             ProcessCommandLineArguments();
+            Instrumind.ThinkComposer.Composer.GitSync.RepositoryWindow.StartDocumentMonitor(WorkspaceDirector);
 
             Application.Current.MainWindow.PostCall(
                 wnd =>

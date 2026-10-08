@@ -555,7 +555,7 @@ namespace Instrumind.ThinkComposer.Composer
 
                 var PreviousPath = Path.GetFullPath(PreviousLocation.LocalPath);
                 var TargetPath = Path.GetFullPath(TargetLocation.LocalPath);
-                if (!String.Equals(PreviousPath, TargetPath, StringComparison.OrdinalIgnoreCase) || !File.Exists(PreviousPath))
+                if (!File.Exists(PreviousPath))
                     return null;
 
                 return JsonPackagePersistence.ReadGitSyncLink(PreviousPath);
@@ -571,20 +571,8 @@ namespace Instrumind.ThinkComposer.Composer
         {
             try
             {
-                if (HasDomainSelfBaseline(this.PendingEmbeddedDomainGitSyncLink))
-                    return this.PendingEmbeddedDomainGitSyncLink;
-
-                if (DomainLocation != null &&
-                    !String.IsNullOrWhiteSpace(DomainLocation.LocalPath) &&
-                    File.Exists(DomainLocation.LocalPath))
-                {
-                    var DomainLink = JsonPackagePersistence.ReadGitSyncLink(DomainLocation.LocalPath);
-                    if (HasDomainSelfBaseline(DomainLink))
-                        return DomainLink;
-
-                    return null;
-                }
-
+                // Legacy links are retained as inactive metadata, never inferred or refreshed
+                // from another repository during an ordinary save.
                 if (PreviousCompositionLocation == null ||
                     String.IsNullOrWhiteSpace(PreviousCompositionLocation.LocalPath) ||
                     !File.Exists(PreviousCompositionLocation.LocalPath))

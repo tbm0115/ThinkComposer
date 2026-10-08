@@ -45,7 +45,7 @@ Preview images remain 1600x1200 PNGs and are capped at 20 views. Sidecar manifes
 
 Authoritative root JSON and `/manifest.json` are required writes; failure aborts the save and preserves the original package. `/Interchange/*` and preview generation are optional. A sidecar failure records a warning but does not invalidate an otherwise successful native save. Sidecar `nativePartUri` and `nativePartSha256` identify the authoritative root `/Composition.json` or `/Domain.json`, not a legacy binary part.
 
-Git synchronization is metadata-driven and optional. `gitSync` and `embeddedDomainGitSync` do not make Git or `/Interchange/*` authoritative; normal Open/Save still reads root `/Composition.json`, `/Domain.json`, and `/TemplateComposition.json`. Commit hashes and package hashes are stored in machine-local ThinkComposer Git sync state so the package does not try to embed the commit that contains itself.
+Git controls operate on the visible containing repository. Legacy `gitSync` and `embeddedDomainGitSync` metadata is preserved but inactive. Per-container managed tracking is explicitly enabled and adds versioned `modelTracking` and `contentFingerprint` metadata. Repository-root `.tcom/` and `.tdom/` projections exclude previews and interchange sidecars; they are created only on opt-in. See [Git repositories and model tracking](git-repositories.md) for fingerprint verification, snapshot imports, semantic merging, and CI.
 
 ## AI Workflow
 

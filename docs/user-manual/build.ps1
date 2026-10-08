@@ -46,6 +46,10 @@ try {
         --output $OutputPath `
         @sources
 
+    if ($LASTEXITCODE -ne 0) {
+        throw "Pandoc failed to build the manual (exit $LASTEXITCODE). The existing PDF was not regenerated."
+    }
+
     Write-Host "Built $OutputPath" -ForegroundColor Green
 }
 finally {

@@ -2280,6 +2280,29 @@ namespace Instrumind.ThinkComposer.Headless
             return OperationResult.Success(Materialized.Item1);
         }
 
+        public static OperationResult<string> CreateGitRegressionFixtures(string InputDomain, string OutputDirectory)
+        {
+            return ExpectedOperation(delegate
+            {
+                var Loaded = LoadNativeDomainForEdit(InputDomain);
+                if (!Loaded.WasSuccessful) return Fail(Loaded.Message);
+                Directory.CreateDirectory(OutputDirectory);
+                var composition = Loaded.Result.TargetComposition;
+                if (composition.RootView == null)
+                {
+                    var view = new View(composition, "Main View", "Main_View");
+                    composition.CompositeViews.Add(view);
+                    composition.RootView = view;
+                }
+                var concept = new Concept(composition, composition.CompositeContentDomain.ConceptDefinitions.First(), "Git fixture", "Git_Fixture");
+                concept.AddToComposite(composition);
+                Instrumind.ThinkComposer.Composer.ComposerUI.ConceptCreationCommand.CreateConceptVisualRepresentation(concept, composition.RootView, new Point(200, 160));
+                SaveComposition(Loaded.Result.TargetComposition, Path.Combine(OutputDirectory, "Fixture.tcom"));
+                SaveDomain(Loaded.Result.TargetComposition.CompositeContentDomain, Path.Combine(OutputDirectory, "Fixture.tdom"), true);
+                return Succeed("Native Git regression fixtures created.", OutputDirectory);
+            });
+        }
+
         private static void SaveComposition(Composition SourceComposition, string Output,
                                              GitPackageLink GitSyncLink = null,
                                              GitPackageLink EmbeddedDomainGitSyncLink = null,

@@ -277,50 +277,43 @@ A `2.0` gate requires both aggregate median load and first-save time to be no mo
 
 For final certification, capture separate baseline and candidate Windows Performance Recorder traces around the sanitized-package benchmark with CPU, file/disk I/O, allocation/.NET activity, and UI/WPF responsiveness enabled, then inspect them in Windows Performance Analyzer. Keep sanitized customer packages and trace files outside version control.
 
-## Git Sync
+## Git Repositories and Model Tracking
 
-Git sync requires `git.exe` to be installed and available on `Path`. ThinkComposer uses normal Git remotes and your existing Git credentials or SSH configuration. It does not store passwords, tokens, GitHub credentials, or Bitbucket credentials. Package-level links are stored as `gitSync`; Composition packages can also store `embeddedDomainGitSync` for the source `.tdom` link copied from a Git-linked Domain.
+Use **Repository...** from Composition or Domain to manage the visible Git repository containing the active file. Git commands affect the whole repository, including other files. A Domain and Composition in one working repository share its current branch.
 
-Link a composition to a Git remote and repo-relative `.tcom` path:
+Save, stage, commit, and push are separate actions. Fetch updates remote information. Pull fast-forwards when possible and offers an explicit merge when branches diverge. Save or discard affected open-document changes and commit or explicitly stash tracked changes before switching branches or merging. External changes are checked before saving so older in-memory content cannot silently overwrite another client's changes.
 
-```cmd
-thinkcomposer git link --input "Models\ServiceMap.tcom" --remote "https://example.com/team/models.git" --branch main --path "compositions/ServiceMap.tcom" --output "Models\ServiceMap.tcom" --in-place
+```text
+thinkcomposer git status --repo C:\Models
+thinkcomposer git stage --repo C:\Models --path Model.tcom --path README.md
+thinkcomposer git commit --repo C:\Models --message "Update model"
+thinkcomposer git push --repo C:\Models
 ```
 
-If the composition also has a related Domain source in the same repository, include `--domain-path`:
+**Managed model tracking is optional and disabled by default.** A container merely being inside a Git repository does not create companion directories. Enable tracking separately for each important Domain or Composition:
 
-```cmd
-thinkcomposer git link --input "Models\ServiceMap.tcom" --remote "https://example.com/team/models.git" --branch main --path "compositions/ServiceMap.tcom" --domain-path "domains/ServiceDesign.tdom" --output "Models\ServiceMap.tcom" --in-place
+```text
+thinkcomposer git tracking enable --input C:\Models\Model.tcom
+thinkcomposer git setup --repo C:\Models
+thinkcomposer git verify --repo C:\Models --staged
 ```
 
-Link a standalone Domain package:
+Tracked models remain authoritative containers. Their controlled `.tcom/` or `.tdom/` directory contains reviewable snapshots, a registry, guidance, and SHA-256 fingerprints. Stage the container and its projection together. The app's Stage selected command groups managed files. Standalone files need no directories, Git installation, or repository configuration.
 
-```cmd
-thinkcomposer git link --input "Domains\ServiceDesign.tdom" --remote "https://example.com/team/models.git" --branch main --path "domains/ServiceDesign.tdom" --output "Domains\ServiceDesign.tdom" --in-place
+Direct projection edits require explicit import. Preview first, then apply:
+
+```text
+thinkcomposer git projection import --input C:\Models\Model.tcom
+thinkcomposer git projection import --input C:\Models\Model.tcom --apply
 ```
 
-Inspect the link and remote status:
+Snapshot removals propose deletions. Independent edits block refresh until imported or explicitly discarded. Do not edit generated fingerprint fields. Interrupted saves can be completed or rolled back using `git recover --repo C:\Models --mode complete|rollback`.
 
-```cmd
-thinkcomposer git status --input "Models\ServiceMap.tcom"
-```
+Install drivers/hooks per clone. Existing hooks are preserved and may require manual integration. Safe changes merge automatically; competing changes open a three-way resolver. When regeneration changes Git's prepared merge tree, `MERGE_READY_TO_COMMIT` deliberately stops an external automatic commit. Review the staged result and commit explicitly. CI should run `thinkcomposer git verify --repo . --revision HEAD --json` independently of hooks.
 
-Pull a linked package. In-place pull creates a backup before replacing the package. If `--backup-dir` is omitted, the backup is stored in the ThinkComposer user application data folder under `GitSync\backups`; temporary pull staging files are stored under `GitSync\temp`, not beside the `.tcom` or `.tdom`.
+Legacy background synchronization is retired. Use `git migrate --input <old-container> --repo <directory> --path <destination>` to preview migration and repeat with `--apply`. Conflicting destination files are preserved. Migration does not enable managed tracking. Source Domain pulls no longer implicitly refresh embedded Domains; use **Update Embedded Domain** separately.
 
-```cmd
-thinkcomposer git pull --input "Models\ServiceMap.tcom" --output "Models\ServiceMap.tcom" --in-place
-```
-
-Push is supported for Composition packages:
-
-```cmd
-thinkcomposer git push --input "Models\ServiceMap.tcom" --message "Update service map"
-```
-
-For a new blank remote repository, link the package and push first. ThinkComposer creates the linked branch and baseline package path during the first push. Pull requires the linked branch and package path to exist already, and reports a warning when the remote is still empty.
-
-Domain packages are pull-only in this version. To update a Composition's embedded Domain after pulling a `.tdom`, use `thinkcomposer domain update-embedded`. In the desktop UI, Domain `Pull from Git` can use a Composition package's `embeddedDomainGitSync` link to pull and merge the embedded Domain source directly.
-
+Run `thinkcomposer git --help` for the full repository workflow, stash, release tags, resolution sessions, and verification options.
 ## Reports
 
 Generate a standard composition report as PDF:

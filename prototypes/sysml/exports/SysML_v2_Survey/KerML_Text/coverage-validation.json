@@ -1,0 +1,140 @@
+{
+  "formatVersion": 1,
+  "package": "examples\\SysML_v2_Survey.tcom",
+  "language": "KerML_Text",
+  "outputSha256": "8f6e5c3d5d752e9956c7311b588c1f23a5a61c0161910ec12c5aa5ea2ef5fed2",
+  "emittedElements": 12,
+  "foldedRelationships": [
+    "bb094ace-0c19-59c1-bf69-94300e08de0b",
+    "f9cc6b37-d2d7-567c-bc36-8409b043a2b0"
+  ],
+  "omittedElements": [
+    {
+      "id": "87666205-667f-5f49-ba37-c94481e4e6a9",
+      "sourceId": "",
+      "definition": "PackageImport",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "b122ee1d-4191-57f5-830a-bbff2203f9cf",
+      "sourceId": "",
+      "definition": "ExternalReference",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "841ea129-7993-5c56-bf70-3968c98705a7",
+      "sourceId": "",
+      "definition": "PortDefinition",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "24e2bb58-1f2c-5087-b2c6-924b0949b4cb",
+      "sourceId": "",
+      "definition": "PortUsage",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "48090672-553d-5030-a935-d32db9c5388e",
+      "sourceId": "",
+      "definition": "RequirementDefinition",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "f3741906-7961-55cd-acff-752f5a89a1bd",
+      "sourceId": "",
+      "definition": "RequirementUsage",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "4fe11553-969a-5c00-b4bf-0d92e3cb1de2",
+      "sourceId": "",
+      "definition": "ActionDefinition",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "250a0bd9-fccf-5a1d-bbd8-1b628bcd530c",
+      "sourceId": "",
+      "definition": "StateDefinition",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "70880f69-a2b5-54c0-aa4b-81a7a9ca4f5a",
+      "sourceId": "",
+      "definition": "ActionUsage",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "e3c61908-99f1-5914-8685-87e8f30abbae",
+      "sourceId": "",
+      "definition": "StateUsage",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "6d062d94-4c79-5e7e-887b-6a12670906e1",
+      "sourceId": "",
+      "definition": "ConstraintDefinition",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "a90df57d-b511-5c25-95b6-bd44247e8e32",
+      "sourceId": "",
+      "definition": "CalculationDefinition",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "bc37aa08-7ad1-51c0-951a-e39bbe0a2855",
+      "sourceId": "",
+      "definition": "MetadataDefinition",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "e7e90133-8bfc-5f38-953e-95e04e805cd2",
+      "sourceId": "",
+      "definition": "Citation",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "fc33f03c-9c2d-58f7-8379-27df806ad05c",
+      "sourceId": "",
+      "definition": "Typing",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "7f0bfa19-a2bd-584d-a0cd-cc53d6aedd3e",
+      "sourceId": "",
+      "definition": "Typing",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "84a603c2-44c8-5e55-a93b-2b99432f756b",
+      "sourceId": "",
+      "definition": "Typing",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "92aa82b2-4bd5-5c8f-875a-8a4dec2c41d6",
+      "sourceId": "",
+      "definition": "Typing",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "4f5ff5f7-f38a-55a0-8484-04638ae03cd0",
+      "sourceId": "",
+      "definition": "Trace",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    }
+  ],
+  "issues": [],
+  "externalReferences": [],
+  "completeExport": false,
+  "declaredStructuralChecks": "passed",
+  "languageSemanticValidation": "unverified: external parser/profile-library validation unavailable",
+  "profileBindings": "not applicable",
+  "exclusions": [
+    "proprietary diagram encoding",
+    "execution/evaluation",
+    "full profile/metadata semantics"
+  ],
+  "warning": "This is a partial prototype export, never a conformance certificate.",
+  "repeatExportIdentical": true
+}

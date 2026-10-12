@@ -1,0 +1,551 @@
+{
+  "formatVersion": 1,
+  "results": [
+    {
+      "package": "domains\\MTConnect_SysML_v1.tdom",
+      "status": "repaired",
+      "beforeSha256": "3e86ffeed280d20242b131fb8fb91b194e52c92a7503d2f90472d9118fbcecc3",
+      "afterSha256": "b5fcd466bbaf82513421c406697d3968ce686e8f7956656d2ca3935a16101503",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v1-3e86ffeed280d202.tdom",
+      "controls": [
+        {
+          "viewId": "1ca5ef01-8dc5-5520-8cd7-5fdbc01ae257",
+          "ideaId": "a76adedd-ce06-575c-9b96-55aef7ba8510"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "domains\\MTConnect_SysML_v2.tdom",
+      "status": "repaired",
+      "beforeSha256": "dd436d6f05acca5d95625ae72932bd5e90d7ea0bc1afe7dd65f45bb3518489bd",
+      "afterSha256": "91df2d8c7b61d8a7d47d26186bc4616d3dfe4f625b8021e3188f87dbd8856b6a",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v2-dd436d6f05acca5d.tdom",
+      "controls": [
+        {
+          "viewId": "10d4bb57-496e-5815-930b-1970be8a0b9a",
+          "ideaId": "59422aaf-9541-5fd3-bd6a-1d37a68ed42e"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "domains\\SysML_v1.tdom",
+      "status": "repaired",
+      "beforeSha256": "64d92c7e3907b13bfe4f559c33f0d66e52c1cac6569900986b593903bbe2a1e4",
+      "afterSha256": "8862516ce683ef116550972c27939e06bf3004c33d0d4d8833c5cda2ac9d7201",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v1-64d92c7e3907b13b.tdom",
+      "controls": [
+        {
+          "viewId": "edc9ffa2-60ec-5e17-91ae-f8769af3b4f0",
+          "ideaId": "f4c7ff5a-0fe5-52a7-a9d8-a933d23c5d23"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "domains\\SysML_v2.tdom",
+      "status": "repaired",
+      "beforeSha256": "01ecd3c32647c70c34474b7e7c05232b15c439065c5625adc8a32a4fa5c88bc5",
+      "afterSha256": "214c2a0262fad03536827b0368ec261126b3e2094fdc052b10d59520d2c28909",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v2-01ecd3c32647c70c.tdom",
+      "controls": [
+        {
+          "viewId": "e3930a5d-e990-5e70-880a-b8d409edd49e",
+          "ideaId": "0f39bb4d-8983-5214-a655-c83ce76b0616"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_ModelingLab.tcom",
+      "status": "repaired",
+      "beforeSha256": "de14e536a35cf911bf18f1561f7a261a74c8dbf64414997dad6983b3cc52f5bd",
+      "afterSha256": "aee37ed882663a1e469784b4c5f85fbac19adc4f13ff313ddb82282acaa8142b",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v1_ModelingLab-de14e536a35cf911.tcom",
+      "controls": [
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "10b19e9e-3667-5ffb-b401-fc4e8bdd122e"
+        },
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "af41c554-92a2-5df8-a255-99c40ab17c0c"
+        },
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "a9285dcf-9e45-51d9-9437-d5c3d61a62c0"
+        },
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "27c2fc88-9a6d-5f31-bf18-23c83e69b415"
+        },
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "c5a321c0-cc35-54ab-a33a-574c3be108c3"
+        },
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "c3f89fee-255b-54c8-a9ff-22f962a9944c"
+        },
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "58d8abd2-0f2f-507d-b9ae-9d243409493b"
+        },
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "ideaId": "6957b13d-36fa-5eee-8525-ebfab6daab86"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_Starter.tcom",
+      "status": "repaired",
+      "beforeSha256": "f92163b980d0cac03f0b1d09cc136f7b60156499145702da9c79015fa09661e2",
+      "afterSha256": "68ae4910fb807f5908ae2cf44f907d46c967be44842ed30c09a73f326cc450f2",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v1_Starter-f92163b980d0cac0.tcom",
+      "controls": [
+        {
+          "viewId": "1ca5ef01-8dc5-5520-8cd7-5fdbc01ae257",
+          "ideaId": "a76adedd-ce06-575c-9b96-55aef7ba8510"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_Survey.tcom",
+      "status": "repaired",
+      "beforeSha256": "21cf5bee45366b050c7eb40029039bde72a834059cf346d609ffa919faf1a59e",
+      "afterSha256": "19036bca8ff814604c61f0b321bd30e1e33f471fb2de654abc9d39a8d8e2573f",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v1_Survey-21cf5bee45366b05.tcom",
+      "controls": [
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "fbe3bb1b-e949-5fb2-aa6a-5c1d06b60206"
+        },
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "f7609f98-6692-5ac5-a78c-523355036f9e"
+        },
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "f53279c1-d9e4-5884-9139-7e7c241a7ea2"
+        },
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "ae048c31-28da-51c7-beac-864157751ae9"
+        },
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "e81aa8de-2640-5f63-86f9-74868f553bdf"
+        },
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "b606d9f3-2c5d-5871-a0c6-8ffbe61763a7"
+        },
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "b7b3cfef-8e77-5b98-b16c-5f1745d94969"
+        },
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "ideaId": "68df791b-6dfc-57be-b0a2-9a6c885fff40"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_ModelingLab.tcom",
+      "status": "repaired",
+      "beforeSha256": "216a21a1e63bdc328213c192b59464c57b875468bddb61a82261dad49fb62bde",
+      "afterSha256": "7aa6cb7789846f221fed7c227e1ecbcefee2906f5b6ccac58f012f74aecf71e2",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v2_ModelingLab-216a21a1e63bdc32.tcom",
+      "controls": [
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "0f560c1c-598e-52ac-b78e-aa4967cdb065"
+        },
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "45b4238d-5c8a-5caa-9e10-4b1c7123167b"
+        },
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "6f659e48-0228-53c0-9137-6da3220c69b6"
+        },
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "993568c7-d912-5390-a6f1-dfc7d1d70e87"
+        },
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "73ba4028-8073-5018-b2ca-4a46faeb58af"
+        },
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "0b4f98a0-2d0b-5ab5-90bf-8942e16243e7"
+        },
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "9f58fd1d-ae41-5003-9c53-0a707f07e7e3"
+        },
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "ideaId": "d98c9bf5-5d3e-56ae-8743-869f02dd9486"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_Starter.tcom",
+      "status": "repaired",
+      "beforeSha256": "dad57d09e65b229c8eaa1d37975ea218335a76c81e9deee4224363ba01ce25f0",
+      "afterSha256": "7705e5b26ec30b396101383b7ca2835e87579db86baed70859463b24c5bb4383",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v2_Starter-dad57d09e65b229c.tcom",
+      "controls": [
+        {
+          "viewId": "10d4bb57-496e-5815-930b-1970be8a0b9a",
+          "ideaId": "59422aaf-9541-5fd3-bd6a-1d37a68ed42e"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_Survey.tcom",
+      "status": "repaired",
+      "beforeSha256": "3eeb15e21a42aae4c2509766bbe1b9436e71d477092c83f8841f2ff834ba3f6e",
+      "afterSha256": "a9701d7f2d68ef5bacfbf04c9d3028732d55dbce8c71dd784cd0fc67384d9471",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v2_Survey-3eeb15e21a42aae4.tcom",
+      "controls": [
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "ce8c95b6-bdb2-52eb-86db-c5be0d18717b"
+        },
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "002d6776-b721-55a2-872b-b23262a44cec"
+        },
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "2957f4e4-91fb-5f47-ab55-c66963d5dd05"
+        },
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "705d9c95-c5fb-5a6c-a816-f9956a5d44ad"
+        },
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "becbdf90-139a-511c-9a47-2f2c2da1775a"
+        },
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "1b1663f8-646d-5547-9e0c-e2d1dd87a3d7"
+        },
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "9e0aafd8-75e2-5e4b-a3bb-383a7bcdd46d"
+        },
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "ideaId": "f42725ff-5850-5030-8fe8-d40f6698cf5b"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\SysML_v1_ModelingLab.tcom",
+      "status": "repaired",
+      "beforeSha256": "730a2a4c89c7e9e316ea530cbba299be524159d418f74e5c7d843f9ff760a574",
+      "afterSha256": "172678504d96442eca916931e0f850118dd29afdcfc022e80621f7ed92777da6",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v1_ModelingLab-730a2a4c89c7e9e3.tcom",
+      "controls": [
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "b79808eb-eae8-5c0a-8e98-40b9b16c8225"
+        },
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "32400fd6-3ab3-51da-9078-7eefa4ab26f8"
+        },
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "905b5f56-598e-5fea-ab2e-dac4f2fa53df"
+        },
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "b732c2be-5a9f-5640-a8c9-b7b081101aa3"
+        },
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "746bd2b6-d091-5813-8a20-e43e085161c9"
+        },
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "b77f6784-89ac-5f08-9417-f74eddfa6e11"
+        },
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "6f62cb57-c29a-5524-8f37-7ddad6170a00"
+        },
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "ideaId": "2e85a7dd-f9c9-5fde-91a5-14a7e8b362f4"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\SysML_v1_Starter.tcom",
+      "status": "repaired",
+      "beforeSha256": "50cea82fe6b395965e30d58a32af13ff8ef7e4edf36dbbfbc16917cacf313dd4",
+      "afterSha256": "6ee483d21b3c6e12e4173a5c1db5892da95d811e62f4f736848f23241a3dbddb",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v1_Starter-50cea82fe6b39596.tcom",
+      "controls": [
+        {
+          "viewId": "edc9ffa2-60ec-5e17-91ae-f8769af3b4f0",
+          "ideaId": "f4c7ff5a-0fe5-52a7-a9d8-a933d23c5d23"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\SysML_v1_Survey.tcom",
+      "status": "repaired",
+      "beforeSha256": "8566c3a3559b01976212807b94be36ff461e013e36346c459d37dfcdaf9fd16d",
+      "afterSha256": "714da9be205bb749bda6b8dae167b49cab383efa1ee24f0a4e17fc7089df51bb",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v1_Survey-8566c3a3559b0197.tcom",
+      "controls": [
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "feaca247-40e2-55ff-a5be-65f932f0d29f"
+        },
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "c24554b0-b625-536f-ae11-e5e50eec9f94"
+        },
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "8938411e-4d88-5329-bddd-ef0a30b0832d"
+        },
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "6ca30b7e-c428-5a60-9428-f5b0c275a2f0"
+        },
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "396c22f3-bc71-594d-9b57-c52a9fa7675e"
+        },
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "420e9b71-809b-55b5-8984-e8f8aa5147e1"
+        },
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "fc2928c3-3aad-5934-8163-005562616e27"
+        },
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "ideaId": "a79b75fa-8a51-5680-b338-ef06eb5cccc1"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\SysML_v2_ModelingLab.tcom",
+      "status": "repaired",
+      "beforeSha256": "1aa25c0f5f0bf74cf2364ffc57571d27f220044b0d264eebae501c2c7222b764",
+      "afterSha256": "aff94b43fc3cfea036d0e99af3fd62b4427ff9d5b6ada1ba43de5f0e1c999f24",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v2_ModelingLab-1aa25c0f5f0bf74c.tcom",
+      "controls": [
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "54eb8325-4c02-5fb9-8adf-728cf600f6ab"
+        },
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "17c68fa9-ffe7-5ecf-bb37-9d77d2a5a513"
+        },
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "56250677-f04c-5460-ab02-eb1ba71143a3"
+        },
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "c5081ea4-245f-5d04-958a-c0e76767437a"
+        },
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "e1d95e17-3703-5788-9293-108b94c61f67"
+        },
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "a8095d48-2bc4-5c89-a157-aec81aa66a8a"
+        },
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "3e95a3a5-8501-5b7b-a88d-f32d8c40e599"
+        },
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "ideaId": "48530e03-4a59-5b8b-91ed-3dd8b56f65ad"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\SysML_v2_Starter.tcom",
+      "status": "repaired",
+      "beforeSha256": "d76a3d81961455d5e79dca8d7ba2adf7780ace1468f10bbefafcfbbea2887a45",
+      "afterSha256": "796033e175a95eba430917e50c6164af07f0c728c9389a239aaf1859a1486396",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v2_Starter-d76a3d81961455d5.tcom",
+      "controls": [
+        {
+          "viewId": "e3930a5d-e990-5e70-880a-b8d409edd49e",
+          "ideaId": "0f39bb4d-8983-5214-a655-c83ce76b0616"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "examples\\SysML_v2_Survey.tcom",
+      "status": "repaired",
+      "beforeSha256": "92e3e9cb96d9a66de4767aed4eba5dbe19de17532e71463d7a353ea8e91a2f98",
+      "afterSha256": "a82be407fdac520edc4c29c70b7b57d3f5061dbb3732b5c874634143a0eeb24f",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\SysML_v2_Survey-92e3e9cb96d9a66d.tcom",
+      "controls": [
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "0f04e9fe-f008-57c1-b47f-6f4e0d8d305f"
+        },
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "cd605da8-71e4-504a-a4a8-f6797e8e720d"
+        },
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "04dbd6e2-2122-5ea0-a7ed-c299d919b459"
+        },
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "87666205-667f-5f49-ba37-c94481e4e6a9"
+        },
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "b122ee1d-4191-57f5-830a-bbff2203f9cf"
+        },
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "d64df139-1749-5ca4-8095-a396fdd75527"
+        },
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "56db072c-66a4-5a45-8bb8-ed24417465a4"
+        },
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "ideaId": "0d583fcf-a495-5ac6-bd04-50bbbd7d401f"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_Imported.tcom",
+      "status": "repaired",
+      "beforeSha256": "6ce576c13b0e5f742d2ffe14e46a47922a3d61c044267c6cbc1a2984ae487de4",
+      "afterSha256": "de7e83e372d62143601b2684a3fb314a127c1b24440fba4cf09b57afdf07b4de",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_Imported-6ce576c13b0e5f74.tcom",
+      "controls": [
+        {
+          "viewId": "f4ce0fca-5d7d-5bc1-944d-7085d971826a",
+          "ideaId": "dfdaec07-7e89-5187-a38d-bc9bc760a5a9"
+        },
+        {
+          "viewId": "f4ce0fca-5d7d-5bc1-944d-7085d971826a",
+          "ideaId": "37624336-0303-5d8f-b4c4-d4edd7a44a16"
+        },
+        {
+          "viewId": "f4ce0fca-5d7d-5bc1-944d-7085d971826a",
+          "ideaId": "784e5751-64b2-5658-8dda-c3922145001b"
+        },
+        {
+          "viewId": "f4ce0fca-5d7d-5bc1-944d-7085d971826a",
+          "ideaId": "afcad1ee-1417-566e-95a7-8a80935f8cd8"
+        },
+        {
+          "viewId": "f4ce0fca-5d7d-5bc1-944d-7085d971826a",
+          "ideaId": "419748be-768e-5288-ac96-4fdf2403fe7d"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_SysML_v1_Slice.tcom",
+      "status": "repaired",
+      "beforeSha256": "a9fa4f50c84540900c9a7a7992a86ac6aad3acec18eee42d9dcf6bbd85c5ef31",
+      "afterSha256": "4ec4dbed1bdd231e318113dd82fb27729577e6be908ba68fb3333b349233640d",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v1_Slice-a9fa4f50c8454090.tcom",
+      "controls": [
+        {
+          "viewId": "259ee99b-7bf9-58de-b5bc-985c3c8d406d",
+          "ideaId": "9436ce11-f207-5ada-b5ca-1236c5c31377"
+        },
+        {
+          "viewId": "259ee99b-7bf9-58de-b5bc-985c3c8d406d",
+          "ideaId": "077aed48-b962-519e-af04-48cd2503ca27"
+        },
+        {
+          "viewId": "259ee99b-7bf9-58de-b5bc-985c3c8d406d",
+          "ideaId": "bb918c8c-caf0-5bf9-81c4-1705fd5d198c"
+        },
+        {
+          "viewId": "259ee99b-7bf9-58de-b5bc-985c3c8d406d",
+          "ideaId": "be1bea7e-d321-5a2d-9491-3fd4597fb5fd"
+        },
+        {
+          "viewId": "259ee99b-7bf9-58de-b5bc-985c3c8d406d",
+          "ideaId": "0909d5b4-764a-5f30-aee5-f1d9958b3336"
+        },
+        {
+          "viewId": "259ee99b-7bf9-58de-b5bc-985c3c8d406d",
+          "ideaId": "8952f7b6-f316-5baa-93ea-2d7a025c8441"
+        }
+      ],
+      "modelDataUnchanged": true
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+      "status": "repaired",
+      "beforeSha256": "6bcdfddc7e485f9032617c0020cd316be07283a59362eccc914238eff4c6ae61",
+      "afterSha256": "b5a6430e0d7ec183ee950301423eed31764ecc4160bc06c561682fa1389838e9",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-visibility-repair\\backups\\MTConnect_SysML_v2_Slice-6bcdfddc7e485f90.tcom",
+      "controls": [
+        {
+          "viewId": "b2ade4ee-0b0b-5732-8d7b-505604a92bd2",
+          "ideaId": "33e3364e-2ba4-5e64-a02e-59694625fa95"
+        },
+        {
+          "viewId": "b2ade4ee-0b0b-5732-8d7b-505604a92bd2",
+          "ideaId": "a23737c1-55fc-5fef-824c-fe30a2158697"
+        },
+        {
+          "viewId": "b2ade4ee-0b0b-5732-8d7b-505604a92bd2",
+          "ideaId": "42ede18e-5b0e-51c1-8699-cb97ec273386"
+        },
+        {
+          "viewId": "b2ade4ee-0b0b-5732-8d7b-505604a92bd2",
+          "ideaId": "63edb566-f60e-5aa0-bdf6-85ce4df67e1f"
+        },
+        {
+          "viewId": "b2ade4ee-0b0b-5732-8d7b-505604a92bd2",
+          "ideaId": "3302e98c-490d-5720-8050-a4dacdf3e35d"
+        },
+        {
+          "viewId": "b2ade4ee-0b0b-5732-8d7b-505604a92bd2",
+          "ideaId": "dc5e4d56-ca72-5c3e-8c43-de1dcb0838a5"
+        }
+      ],
+      "modelDataUnchanged": true
+    }
+  ]
+}

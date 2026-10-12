@@ -1,0 +1,292 @@
+{
+  "formatVersion": 1,
+  "results": [
+    {
+      "package": "domains\\MTConnect_SysML_v1.tdom",
+      "status": "recentered",
+      "beforeSha256": "d9372aff2fdb604cafb675501e2379a218c5854e9742a60e5fddd7594b1ccc7d",
+      "afterSha256": "3e86ffeed280d20242b131fb8fb91b194e52c92a7503d2f90472d9118fbcecc3",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v1-d9372aff2fdb604c.tdom",
+      "views": [
+        {
+          "viewId": "1ca5ef01-8dc5-5520-8cd7-5fdbc01ae257",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "domains\\MTConnect_SysML_v2.tdom",
+      "status": "recentered",
+      "beforeSha256": "993bf220a2c7bf4ca7253120802e7db5d2a0946d1e35fa8a039a222a33e0eab6",
+      "afterSha256": "dd436d6f05acca5d95625ae72932bd5e90d7ea0bc1afe7dd65f45bb3518489bd",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v2-993bf220a2c7bf4c.tdom",
+      "views": [
+        {
+          "viewId": "10d4bb57-496e-5815-930b-1970be8a0b9a",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "domains\\SysML_v1.tdom",
+      "status": "recentered",
+      "beforeSha256": "146aaa34cabc5a0530192915af979afd2eeab37c04c82bcf8822a47581441534",
+      "afterSha256": "64d92c7e3907b13bfe4f559c33f0d66e52c1cac6569900986b593903bbe2a1e4",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v1-146aaa34cabc5a05.tdom",
+      "views": [
+        {
+          "viewId": "edc9ffa2-60ec-5e17-91ae-f8769af3b4f0",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "domains\\SysML_v2.tdom",
+      "status": "recentered",
+      "beforeSha256": "a59543f107bb6cc680e36a47705461500cb95022e5539bb13407960ba707eb46",
+      "afterSha256": "01ecd3c32647c70c34474b7e7c05232b15c439065c5625adc8a32a4fa5c88bc5",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v2-a59543f107bb6cc6.tdom",
+      "views": [
+        {
+          "viewId": "e3930a5d-e990-5e70-880a-b8d409edd49e",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_ModelingLab.tcom",
+      "status": "recentered",
+      "beforeSha256": "132a641cff566b47c7d8ef548bfbf75139117089ad81c377ebfc6036b71238db",
+      "afterSha256": "de14e536a35cf911bf18f1561f7a261a74c8dbf64414997dad6983b3cc52f5bd",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v1_ModelingLab-132a641cff566b47.tcom",
+      "views": [
+        {
+          "viewId": "501445e4-9df7-5457-89a1-106465ef5787",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_Starter.tcom",
+      "status": "recentered",
+      "beforeSha256": "d70b0fc4bb51573d7cd65eb332cfc72d98bd6d30d1ce1e56e609bc9e28b39b3b",
+      "afterSha256": "f92163b980d0cac03f0b1d09cc136f7b60156499145702da9c79015fa09661e2",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v1_Starter-d70b0fc4bb51573d.tcom",
+      "views": [
+        {
+          "viewId": "1ca5ef01-8dc5-5520-8cd7-5fdbc01ae257",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_Survey.tcom",
+      "status": "recentered",
+      "beforeSha256": "08ad68a6ad8fcd861fc2089886739f54c361c04728efe4574cbb64cb1297e5d9",
+      "afterSha256": "21cf5bee45366b050c7eb40029039bde72a834059cf346d609ffa919faf1a59e",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v1_Survey-08ad68a6ad8fcd86.tcom",
+      "views": [
+        {
+          "viewId": "8e1e6897-146c-5799-9086-8e36da21c953",
+          "dx": 7690.0,
+          "dy": 5737.5,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_ModelingLab.tcom",
+      "status": "recentered",
+      "beforeSha256": "4e99cea54d48cb99f49b247ec21c15014d29b0524802316dc9247aadbe8c8985",
+      "afterSha256": "216a21a1e63bdc328213c192b59464c57b875468bddb61a82261dad49fb62bde",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v2_ModelingLab-4e99cea54d48cb99.tcom",
+      "views": [
+        {
+          "viewId": "b2ede9f1-3a6d-58c3-ae8b-60a95a314e76",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_Starter.tcom",
+      "status": "recentered",
+      "beforeSha256": "e79c0223a5b7b33f99604ca8dc4463ee3829f257db674f36eb0fddd4a32ecd67",
+      "afterSha256": "dad57d09e65b229c8eaa1d37975ea218335a76c81e9deee4224363ba01ce25f0",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v2_Starter-e79c0223a5b7b33f.tcom",
+      "views": [
+        {
+          "viewId": "10d4bb57-496e-5815-930b-1970be8a0b9a",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_Survey.tcom",
+      "status": "recentered",
+      "beforeSha256": "371bb5794bfcfc9146d36470ae4a22ebfe69b756440830a347d2447a41302dbd",
+      "afterSha256": "3eeb15e21a42aae4c2509766bbe1b9436e71d477092c83f8841f2ff834ba3f6e",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v2_Survey-371bb5794bfcfc91.tcom",
+      "views": [
+        {
+          "viewId": "67362138-b5db-5d7d-884d-0586d7424ba7",
+          "dx": 7690.0,
+          "dy": 5737.5,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v1_ModelingLab.tcom",
+      "status": "recentered",
+      "beforeSha256": "e9337fea321e79ef8fd1012c00e9647ea4562df3d2f785f7c17cb9d686b012a7",
+      "afterSha256": "730a2a4c89c7e9e316ea530cbba299be524159d418f74e5c7d843f9ff760a574",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v1_ModelingLab-e9337fea321e79ef.tcom",
+      "views": [
+        {
+          "viewId": "2ec57f9b-3fe2-5246-93e7-086d66236012",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v1_Starter.tcom",
+      "status": "recentered",
+      "beforeSha256": "10772b9036e45c7c137d1c0a10b7e4c5ae92ca5c42c58bddb0905a0f583b87c5",
+      "afterSha256": "50cea82fe6b395965e30d58a32af13ff8ef7e4edf36dbbfbc16917cacf313dd4",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v1_Starter-10772b9036e45c7c.tcom",
+      "views": [
+        {
+          "viewId": "edc9ffa2-60ec-5e17-91ae-f8769af3b4f0",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v1_Survey.tcom",
+      "status": "recentered",
+      "beforeSha256": "555330e0e672f8dfc20c3a7d5ddb54f84f4d9309403c1940cd0c1c269be596d6",
+      "afterSha256": "8566c3a3559b01976212807b94be36ff461e013e36346c459d37dfcdaf9fd16d",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v1_Survey-555330e0e672f8df.tcom",
+      "views": [
+        {
+          "viewId": "515ca398-bb20-5543-a1a8-0ed9591d7cf4",
+          "dx": 7690.0,
+          "dy": 5737.5,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v2_ModelingLab.tcom",
+      "status": "recentered",
+      "beforeSha256": "a64622f8da3bb3210283f0c55d987cc0cd76b9b14681c8ada77394846ecd7a79",
+      "afterSha256": "1aa25c0f5f0bf74cf2364ffc57571d27f220044b0d264eebae501c2c7222b764",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v2_ModelingLab-a64622f8da3bb321.tcom",
+      "views": [
+        {
+          "viewId": "a2357300-8705-5fb5-8633-bc584696c0a8",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v2_Starter.tcom",
+      "status": "recentered",
+      "beforeSha256": "ddb46d6df463c121ffb166150e1063cccae3b0319fce3d7273900563ce9dceee",
+      "afterSha256": "d76a3d81961455d5e79dca8d7ba2adf7780ace1468f10bbefafcfbbea2887a45",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v2_Starter-ddb46d6df463c121.tcom",
+      "views": [
+        {
+          "viewId": "e3930a5d-e990-5e70-880a-b8d409edd49e",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 1
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v2_Survey.tcom",
+      "status": "recentered",
+      "beforeSha256": "d3e3ffd8b9e4608cc53d7b3cae63f541f83dc9b28b8743d3a4b09ea73d5782a8",
+      "afterSha256": "92e3e9cb96d9a66de4767aed4eba5dbe19de17532e71463d7a353ea8e91a2f98",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\SysML_v2_Survey-d3e3ffd8b9e4608c.tcom",
+      "views": [
+        {
+          "viewId": "e957a449-dbde-5f66-b600-bdcb11e7662a",
+          "dx": 7690.0,
+          "dy": 5737.5,
+          "visuals": 8
+        }
+      ]
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_Imported.tcom",
+      "status": "recentered",
+      "beforeSha256": "bbac4cb9c7257e93d9bee35d81125e759ff8be00cdfc9f594d87a29b01b8eba0",
+      "afterSha256": "6ce576c13b0e5f742d2ffe14e46a47922a3d61c044267c6cbc1a2984ae487de4",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_Imported-bbac4cb9c7257e93.tcom",
+      "views": [
+        {
+          "viewId": "f4ce0fca-5d7d-5bc1-944d-7085d971826a",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 5
+        }
+      ]
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_SysML_v1_Slice.tcom",
+      "status": "recentered",
+      "beforeSha256": "4b4a030630956e06079b84599c9e55f117fdebb92b01e991e55ed54110204dd2",
+      "afterSha256": "a9fa4f50c84540900c9a7a7992a86ac6aad3acec18eee42d9dcf6bbd85c5ef31",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v1_Slice-4b4a030630956e06.tcom",
+      "views": [
+        {
+          "viewId": "259ee99b-7bf9-58de-b5bc-985c3c8d406d",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 6
+        }
+      ]
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+      "status": "recentered",
+      "beforeSha256": "0bfc61e30e61fc2b0de978605ae7c0d24c61da6ab67070da83937c8ffb796993",
+      "afterSha256": "6bcdfddc7e485f9032617c0020cd316be07283a59362eccc914238eff4c6ae61",
+      "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-desktop-repair\\backups\\MTConnect_SysML_v2_Slice-0bfc61e30e61fc2b.tcom",
+      "views": [
+        {
+          "viewId": "b2ade4ee-0b0b-5732-8d7b-505604a92bd2",
+          "dx": 7635.0,
+          "dy": 5735.0,
+          "visuals": 6
+        }
+      ]
+    }
+  ],
+  "applicationSourceModified": false,
+  "remainingIssue": "Model-only navigation needs the separately proposed source guard; coordinate repair alone does not fix that exception."
+}

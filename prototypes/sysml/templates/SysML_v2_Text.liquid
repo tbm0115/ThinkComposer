@@ -1,0 +1,148 @@
+%%:FileName={{ TechName }}.sysml
+%%:TemplateRole=DocumentRoot
+// ThinkComposer prototype 0.1.0; see companion export report.
+{% for child in CompositeIdeas %}{% inject 'TextLevel0' with child %}{% endfor %}
+
+%%:SubTemplate=TextLevel0
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel1' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel1
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel2' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel2
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel3' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel3
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel4' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel4
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel5' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel5
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel6' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel6
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel7' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel7
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel8' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel8
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel9' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel9
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel10' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel10
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% for child in CompositeIdeas %}{% inject 'TextLevel11' with child %}{% endfor %}
+}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}
+
+%%:SubTemplate=TextLevel11
+{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign Specializes = This | DetailValue: 'Specializes' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign TextKeyword = This | DetailValue: 'TextKeyword' %}{% assign TypeName = This | DetailValue: 'TypeName' %}{% if TextKeyword != '' and TextKeyword != null %}
+{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Typing' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign TypeName = target.TechName %}{% endfor %}{% endif %}{% endfor %}{% for link in AssociatingLinks %}{% if link.RoleDefinitor.TechName == 'Origin' and link.OwnerRelationship.IdeaDefinitor.TechName == 'Generalization' %}{% for target in link.OwnerRelationship.TargetIdeas %}{% assign Specializes = target.TechName %}{% endfor %}{% endif %}{% endfor %}{{ TextKeyword }} {{ TechName }}{% if TypeName != '' and TypeName != null %} : {{ TypeName }}{% endif %}{% if Specializes != '' and Specializes != null %} :> {{ Specializes }}{% endif %} {
+// source-id: {{ GlobalId }}
+{% if SourceId != '' and SourceId != null %}// original-xmi-id: {{ SourceId }}
+{% endif %}{% if TextContent != '' and TextContent != null %}doc /* {{ TextContent | Replace: '[*]/', '* /' }} */
+{% endif %}{% if CompositeIdeas.Size > 0 %}// PROTOTYPE_DEPTH_LIMIT: descendants not exported
+{% endif %}}
+{% else %}{% if IdeaDefinitor.TechName == 'Typing' or IdeaDefinitor.TechName == 'Generalization' %}// Relationship emitted on its source declaration; check coverage report.
+{% else %}// UNSUPPORTED_ELEMENT {{ GlobalId }} {{ IdeaDefinitor.TechName }}
+{% endif %}{% endif %}

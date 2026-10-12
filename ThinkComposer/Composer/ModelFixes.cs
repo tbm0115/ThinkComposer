@@ -420,7 +420,9 @@ namespace Instrumind.ThinkComposer.Composer
         // ---------------------------------------------------------------------------------------------------------------------------------------------------------
         private static bool ModelRev7_FixOwnerReferences(Composition Target)
         {
-            var ExaminedInstances = new List<IMModelClass>();
+            // Large imported models contain hundreds of thousands of owned objects.
+            // Repeated List.Contains scans make this graph traversal quadratic.
+            var ExaminedInstances = new HashSet<IMModelClass>();
             var Fixes = new List<Tuple<IMModelClass, MModelPropertyDefinitor, object>>();
 
             //T Console.WriteLine("#### RUN 1...");
@@ -447,7 +449,7 @@ namespace Instrumind.ThinkComposer.Composer
         /// <summary>
         /// Fixes references to owner, which are not pointing to the real ones (resulting of old-buggy cloning operation).
         /// </summary>
-        private static bool ModelRev7_ApplyFixOwnerReferences(Composition TargetCompo, string Route, IList<IMModelClass> ExaminedInstances,
+        private static bool ModelRev7_ApplyFixOwnerReferences(Composition TargetCompo, string Route, ISet<IMModelClass> ExaminedInstances,
                                                               List<Tuple<IMModelClass, MModelPropertyDefinitor, object>> Fixes,
                                                               IMModelClass Target, IMModelClass DirectOwner = null, int Level = 0)
         {
@@ -723,14 +725,14 @@ namespace Instrumind.ThinkComposer.Composer
         /// <summary>
         /// Fixes any Unique-Element duplicated Global-Id.
         /// </summary>
-        private static bool ModelRev8_FixDuplicatedGlobalIds(Composition TargetCompo, string Route = null, IList<IMModelClass> ExaminedInstances = null,
+        private static bool ModelRev8_FixDuplicatedGlobalIds(Composition TargetCompo, string Route = null, ISet<IMModelClass> ExaminedInstances = null,
                                                              IMModelClass Target = null)
         {
             if (Route == null)
                 Route = "\\\\";
 
             if (ExaminedInstances == null)
-                ExaminedInstances = new List<IMModelClass>();
+                ExaminedInstances = new HashSet<IMModelClass>();
 
             if (Target == null)
                 Target = TargetCompo;
@@ -767,6 +769,7 @@ namespace Instrumind.ThinkComposer.Composer
                 if (CollList != null)
                 {
                     var Duplicates = new List<UniqueElement>();
+                    var ItemsById = CollList.Cast<object>().OfType<UniqueElement>().ToLookup(Item => Item.GlobalId);
 
                     var Index = -1;
                     foreach (var Item in CollList)
@@ -785,7 +788,7 @@ namespace Instrumind.ThinkComposer.Composer
 
                             if (Item is UniqueElement)
                             {
-                                var Items = ((IEnumerable<object>)CollList).CastAs<UniqueElement, object>();
+                                var Items = ItemsById[((UniqueElement)Item).GlobalId];
                                 if (Items.Any(item => item != Item && item.GlobalId == ((UniqueElement)Item).GlobalId))
                                 {
                                     Duplicates.Add((UniqueElement)Item);
@@ -808,6 +811,8 @@ namespace Instrumind.ThinkComposer.Composer
                     if (CollDict != null)
                     {
                         var Duplicates = new List<UniqueElement>();
+                        var KeysById = CollDict.Keys.Cast<object>().OfType<UniqueElement>().ToLookup(Item => Item.GlobalId);
+                        var ValuesById = CollDict.Values.Cast<object>().OfType<UniqueElement>().ToLookup(Item => Item.GlobalId);
 
                         var Index = -1;
                         foreach (var Key in CollDict.Keys)
@@ -826,7 +831,7 @@ namespace Instrumind.ThinkComposer.Composer
 
                                 if (CollKey is UniqueElement)
                                 {
-                                    var Items = ((IEnumerable<object>)CollList).CastAs<UniqueElement, object>();
+                                    var Items = KeysById[((UniqueElement)CollKey).GlobalId];
                                     if (Items.Any(item => item != CollKey && item.GlobalId == ((UniqueElement)CollKey).GlobalId))
                                     {
                                         Duplicates.Add((UniqueElement)CollKey);
@@ -856,7 +861,7 @@ namespace Instrumind.ThinkComposer.Composer
 
                                 if (CollValue is UniqueElement)
                                 {
-                                    var Items = ((IEnumerable<object>)CollList).CastAs<UniqueElement, object>();
+                                    var Items = ValuesById[((UniqueElement)CollValue).GlobalId];
                                     if (Items.Any(item => item != CollValue && item.GlobalId == ((UniqueElement)CollValue).GlobalId))
                                     {
                                         Duplicates.Add((UniqueElement)CollValue);

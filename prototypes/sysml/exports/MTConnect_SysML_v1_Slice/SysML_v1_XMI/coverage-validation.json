@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "package": "reference\\mtconnect\\MTConnect_SysML_v1_Slice.tcom",
+  "language": "SysML_v1_XMI",
+  "outputSha256": "c266f822dad647f1bccd98b68a6a817a742f12fd0299d96756d8940e936e44d1",
+  "emittedElements": 17,
+  "foldedRelationships": [],
+  "omittedElements": [],
+  "issues": [],
+  "externalReferences": [
+    "http://www.omg.org/spec/SysML/20181001/SysML.xmi#SysML"
+  ],
+  "completeExport": false,
+  "declaredStructuralChecks": "passed",
+  "languageSemanticValidation": "unverified: external parser/profile-library validation unavailable",
+  "profileBindings": "SysML URI matches supplied reference; external profile resolution unverified",
+  "exclusions": [
+    "proprietary diagram encoding",
+    "execution/evaluation",
+    "full profile/metadata semantics"
+  ],
+  "warning": "This is a partial prototype export, never a conformance certificate.",
+  "repeatExportIdentical": true
+}

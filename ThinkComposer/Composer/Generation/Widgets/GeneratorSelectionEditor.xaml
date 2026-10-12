@@ -60,6 +60,9 @@
         </DockPanel>
 
         <TreeView x:Name="TvSelection"
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                  ScrollViewer.CanContentScroll="True"
                   MinHeight="50"  Margin="2">
             <TreeView.Style>
                 <Style>
@@ -103,7 +106,7 @@
                                       ToolTip="Select/unselect only this Idea (without propagation to children)">
 
                                 <!--Notice the margin to give space to the floating AreaChildrenSelected check-box (which cannot be disabled)-->
-                                <DockPanel ToolTip="{Binding Summary, Converter={StaticResource EmptyTextToNullConverter}}" Margin="16,0,1,0">
+                                <DockPanel ToolTip="{Binding SourceIdea.Summary, Converter={StaticResource EmptyTextToNullConverter}}" Margin="16,0,1,0">
                                     <Image DockPanel.Dock="Left" Source="{Binding SourceIdea.Definitor.Pictogram}" Width="32" Height="16" Stretch="Uniform" Margin="1" />
                                     <Image DockPanel.Dock="Left" Source="{Binding SourceIdea.Pictogram}" MaxWidth="32" MaxHeight="16" Stretch="Uniform" Margin="1" />
                                     <!--Notice the Black foreground to override selection/deselection styles-->
@@ -123,12 +126,10 @@
                 </HierarchicalDataTemplate>
             </TreeView.ItemTemplate>
 
-            <!-- THIS IS VERY SLOW WHEN "INTELLITRACE" IS ON...-->
+            <!-- Expand only the composition root. Selection still includes collapsed descendants. -->
             <TreeView.ItemContainerStyle>
                 <Style TargetType="{x:Type TreeViewItem}">
-                    <Setter Property="IsExpanded" Value="True"/>
-                    <!--It is very important to let this as One-Way binding to not unselect nodes from the TreeView-->
-                    <!--<EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemPreviewMouseLeftButtonDown" /> // WORKS BY TUNNELING-->
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                 </Style>
             </TreeView.ItemContainerStyle>
         </TreeView>

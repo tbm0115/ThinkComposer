@@ -1,0 +1,101 @@
+{
+  "formatVersion": 1,
+  "results": [
+    {
+      "package": "MTConnect_SysML_v1_ModelingLab.tcom",
+      "status": "passed",
+      "sha256": "b4232199202d72ca567d62f2b6794ddd382dcc00cda32b7cf164acce68491883"
+    },
+    {
+      "package": "MTConnect_SysML_v1_Starter.tcom",
+      "status": "passed",
+      "sha256": "7facfe80eafa5d13ee7e0f170104e806dc37aace722fc9c980ca37a1e03dd3dc"
+    },
+    {
+      "package": "MTConnect_SysML_v1_Survey.tcom",
+      "status": "passed",
+      "sha256": "fe603f8becb5fb6114977c9b8da753a22562f77cda48986d729a3faced623bd0"
+    },
+    {
+      "package": "MTConnect_SysML_v2_ModelingLab.tcom",
+      "status": "passed",
+      "sha256": "88421fab8ca4e24639df149c4a0c65ac98bc090003efe103222b8dccc8350226"
+    },
+    {
+      "package": "MTConnect_SysML_v2_Starter.tcom",
+      "status": "passed",
+      "sha256": "ab0045a9e801b50c806a17af90ee8293467d1bfe1f03c881d470010ab606e4fb"
+    },
+    {
+      "package": "MTConnect_SysML_v2_Survey.tcom",
+      "status": "passed",
+      "sha256": "aa0720753adb8390b3f1e7df34919ef46a5fdce267320aad104befb8ba29b513"
+    },
+    {
+      "package": "SysML_v1_ModelingLab.tcom",
+      "status": "passed",
+      "sha256": "bae60ba59eb83271c05441f7177810b9fd9633ebb032b4f4be6740e0d89adbca"
+    },
+    {
+      "package": "SysML_v1_Starter.tcom",
+      "status": "passed",
+      "sha256": "d1898fa9c0787d4a32602da1beb3b028d1386fd01778484054ca74dfeab84e0b"
+    },
+    {
+      "package": "SysML_v1_Survey.tcom",
+      "status": "passed",
+      "sha256": "98e90ef75f0097510d4a31ae06457eb93ee58a22b8e6e0b046ec1e6913451f66"
+    },
+    {
+      "package": "SysML_v2_ModelingLab.tcom",
+      "status": "passed",
+      "sha256": "751e9326413ff998703a57302d6fa58427bb6e824bb7d2b5b90cb8ce6c72ed8d"
+    },
+    {
+      "package": "SysML_v2_Starter.tcom",
+      "status": "passed",
+      "sha256": "28f23571c3b6404e606b2e3b45463445d48f512963111b14289ef8610f2bc0ae"
+    },
+    {
+      "package": "SysML_v2_Survey.tcom",
+      "status": "passed",
+      "sha256": "97d760fa13cae94de892d43c83f23e07be5271e8132ee05bf7d66364683f933f"
+    },
+    {
+      "case": "malformed-0",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-1",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-2",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-3",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-4",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-5",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-6",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-7",
+      "status": "passed"
+    },
+    {
+      "case": "malformed-8",
+      "status": "passed"
+    }
+  ]
+}

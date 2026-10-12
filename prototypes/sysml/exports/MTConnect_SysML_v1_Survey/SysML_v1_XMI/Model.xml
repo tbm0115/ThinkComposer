@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmlns:uml="http://www.omg.org/spec/UML/20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:Concept_Modeling_Profile="http://www.magicdraw.com/schemas/Concept_Modeling_Profile.xmi" xmlns:Profile="http://www.magicdraw.com/schemas/Profile.xmi" xmlns:DSL_Customization="http://www.magicdraw.com/schemas/DSL_Customization.xmi" xmlns:sysml="http://www.omg.org/spec/SysML/20181001/SysML" xmlns:MD_Customization_for_Requirements__additional_stereotypes="http://www.magicdraw.com/spec/Customization/180/Requirements" xmlns:MagicDraw_Profile="http://www.omg.org/spec/UML/20131001/MagicDrawProfile" xmlns:Systems_Reasoner_="http://www.magicdraw.com/schemas/manual/Systems_Reasoner.xmi" xmlns:Profile_Generation_="http://www.magicdraw.com/schemas/manual/Profile_Generation.xmi" xmlns:Dependency_Matrix_Profile="http://www.magicdraw.com/schemas/Dependency_Matrix_Profile.xmi" xmlns:Validation_Profile="http://www.omg.org/spec/UML/20131001/ValidationProfile" xmlns:MD_Customization_for_SysML__additional_stereotypes="http://www.magicdraw.com/spec/Customization/180/SysML" xmlns:Document_Profile_="http://www.magicdraw.com/schemas/manual/Document_Profile.xmi" xmlns:SimulationProfile="http://www.magicdraw.com/schemas/SimulationProfile.xmi" xmlns:UseCase_Description_Profile="http://www.magicdraw.com/schemas/UseCase_Description_Profile.xmi" xmlns:Document_View_Collaborator_Profile="http://www.magicdraw.com/schemas/manual/Document_View_Collaborator_Profile.xmi" xmlns:StandardProfile="http://www.omg.org/spec/UML/20131001/StandardProfile" xmlns:CCM_Internal_Implementation_Profile="http://www.magicdraw.com/schemas/CCM_Internal_Implementation_Profile.xmi" xmlns:Viewpoints_="http://www.magicdraw.com/schemas/manual/Viewpoints.xmi">
+    <uml:Model xmi:type="uml:Model" xmi:id="tc_f7609f98-6692-5ac5-a78c-523355036f9e" name="Survey">
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_f53279c1-d9e4-5884-9139-7e7c241a7ea2" name="Organization">
+        </packagedElement>
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_b606d9f3-2c5d-5871-a0c6-8ffbe61763a7" name="Structure">
+            <packagedElement xmi:type="uml:Class" xmi:id="tc_b7b3cfef-8e77-5b98-b16c-5f1745d94969" name="BlockExample">
+                <ownedAttribute xmi:type="uml:Property" xmi:id="tc_7b1eff99-fa14-5142-8e53-51d163dc5819" name="PropertyExample" type="tc_68df791b-6dfc-57be-b0a2-9a6c885fff40">
+                </ownedAttribute>
+                <generalization xmi:type="uml:Generalization" xmi:id="tc_3dd6fdac-deda-5818-b550-348b6b9a9958" general="tc_1a01af77-4e02-5c63-8ebc-c4412486051d">
+                </generalization>
+            </packagedElement>
+            <packagedElement xmi:type="uml:DataType" xmi:id="tc_68df791b-6dfc-57be-b0a2-9a6c885fff40" name="ValueTypeExample">
+            </packagedElement>
+            <packagedElement xmi:type="uml:Enumeration" xmi:id="tc_66d48a57-aa60-5a5b-87af-b13544ec61bb" name="EnumerationExample">
+                <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="tc_963e8fc7-6cfc-5abd-a3f8-2c73fe30a85e" name="First">
+                </ownedLiteral>
+            </packagedElement>
+            <packagedElement xmi:type="uml:InstanceSpecification" xmi:id="tc_498258c1-7e27-59ba-917c-979420287f61" name="InstanceSpecificationExample">
+            </packagedElement>
+            <packagedElement xmi:type="uml:Class" xmi:id="tc_1a01af77-4e02-5c63-8ebc-c4412486051d" name="BaseElement">
+            </packagedElement>
+        </packagedElement>
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_34d3069e-91b5-58f1-989e-1d9e481b99d1" name="Interfaces">
+        </packagedElement>
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_993b6f1f-d7ae-562e-86e3-a9bb14f70861" name="Requirements">
+            <packagedElement xmi:type="uml:Class" xmi:id="tc_b04e3c3b-e6d8-50ea-82d5-e984c85c84e7" name="RequirementExample">
+            </packagedElement>
+        </packagedElement>
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_85165d36-8b99-5288-b8f3-437177bb9117" name="Behavior">
+            <packagedElement xmi:type="uml:Activity" xmi:id="tc_ca4b1f76-220b-5f82-b0a1-18a9d8e85208" name="ActivityExample">
+            </packagedElement>
+            <packagedElement xmi:type="uml:StateMachine" xmi:id="tc_0ec1846b-f086-5d20-b6c2-4f7a6ee35052" name="StateMachineExample">
+            </packagedElement>
+            <packagedElement xmi:type="uml:Interaction" xmi:id="tc_ef4ba6d5-1e8e-5912-87ad-ab557743828f" name="InteractionExample">
+            </packagedElement>
+            <packagedElement xmi:type="uml:UseCase" xmi:id="tc_c0f0ee64-b98f-5943-915a-ac1fd46ec48d" name="UseCaseExample">
+            </packagedElement>
+        </packagedElement>
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_a9b46183-b3a2-51e7-aa90-1cc7f4913a13" name="Constraints">
+            <packagedElement xmi:type="uml:Class" xmi:id="tc_751aa82e-76a9-553a-9e8e-a2264e3b5d2c" name="ConstraintBlockExample">
+            </packagedElement>
+        </packagedElement>
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_ab6d3972-fd28-5a47-92fb-856b4c4d89b2" name="Extensions">
+        </packagedElement>
+        <profileApplication xmi:type="uml:ProfileApplication" xmi:id="tc_237e5e2a-8166-5c41-8cb3-0af08daca39e">
+            <appliedProfile xmi:id="tc_06054a6b-9482-5b74-bad5-1ec9732894a5" href="http://www.omg.org/spec/SysML/20181001/SysML.xmi#SysML">
+            </appliedProfile>
+        </profileApplication>
+        <packagedElement xmi:type="uml:Package" xmi:id="tc_9c58e3fb-b4ad-5e94-9c68-d2af4d41d83a" name="MTConnect">
+        </packagedElement>
+    </uml:Model>
+    <sysml:Block xmi:id="tc_81938b3e-82d7-5968-a3ce-8c775ca7b206" base_Class="tc_b7b3cfef-8e77-5b98-b16c-5f1745d94969">
+    </sysml:Block>
+    <sysml:ValueType xmi:id="tc_be901580-e063-53e7-b273-a1b88b4464e2" base_DataType="tc_68df791b-6dfc-57be-b0a2-9a6c885fff40">
+    </sysml:ValueType>
+    <sysml:Requirement xmi:id="tc_c1694ed3-fe7b-594d-bd7d-ae869b419f96" base_Class="tc_b04e3c3b-e6d8-50ea-82d5-e984c85c84e7" id="REQ-001" text="Preserve model identity.">
+    </sysml:Requirement>
+    <sysml:ConstraintBlock xmi:id="tc_55704455-e9c1-5279-b27d-1c5c68cf2cbd" base_Class="tc_751aa82e-76a9-553a-9e8e-a2264e3b5d2c">
+    </sysml:ConstraintBlock>
+    <Profile:normative xmi:id="tc_200e20ca-c7e7-5065-a69f-d16329729c56" base_Element="tc_b7b3cfef-8e77-5b98-b16c-5f1745d94969">
+    </Profile:normative>
+</xmi:XMI>

@@ -1,0 +1,70 @@
+{
+  "sourceSha256": "d00efd04932bfd7809a8f7c663b5591796c22be4325559f90c7a8c6afe95c6cd",
+  "selectionPolicy": "first UML Class with each requested name in source order; alternative same-name classes are intentionally not conflated",
+  "elements": [
+    {
+      "language": "MTConnect_SysML_v1",
+      "name": "Observation",
+      "sourceId": "_19_0_3_45f01b9_1579566531115_47734_25731",
+      "targetId": "bb918c8c-caf0-5bf9-81c4-1705fd5d198c",
+      "mapping": "Class plus Block stereotype",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    },
+    {
+      "language": "MTConnect_SysML_v1",
+      "name": "Component",
+      "sourceId": "_19_0_3_45f01b9_1581734537697_742151_1119",
+      "targetId": "be1bea7e-d321-5a2d-9491-3fd4597fb5fd",
+      "mapping": "Class plus Block stereotype",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    },
+    {
+      "language": "MTConnect_SysML_v1",
+      "name": "Device",
+      "sourceId": "_19_0_3_68e0225_1623664375171_197977_2034",
+      "targetId": "0909d5b4-764a-5f30-aee5-f1d9958b3336",
+      "mapping": "Class plus Block stereotype",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    },
+    {
+      "language": "MTConnect_SysML_v1",
+      "name": "DataItem",
+      "sourceId": "_19_0_3_68e0225_1635251889215_363828_393",
+      "targetId": "8952f7b6-f316-5baa-93ea-2d7a025c8441",
+      "mapping": "Class plus Block stereotype",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    },
+    {
+      "language": "MTConnect_SysML_v2",
+      "name": "Observation",
+      "sourceId": "_19_0_3_45f01b9_1579566531115_47734_25731",
+      "targetId": "42ede18e-5b0e-51c1-8699-cb97ec273386",
+      "mapping": "curated Class to PartDefinition",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    },
+    {
+      "language": "MTConnect_SysML_v2",
+      "name": "Component",
+      "sourceId": "_19_0_3_45f01b9_1581734537697_742151_1119",
+      "targetId": "63edb566-f60e-5aa0-bdf6-85ce4df67e1f",
+      "mapping": "curated Class to PartDefinition",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    },
+    {
+      "language": "MTConnect_SysML_v2",
+      "name": "Device",
+      "sourceId": "_19_0_3_68e0225_1623664375171_197977_2034",
+      "targetId": "3302e98c-490d-5720-8050-a4dacdf3e35d",
+      "mapping": "curated Class to PartDefinition",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    },
+    {
+      "language": "MTConnect_SysML_v2",
+      "name": "DataItem",
+      "sourceId": "_19_0_3_68e0225_1635251889215_363828_393",
+      "targetId": "dc5e4d56-ca72-5c3e-8c43-de1dcb0838a5",
+      "mapping": "curated Class to PartDefinition",
+      "losses": "properties and unrelated references omitted; not complete migration"
+    }
+  ]
+}

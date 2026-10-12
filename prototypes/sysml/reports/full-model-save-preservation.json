@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "status": "passed",
+  "inputSha256": "94cb45238049b8c8f2c0855af439b901aeeb91817807de6ccca0f6d55fa28821",
+  "results": [
+    {
+      "file": "MTConnect_Saved.tcom",
+      "concepts": 32326,
+      "relationships": 1020,
+      "views": 11,
+      "visuals": 94,
+      "manifestHashesVerified": true
+    },
+    {
+      "file": "MTConnect_Resaved.tcom",
+      "concepts": 32326,
+      "relationships": 1020,
+      "views": 11,
+      "visuals": 94,
+      "manifestHashesVerified": true
+    }
+  ],
+  "issues": [],
+  "checks": [
+    "Stable identities, owners, relationship endpoints and ordered Details preserved",
+    "All View identities, owners, symbols and geometry preserved",
+    "All model entity snapshots identical across native save/reopen/resave"
+  ]
+}

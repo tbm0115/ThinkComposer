@@ -53,16 +53,21 @@ namespace Instrumind.ThinkComposer.Composer.Generation.Widgets
             this.DataContext = this.SourceConfiguration;
         }
 
+        private bool SelectionInitialized;
+
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
+            if (!this.SelectionInitialized)
+            {
+                this.SourceConfiguration.CurrentSelection = IdeaSelection.CreateSelectionTree(this.SourceComposition, this.SourceConfiguration.ExcludedIdeasGlobalIds,
+                                                                                              (idea => Tuple.Create(idea is Concept, idea is Concept, (IRecognizableElement)null)));
+                this.TvSelection.ItemsSource = this.SourceConfiguration.CurrentSelection.IntoEnumerable();
+                this.SelectionInitialized = true;
+            }
+
             var EditPanel = this.GetNearestVisualDominantOfType<EntityEditPanel>();
             if (EditPanel == null)
                 return;
-
-            this.SourceConfiguration.CurrentSelection = IdeaSelection.CreateSelectionTree(this.SourceComposition, this.SourceConfiguration.ExcludedIdeasGlobalIds,
-                                                                                          (idea => Tuple.Create(idea is Concept, idea is Concept, (IRecognizableElement)null)));
-
-            this.TvSelection.ItemsSource = this.SourceConfiguration.CurrentSelection.IntoEnumerable();
 
             EditPanel.BtnApply.SetVisible(true, true);
             EditPanel.BtnApply.ButtonText = "Save configuration";

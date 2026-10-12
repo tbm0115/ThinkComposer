@@ -198,11 +198,13 @@ namespace Instrumind.ThinkComposer.Composer.ContainerSnapshots
         {
             try
             {
-                if (Payload == null || Payload.Utf8Bytes == null)
+                if (Payload == null)
                     throw new InvalidOperationException("The reusable JSON export payload is unavailable.");
 
-                WriteBinaryPart(Package, PartUri, JsonContentType, Payload.Utf8Bytes, CompressionOption.Maximum);
-                AddJsonPart(Manifest, Kind, PartUri, Payload.Utf8Bytes, Payload.Sha256);
+                JsonPackagePersistence.WriteJsonPayloadPart(Package, PartUri, Payload);
+                Manifest.JsonParts.Add(new ContainerSnapshotJsonPart {
+                    Kind = Kind, PartUri = PartUri.ToString(), Bytes = Payload.ByteCount, Sha256 = Payload.Sha256
+                });
                 Console.WriteLine("AI-readable container snapshot reused authoritative JSON for {0}.", PartUri);
             }
             catch (Exception Problem)
@@ -744,10 +746,21 @@ namespace Instrumind.ThinkComposer.Composer.ContainerSnapshots
                 CompositeActiveViews.OrderBy(Pair => Pair.Key, StringComparer.Ordinal)
                                     .Select(Pair => Pair.Key + "=" + Pair.Value));
 
-            return HashText(PreviewRenderProfile + "\n" + DomainHash + "\n" +
-                            CompositeActiveViewSignature + "\n" +
-                            RenderStateSignature + "\n" +
-                            CompositionJsonSerializer.Serialize(Signature));
+            // Hash the exact existing canonical input without allocating the whole JSON string.
+            using (var Hasher = SHA256.Create())
+            {
+                using (var HashStream = new CryptoStream(Stream.Null, Hasher, CryptoStreamMode.Write))
+                {
+                    using (var Writer = new StreamWriter(HashStream, Utf8NoBom, 16384, true))
+                    {
+                        Writer.Write(PreviewRenderProfile + "\n" + DomainHash + "\n" +
+                                     CompositeActiveViewSignature + "\n" + RenderStateSignature + "\n");
+                        CompositionJsonSerializer.Write(Signature, Writer);
+                    }
+                    HashStream.FlushFinalBlock();
+                    return BitConverter.ToString(Hasher.Hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
         }
 
         private static string GetViewRenderState(string ViewId, IDictionary<string, View> ActualViewsById,

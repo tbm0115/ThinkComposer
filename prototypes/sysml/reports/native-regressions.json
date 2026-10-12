@@ -1,0 +1,785 @@
+{
+  "formatVersion": 1,
+  "cliSha256": "e7bd67067537214fe8bb3da1fe4d0762c465500b5ee5752b285621767eb35853",
+  "results": [
+    {
+      "name": "MTConnect_SysML_v1",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 2.94,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "domain",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\domains\\MTConnect_SysML_v1.tdom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v1"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 2.08,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "domain",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\domains\\MTConnect_SysML_v2.tdom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v2"
+      ]
+    },
+    {
+      "name": "SysML_v1",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 1.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "domain",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\domains\\SysML_v1.tdom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v1"
+      ]
+    },
+    {
+      "name": "SysML_v2",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 1.94,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "domain",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\domains\\SysML_v2.tdom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v2"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_ModelingLab",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.2,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v1_ModelingLab.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v1_ModelingLab"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_ModelingLab-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v1_Starter",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 2.73,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v1_Starter.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v1_Starter"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_Starter-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v1_Survey",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.17,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v1_Survey.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v1_Survey"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_Survey-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v2_ModelingLab",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.16,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v2_ModelingLab.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v2_ModelingLab"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_ModelingLab-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v2_Starter",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 2.77,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v2_Starter.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v2_Starter"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Starter-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.09,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v2_Survey.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\MTConnect_SysML_v2_Survey"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "SysML_v1_ModelingLab",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.08,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v1_ModelingLab.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v1_ModelingLab"
+      ]
+    },
+    {
+      "name": "SysML_v1_ModelingLab-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "SysML_v1_Starter",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 2.61,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v1_Starter.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v1_Starter"
+      ]
+    },
+    {
+      "name": "SysML_v1_Starter-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "SysML_v1_Survey",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.0,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v1_Survey.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v1_Survey"
+      ]
+    },
+    {
+      "name": "SysML_v1_Survey-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "SysML_v2_ModelingLab",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.06,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_ModelingLab.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v2_ModelingLab"
+      ]
+    },
+    {
+      "name": "SysML_v2_ModelingLab-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "SysML_v2_Starter",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 2.7,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_Starter.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v2_Starter"
+      ]
+    },
+    {
+      "name": "SysML_v2_Starter-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "SysML_v2_Survey",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 2.99,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_Survey.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\SysML_v2_Survey"
+      ]
+    },
+    {
+      "name": "SysML_v2_Survey-input-preserved",
+      "status": "passed",
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v1_Survey-SysML_v1_XMI",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v1_Survey.tcom",
+        "--language",
+        "SysML_v1_XMI",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v1_Survey\\SysML_v1_XMI"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_Survey-SysML_v1_XMI-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v1_Survey.tcom",
+        "--language",
+        "SysML_v1_XMI",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v1_Survey\\SysML_v1_XMI"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_Survey-SysML_v1_XMI-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey-SysML_v2_Text",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.98,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v2_Survey.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Survey\\SysML_v2_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey-SysML_v2_Text-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.98,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v2_Survey.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Survey\\SysML_v2_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey-SysML_v2_Text-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey-KerML_Text",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.98,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v2_Survey.tcom",
+        "--language",
+        "KerML_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Survey\\KerML_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey-KerML_Text-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\MTConnect_SysML_v2_Survey.tcom",
+        "--language",
+        "KerML_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Survey\\KerML_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey-KerML_Text-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "SysML_v1_Survey-SysML_v1_XMI",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v1_Survey.tcom",
+        "--language",
+        "SysML_v1_XMI",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\SysML_v1_Survey\\SysML_v1_XMI"
+      ]
+    },
+    {
+      "name": "SysML_v1_Survey-SysML_v1_XMI-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v1_Survey.tcom",
+        "--language",
+        "SysML_v1_XMI",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\SysML_v1_Survey\\SysML_v1_XMI"
+      ]
+    },
+    {
+      "name": "SysML_v1_Survey-SysML_v1_XMI-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "SysML_v2_Survey-SysML_v2_Text",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_Survey.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\SysML_v2_Survey\\SysML_v2_Text"
+      ]
+    },
+    {
+      "name": "SysML_v2_Survey-SysML_v2_Text-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_Survey.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\SysML_v2_Survey\\SysML_v2_Text"
+      ]
+    },
+    {
+      "name": "SysML_v2_Survey-SysML_v2_Text-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "SysML_v2_Survey-KerML_Text",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.98,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_Survey.tcom",
+        "--language",
+        "KerML_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\SysML_v2_Survey\\KerML_Text"
+      ]
+    },
+    {
+      "name": "SysML_v2_Survey-KerML_Text-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_Survey.tcom",
+        "--language",
+        "KerML_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\SysML_v2_Survey\\KerML_Text"
+      ]
+    },
+    {
+      "name": "SysML_v2_Survey-KerML_Text-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "MTConnect_SysML_v1_Slice-SysML_v1_XMI",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reference\\mtconnect\\MTConnect_SysML_v1_Slice.tcom",
+        "--language",
+        "SysML_v1_XMI",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v1_Slice\\SysML_v1_XMI"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_Slice-SysML_v1_XMI-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reference\\mtconnect\\MTConnect_SysML_v1_Slice.tcom",
+        "--language",
+        "SysML_v1_XMI",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v1_Slice\\SysML_v1_XMI"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v1_Slice-SysML_v1_XMI-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "MTConnect_SysML_v2_Slice-SysML_v2_Text",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Slice\\SysML_v2_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Slice-SysML_v2_Text-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Slice\\SysML_v2_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Slice-SysML_v2_Text-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "MTConnect_SysML_v2_Slice-KerML_Text",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+        "--language",
+        "KerML_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Slice\\KerML_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Slice-KerML_Text-repeat",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+        "--language",
+        "KerML_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\exports\\MTConnect_SysML_v2_Slice\\KerML_Text"
+      ]
+    },
+    {
+      "name": "MTConnect_SysML_v2_Slice-KerML_Text-coverage",
+      "status": "passed"
+    },
+    {
+      "name": "rename-roundtrip",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 3.02,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "validate-json-persistence",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\Renamed.tcom",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\rename-roundtrip"
+      ]
+    },
+    {
+      "name": "rename-export",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.97,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\Renamed.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\rename-export"
+      ]
+    },
+    {
+      "name": "rename-preserves-identity-and-typing",
+      "status": "passed"
+    },
+    {
+      "name": "SysML_v1-preview",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 1.02,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "export-image",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v1_Survey.tcom",
+        "--output",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reports\\SysML_v1-browser.png",
+        "--width",
+        "1400",
+        "--height",
+        "700"
+      ]
+    },
+    {
+      "name": "SysML_v2-preview",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 1.02,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "composition",
+        "export-image",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\examples\\SysML_v2_Survey.tcom",
+        "--output",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reports\\SysML_v2-browser.png",
+        "--width",
+        "1400",
+        "--height",
+        "700"
+      ]
+    },
+    {
+      "name": "chained-detail-access",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\fixtures\\blocked\\chained-detail-access.tcom",
+        "--language",
+        "SysML_v1_XMI",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\chained-detail-access"
+      ]
+    },
+    {
+      "name": "chained-detail-access-detected",
+      "status": "passed"
+    },
+    {
+      "name": "regex-replace-error",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\fixtures\\blocked\\regex-replace-error.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\regex-replace-error"
+      ]
+    },
+    {
+      "name": "regex-replace-error-detected",
+      "status": "passed"
+    },
+    {
+      "name": "depth-limit",
+      "status": "passed",
+      "exitCode": 0,
+      "seconds": 0.95,
+      "command": [
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\ThinkComposer.Cli.exe",
+        "output",
+        "generate",
+        "--input",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\fixtures\\blocked\\depth-limit.tcom",
+        "--language",
+        "SysML_v2_Text",
+        "--output-dir",
+        "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-large-model-build\\native\\depth-limit"
+      ]
+    },
+    {
+      "name": "depth-limit-detected",
+      "status": "passed"
+    }
+  ]
+}

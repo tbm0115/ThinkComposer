@@ -1,0 +1,97 @@
+{
+  "formatVersion": 1,
+  "package": "examples\\SysML_v1_Survey.tcom",
+  "language": "SysML_v1_XMI",
+  "outputSha256": "56b90f12e81f723e58c9e37696b433e4122681dc4f15243565c235408ec474b2",
+  "emittedElements": 28,
+  "foldedRelationships": [],
+  "omittedElements": [
+    {
+      "id": "6ca30b7e-c428-5a60-9428-f5b0c275a2f0",
+      "sourceId": "",
+      "definition": "PackageImport",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "396c22f3-bc71-594d-9b57-c52a9fa7675e",
+      "sourceId": "",
+      "definition": "ExternalReference",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "9baba819-b583-58ef-ab91-2dfb42405f41",
+      "sourceId": "",
+      "definition": "Port",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "b0c131ad-d9fa-5010-b099-183d145326d4",
+      "sourceId": "",
+      "definition": "Connector",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "6308dd38-f7e8-5d7d-9317-5cff87c71488",
+      "sourceId": "",
+      "definition": "ConnectorEnd",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "5e7c5f33-9890-586b-a025-dd63b0167c7c",
+      "sourceId": "",
+      "definition": "TestCase",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "b690e4f8-6d52-57ff-b040-e3649115ded9",
+      "sourceId": "",
+      "definition": "Constraint",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "b579a022-e399-59c1-8453-f5102655bb11",
+      "sourceId": "",
+      "definition": "Parameter",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "20e64b2a-8e15-553f-90bd-b0f433afbb29",
+      "sourceId": "",
+      "definition": "Comment",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "d2cc5a06-f272-5813-b471-83ac26c13112",
+      "sourceId": "",
+      "definition": "StereotypeApplication",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "5c927049-7214-5a70-82c4-ece1d43a397a",
+      "sourceId": "",
+      "definition": "Citation",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "bad005e3-8eeb-53d9-8d7a-066be149785d",
+      "sourceId": "",
+      "definition": "Trace",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    }
+  ],
+  "issues": [],
+  "externalReferences": [
+    "http://www.omg.org/spec/SysML/20181001/SysML.xmi#SysML"
+  ],
+  "completeExport": false,
+  "declaredStructuralChecks": "passed",
+  "languageSemanticValidation": "unverified: external parser/profile-library validation unavailable",
+  "profileBindings": "SysML URI matches supplied reference; external profile resolution unverified",
+  "exclusions": [
+    "proprietary diagram encoding",
+    "execution/evaluation",
+    "full profile/metadata semantics"
+  ],
+  "warning": "This is a partial prototype export, never a conformance certificate.",
+  "repeatExportIdentical": true
+}

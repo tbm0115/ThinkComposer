@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "package": "fixtures\\blocked\\depth-limit.tcom",
+  "language": "SysML_v2_Text",
+  "outputSha256": "9ec15f725abb79f3dccb834551ee808f3a8772d878479c00e78eaf83a5cff133",
+  "emittedElements": 12,
+  "foldedRelationships": [],
+  "omittedElements": [
+    {
+      "id": "998538af-ed5e-5c24-aebf-1f74afe7eafc",
+      "sourceId": "",
+      "definition": "Package",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "f95adf29-199f-5523-b425-86c7e769294b",
+      "sourceId": "",
+      "definition": "Package",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    }
+  ],
+  "issues": [
+    {
+      "code": "DEPTH_LIMIT",
+      "detail": "Traversal was truncated"
+    }
+  ],
+  "externalReferences": [],
+  "completeExport": false,
+  "declaredStructuralChecks": "failed",
+  "languageSemanticValidation": "unverified: external parser/profile-library validation unavailable",
+  "profileBindings": "not applicable",
+  "exclusions": [
+    "proprietary diagram encoding",
+    "execution/evaluation",
+    "full profile/metadata semantics"
+  ],
+  "warning": "This is a partial prototype export, never a conformance certificate."
+}

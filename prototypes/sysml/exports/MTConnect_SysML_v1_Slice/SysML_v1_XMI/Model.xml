@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmlns:uml="http://www.omg.org/spec/UML/20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:Concept_Modeling_Profile="http://www.magicdraw.com/schemas/Concept_Modeling_Profile.xmi" xmlns:Profile="http://www.magicdraw.com/schemas/Profile.xmi" xmlns:DSL_Customization="http://www.magicdraw.com/schemas/DSL_Customization.xmi" xmlns:sysml="http://www.omg.org/spec/SysML/20181001/SysML" xmlns:MD_Customization_for_Requirements__additional_stereotypes="http://www.magicdraw.com/spec/Customization/180/Requirements" xmlns:MagicDraw_Profile="http://www.omg.org/spec/UML/20131001/MagicDrawProfile" xmlns:Systems_Reasoner_="http://www.magicdraw.com/schemas/manual/Systems_Reasoner.xmi" xmlns:Profile_Generation_="http://www.magicdraw.com/schemas/manual/Profile_Generation.xmi" xmlns:Dependency_Matrix_Profile="http://www.magicdraw.com/schemas/Dependency_Matrix_Profile.xmi" xmlns:Validation_Profile="http://www.omg.org/spec/UML/20131001/ValidationProfile" xmlns:MD_Customization_for_SysML__additional_stereotypes="http://www.magicdraw.com/spec/Customization/180/SysML" xmlns:Document_Profile_="http://www.magicdraw.com/schemas/manual/Document_Profile.xmi" xmlns:SimulationProfile="http://www.magicdraw.com/schemas/SimulationProfile.xmi" xmlns:UseCase_Description_Profile="http://www.magicdraw.com/schemas/UseCase_Description_Profile.xmi" xmlns:Document_View_Collaborator_Profile="http://www.magicdraw.com/schemas/manual/Document_View_Collaborator_Profile.xmi" xmlns:StandardProfile="http://www.omg.org/spec/UML/20131001/StandardProfile" xmlns:CCM_Internal_Implementation_Profile="http://www.magicdraw.com/schemas/CCM_Internal_Implementation_Profile.xmi" xmlns:Viewpoints_="http://www.magicdraw.com/schemas/manual/Viewpoints.xmi">
+    <uml:Model xmi:type="uml:Model" xmi:id="tc_077aed48-b962-519e-af04-48cd2503ca27" name="MTConnectSelected">
+        <packagedElement xmi:type="uml:Class" xmi:id="_19_0_3_45f01b9_1579566531115_47734_25731" name="Observation">
+            <ownedComment xmi:type="uml:Comment" xmi:id="tc_09b30920-de96-548a-82e5-05931cb601f3" body="abstract entity that provides telemetry data for a {{block(DataItem)}} at a point in time.">
+            </ownedComment>
+            <ownedComment xmi:type="uml:Comment" xmi:id="tc_3aa6a6cb-cb8c-5195-bf2b-65724ccd338c" body="Description">
+            </ownedComment>
+        </packagedElement>
+        <packagedElement xmi:type="uml:Class" xmi:id="_19_0_3_45f01b9_1581734537697_742151_1119" name="Component">
+            <ownedComment xmi:type="uml:Comment" xmi:id="tc_0ed27e46-2e68-5f9b-9cb9-c1639fbb2048" body="{{term(engineered system)}}  part of a {{term(Device)}} composed of zero or more {{termplural(Component)}}">
+            </ownedComment>
+        </packagedElement>
+        <packagedElement xmi:type="uml:Class" xmi:id="_19_0_3_68e0225_1623664375171_197977_2034" name="Device">
+            <ownedComment xmi:type="uml:Comment" xmi:id="tc_2758d0fe-ebe6-50c8-bad7-5fc9676e5007" body="{{term(Component)}} not belonging to any {{term(Component)}} that may have {{termplural(asset)}}">
+            </ownedComment>
+            <generalization xmi:type="uml:Generalization" xmi:id="_19_0_4_45f01b9_1637109888128_343802_2463" general="_19_0_3_45f01b9_1581734537697_742151_1119">
+            </generalization>
+        </packagedElement>
+        <packagedElement xmi:type="uml:Class" xmi:id="_19_0_3_68e0225_1635251889215_363828_393" name="DataItem">
+            <ownedComment xmi:type="uml:Comment" xmi:id="tc_29f863f4-2c25-50fd-b0bd-ddff8cde87a4" body="{{term(observable)}} observed by a {{term(Component)}} that may make {{termplural(Observation)}}">
+            </ownedComment>
+        </packagedElement>
+        <profileApplication xmi:type="uml:ProfileApplication" xmi:id="tc_685f686e-26af-5a8a-966b-2ab1b7106c3a">
+            <appliedProfile xmi:id="tc_358304a8-32f9-53f2-b5fc-97a609e7de6d" href="http://www.omg.org/spec/SysML/20181001/SysML.xmi#SysML">
+            </appliedProfile>
+        </profileApplication>
+    </uml:Model>
+    <sysml:Block xmi:id="tc_4fafe99c-88d4-5e30-8225-befd0d5822b1" base_Class="_19_0_3_45f01b9_1579566531115_47734_25731">
+    </sysml:Block>
+    <sysml:Block xmi:id="tc_e0f96156-1d5c-577e-9a60-70f9be56719c" base_Class="_19_0_3_45f01b9_1581734537697_742151_1119">
+    </sysml:Block>
+    <sysml:Block xmi:id="tc_c63e2495-fdda-5ca6-9210-5ae7800c11ee" base_Class="_19_0_3_68e0225_1623664375171_197977_2034">
+    </sysml:Block>
+    <sysml:Block xmi:id="tc_6fff03ff-eb27-5e48-8a1e-22b7bc81cb49" base_Class="_19_0_3_68e0225_1635251889215_363828_393">
+    </sysml:Block>
+</xmi:XMI>

@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "date": "2026-10-09",
+  "status": "passed",
+  "package": "reference/mtconnect/MTConnect_Imported.tcom",
+  "packageSha256": "de7e83e372d62143601b2684a3fb314a127c1b24440fba4cf09b57afdf07b4de",
+  "fullNativeLoad": "passed",
+  "fullNativeVisualCount": 5,
+  "fullNativeLog": "artifacts\\sysml-visibility-repair\\full-native-load.log",
+  "hiddenNamesakeRegression": "zero actual native representations without per-view controls; one with controls",
+  "desktopViewport": "Actual WidgetDocumentVisualizer with View.ShowAll, Loaded, layout and startup-scroll processing; passes on existing navigation build",
+  "desktopScreenshot": "mtconnect-overview-viewport.png",
+  "desktopScreenshotScope": "Source-derived 16-concept fixture; not a full-model desktop capture",
+  "nativeRegressionChecks": 66,
+  "sourceAccountingAudit": "passed; all 179605 source XML elements remain accounted for",
+  "repairedPackages": 19,
+  "backupsAndManifestHashesVerified": true,
+  "noAdditionalApplicationSourceChanges": true,
+  "limitations": [
+    "Full-model save/reopen remains unverified.",
+    "Loading performance is unchanged.",
+    "Overview contains five selected symbols, not all imported model elements.",
+    "No manual full-model desktop acceptance test was performed."
+  ]
+}

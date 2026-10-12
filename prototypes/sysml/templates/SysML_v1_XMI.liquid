@@ -1,0 +1,103 @@
+%%:FileName={{ TechName }}.xml
+%%:TemplateRole=DocumentRoot
+%%:outputValidation=XmlWellFormed
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmlns:uml="http://www.omg.org/spec/UML/20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:Concept_Modeling_Profile="http://www.magicdraw.com/schemas/Concept_Modeling_Profile.xmi" xmlns:Profile="http://www.magicdraw.com/schemas/Profile.xmi" xmlns:DSL_Customization="http://www.magicdraw.com/schemas/DSL_Customization.xmi" xmlns:sysml="http://www.omg.org/spec/SysML/20181001/SysML" xmlns:MD_Customization_for_Requirements__additional_stereotypes="http://www.magicdraw.com/spec/Customization/180/Requirements" xmlns:MagicDraw_Profile="http://www.omg.org/spec/UML/20131001/MagicDrawProfile" xmlns:Systems_Reasoner_="http://www.magicdraw.com/schemas/manual/Systems_Reasoner.xmi" xmlns:Profile_Generation_="http://www.magicdraw.com/schemas/manual/Profile_Generation.xmi" xmlns:Dependency_Matrix_Profile="http://www.magicdraw.com/schemas/Dependency_Matrix_Profile.xmi" xmlns:Validation_Profile="http://www.omg.org/spec/UML/20131001/ValidationProfile" xmlns:MD_Customization_for_SysML__additional_stereotypes="http://www.magicdraw.com/spec/Customization/180/SysML" xmlns:Document_Profile_="http://www.magicdraw.com/schemas/manual/Document_Profile.xmi" xmlns:SimulationProfile="http://www.magicdraw.com/schemas/SimulationProfile.xmi" xmlns:UseCase_Description_Profile="http://www.magicdraw.com/schemas/UseCase_Description_Profile.xmi" xmlns:Document_View_Collaborator_Profile="http://www.magicdraw.com/schemas/manual/Document_View_Collaborator_Profile.xmi" xmlns:StandardProfile="http://www.omg.org/spec/UML/20131001/StandardProfile" xmlns:CCM_Internal_Implementation_Profile="http://www.magicdraw.com/schemas/CCM_Internal_Implementation_Profile.xmi" xmlns:Viewpoints_="http://www.magicdraw.com/schemas/manual/Viewpoints.xmi">
+{% for child in CompositeIdeas %}{% inject 'XmiLevel0' with child %}{% endfor %}
+</xmi:XMI>
+
+%%:SubTemplate=XmiLevel0
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel1' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel1
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel2' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel2
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel3' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel3
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel4' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel4
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel5' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel5
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel6' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel6
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel7' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel7
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel8' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel8
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel9' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel9
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel10' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel10
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% for child in CompositeIdeas %}{% inject 'XmiLevel11' with child %}{% endfor %}
+</{{ XmlTag }}>
+{% endif %}
+
+%%:SubTemplate=XmiLevel11
+{% assign HasName = This | DetailValue: 'HasName' %}{% assign SourceId = This | DetailValue: 'SourceId' %}{% assign TextContent = This | DetailValue: 'TextContent' %}{% assign UmlType = This | DetailValue: 'UmlType' %}{% assign XmlTag = This | DetailValue: 'XmlTag' %}{% if XmlTag != '' and XmlTag != null %}
+<{{ XmlTag }}{% if UmlType != '' and UmlType != null %} xmi:type="{{ UmlType | EscapeXmlAttribute }}"{% endif %}{% if SourceId != '' and SourceId != null %} xmi:id="{{ SourceId | EscapeXmlAttribute }}"{% else %} xmi:id="tc_{{ GlobalId }}"{% endif %}{% if HasName == 'true' %} name="{{ Name | EscapeXmlAttribute }}"{% endif %}{% for d in Details %}{% if d.Designation.TechName == 'Attributes' %}{% for a in d.Records %} {{ a.Key }}="{{ a.Value | EscapeXmlAttribute }}"{% endfor %}{% endif %}{% endfor %}{% if IdeaDefinitor.TechName == 'Generalization' %}{% for target in TargetIdeas %}{% assign sid = target | DetailValue: 'SourceId' %} general="{% if sid != '' %}{{ sid | EscapeXmlAttribute }}{% else %}tc_{{ target.GlobalId }}{% endif %}"{% endfor %}{% endif %}>
+{{ TextContent | EscapeXmlText }}
+{% if CompositeIdeas.Size > 0 %}<!-- PROTOTYPE_DEPTH_LIMIT: descendants not exported -->{% endif %}
+</{{ XmlTag }}>
+{% endif %}

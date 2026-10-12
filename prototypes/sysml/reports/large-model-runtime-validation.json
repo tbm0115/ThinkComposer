@@ -1,0 +1,46 @@
+{
+  "formatVersion": 1,
+  "date": "2026-10-09",
+  "status": "passed",
+  "inputSha256": "94cb45238049b8c8f2c0855af439b901aeeb91817807de6ccca0f6d55fa28821",
+  "build": "artifacts/sysml-large-model-build/Instrumind.ThinkComposer.exe",
+  "buildSha256": "ee4c71eb36aafb4b003324408c3d4bcca98e48585adfb8b3bbcc4550de9982db",
+  "sources": {
+    "ThinkComposer/Composer/ModelFixes.cs": "c537049d2248d01cc9761c26043b8b5898db9b1d16102881641351263f21dc68",
+    "ThinkComposer/Composer/JsonInterchange/CompositionJsonSerializer.cs": "ab50f1018c4d7c55a4ef846ba1a81d87e3d86ca5028d933d4977c17925ade45a",
+    "ThinkComposer/Composer/JsonPackagePersistence.cs": "cbe35145bf225026c0591f6688ca803c39a857bff54d1489abbe78874233c3ec",
+    "ThinkComposer/Composer/ContainerSnapshots/ContainerSnapshotService.cs": "7ce6f5a9ed6b66203f1f135b8fa591d1a32fff91d2f4ebfee59b30042d22a4d5"
+  },
+  "loadSeconds": 12.4217617,
+  "loadAndSaveSeconds": 33.5303964,
+  "reopenSeconds": 15.5080647,
+  "reopenAndSaveSeconds": 36.4426582,
+  "validation": {
+    "fullNativeSaveReopenResave": true,
+    "modelAndViewDataPreserved": true,
+    "previewCount": 11,
+    "totalViews": 11,
+    "totalVisuals": 94,
+    "nonemptyDrilldownViews": 10,
+    "smallModelNativeChecks": 66,
+    "canonicalByteEquivalenceCases": 12,
+    "malformedInputRejections": 9,
+    "legacyDuplicateMigration": "passed",
+    "sourceAccountingAudit": "passed",
+    "sourceDerivedComponentDesktopRendering": "passed",
+    "manualFullModelDesktopInteraction": "not performed"
+  },
+  "originalPreservedDuringSaveTests": true,
+  "temporaryJsonSpoolsRemaining": 0,
+  "notes": [
+    "32-bit process tests; stage memory figures are not peak measurements.",
+    "No SysML language conformance claim.",
+    "Selective browser Views; deeper model-only elements may still have no diagram."
+  ],
+  "logs": {
+    "full-save-final.log": "artifacts\\sysml-large-model-build\\full-save-final.log",
+    "full-reopen-final.log": "artifacts\\sysml-large-model-build\\full-reopen-final.log",
+    "component-viewport.log": "artifacts\\sysml-large-model-build\\component-viewport.log",
+    "model-fixes-regression.log": "artifacts\\sysml-large-model-build\\model-fixes-regression.log"
+  }
+}

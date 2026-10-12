@@ -1,0 +1,33 @@
+{
+  "formatVersion": 1,
+  "status": "timeout",
+  "seconds": 60.05,
+  "limitSeconds": 60,
+  "exitCode": null,
+  "command": [
+    "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\git-ui-build\\ThinkComposer.Cli.exe",
+    "composition",
+    "validate-json-persistence",
+    "--input",
+    "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\prototypes\\sysml\\reference\\mtconnect\\MTConnect_Imported.tcom",
+    "--output-dir",
+    "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-scale\\roundtrip"
+  ],
+  "inputSha256": "bbac4cb9c7257e93d9bee35d81125e759ff8be00cdfc9f594d87a29b01b8eba0",
+  "inputUnchanged": true,
+  "cliSha256": "e63aded07bb61de0f5f212db9ac121c417c31ff262e2814c58087da501c8f4f4",
+  "logTail": [
+    "Cannot get Product installation date. Problem: String was not recognized as a valid DateTime.",
+    "JSON persistence Domain rehydration summary: Applied created: 505",
+    "Applied updated: 1",
+    "Applied deleted: 0",
+    "Applied skipped: 0",
+    "Dangerous skipped: 0",
+    "Source warnings: 0",
+    "Import warnings: 0",
+    "Notes: 0",
+    "Errors: 0; by entity: conceptDefinition: +129 ~0 -0 skip 0; conceptDefinitionCluster: +8 ~0 -0 skip 0; detailDesignator: +296 ~0 -0 skip 0; domain: +0 ~1 -0 skip 0; externalLanguage: +1 ~0 -0 skip 0; fieldDefinition: +43 ~0 -0 skip 0; fieldDefinitionCategory: +1 ~0 -0 skip 0; linkRoleVariant: +1 ~0 -0 skip 0; outputTemplate: +3 ~0 -0 skip 0; relationshipDefinition: +19 ~0 -0 skip 0; relationshipDefinitionCluster: +1 ~0 -0 skip 0; tableDefinition: +2 ~0 -0 skip 0; tableDefinitionCategory: +1 ~0 -0 skip 0.",
+    "JSON persistence composition rehydration summary: planned updated=0, created=0, concepts created=0, relationships created=0, deleted=0, skipped=0, repaired relationships=0, repaired recursive visuals=0, repaired invalid visuals=0, visuals placed=0, visuals skipped=0, auto-fit concepts=0, auto-route links=0, relationship centers inspected=0, relationship centers recomputed=0, suspicious relationship centers=0, groups planned=0, visual controls suppressed=33341, relationship controls hidden/deferred=1020, routing controls excluded=0, visual strategy=<none>, visuals suppressed by strategy=0, auto-fit deferred by strategy=0, auto-route deferred by strategy=0, view refresh deferred by strategy=false; applied updated=60568, created=33347, concepts created=32326, relationships created=1020, deleted=0, skipped=0, repaired relationships=0, repaired recursive visuals=0, repaired invalid visuals=0, visuals placed=0, visuals skipped=0, auto-fit concepts=0, auto-fit skipped=0, auto-route links=0, auto-route skipped=0, dogleg routed links=0, relationship centers inspected=0, relationship centers recomputed=0, relationship centers preserved=0, relationship centers skipped=0, suspicious relationship centers=0, groups created=0, groups updated=0, visual controls suppressed=33341, relationship controls hidden/deferred=1020, routing controls excluded=0, relationship compatibility skipped=0, details skipped=0; source warnings=0, import warnings=0, notes=0, errors=0."
+  ],
+  "interpretation": "Timeout is an incomplete test, not proof of corruption or a diagnosed cause. No full-model persistence success may be claimed without a passing run."
+}

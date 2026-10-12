@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "status": "passed",
+  "sourceSha256": "d00efd04932bfd7809a8f7c663b5591796c22be4325559f90c7a8c6afe95c6cd",
+  "sourceElements": 179605,
+  "ledgerRows": 179605,
+  "nativeMappedObjectsChecked": 33345,
+  "nativePackageStructuralIssues": [],
+  "completeSemanticImport": false,
+  "limits": [
+    "Audit compares authored authoritative JSON, not full native desktop save/reopen.",
+    "Unsupported source subtrees remain in the unchanged original XML.",
+    "Language semantics and external references remain unverified."
+  ]
+}

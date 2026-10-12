@@ -1,0 +1,37 @@
+[
+  {
+    "name": "duplicate-id",
+    "expected": "DUPLICATE_ID",
+    "passed": true
+  },
+  {
+    "name": "broken-reference",
+    "expected": "BROKEN_REFERENCE",
+    "passed": true
+  },
+  {
+    "name": "invalid-ownership",
+    "expected": "INVALID_OWNER",
+    "passed": true
+  },
+  {
+    "name": "ownership-cycle",
+    "expected": "OWNERSHIP_CYCLE",
+    "passed": true
+  },
+  {
+    "name": "unsupported-construct",
+    "expected": "UNSUPPORTED_CONSTRUCT",
+    "passed": true
+  },
+  {
+    "name": "malformed-expression",
+    "expected": "MALFORMED_EXPRESSION",
+    "passed": true
+  },
+  {
+    "name": "empty-export",
+    "expected": "EMPTY_EXPORT",
+    "passed": true
+  }
+]

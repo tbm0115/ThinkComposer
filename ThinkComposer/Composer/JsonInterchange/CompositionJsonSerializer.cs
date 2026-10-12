@@ -20,21 +20,31 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
     {
         public static void Save(CompositionJsonDocument Document, string FilePath)
         {
-            File.WriteAllText(FilePath, Serialize(Document), Encoding.UTF8);
+            using (var Writer = new StreamWriter(FilePath, false, Encoding.UTF8))
+                Write(Document, Writer);
         }
 
         public static CompositionJsonDocument Load(string FilePath)
         {
-            var Text = File.ReadAllText(FilePath, Encoding.UTF8);
-            return Deserialize(Text);
+            using (var Reader = new StreamReader(FilePath, Encoding.UTF8, true))
+                return Read(Reader);
         }
 
         public static string Serialize(CompositionJsonDocument Document)
         {
-            var Builder = new StringBuilder();
-            WriteJsonValue(Builder, ToGraph(Document), 0);
-            Builder.AppendLine();
-            return Builder.ToString();
+            using (var Writer = new StringWriter(CultureInfo.InvariantCulture))
+            {
+                Write(Document, Writer);
+                return Writer.ToString();
+            }
+        }
+
+        /// <summary>Write incrementally without a second full JSON graph or UTF-16 buffer.</summary>
+        public static void Write(CompositionJsonDocument Document, TextWriter Writer)
+        {
+            if (Writer == null) throw new ArgumentNullException("Writer");
+            WriteJsonValue(Writer, ToGraph(Document), 0);
+            Writer.WriteLine();
         }
 
         public static CompositionJsonDocument Deserialize(string Text)
@@ -46,6 +56,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             if (Root == null)
                 throw new InvalidDataException("The JSON file must contain an object at the root.");
 
+            return ReadDocument(Root);
+        }
+
+        private static CompositionJsonDocument ReadDocument(IDictionary<string, object> Root)
+        {
             var Document = new CompositionJsonDocument();
             Document.Format = GetString(Root, "format");
             Document.FormatVersion = GetInt(Root, "formatVersion", 0);
@@ -64,6 +79,108 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             Document.Warnings = ReadWarningList(Root, "warnings");
 
             return Document;
+        }
+
+        /// <summary>
+        /// Read large root collections one entity at a time. The existing DTO readers and
+        /// JavaScriptSerializer still interpret each JSON value; no full text/graph copy is held.
+        /// </summary>
+        public static CompositionJsonDocument Read(TextReader Reader)
+        {
+            var Parser = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue };
+            var Root = new Dictionary<string, object>();
+            var Ideas = new List<CompositionJsonIdea>();
+            var Relationships = new List<CompositionJsonRelationship>();
+            var Views = new List<CompositionJsonView>();
+            var Operations = new List<CompositionJsonOperation>();
+            var Groups = new List<CompositionJsonGroup>();
+            ExpectJsonCharacter(Reader, '{');
+            if (NextJsonCharacter(Reader) != '}')
+                while (true)
+                {
+                    if (NextJsonCharacter(Reader) != '"') throw new InvalidDataException("Expected JSON property name.");
+                    var Key = Parser.DeserializeObject(ReadJsonValueText(Reader)) as string;
+                    ExpectJsonCharacter(Reader, ':');
+                    switch (Key)
+                    {
+                        case "ideas": Ideas = ReadJsonCollection(Reader, Parser, ReadIdea); break;
+                        case "relationships": Relationships = ReadJsonCollection(Reader, Parser, ReadRelationship); break;
+                        case "views": Views = ReadJsonCollection(Reader, Parser, ReadView); break;
+                        case "operations": Operations = ReadJsonCollection(Reader, Parser, ReadOperation); break;
+                        case "groups": Groups = ReadJsonCollection(Reader, Parser, ReadGroup); break;
+                        default: Root[Key] = Parser.DeserializeObject(ReadJsonValueText(Reader)); break;
+                    }
+                    if (NextJsonCharacter(Reader) == '}') break;
+                    ExpectJsonCharacter(Reader, ',');
+                }
+            ExpectJsonCharacter(Reader, '}');
+            if (NextJsonCharacter(Reader) != -1) throw new InvalidDataException("Unexpected text after the JSON document.");
+            var Document = ReadDocument(Root);
+            Document.Ideas = Ideas; Document.Relationships = Relationships; Document.Views = Views;
+            Document.Operations = Operations; Document.Groups = Groups;
+            return Document;
+        }
+
+        private static List<T> ReadJsonCollection<T>(TextReader Reader, JavaScriptSerializer Parser,
+                                                     Func<IDictionary<string, object>, T> ConvertItem)
+        {
+            var Result = new List<T>();
+            if (NextJsonCharacter(Reader) != '[')
+            {
+                // Match the tolerant interchange reader for absent/non-array collection values.
+                Parser.DeserializeObject(ReadJsonValueText(Reader));
+                return Result;
+            }
+            ExpectJsonCharacter(Reader, '[');
+            if (NextJsonCharacter(Reader) != ']')
+                while (true)
+                {
+                    var Value = Parser.DeserializeObject(ReadJsonValueText(Reader)) as IDictionary<string, object>;
+                    if (Value != null) Result.Add(ConvertItem(Value));
+                    if (NextJsonCharacter(Reader) == ']') break;
+                    ExpectJsonCharacter(Reader, ',');
+                }
+            ExpectJsonCharacter(Reader, ']');
+            return Result;
+        }
+
+        private static int NextJsonCharacter(TextReader Reader)
+        {
+            while (Reader.Peek() >= 0 && Char.IsWhiteSpace((char)Reader.Peek())) Reader.Read();
+            return Reader.Peek();
+        }
+
+        private static void ExpectJsonCharacter(TextReader Reader, char Expected)
+        {
+            if (NextJsonCharacter(Reader) != Expected) throw new InvalidDataException("Expected JSON '" + Expected + "'.");
+            Reader.Read();
+        }
+
+        private static string ReadJsonValueText(TextReader Reader)
+        {
+            var First = NextJsonCharacter(Reader);
+            if (First < 0 || First == ',' || First == ']' || First == '}') throw new InvalidDataException("Expected a JSON value.");
+            var Text = new StringBuilder();
+            var InString = false; var Escaped = false; var Depth = 0;
+            var Structured = First == '{' || First == '[' || First == '"';
+            while (Reader.Peek() >= 0)
+            {
+                var Character = (char)Reader.Peek();
+                if (!Structured && (Char.IsWhiteSpace(Character) || Character == ',' || Character == ']' || Character == '}')) break;
+                Reader.Read(); Text.Append(Character);
+                if (InString)
+                {
+                    if (Escaped) Escaped = false;
+                    else if (Character == '\\') Escaped = true;
+                    else if (Character == '"') InString = false;
+                }
+                else if (Character == '"') InString = true;
+                else if (Character == '{' || Character == '[') Depth++;
+                else if (Character == '}' || Character == ']') Depth--;
+                if (Structured && !InString && Depth == 0) return Text.ToString();
+            }
+            if (InString || Depth != 0) throw new InvalidDataException("Unterminated JSON value.");
+            return Text.ToString();
         }
 
         public static void Validate(CompositionJsonDocument Document)
@@ -136,11 +253,11 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             AddIf(Obj, "composition", ToGraph(Document.Composition));
             AddIf(Obj, "importOptions", ToGraph(Document.ImportOptions));
             AddIf(Obj, "visualStrategy", ToGraph(Document.VisualStrategy));
-            Add(Obj, "ideas", ToList(Document.Ideas, ToGraph));
-            Add(Obj, "relationships", ToList(Document.Relationships, ToGraph));
-            Add(Obj, "views", ToList(Document.Views, ToGraph));
-            Add(Obj, "operations", ToList(Document.Operations, ToGraph));
-            Add(Obj, "groups", ToList(Document.Groups, ToGraph));
+            Add(Obj, "ideas", ToLazyGraph(Document.Ideas, ToGraph));
+            Add(Obj, "relationships", ToLazyGraph(Document.Relationships, ToGraph));
+            Add(Obj, "views", ToLazyGraph(Document.Views, ToGraph));
+            Add(Obj, "operations", ToLazyGraph(Document.Operations, ToGraph));
+            Add(Obj, "groups", ToLazyGraph(Document.Groups, ToGraph));
             Add(Obj, "warnings", Document.Warnings ?? new List<string>());
             return Obj;
         }
@@ -1255,11 +1372,17 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             return Result;
         }
 
-        private static void WriteJsonValue(StringBuilder Builder, object Value, int Indent)
+        private static IEnumerable<object> ToLazyGraph<TSource>(IEnumerable<TSource> Items, Func<TSource, object> Converter)
+        {
+            if (Items != null)
+                foreach (var Item in Items) yield return Converter(Item);
+        }
+
+        private static void WriteJsonValue(TextWriter Builder, object Value, int Indent)
         {
             if (Value == null)
             {
-                Builder.Append("null");
+                Builder.Write("null");
                 return;
             }
 
@@ -1271,7 +1394,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
 
             if (Value is bool)
             {
-                Builder.Append(((bool)Value) ? "true" : "false");
+                Builder.Write(((bool)Value) ? "true" : "false");
                 return;
             }
 
@@ -1279,7 +1402,7 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
                 Value is uint || Value is ulong || Value is ushort || Value is sbyte ||
                 Value is double || Value is float || Value is decimal)
             {
-                Builder.Append(Convert.ToString(Value, CultureInfo.InvariantCulture));
+                Builder.Write(Convert.ToString(Value, CultureInfo.InvariantCulture));
                 return;
             }
 
@@ -1300,102 +1423,96 @@ namespace Instrumind.ThinkComposer.Composer.JsonInterchange
             WriteJsonString(Builder, Convert.ToString(Value, CultureInfo.InvariantCulture));
         }
 
-        private static void WriteJsonObject(StringBuilder Builder, IDictionary Object, int Indent)
+        private static void WriteJsonObject(TextWriter Builder, IDictionary Object, int Indent)
         {
-            Builder.Append("{");
+            Builder.Write("{");
             if (Object.Count > 0)
-                Builder.AppendLine();
+                Builder.WriteLine();
 
             var Index = 0;
             foreach (DictionaryEntry Entry in Object)
             {
                 WriteIndent(Builder, Indent + 1);
                 WriteJsonString(Builder, Convert.ToString(Entry.Key, CultureInfo.InvariantCulture));
-                Builder.Append(": ");
+                Builder.Write(": ");
                 WriteJsonValue(Builder, Entry.Value, Indent + 1);
 
                 Index++;
                 if (Index < Object.Count)
-                    Builder.Append(",");
+                    Builder.Write(",");
 
-                Builder.AppendLine();
+                Builder.WriteLine();
             }
 
             if (Object.Count > 0)
                 WriteIndent(Builder, Indent);
-            Builder.Append("}");
+            Builder.Write("}");
         }
 
-        private static void WriteJsonArray(StringBuilder Builder, IEnumerable Items, int Indent)
+        private static void WriteJsonArray(TextWriter Builder, IEnumerable Items, int Indent)
         {
-            var Materialized = new List<object>();
+            Builder.Write("[");
+            var Any = false;
             foreach (var Item in Items)
-                Materialized.Add(Item);
-
-            Builder.Append("[");
-            if (Materialized.Count > 0)
-                Builder.AppendLine();
-
-            for (int Index = 0; Index < Materialized.Count; Index++)
             {
+                if (Any) Builder.Write(",");
+                Builder.WriteLine();
                 WriteIndent(Builder, Indent + 1);
-                WriteJsonValue(Builder, Materialized[Index], Indent + 1);
-
-                if (Index < Materialized.Count - 1)
-                    Builder.Append(",");
-
-                Builder.AppendLine();
+                WriteJsonValue(Builder, Item, Indent + 1);
+                Any = true;
             }
-
-            if (Materialized.Count > 0)
+            if (Any)
+            {
+                Builder.WriteLine();
                 WriteIndent(Builder, Indent);
-            Builder.Append("]");
+            }
+            Builder.Write("]");
         }
 
-        private static void WriteJsonString(StringBuilder Builder, string Text)
+        private static void WriteJsonString(TextWriter Builder, string Text)
         {
-            Builder.Append("\"");
+            Builder.Write("\"");
 
             foreach (var Character in Text ?? "")
             {
                 switch (Character)
                 {
                     case '"':
-                        Builder.Append("\\\"");
+                        Builder.Write("\\\"");
                         break;
                     case '\\':
-                        Builder.Append("\\\\");
+                        Builder.Write("\\\\");
                         break;
                     case '\b':
-                        Builder.Append("\\b");
+                        Builder.Write("\\b");
                         break;
                     case '\f':
-                        Builder.Append("\\f");
+                        Builder.Write("\\f");
                         break;
                     case '\n':
-                        Builder.Append("\\n");
+                        Builder.Write("\\n");
                         break;
                     case '\r':
-                        Builder.Append("\\r");
+                        Builder.Write("\\r");
                         break;
                     case '\t':
-                        Builder.Append("\\t");
+                        Builder.Write("\\t");
                         break;
                     default:
                         if (Character < 32)
-                            Builder.Append("\\u" + ((int)Character).ToString("x4", CultureInfo.InvariantCulture));
+                            Builder.Write("\\u" + ((int)Character).ToString("x4", CultureInfo.InvariantCulture));
                         else
-                            Builder.Append(Character);
+                            Builder.Write(Character);
                         break;
                 }
             }
 
-            Builder.Append("\"");
+            Builder.Write("\"");
         }
 
-        private static void WriteIndent(StringBuilder Builder, int Indent)
+        private static void WriteIndent(TextWriter Builder, int Indent)
         {
-            Builder.Append(new string(' ', Indent * 2));
+            Builder.Write(new string(' ', Indent * 2));
         }
 
         public static IDictionary<string, object> GetDictionary(IDictionary<string, object> Source, string Key)

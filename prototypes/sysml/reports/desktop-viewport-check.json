@@ -1,0 +1,235 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "package": "domains\\MTConnect_SysML_v1.tdom",
+      "part": "TemplateComposition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "domains\\MTConnect_SysML_v2.tdom",
+      "part": "TemplateComposition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "domains\\SysML_v1.tdom",
+      "part": "TemplateComposition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "domains\\SysML_v2.tdom",
+      "part": "TemplateComposition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_ModelingLab.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_Starter.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v1_Survey.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_ModelingLab.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_Starter.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\MTConnect_SysML_v2_Survey.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v1_ModelingLab.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v1_Starter.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v1_Survey.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v2_ModelingLab.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v2_Starter.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "examples\\SysML_v2_Survey.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_Imported.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_SysML_v1_Slice.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    },
+    {
+      "package": "reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+      "part": "Composition.json",
+      "modelAndNonCoordinateStatePreserved": true,
+      "visibleSymbolInDefaultViewport": true,
+      "firstSymbolCenters": [
+        {
+          "x": 7920.0,
+          "y": 5885.0
+        }
+      ]
+    }
+  ],
+  "manualDesktopCheck": "not performed",
+  "limitation": "Coordinates use the current application defaults. This does not test navigation of model-only elements."
+}

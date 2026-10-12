@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "package": "reference\\mtconnect\\MTConnect_SysML_v2_Slice.tcom",
+  "language": "SysML_v2_Text",
+  "outputSha256": "58e90bfecc3d90aba3d168cc7b5634d379e4eaf5e4678ec74d369ca814ef6dab",
+  "emittedElements": 5,
+  "foldedRelationships": [
+    "4e26d2f0-0e6a-5e32-843c-704d48e24b50"
+  ],
+  "omittedElements": [],
+  "issues": [],
+  "externalReferences": [],
+  "completeExport": false,
+  "declaredStructuralChecks": "passed",
+  "languageSemanticValidation": "unverified: external parser/profile-library validation unavailable",
+  "profileBindings": "not applicable",
+  "exclusions": [
+    "proprietary diagram encoding",
+    "execution/evaluation",
+    "full profile/metadata semantics"
+  ],
+  "warning": "This is a partial prototype export, never a conformance certificate.",
+  "repeatExportIdentical": true
+}

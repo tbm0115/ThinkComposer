@@ -1,0 +1,60 @@
+{
+  "formatVersion": 1,
+  "package": "examples\\MTConnect_SysML_v2_Survey.tcom",
+  "language": "SysML_v2_Text",
+  "outputSha256": "47b438cc62d6f04d6751f9537a1ea67c81cc0496ebfb07355e6dc2dc8b5fe46c",
+  "emittedElements": 24,
+  "foldedRelationships": [
+    "b0332474-ec9c-5f20-abd8-351c1d595acd",
+    "89ca395c-855c-514c-9455-3732fdcc4bfc",
+    "9ac7ecb4-2f07-561a-acb3-bab212c5220a",
+    "1de2a627-a6cc-51d0-9f19-3db3a22a0fbf",
+    "3ca4fb65-ffc9-5fd7-9547-a2d041cd78db",
+    "8cbade34-1d68-5a6a-a141-727b2e7cf8c9"
+  ],
+  "omittedElements": [
+    {
+      "id": "705d9c95-c5fb-5a6c-a816-f9956a5d44ad",
+      "sourceId": "",
+      "definition": "PackageImport",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "becbdf90-139a-511c-9a47-2f2c2da1775a",
+      "sourceId": "",
+      "definition": "ExternalReference",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "8b4e71cd-65f8-5c4c-8396-05297365a4cf",
+      "sourceId": "",
+      "definition": "Citation",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "bf07e35e-1bbe-5500-be02-2aad00ddecc5",
+      "sourceId": "",
+      "definition": "MTConnectRequirement",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "e39081ab-d651-59f8-89d9-5acc7c2f8963",
+      "sourceId": "",
+      "definition": "Trace",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    }
+  ],
+  "issues": [],
+  "externalReferences": [],
+  "completeExport": false,
+  "declaredStructuralChecks": "passed",
+  "languageSemanticValidation": "unverified: external parser/profile-library validation unavailable",
+  "profileBindings": "not applicable",
+  "exclusions": [
+    "proprietary diagram encoding",
+    "execution/evaluation",
+    "full profile/metadata semantics"
+  ],
+  "warning": "This is a partial prototype export, never a conformance certificate.",
+  "repeatExportIdentical": true
+}

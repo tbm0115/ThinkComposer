@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "standards": {
+    "SysML_v1": {"version": "1.6", "url": "https://www.omg.org/spec/SysML/1.6", "profileNamespace": "http://www.omg.org/spec/SysML/20181001/SysML"},
+    "SysML_v2": {"version": "2.0", "document": "formal/26-03-02", "url": "https://www.omg.org/spec/SysML/2.0"},
+    "KerML": {"version": "1.0", "document": "formal/26-03-01", "url": "https://www.omg.org/spec/KerML/1.0"}
+  },
+  "parser": {
+    "repository": "https://github.com/Systems-Modeling/SysML-v2-Pilot-Implementation",
+    "release": "2025-09",
+    "commitPrefix": "0d5552b",
+    "eclipsePluginVersion": "0.52.0",
+    "releaseUrl": "https://github.com/Systems-Modeling/SysML-v2-Pilot-Implementation/releases/tag/2025-09",
+    "status": "unavailable",
+    "executed": false,
+    "scope": "Pin for subsequent validation, not an assertion of exact conformance with later editorial versions of the specifications.",
+    "instructions": "Use a separately installed matching release with its bundled libraries. Open each .sysml/.kerml in its Eclipse editor, enable validation and record all syntax and reference diagnostics. Do not substitute a different release without updating this manifest and the reports. No dependency downloads are performed by these scripts."
+  },
+  "thinkcomposer": {"assemblyVersion": "2.1.0.0", "authoritativeJsonFormatVersion": 2, "cliHashEvidence": "../reports/native-regressions.json"},
+  "localChecks": {"python": "3.12.14", "library": "Python standard library", "script": "scripts/validate.py", "isSysMLParser": false},
+  "cameo": {"tested": false, "referenceExporter": "MagicDraw UML", "referenceExporterVersion": "2026x v2"}
+}

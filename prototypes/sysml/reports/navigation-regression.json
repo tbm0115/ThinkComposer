@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-09",
+  "status": "passed",
+  "executable": "artifacts/sysml-navigation-build/Instrumind.ThinkComposer.exe",
+  "executableSha256": "cecdca66dce535fa369bb2f890a2e656b83393ee772f142d7d92bb40aeb3fc89",
+  "source": "ThinkComposer/ApplicationProduct/Widgets/WidgetNavTree.xaml.cs",
+  "sourceSha256": "f00d7231149731a3065f5c6237fed7af86345bcd0a7121f963733d453e71720a",
+  "build": "Solution target ThinkComposer_Cli; Debug; Mixed Platforms; isolated OutDir",
+  "tests": [
+    "PASS: model-only click inspects the element without throwing or creating a symbol.",
+    "PASS: symbol in another view does not require a current-view match.",
+    "PASS: visible-element navigation still completes."
+  ],
+  "baseline": "Previous artifacts/git-ui-build reproduces InvalidOperationException: Sequence contains no matching element at WidgetNavTree.xaml.cs:218",
+  "manualDesktopAcceptance": "not performed",
+  "largeModelPerformance": "unchanged by this guard"
+}

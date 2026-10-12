@@ -67,34 +67,41 @@ namespace Instrumind.ThinkComposer.Composer
 
             var TimingContext = PersistenceOperationContext.Current;
             PersistenceExportBundle ExportBundle = null;
-            var Result = ModelTracking.Save(Location, ActualLocation => DocumentEngine.StorePackageToLocation<ISphereModel>(
-                SourceComposition,
-                Composition.__ClassDefinitor.Name,
-                ActualLocation,
-                delegate(Package Package)
-                {
-                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
+            try
+            {
+                var Result = ModelTracking.Save(Location, ActualLocation => DocumentEngine.StorePackageToLocation<ISphereModel>(
+                    SourceComposition,
+                    Composition.__ClassDefinitor.Name,
+                    ActualLocation,
+                    delegate(Package Package)
                     {
-                        ExportBundle = CreateCompositionExportBundle(SourceComposition);
-                        WriteCompositionPersistenceParts(Package, SourceComposition, ExportBundle, GitSyncLink,
-                                                         EmbeddedDomainGitSyncLink);
-                    }
-                },
-                false,
-                SilentSave,
-                SourceComposition,
-                Snapshot,
-                SafeSaving,
-                delegate(Package Package)
-                {
-                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveOptionalSidecars))
-                        ContainerSnapshotService.WriteCompositionSnapshot(Package, SourceComposition, CompositionJsonPartUri,
-                                                                          ExportBundle.Composition, ExportBundle.Domain,
-                                                                          PreviousPreviews);
-                },
-                CreatePackageStageTimingObserver(TimingContext)));
-            if (RegisterAsRecentDoc && String.IsNullOrEmpty(Result)) DocumentEngine.RegisterRecentDocument(Location.LocalPath);
-            return Result;
+                        using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
+                        {
+                            ExportBundle = CreateCompositionExportBundle(SourceComposition);
+                            WriteCompositionPersistenceParts(Package, SourceComposition, ExportBundle, GitSyncLink,
+                                                             EmbeddedDomainGitSyncLink);
+                        }
+                    },
+                    false,
+                    SilentSave,
+                    SourceComposition,
+                    Snapshot,
+                    SafeSaving,
+                    delegate(Package Package)
+                    {
+                        using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveOptionalSidecars))
+                            ContainerSnapshotService.WriteCompositionSnapshot(Package, SourceComposition, CompositionJsonPartUri,
+                                                                              ExportBundle.Composition, ExportBundle.Domain,
+                                                                              PreviousPreviews);
+                    },
+                    CreatePackageStageTimingObserver(TimingContext)));
+                if (RegisterAsRecentDoc && String.IsNullOrEmpty(Result)) DocumentEngine.RegisterRecentDocument(Location.LocalPath);
+                return Result;
+            }
+            finally
+            {
+                if (ExportBundle != null) ExportBundle.Dispose();
+            }
         }
 
         public static string StoreDomain(Domain SourceDomain, Uri Location,
@@ -112,33 +119,40 @@ namespace Instrumind.ThinkComposer.Composer
 
             var TimingContext = PersistenceOperationContext.Current;
             PersistenceExportBundle ExportBundle = null;
-            var Result = ModelTracking.Save(Location, ActualLocation => DocumentEngine.StorePackageToLocation<Domain>(
-                SourceDomain,
-                Domain.__ClassDefinitor.Name,
-                ActualLocation,
-                delegate(Package Package)
-                {
-                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
+            try
+            {
+                var Result = ModelTracking.Save(Location, ActualLocation => DocumentEngine.StorePackageToLocation<Domain>(
+                    SourceDomain,
+                    Domain.__ClassDefinitor.Name,
+                    ActualLocation,
+                    delegate(Package Package)
                     {
-                        ExportBundle = CreateDomainExportBundle(SourceDomain, IncludeTemplateComposition);
-                        WriteDomainPersistenceParts(Package, SourceDomain, IncludeTemplateComposition, ExportBundle, GitSyncLink);
-                    }
-                },
-                false,
-                SilentSave,
-                SourceDomain,
-                Snapshot,
-                SafeSaving,
-                delegate(Package Package)
-                {
-                    using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveOptionalSidecars))
-                        ContainerSnapshotService.WriteDomainSnapshot(Package, SourceDomain, DomainJsonPartUri,
-                                                                     IncludeTemplateComposition, ExportBundle.Domain,
-                                                                     ExportBundle.TemplateComposition, PreviousPreviews);
-                },
-                CreatePackageStageTimingObserver(TimingContext)));
-            if (RegisterAsRecentDoc && String.IsNullOrEmpty(Result)) DocumentEngine.RegisterRecentDocument(Location.LocalPath);
-            return Result;
+                        using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveRequiredPackageWrite))
+                        {
+                            ExportBundle = CreateDomainExportBundle(SourceDomain, IncludeTemplateComposition);
+                            WriteDomainPersistenceParts(Package, SourceDomain, IncludeTemplateComposition, ExportBundle, GitSyncLink);
+                        }
+                    },
+                    false,
+                    SilentSave,
+                    SourceDomain,
+                    Snapshot,
+                    SafeSaving,
+                    delegate(Package Package)
+                    {
+                        using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveOptionalSidecars))
+                            ContainerSnapshotService.WriteDomainSnapshot(Package, SourceDomain, DomainJsonPartUri,
+                                                                         IncludeTemplateComposition, ExportBundle.Domain,
+                                                                         ExportBundle.TemplateComposition, PreviousPreviews);
+                    },
+                    CreatePackageStageTimingObserver(TimingContext)));
+                if (RegisterAsRecentDoc && String.IsNullOrEmpty(Result)) DocumentEngine.RegisterRecentDocument(Location.LocalPath);
+                return Result;
+            }
+            finally
+            {
+                if (ExportBundle != null) ExportBundle.Dispose();
+            }
         }
 
         private static Action<DocumentPackageSaveTimingStage, TimeSpan> CreatePackageStageTimingObserver(
@@ -181,13 +195,14 @@ namespace Instrumind.ThinkComposer.Composer
                     return Result;
                 }
 
-                Result.CompositionJson = ReadTextPart(Pack, CompositionJsonPartUri);
                 var Progress = PersistenceOperationContext.Current;
                 if (Progress != null)
                     Progress.ReportStage(PersistenceOperationStages.ParseComposition, 2,
                                          PersistenceOperationStages.LoadStageCount,
                                          "Parsing Composition JSON...", true);
-                Result.CompositionDocument = CompositionJsonSerializer.Deserialize(Result.CompositionJson);
+                using (var Stream = Pack.GetPart(CompositionJsonPartUri).GetStream(FileMode.Open, FileAccess.Read))
+                using (var Reader = new StreamReader(Stream, Encoding.UTF8, true))
+                    Result.CompositionDocument = CompositionJsonSerializer.Read(Reader);
                 CompositionJsonSerializer.Validate(Result.CompositionDocument);
                 Result.CompositionJson = null;
 
@@ -244,12 +259,13 @@ namespace Instrumind.ThinkComposer.Composer
 
                 if (Result.HasTemplateCompositionJson)
                 {
-                    Result.TemplateCompositionJson = ReadTextPart(Pack, TemplateCompositionJsonPartUri);
                     if (Progress != null)
                         Progress.ReportStage(PersistenceOperationStages.ParseDomain, 3,
                                              PersistenceOperationStages.LoadStageCount,
                                              "Parsing Domain template Composition JSON...", true);
-                    Result.TemplateCompositionDocument = CompositionJsonSerializer.Deserialize(Result.TemplateCompositionJson);
+                    using (var Stream = Pack.GetPart(TemplateCompositionJsonPartUri).GetStream(FileMode.Open, FileAccess.Read))
+                    using (var Reader = new StreamReader(Stream, Encoding.UTF8, true))
+                        Result.TemplateCompositionDocument = CompositionJsonSerializer.Read(Reader);
                     CompositionJsonSerializer.Validate(Result.TemplateCompositionDocument);
                     Result.TemplateCompositionJson = null;
                 }
@@ -482,9 +498,13 @@ namespace Instrumind.ThinkComposer.Composer
             }
 
             var Result = new PersistenceExportBundle();
-            Result.Composition = CreateCompositionExportPayload(CompositionDocument);
-            Result.Domain = CreateDomainExportPayload(DomainDocument);
-            return Result;
+            try
+            {
+                Result.Composition = CreateCompositionExportPayload(CompositionDocument);
+                Result.Domain = CreateDomainExportPayload(DomainDocument);
+                return Result;
+            }
+            catch { Result.Dispose(); throw; }
         }
 
         private static PersistenceExportBundle CreateDomainExportBundle(Domain Domain, bool IncludeTemplateComposition)
@@ -513,20 +533,41 @@ namespace Instrumind.ThinkComposer.Composer
             }
 
             var Result = new PersistenceExportBundle();
-            Result.Domain = CreateDomainExportPayload(DomainDocument);
-            if (IncludeTemplateComposition)
-                Result.TemplateComposition = CreateCompositionExportPayload(TemplateCompositionDocument);
+            try
+            {
+                Result.Domain = CreateDomainExportPayload(DomainDocument);
+                if (IncludeTemplateComposition)
+                    Result.TemplateComposition = CreateCompositionExportPayload(TemplateCompositionDocument);
 
-            return Result;
+                return Result;
+            }
+            catch { Result.Dispose(); throw; }
         }
 
         private static PersistenceExportPayload CreateCompositionExportPayload(CompositionJsonDocument Document)
         {
             using (PersistenceOperationContext.MeasureCurrentStage(PersistenceOperationStages.SaveJsonSerializationHash))
             {
-                var Json = CompositionJsonSerializer.Serialize(Document);
-                return CreateExportPayload(Document, Json, CompositionJsonDocument.CurrentFormat,
-                                           Document == null ? null : Document.Warnings);
+                // Large models cannot retain another contiguous JSON buffer in a 32-bit
+                // process. A delete-on-close spool is reused by authoritative and sidecar parts.
+                var Buffer = new FileStream(Path.Combine(Path.GetTempPath(), "ThinkComposer-json-" + Guid.NewGuid().ToString("N") + ".tmp"),
+                    FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 65536,
+                    FileOptions.DeleteOnClose | FileOptions.SequentialScan);
+                try
+                {
+                    using (var Writer = new StreamWriter(Buffer, Utf8NoBom, 16384, true))
+                        CompositionJsonSerializer.Write(Document, Writer);
+                    Buffer.Position = 0;
+                    string Hash;
+                    using (var Hasher = SHA256.Create())
+                        Hash = BitConverter.ToString(Hasher.ComputeHash(Buffer)).Replace("-", "").ToLowerInvariant();
+                    return new PersistenceExportPayload {
+                        Document = Document, Format = CompositionJsonDocument.CurrentFormat,
+                        Utf8Stream = Buffer, Sha256 = Hash,
+                        Warnings = (Document.Warnings ?? new List<string>()).ToList()
+                    };
+                }
+                catch { Buffer.Dispose(); throw; }
             }
         }
 
@@ -799,7 +840,7 @@ namespace Instrumind.ThinkComposer.Composer
             Part.PartUri = PartUri.ToString();
             Part.Format = Payload.Format;
             Part.Sha256 = Payload.Sha256;
-            Part.Bytes = Payload.Utf8Bytes.Length;
+            Part.Bytes = Payload.ByteCount;
             return Part;
         }
 
@@ -904,12 +945,21 @@ namespace Instrumind.ThinkComposer.Composer
             WriteBinaryPart(Package, PartUri, JsonContentType, Utf8NoBom.GetBytes(Text ?? ""), CompressionOption.Maximum);
         }
 
-        private static void WriteJsonPayloadPart(Package Package, Uri PartUri, PersistenceExportPayload Payload)
+        internal static void WriteJsonPayloadPart(Package Package, Uri PartUri, PersistenceExportPayload Payload)
         {
-            if (Payload == null || Payload.Utf8Bytes == null)
+            if (Payload == null || (Payload.Utf8Bytes == null && Payload.Utf8Stream == null))
                 throw new InvalidOperationException("Cannot write an empty JSON persistence payload.");
 
-            WriteBinaryPart(Package, PartUri, JsonContentType, Payload.Utf8Bytes, CompressionOption.Maximum);
+            if (Payload.Utf8Stream == null)
+                WriteBinaryPart(Package, PartUri, JsonContentType, Payload.Utf8Bytes, CompressionOption.Maximum);
+            else
+            {
+                DeletePartIfExists(Package, PartUri);
+                var Part = Package.CreatePart(PartUri, JsonContentType, CompressionOption.Maximum);
+                Payload.Utf8Stream.Position = 0;
+                using (var Destination = Part.GetStream(FileMode.Create, FileAccess.Write))
+                    Payload.Utf8Stream.CopyTo(Destination, 65536);
+            }
         }
 
         private static void WriteBinaryPart(Package Package, Uri PartUri, string ContentType, byte[] Bytes, CompressionOption Compression)
@@ -1263,21 +1313,30 @@ namespace Instrumind.ThinkComposer.Composer
             public List<string> EmbeddedDomainGitSyncBaselines = new List<string>();
         }
 
-        internal sealed class PersistenceExportBundle
+        internal sealed class PersistenceExportBundle : IDisposable
         {
             public PersistenceExportPayload Composition;
             public PersistenceExportPayload Domain;
             public PersistenceExportPayload TemplateComposition;
+            public void Dispose()
+            {
+                if (Composition != null) Composition.Dispose();
+                if (Domain != null) Domain.Dispose();
+                if (TemplateComposition != null) TemplateComposition.Dispose();
+            }
         }
 
-        internal sealed class PersistenceExportPayload
+        internal sealed class PersistenceExportPayload : IDisposable
         {
             public object Document;
             public string Format;
             public byte[] Utf8Bytes;
+            public Stream Utf8Stream;
+            public int ByteCount { get { return checked((int)(Utf8Stream == null ? Utf8Bytes.LongLength : Utf8Stream.Length)); } }
             public string Sha256;
             public string PreviewInputSha256;
             public List<string> Warnings = new List<string>();
+            public void Dispose() { if (Utf8Stream != null) Utf8Stream.Dispose(); }
         }
 
         private sealed class PersistenceManifest

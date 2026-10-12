@@ -215,8 +215,11 @@ namespace Instrumind.ThinkComposer.ApplicationProduct.Widgets
                                                                             (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)));
 
                             ApplicationProduct.ProductDirector.EditorInterrelationsControl.SetTarget(TargetIdea);
-                            this.CurrentView.Presenter.BringIntoView(
-                                  TargetIdea.VisualRepresentators.First(vrep => vrep.DisplayingView == this.CurrentView).MainSymbol.BaseArea);
+                            // Model-only elements legitimately have no symbol in this view.
+                            var CurrentRepresentation = TargetIdea.VisualRepresentators
+                                .FirstOrDefault(vrep => vrep.DisplayingView == this.CurrentView);
+                            if (CurrentRepresentation != null && CurrentRepresentation.MainSymbol != null)
+                                this.CurrentView.Presenter.BringIntoView(CurrentRepresentation.MainSymbol.BaseArea);
                         }
                         else
                         {

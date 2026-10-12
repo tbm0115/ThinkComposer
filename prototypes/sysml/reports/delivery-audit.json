@@ -1,0 +1,261 @@
+{
+  "formatVersion": 1,
+  "checks": [
+    {
+      "name": "repeat-build-identical",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v1.tdom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v1.tdom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2.tdom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v2.tdom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2.tdom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v1.tdom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v1.tdom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2.tdom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v2.tdom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2.tdom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v1_ModelingLab.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v1_ModelingLab.tcom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v1_Starter.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v1_Starter.tcom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v1_Survey.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v1_Survey.tcom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2_ModelingLab.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v2_ModelingLab.tcom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2_ModelingLab.tcom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2_Starter.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v2_Starter.tcom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2_Starter.tcom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey.tcom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "MTConnect_SysML_v2_Survey.tcom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v1_ModelingLab.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v1_ModelingLab.tcom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "SysML_v1_Starter.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v1_Starter.tcom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "SysML_v1_Survey.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v1_Survey.tcom:SysML_v1_XMI",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2_ModelingLab.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v2_ModelingLab.tcom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2_ModelingLab.tcom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2_Starter.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v2_Starter.tcom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2_Starter.tcom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2_Survey.tcom",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "name": "SysML_v2_Survey.tcom:SysML_v2_Text",
+      "passed": true
+    },
+    {
+      "name": "SysML_v2_Survey.tcom:KerML_Text",
+      "passed": true
+    },
+    {
+      "name": "README.md:domains/SysML_v1.tdom",
+      "passed": true
+    },
+    {
+      "name": "README.md:examples/SysML_v1_Survey.tcom",
+      "passed": true
+    },
+    {
+      "name": "README.md:domains/MTConnect_SysML_v1.tdom",
+      "passed": true
+    },
+    {
+      "name": "README.md:examples/MTConnect_SysML_v1_Survey.tcom",
+      "passed": true
+    },
+    {
+      "name": "README.md:domains/SysML_v2.tdom",
+      "passed": true
+    },
+    {
+      "name": "README.md:examples/SysML_v2_Survey.tcom",
+      "passed": true
+    },
+    {
+      "name": "README.md:domains/MTConnect_SysML_v2.tdom",
+      "passed": true
+    },
+    {
+      "name": "README.md:examples/MTConnect_SysML_v2_Survey.tcom",
+      "passed": true
+    },
+    {
+      "name": "README.md:docs/coverage.md",
+      "passed": true
+    },
+    {
+      "name": "README.md:docs/gaps.md",
+      "passed": true
+    },
+    {
+      "name": "README.md:docs/mapping.md",
+      "passed": true
+    },
+    {
+      "name": "README.md:docs/validation.md",
+      "passed": true
+    },
+    {
+      "name": "README.md:sources/validation-tools.json",
+      "passed": true
+    },
+    {
+      "name": "README.md:reference/mtconnect/MTConnect_Imported.tcom",
+      "passed": true
+    },
+    {
+      "name": "README.md:reference/mtconnect/MTConnect_SysML_v1_Slice.tcom",
+      "passed": true
+    },
+    {
+      "name": "README.md:reference/mtconnect/MTConnect_SysML_v2_Slice.tcom",
+      "passed": true
+    },
+    {
+      "name": "README.md:reference/mtconnect/import-report.json",
+      "passed": true
+    },
+    {
+      "name": "docs\\coverage.md:gaps.md",
+      "passed": true
+    },
+    {
+      "name": "docs\\validation.md:../reports/full-model-scale.json",
+      "passed": true
+    }
+  ]
+}

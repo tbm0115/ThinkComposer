@@ -1,0 +1,70 @@
+{
+  "formatVersion": 1,
+  "beforeSha256": "de7e83e372d62143601b2684a3fb314a127c1b24440fba4cf09b57afdf07b4de",
+  "afterSha256": "94cb45238049b8c8f2c0855af439b901aeeb91817807de6ccca0f6d55fa28821",
+  "backup": "C:\\Users\\LightWorks\\Documents\\GitHub\\ThinkComposer\\artifacts\\sysml-browser-repair\\backups\\MTConnect_Imported-de7e83e372d62143.tcom",
+  "modelDataUnchanged": true,
+  "viewsAdded": [
+    {
+      "ownerId": "dfdaec07-7e89-5187-a38d-bc9bc760a5a9",
+      "viewId": "8e3d3d1f-e863-5190-9f07-369a46cea32d",
+      "name": "MTConnect_Reference",
+      "visuals": 1
+    },
+    {
+      "ownerId": "e3de9c29-cd77-5836-9dfc-90e0e099454f",
+      "viewId": "cac908ac-9a12-555b-90c3-ae3578639943",
+      "name": "MTConnect",
+      "visuals": 2
+    },
+    {
+      "ownerId": "a1e8a068-21c7-5189-9493-00fdc58f78b9",
+      "viewId": "99c64084-e1d2-5e88-b01a-22518c787423",
+      "name": "Observation Information Model",
+      "visuals": 1
+    },
+    {
+      "ownerId": "37624336-0303-5d8f-b4c4-d4edd7a44a16",
+      "viewId": "687b4b53-48be-5036-b705-627a284b930c",
+      "name": "Observation",
+      "visuals": 15
+    },
+    {
+      "ownerId": "1f758b39-fcf0-5a9e-8cfe-bf34fa818828",
+      "viewId": "81a6e034-3051-5c42-841b-42ae80b92f29",
+      "name": "Device Information Model",
+      "visuals": 3
+    },
+    {
+      "ownerId": "d2c40978-4e75-5393-9bb2-8d3c040dab5d",
+      "viewId": "bcf64930-3d7d-5d41-8508-5c063c8a0694",
+      "name": "Components",
+      "visuals": 1
+    },
+    {
+      "ownerId": "784e5751-64b2-5658-8dda-c3922145001b",
+      "viewId": "3ac0fccd-d6d2-5015-b695-769e2b23ac6f",
+      "name": "Component",
+      "visuals": 17
+    },
+    {
+      "ownerId": "d59a1297-f05b-5584-90d0-12483d05684a",
+      "viewId": "cb0f900e-15c9-5d75-b92e-d74d3bb3ea07",
+      "name": "DataItems",
+      "visuals": 1
+    },
+    {
+      "ownerId": "afcad1ee-1417-566e-95a7-8a80935f8cd8",
+      "viewId": "68982492-e977-5857-bb06-b378d15e5634",
+      "name": "DataItem",
+      "visuals": 27
+    },
+    {
+      "ownerId": "419748be-768e-5288-ac96-4fdf2403fe7d",
+      "viewId": "8f3d4c53-d482-58ec-9777-52dd67cb5194",
+      "name": "Device",
+      "visuals": 21
+    }
+  ],
+  "scope": "Five root entry points and their ownership paths; semantic members of four selected Blocks. Not source diagram reconstruction."
+}

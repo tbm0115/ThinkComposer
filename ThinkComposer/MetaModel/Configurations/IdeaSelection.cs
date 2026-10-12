@@ -23,6 +23,14 @@ namespace Instrumind.ThinkComposer.MetaModel.Configurations
                                                             > IdeaSelectionDeterminer = null,
                                                         IdeaSelection DirectParent = null)
         {
+            // Build one lookup for the complete tree, including when most ideas are excluded.
+            var ExcludedIds = new HashSet<string>(PreExclusion ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
+            return CreateSelectionTreeCore(Source, ExcludedIds, IdeaSelectionDeterminer, DirectParent);
+        }
+
+        private static IdeaSelection CreateSelectionTreeCore(Idea Source, HashSet<string> ExcludedIds,
+            Func<Idea, Tuple<bool, bool, IRecognizableElement>> IdeaSelectionDeterminer, IdeaSelection DirectParent)
+        {
             var Selection = (IdeaSelectionDeterminer == null
                              ? Tuple.Create(false, false, (IRecognizableElement)null)
                              : IdeaSelectionDeterminer(Source));
@@ -32,9 +40,10 @@ namespace Instrumind.ThinkComposer.MetaModel.Configurations
                 SourceIdea = Source,
                 IsSelectable = Selection.Item1,
                 IsSelected = (Selection.Item2
-                              && (PreExclusion == null || !PreExclusion.Any(id => id.IsEqual(Source.GlobalId.ToString())))),
+                              && !ExcludedIds.Contains(Source.GlobalId.ToString())),
                 ActionInfo = Selection.Item3,
-                Parent = DirectParent
+                Parent = DirectParent,
+                IsExpanded = (DirectParent == null)
             };
 
             if (Source.CompositeIdeas.Count > 0)
@@ -42,7 +51,7 @@ namespace Instrumind.ThinkComposer.MetaModel.Configurations
                 Result.Children = new List<IdeaSelection>();
                 foreach (var Composite in Source.CompositeIdeas)
                     if (Composite is Concept || Composite.CompositeIdeas.Count > 0)
-                        Result.Children.Add(CreateSelectionTree(Composite, PreExclusion, IdeaSelectionDeterminer, Result));
+                        Result.Children.Add(CreateSelectionTreeCore(Composite, ExcludedIds, IdeaSelectionDeterminer, Result));
             }
 
             return Result;
@@ -54,6 +63,19 @@ namespace Instrumind.ThinkComposer.MetaModel.Configurations
         public IdeaSelection Parent { get; set; }
 
         public bool IsSelectable { get; set; }
+
+        // Keep expansion with the item when WPF recycles its visual container.
+        public bool IsExpanded
+        {
+            get { return this.IsExpanded_; }
+            set
+            {
+                if (this.IsExpanded_ == value) return;
+                this.IsExpanded_ = value;
+                this.NotifyPropertyChange("IsExpanded");
+            }
+        }
+        private bool IsExpanded_;
 
         public bool IsSelected
         {

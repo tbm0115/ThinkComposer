@@ -1,0 +1,133 @@
+{
+  "formatVersion": 1,
+  "package": "fixtures\\blocked\\chained-detail-access.tcom",
+  "language": "SysML_v1_XMI",
+  "outputSha256": "39abea3a71251eb2a31ccb52cce3b34882138886f5b4424c1b58485fe9d69055",
+  "emittedElements": 0,
+  "foldedRelationships": [],
+  "omittedElements": [
+    {
+      "id": "6ca30b7e-c428-5a60-9428-f5b0c275a2f0",
+      "sourceId": "",
+      "definition": "PackageImport",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "396c22f3-bc71-594d-9b57-c52a9fa7675e",
+      "sourceId": "",
+      "definition": "ExternalReference",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "9baba819-b583-58ef-ab91-2dfb42405f41",
+      "sourceId": "",
+      "definition": "Port",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "b0c131ad-d9fa-5010-b099-183d145326d4",
+      "sourceId": "",
+      "definition": "Connector",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "6308dd38-f7e8-5d7d-9317-5cff87c71488",
+      "sourceId": "",
+      "definition": "ConnectorEnd",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "5e7c5f33-9890-586b-a025-dd63b0167c7c",
+      "sourceId": "",
+      "definition": "TestCase",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "b690e4f8-6d52-57ff-b040-e3649115ded9",
+      "sourceId": "",
+      "definition": "Constraint",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "b579a022-e399-59c1-8453-f5102655bb11",
+      "sourceId": "",
+      "definition": "Parameter",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "20e64b2a-8e15-553f-90bd-b0f433afbb29",
+      "sourceId": "",
+      "definition": "Comment",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "d2cc5a06-f272-5813-b471-83ac26c13112",
+      "sourceId": "",
+      "definition": "StereotypeApplication",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "5c927049-7214-5a70-82c4-ece1d43a397a",
+      "sourceId": "",
+      "definition": "Citation",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    },
+    {
+      "id": "bad005e3-8eeb-53d9-8d7a-066be149785d",
+      "sourceId": "",
+      "definition": "Trace",
+      "reason": "No supported template mapping, omitted ancestor, or depth limit"
+    }
+  ],
+  "issues": [
+    {
+      "code": "EMPTY_EXPORT",
+      "detail": "No model elements emitted"
+    },
+    {
+      "code": "CONTENT_COVERAGE_MISMATCH",
+      "missing": [
+        "tc_201ac89c-af74-56d3-b40a-da76a6c94f8b",
+        "tc_23cbdf6a-6002-510b-9176-29285b83c024",
+        "tc_28ab3f16-6189-5b21-a7b9-8ad06d338559",
+        "tc_34d81b48-0c49-526a-a5c3-bb60092136ff",
+        "tc_420e9b71-809b-55b5-8984-e8f8aa5147e1",
+        "tc_42c39374-7b35-5b01-832e-1279ebb7f0a8",
+        "tc_4682553c-fe8c-5543-953a-e0f58cd782c0",
+        "tc_4e902ab7-3bdb-5eb9-97f8-f9b838065c40",
+        "tc_53a54df8-1d78-5270-939d-baff4bf75b36",
+        "tc_56f82ad0-8d52-54c8-bef2-9809c0474f1f",
+        "tc_5852142a-f2f0-5e75-9fc4-6be2251b12aa",
+        "tc_66feed68-7821-5142-9ff0-044e1868a834",
+        "tc_85d7a33c-f46c-554d-a709-0cbda49d87fe",
+        "tc_8938411e-4d88-5329-bddd-ef0a30b0832d",
+        "tc_978a598e-7f96-597e-b960-63672597fcc8",
+        "tc_a79b75fa-8a51-5680-b338-ef06eb5cccc1",
+        "tc_aaa5d3f3-68a8-5355-88f7-97e10899ea6a",
+        "tc_ae938372-2427-5cde-a80b-ec007768887b",
+        "tc_c24554b0-b625-536f-ae11-e5e50eec9f94",
+        "tc_c6f50cab-a46e-5af2-ab3f-b85f272caa2c",
+        "tc_c7ee9069-10c2-50bb-af3c-8fccf0ef2ddc",
+        "tc_d04c0280-fc3e-5341-93ff-b7e1eee28188",
+        "tc_dfacc069-536d-52c8-b09a-aed9415409e4",
+        "tc_e3d225bd-5f69-5586-a03d-e38181ea95dc",
+        "tc_e5d8d003-76f7-5196-a8c0-509a167c32ab",
+        "tc_efb16690-49d9-57f8-9299-b5cae2caefb9",
+        "tc_f94423da-6bba-5a61-a94e-a9e0484ee060",
+        "tc_fc2928c3-3aad-5934-8163-005562616e27"
+      ],
+      "unexpected": []
+    }
+  ],
+  "externalReferences": [],
+  "completeExport": false,
+  "declaredStructuralChecks": "failed",
+  "languageSemanticValidation": "unverified: external parser/profile-library validation unavailable",
+  "profileBindings": "SysML URI matches supplied reference; external profile resolution unverified",
+  "exclusions": [
+    "proprietary diagram encoding",
+    "execution/evaluation",
+    "full profile/metadata semantics"
+  ],
+  "warning": "This is a partial prototype export, never a conformance certificate."
+}
